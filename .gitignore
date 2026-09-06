@@ -57,3 +57,6 @@ prisma/migrations/
 # uploads
 public/uploads/*
 !public/uploads/.gitkeep
+
+# Private License Key (Keep Secret)
+scripts/license_private_key.pem

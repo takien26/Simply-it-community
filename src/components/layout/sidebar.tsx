@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Crown,
+  ShieldCheck,
   LayoutDashboard,
   Laptop,
   Key,
@@ -279,6 +280,7 @@ export function Sidebar({
         },
         { label: t('nav.incidents', 'Sự cố & Vấn đề'), href: '/incidents', icon: AlertTriangle, permission: 'incidents.view' },
         { label: t('nav.kb', 'Hướng dẫn'), href: '/kb', icon: BookOpen, permission: 'kb.view' },
+        { label: t('nav.about_license', 'Thông tin & Bản quyền'), href: '/settings?tab=license', icon: ShieldCheck },
         {
           label: t('nav.reports', 'Báo cáo & Thống kê'),
           href: '/tickets/reports',
@@ -294,8 +296,8 @@ export function Sidebar({
       children: [
         { label: t('nav.assets_list', 'Danh sách Thiết bị'), href: '/assets', icon: Laptop, permission: 'assets.view' },
         { label: t('nav.assets_audit', 'Kiểm kê Tài sản'), href: '/assets/audit', icon: ClipboardCheck, permission: 'assets.view' },
-        { label: t('nav.assets_scan', 'Scan Thiết bị'), href: '/discovery', icon: ScanLine, badge: 'PRO', badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40', permission: 'assets.view' },
-        { label: t('nav.floor_maps', 'Sơ đồ Mặt bằng 2D'), href: '/floor-maps', icon: Map, badge: 'PRO', badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40', permission: 'assets.view' },
+        { label: t('nav.assets_scan', 'Scan Thiết bị'), href: '/discovery', icon: ScanLine, permission: 'assets.view' },
+        { label: t('nav.floor_maps', 'Sơ đồ Mặt bằng 2D'), href: '/floor-maps', icon: Map, permission: 'assets.view' },
         { label: t('nav.spare_parts', 'Kho Phụ tùng & Linh kiện'), href: '/spare-parts', icon: Boxes, permission: 'assets.view' },
       ],
     },
@@ -396,12 +398,7 @@ export function Sidebar({
 
             {isExpanded && (
               <div className="min-w-0 flex-1 animate-in fade-in duration-200">
-                <div className="flex items-center gap-1.5">
-                  <h1 className="font-extrabold text-sm text-white tracking-wider truncate" title={appName}>{appName}</h1>
-                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                    FREE
-                  </span>
-                </div>
+                <h1 className="font-extrabold text-sm text-white tracking-wider truncate" title={appName}>{appName}</h1>
                 <p className="text-[10px] text-cyan-400 font-medium truncate" title={companyName}>{companyName}</p>
               </div>
             )}
@@ -553,35 +550,6 @@ export function Sidebar({
             );
           })}
         </div>
-
-        {/* Enterprise Upgrade CTA */}
-        {isExpanded && (
-          <div className="p-2.5 mx-2 mb-2 rounded-2xl bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-blue-500/10 border border-amber-500/20 text-center animate-in fade-in duration-200">
-            <div className="flex items-center justify-between gap-1 mb-1">
-              <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                <Crown className="w-3 h-3 text-amber-400" />
-                <span>Enterprise</span>
-              </span>
-              <span className="text-[9px] text-slate-400">SSO & AD Sync</span>
-            </div>
-            <p className="text-[10px] text-slate-300 text-left line-clamp-2 leading-tight mb-2">
-              {language === 'en' ? 'Unlock SSO, Active Directory, & Teams Webhooks.' : 'Mở khóa SSO, Active Directory, & Webhook Teams.'}
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowUpgradeModal(true)}
-              className="w-full py-1.5 px-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-[10.5px] shadow-xs flex items-center justify-center gap-1 cursor-pointer transition-transform hover:scale-[1.02]"
-            >
-              <Crown className="w-3 h-3" />
-              <span>{language === 'en' ? 'Upgrade Edition' : 'Nâng Cấp Bản Quyền'}</span>
-            </button>
-          </div>
-        )}
-
-        <EnterpriseUpgradeModal
-          isOpen={showUpgradeModal}
-          onClose={() => setShowUpgradeModal(false)}
-        />
 
         {/* User Footer Profile */}
         <div className="p-3 border-t border-slate-800 bg-slate-950/40 shrink-0">
