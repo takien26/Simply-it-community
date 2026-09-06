@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>SIMPLY IT - Tài Liệu Tổng Quan</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+    
+    @page {
+      size: A4 portrait;
+      margin: 10mm 12mm 10mm 12mm;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      line-height: 1.4;
+      font-size: 9.5pt;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    /* Top Header */
+    .top-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2563eb;
+      margin-bottom: 12px;
+    }
+    
+    .brand-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .brand-text h1 {
+      font-size: 20pt;
+      font-weight: 900;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .brand-text h1 span.it {
+      color: #2563eb;
+    }
+    
+    .brand-text p {
+      font-size: 8pt;
+      font-weight: 800;
+      color: #0ea5e9;
+      letter-spacing: 1.5px;
+      margin-top: 3px;
+      text-transform: uppercase;
+    }
+    
+    .header-badge-box {
+      text-align: right;
+    }
+    
+    .badge-pill {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+      font-size: 8.5pt;
+      font-weight: 800;
+      padding: 5px 14px;
+      border-radius: 20px;
+      display: inline-block;
+      letter-spacing: 0.3px;
+    }
+    
+    .badge-sub {
+      font-size: 7.5pt;
+      color: #64748b;
+      font-weight: 600;
+      margin-top: 3px;
+    }
+    
+    /* Hero Banner */
+    .hero-banner {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%);
+      color: #ffffff;
+      padding: 14px 18px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    }
+    
+    .hero-banner h2 {
+      font-size: 11.5pt;
+      font-weight: 800;
+      color: #38bdf8;
+      margin-bottom: 4px;
+    }
+    
+    .hero-banner p {
+      font-size: 8.5pt;
+      color: #e2e8f0;
+      line-height: 1.45;
+    }
+    
+    .hero-banner p strong {
+      color: #ffffff;
+    }
+    
+    /* 4 Pillars */
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    
+    .pillar-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+    
+    .pillar-title {
+      font-size: 8.5pt;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    
+    .pillar-desc {
+      font-size: 7.5pt;
+      color: #64748b;
+      line-height: 1.25;
+    }
+    
+    /* Section Title */
+    .sec-title {
+      font-size: 10.5pt;
+      font-weight: 900;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .sec-title .bar {
+      width: 4px;
+      height: 14px;
+      background: #2563eb;
+      border-radius: 2px;
+      display: inline-block;
+    }
+    
+    /* Modules Grid */
+    .modules-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    
+    .module-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 9px 11px;
+      position: relative;
+    }
+    
+    .module-card.accent-cyan { border-left: 3.5px solid #06b6d4; }
+    .module-card.accent-yellow { border-left: 3.5px solid #eab308; }
+    .module-card.accent-orange { border-left: 3.5px solid #f97316; }
+    .module-card.accent-gold { border-left: 3.5px solid #d97706; }
+    .module-card.accent-emerald { border-left: 3.5px solid #10b981; }
+    .module-card.accent-blue { border-left: 3.5px solid #2563eb; }
+    
+    .module-card h3 {
+      font-size: 9pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .module-card p {
+      font-size: 7.8pt;
+      color: #475569;
+      line-height: 1.35;
+    }
+    
+    /* Comparison Table */
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 8pt;
+      margin-bottom: 8px;
+    }
+    
+    .comp-table th {
+      background: #1e1b4b;
+      color: #ffffff;
+      font-weight: 800;
+      text-align: left;
+      padding: 7px 10px;
+      font-size: 8pt;
+    }
+    
+    .comp-table th:last-child {
+      background: #2563eb;
+    }
+    
+    .comp-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+    
+    .comp-table tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    
+    .comp-table td.brand-col {
+      font-weight: 700;
+      color: #1d4ed8;
+      background: #eff6ff !important;
+    }
+    
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 6px;
+      font-size: 7.5pt;
+      color: #64748b;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <div class="top-header">
+    <div class="brand-box">
+      <svg width="42" height="42" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <path d="M78 28C78 19.1634 70.8366 12 62 12H34C21.8497 12 12 21.8497 12 34C12 46.1503 21.8497 56 34 56H66C72.6274 56 78 61.3726 78 68C78 74.6274 72.6274 80 66 80H30C23.3726 80 18 74.6274 18 68" stroke="url(#logoGrad)" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+      <div class="brand-text">
+        <h1>SIMPLY <span class="it">IT</span></h1>
+        <p>ONE PLATFORM. SIMPLE IT.</p>
+      </div>
+    </div>
+    <div class="header-badge-box">
+      <div class="badge-pill">TÀI LIỆU TỔNG QUAN</div>
+      <div class="badge-sub">Phiên bản Enterprise 2.0</div>
+    </div>
+  </div>
+
+  <!-- Hero Banner -->
+  <div class="hero-banner">
+    <h2>Nền Tảng Quản Trị & Vận Hành CNTT Doanh Nghiệp Tập Trung</h2>
+    <p><strong>SIMPLY IT</strong> là giải pháp hợp nhất toàn diện giúp doanh nghiệp số hóa, giám sát và tối ưu hóa 100% tài nguyên CNTT: từ quản lý vòng đời phần cứng, bản quyền phần mềm, thuê bao viễn thông, hồ sơ hợp đồng đến tiếp nhận sự cố ITIL và bảo mật mật khẩu nội bộ.</p>
+  </div>
+
+  <!-- 4 Pillars -->
+  <div class="pillars-grid">
+    <div class="pillar-card">
+      <div class="pillar-title">🛡️ ĐƠN GIẢN</div>
+      <div class="pillar-desc">Giao diện phẳng, trực quan, dễ dùng</div>
+    </div>
+    <div class="pillar-card">
+      <div class="pillar-title">🔗 LIỀN MẠCH</div>
+      <div class="pillar-desc">Hợp nhất mọi mắt xích CNTT trên 1 nền tảng</div>
+    </div>
+    <div class="pillar-card">
+      <div class="pillar-title">⚡ HIỆU QUẢ</div>
+      <div class="pillar-desc">Tích hợp AI Vision & OCR bóc tách siêu tốc</div>
+    </div>
+    <div class="pillar-card">
+      <div class="pillar-title">🔒 TIN CẬY</div>
+      <div class="pillar-desc">Mã hóa AES-256-GCM, bảo mật tuyệt đối</div>
+    </div>
+  </div>
+
+  <!-- Main Modules -->
+  <div class="sec-title">
+    <span class="bar"></span>
+    <span>CÁC PHÂN HỆ VẬN HÀNH CHÍNH</span>
+  </div>
+
+  <div class="modules-grid">
+    <div class="module-card accent-cyan">
+      <h3>💻 1. Quản Lý Tài Sản & Kho Phần Cứng</h3>
+      <p>Theo dõi chi tiết Laptop, PC, Màn hình, Thiết bị mạng theo mã Tag, Serial. Quản lý lịch sử cấp phát nhân viên, thu hồi, bảo dưỡng định kỳ.</p>
+    </div>
+
+    <div class="module-card accent-yellow">
+      <h3>🔑 2. Quản Lý License & Hạn Dùng Phần Mềm</h3>
+      <p>Kiểm soát chặt chẽ số lượng Seat (đã gán / còn trống), hỗ trợ License vĩnh viễn và thuê bao. Tự động cảnh báo trước 30 ngày tránh gián đoạn.</p>
+    </div>
+
+    <div class="module-card accent-orange">
+      <h3>📦 3. Dịch Vụ, Viễn Thông & Thuê Bao IT</h3>
+      <p>Quản lý đường truyền Internet cáp quang, IP tĩnh, Cloud VPS, Email, Hosting, Tổng đài VoIP. Theo dõi chu kỳ thanh toán và dự báo ngân sách năm.</p>
+    </div>
+
+    <div class="module-card accent-gold">
+      <h3>🎫 4. Helpdesk & Xử Lý Sự Cố Chuẩn ITIL</h3>
+      <p>Tiếp nhận, phân loại và điều phối ticket sự cố theo mức độ ưu tiên và SLA. Nhật ký trao đổi bình luận nội bộ và lưu trữ biên bản xử lý hoàn tất.</p>
+    </div>
+
+    <div class="module-card accent-emerald">
+      <h3>🔒 5. Két Sắt Mật Khẩu (Password Vault)</h3>
+      <p>Lưu trữ an toàn mật khẩu quản trị mạng, Server, CSDL bằng mã hóa <strong>AES-256-GCM</strong>. Tính năng sao chép 1-click tự động xóa clipboard an toàn.</p>
+    </div>
+
+    <div class="module-card accent-blue">
+      <h3>⚡ 6. Trợ Lý AI Vision & Bóc Tách Tự Động</h3>
+      <p>Tự động nhận diện tem Serial phần cứng và bóc tách dữ liệu Hóa đơn VAT (PDF/ảnh) thành bản ghi chuẩn trong 3 giây, tiết kiệm 80% thời gian.</p>
+    </div>
+  </div>
+
+  <!-- Comparison Table -->
+  <div class="sec-title">
+    <span class="bar"></span>
+    <span>ƯU ĐIỂM VƯỢT TRỘI SO VỚI QUẢN LÝ THỦ CÔNG</span>
+  </div>
+
+  <table class="comp-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Tiêu Chí</th>
+        <th style="width: 35%;">Phương Pháp Cũ (Excel / Sổ sách)</th>
+        <th style="width: 40%;">Nền Tảng SIMPLY IT</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Kiểm kê phần cứng</strong></td>
+        <td>Thủ công từng máy, mất 1-2 tuần lễ</td>
+        <td class="brand-col">PowerShell Agent quét tự động trong 5s</td>
+      </tr>
+      <tr>
+        <td><strong>Nhập liệu thông tin</strong></td>
+        <td>Gõ tay từng thông số, dễ nhầm lẫn</td>
+        <td class="brand-col">AI Vision đọc hóa đơn/tem máy 2 giây</td>
+      </tr>
+      <tr>
+        <td><strong>Hỗ trợ người dùng</strong></td>
+        <td>Nhắn Zalo, gọi điện, dễ sót việc</td>
+        <td class="brand-col">Ticket Helpdesk tập trung, đo lường SLA</td>
+      </tr>
+      <tr>
+        <td><strong>Quản lý bản quyền</strong></td>
+        <td>Mua thừa hoặc vi phạm pháp lý</td>
+        <td class="brand-col">Trực quan hóa Seats, cảnh báo hết hạn</td>
+      </tr>
+      <tr>
+        <td><strong>Bảo mật mật khẩu</strong></td>
+        <td>Lưu file Excel/Word, nguy cơ lộ lọt</td>
+        <td class="brand-col">Password Vault mã hóa AES-256 & Audit Log</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>⚡ <strong>SIMPLY IT</strong> — Hệ Thống Quản Trị & Vận Hành CNTT Toàn Diện</span>
+    <span>🌐 Sẵn sàng triển khai Cloud & On-Premise</span>
+  </div>
+
+</body>
+</html>

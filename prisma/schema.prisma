@@ -1,0 +1,1316 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+enum ServiceType {
+  INTERNET            // Đường truyền Internet (FTTH, Leased Line, 4G/5G)
+  CLOUD_HOSTING       // Cloud Server / VPS / Web Hosting
+  DOMAIN_SSL          // Tên miền & Chứng chỉ số SSL
+  EMAIL_COMMUNICATION // Email doanh nghiệp (Google Workspace, M365)
+  MAINTENANCE_SLA     // Dịch vụ bảo trì SLA, Hỗ trợ kỹ thuật
+  TELECOM_VOIP        // Tổng đài ảo VoIP / Điện thoại bàn
+  SOFTWARE_SAAS       // Dịch vụ phần mềm dạng thuê bao SaaS
+  OTHER               // Dịch vụ IT khác
+}
+
+enum ServiceStatus {
+  ACTIVE              // Đang hoạt động
+  PENDING_RENEWAL     // Sắp đến hạn gia hạn
+  SUSPENDED           // Tạm ngưng
+  TERMINATED          // Đã chấm dứt / Ngừng sử dụng
+  EXPIRED             // Đã hết hạn
+}
+
+enum BillingCycle {
+  MONTHLY             // Hàng tháng
+  QUARTERLY           // Hàng quý (3 tháng)
+  SEMI_ANNUAL         // 6 tháng
+  ANNUAL              // Hàng năm (12 tháng)
+  BIENNIAL            // 2 năm
+  TRIENNIAL           // 3 năm
+  ONE_TIME            // Trọn gói / 1 lần
+}
+
+
+enum AssetStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  RETIRED
+  LOST
+  PENDING
+}
+
+enum AssetCondition {
+  NEW
+  GOOD
+  FAIR
+  POOR
+  BROKEN
+}
+
+enum LicenseType {
+  PERPETUAL
+  SUBSCRIPTION
+  OEM
+  TRIAL
+  OPEN_SOURCE
+}
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+enum MaintenanceType {
+  REPAIR
+  UPGRADE
+  INSPECTION
+  CLEANING
+  SOFTWARE_UPDATE
+  REPLACEMENT
+  OTHER
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  ASSIGN
+  REVOKE
+  IMPORT
+  LOGIN
+  AI_EXTRACT
+  ROUTE           // Ticket được auto-route
+  REASSIGN        // Ticket được gán lại thủ công (override)
+  ESCALATE        // Ticket / Incident được nâng cấp
+}
+
+enum ImportType {
+  ASSET
+  LICENSE
+}
+
+enum ImportBatchStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ImportRecordStatus {
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+enum SettingType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  IMAGE_URL
+}
+
+enum AIInputType {
+  IMAGE
+  PDF
+  TEXT
+}
+
+enum AITargetEntity {
+  ASSET
+  LICENSE
+  MAINTENANCE
+  VENDOR
+  SERVICE
+}
+
+enum AIExtractionStatus {
+  PENDING
+  PROCESSING
+  EXTRACTED
+  AUTO_SAVED
+  USER_CONFIRMED
+  USER_EDITED
+  REJECTED
+  FAILED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketCategory {
+  HARDWARE
+  SOFTWARE
+  LICENSE
+  ACCESS_REQUEST
+  NETWORK
+  OTHER
+}
+
+enum IncidentSeverity {
+  CRITICAL_P1 // Khẩn cấp - Gián đoạn toàn công ty / hệ thống trọng yếu
+  HIGH_P2     // Nghiêm trọng - Ảnh hưởng toàn phòng ban / dịch vụ chính
+  MEDIUM_P3   // Trung bình - Ảnh hưởng một nhóm người dùng
+  LOW_P4      // Thấp - Ảnh hưởng nhỏ, có phương án thay thế
+}
+
+enum IncidentStatus {
+  INVESTIGATING // Đang điều tra nguyên nhân & khoanh vùng
+  IDENTIFIED    // Đã xác định sự cố & đang xử lý khôi phục
+  MONITORING    // Đã áp dụng Workaround / Đang theo dõi ổn định
+  RESOLVED      // Đã khôi phục dịch vụ hoàn toàn
+  CLOSED        // Đã đóng sự cố
+}
+
+enum ProblemStatus {
+  OPEN                // Mới ghi nhận từ Incident(s)
+  UNDER_INVESTIGATION // Đang phân tích nguyên nhân gốc (RCA)
+  KNOWN_ERROR         // Đã rõ nguyên nhân gốc (Known Error) & có Workaround
+  FIX_IN_PROGRESS     // Đang tiến hành xử lý triệt để
+  RESOLVED            // Đã áp dụng giải pháp lâu dài thành công
+  CLOSED              // Đã đóng Problem
+}
+
+enum ProblemPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+// ==================== APPROVAL WORKFLOW ====================
+
+enum ApprovalStatus {
+  DRAFT              // Bản nháp
+  PENDING_MANAGER    // Chờ Cấp trên duyệt
+  PENDING_IT         // Chờ IT xác nhận
+  APPROVED           // Đã duyệt
+  REJECTED           // Từ chối
+  IN_PROCUREMENT     // Đang mua sắm
+  DELIVERED          // Đã bàn giao
+  CANCELLED          // Đã hủy
+}
+
+enum ApprovalType {
+  NEW_DEVICE         // Yêu cầu thiết bị mới
+  SOFTWARE_LICENSE   // Yêu cầu phần mềm / bản quyền
+  DEVICE_REPLACEMENT // Thay thế thiết bị cũ / hỏng
+  ACCESS_REQUEST     // Yêu cầu quyền truy cập hệ thống
+  OTHER              // Khác
+}
+
+// ==================== MAINTENANCE SCHEDULE ====================
+
+enum MaintenanceFrequency {
+  MONTHLY         // Hàng tháng
+  QUARTERLY       // Hàng quý
+  SEMI_ANNUAL     // 6 tháng
+  ANNUAL          // Hàng năm
+}
+
+// ==================== SYSTEM SETTINGS ====================
+
+model SystemSetting {
+  id          String      @id @default(uuid()) @db.Uuid
+  key         String      @unique
+  value       String
+  type        SettingType  @default(STRING)
+  group       String       @default("general")
+  label       String
+  description String?
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@index([group])
+  @@map("system_settings")
+}
+
+// ==================== RBAC ====================
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  module      String
+  description String?
+
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserPermission {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
+  granted      Boolean  @default(true)
+  grantedById  String   @map("granted_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user       User       @relation("UserOwnPermissions", fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  grantedBy  User       @relation("GrantedByUser", fields: [grantedById], references: [id])
+
+  @@unique([userId, permissionId])
+  @@map("user_permissions")
+}
+
+// ==================== USER ====================
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  secondaryPasswordHash String? @map("secondary_password_hash")
+  fullName     String   @map("full_name")
+  roleId       String   @map("role_id") @db.Uuid
+  department   String?
+  position     String?
+  companyName  String?  @map("company_name")
+  phone        String?
+  avatarUrl    String?  @map("avatar_url")
+  managerId    String?  @map("manager_id") @db.Uuid
+  locationId   String?  @map("location_id") @db.Uuid
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  role               Role                @relation(fields: [roleId], references: [id])
+  manager            User?               @relation("DirectReports", fields: [managerId], references: [id])
+  directReports      User[]              @relation("DirectReports")
+  location           Location?           @relation(fields: [locationId], references: [id])
+  ownPermissions     UserPermission[]    @relation("UserOwnPermissions")
+  grantedPermissions UserPermission[]    @relation("GrantedByUser")
+  assetAssignments   AssetAssignment[]   @relation("AssignedToUser")
+  assetAssignedBy    AssetAssignment[]   @relation("AssignedByUser")
+  licenseAssignments LicenseAssignment[] @relation("LicenseAssignedToUser")
+  licenseAssignedBy  LicenseAssignment[] @relation("LicenseAssignedByUser")
+  maintenanceLogs    AssetMaintenanceLog[] @relation("PerformedByUser")
+  aiExtractions      AIExtraction[]      @relation("AIRequestedByUser")
+  aiReviewed         AIExtraction[]      @relation("AIReviewedByUser")
+  auditLogs          AuditLog[]
+  importBatches      ImportBatch[]
+  createdTickets     Ticket[]            @relation("TicketCreatedByUser")
+  passwordEntries    PasswordEntry[]     @relation("PasswordCreatedByUser")
+  assignedTickets    Ticket[]            @relation("TicketAssignedToUser")
+  ticketComments     TicketComment[]
+  createdIncidents   Incident[]          @relation("IncidentCreatedByUser")
+  assignedIncidents  Incident[]          @relation("IncidentAssignedToUser")
+  incidentUpdates    IncidentUpdate[]
+  createdProblems    Problem[]           @relation("ProblemCreatedByUser")
+  assignedProblems   Problem[]           @relation("ProblemAssignedToUser")
+  createdDocuments   Document[]          @relation("DocumentCreatedByUser")
+  createdProjects    Project[]           @relation("ProjectCreatedByUser")
+  createdServices    ITService[]         @relation("ServiceCreatedByUser")
+  teamMemberships    TeamMember[]
+  targetedRoutingRules RoutingRule[]     @relation("RuleTargetUser")
+  requestedApprovals ApprovalRequest[]   @relation("ApprovalRequester")
+  managedApprovals   ApprovalRequest[]   @relation("ApprovalManager")
+  itApprovedApprovals ApprovalRequest[]  @relation("ApprovalIT")
+  assignedMaintenances MaintenanceSchedule[] @relation("MaintenanceAssignedTo")
+  sparePartTransactions SparePartTransaction[] @relation("SparePartPerformedBy")
+
+  @@index([roleId])
+  @@map("users")
+}
+
+// ==================== ASSET MANAGEMENT ====================
+
+model AssetCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  icon        String?
+  parentId    String?  @map("parent_id") @db.Uuid
+  customFields Json?   @map("custom_fields")
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  parent               AssetCategory?        @relation("CategoryTree", fields: [parentId], references: [id])
+  children             AssetCategory[]       @relation("CategoryTree")
+  assets               Asset[]
+  maintenanceSchedules MaintenanceSchedule[]
+  spareParts           SparePart[]
+
+  @@unique([name, parentId])
+  @@index([parentId])
+  @@map("asset_categories")
+}
+
+model Vendor {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String
+  contactPerson String?  @map("contact_person")
+  email         String?
+  phone         String?
+  address       String?
+  website       String?
+  notes         String?
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  assets          Asset[]
+  licenses        License[]
+  maintenanceLogs AssetMaintenanceLog[]
+  passwordEntries PasswordEntry[]
+  documents       Document[]
+  projects        Project[]
+  itServices      ITService[]
+  spareParts      SparePart[]
+
+  @@map("vendors")
+}
+
+model Location {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  building  String?
+  floor     String?
+  notes     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  assets     Asset[]
+  itServices ITService[]
+  users      User[]
+  spareParts SparePart[]
+  floorMaps  FloorMap[]
+
+  @@map("locations")
+}
+
+model Asset {
+  id               String         @id @default(uuid()) @db.Uuid
+  assetTag         String         @unique @map("asset_tag")
+  name             String
+  categoryId       String         @map("category_id") @db.Uuid
+  brand            String?
+  model            String?
+  serialNumber     String?        @unique @map("serial_number")
+  status           AssetStatus    @default(AVAILABLE)
+  condition        AssetCondition @default(NEW)
+  purchaseDate     DateTime?      @map("purchase_date")
+  purchasePrice    Decimal?       @map("purchase_price") @db.Decimal(15, 2)
+  purchaseCurrency String?        @default("VND") @map("purchase_currency")
+  warrantyExpiry   DateTime?      @map("warranty_expiry")
+  vendorId         String?        @map("vendor_id") @db.Uuid
+  locationId       String?        @map("location_id") @db.Uuid
+  companyName      String?        @map("company_name")
+  contractNumber   String?        @map("contract_number")
+  invoiceNumber    String?        @map("invoice_number")
+  specs            Json?
+  imageUrl         String?        @map("image_url")
+  invoiceUrl       String?        @map("invoice_url")
+  notes            String?
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  category             AssetCategory         @relation(fields: [categoryId], references: [id])
+  vendor               Vendor?               @relation(fields: [vendorId], references: [id])
+  location             Location?             @relation(fields: [locationId], references: [id])
+  assignments          AssetAssignment[]
+  licenseAssignments   LicenseAssignment[]
+  maintenanceLogs      AssetMaintenanceLog[]
+  tickets              Ticket[]
+  documents            Document[]
+  passwordEntries      PasswordEntry[]
+  maintenanceSchedules MaintenanceSchedule[]
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([vendorId])
+  @@index([locationId])
+  @@index([companyName])
+  @@index([createdAt])
+  @@map("assets")
+}
+
+model AssetAssignment {
+  id           String    @id @default(uuid()) @db.Uuid
+  assetId      String    @map("asset_id") @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  assignedById String    @map("assigned_by_id") @db.Uuid
+  assignedAt   DateTime  @default(now()) @map("assigned_at")
+  returnedAt   DateTime? @map("returned_at")
+  notes        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  asset      Asset @relation(fields: [assetId], references: [id])
+  user       User  @relation("AssignedToUser", fields: [userId], references: [id])
+  assignedBy User  @relation("AssignedByUser", fields: [assignedById], references: [id])
+
+  @@index([assetId])
+  @@index([userId])
+  @@index([returnedAt])
+  @@map("asset_assignments")
+}
+
+model AssetMaintenanceLog {
+  id             String          @id @default(uuid()) @db.Uuid
+  assetId        String          @map("asset_id") @db.Uuid
+  type           MaintenanceType
+  title          String
+  description    String?
+  performedById  String?         @map("performed_by_id") @db.Uuid
+  vendorId       String?         @map("vendor_id") @db.Uuid
+  cost           Decimal?        @db.Decimal(15, 2)
+  costCurrency   String?         @default("VND") @map("cost_currency")
+  performedAt    DateTime        @map("performed_at")
+  completedAt    DateTime?       @map("completed_at")
+  attachmentUrls Json?           @map("attachment_urls")
+  notes          String?
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  asset       Asset   @relation(fields: [assetId], references: [id])
+  performedBy User?   @relation("PerformedByUser", fields: [performedById], references: [id])
+  vendor      Vendor? @relation(fields: [vendorId], references: [id])
+
+  @@index([assetId])
+  @@index([performedAt])
+  @@index([type])
+  @@map("asset_maintenance_logs")
+}
+
+// ==================== LICENSE MANAGEMENT ====================
+
+model License {
+  id               String        @id @default(uuid()) @db.Uuid
+  name             String
+  licenseKey       String?       @map("license_key")
+  licenseType      LicenseType   @default(PERPETUAL) @map("license_type")
+  totalSeats       Int           @default(1) @map("total_seats")
+  usedSeats        Int           @default(0) @map("used_seats")
+  purchaseDate     DateTime?     @map("purchase_date")
+  expiryDate       DateTime?     @map("expiry_date")
+  purchasePrice    Decimal?      @map("purchase_price") @db.Decimal(15, 2)
+  purchaseCurrency String?       @default("VND") @map("purchase_currency")
+  vendorId         String?       @map("vendor_id") @db.Uuid
+  companyName      String?       @map("company_name")
+  contractNumber   String?       @map("contract_number")
+  invoiceNumber    String?       @map("invoice_number")
+  status           LicenseStatus @default(ACTIVE)
+  contractUrl      String?       @map("contract_url")
+  specs            Json?
+  notes            String?
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  vendor      Vendor?             @relation(fields: [vendorId], references: [id])
+  assignments LicenseAssignment[]
+  documents   Document[]
+
+  @@index([status])
+  @@index([expiryDate])
+  @@index([vendorId])
+  @@index([companyName])
+  @@index([createdAt])
+  @@map("licenses")
+}
+
+model LicenseAssignment {
+  id           String    @id @default(uuid()) @db.Uuid
+  licenseId    String    @map("license_id") @db.Uuid
+  userId       String?   @map("user_id") @db.Uuid
+  assetId      String?   @map("asset_id") @db.Uuid
+  assignedById String    @map("assigned_by_id") @db.Uuid
+  assignedAt   DateTime  @default(now()) @map("assigned_at")
+  revokedAt    DateTime? @map("revoked_at")
+  notes        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  license    License @relation(fields: [licenseId], references: [id])
+  user       User?   @relation("LicenseAssignedToUser", fields: [userId], references: [id])
+  asset      Asset?  @relation(fields: [assetId], references: [id])
+  assignedBy User    @relation("LicenseAssignedByUser", fields: [assignedById], references: [id])
+
+  @@index([licenseId])
+  @@index([userId])
+  @@index([assetId])
+  @@index([revokedAt])
+  @@map("license_assignments")
+}
+
+// ==================== AI EXTRACTION ====================
+
+model AIExtraction {
+  id               String             @id @default(uuid()) @db.Uuid
+  userId           String             @map("user_id") @db.Uuid
+  inputType        AIInputType        @map("input_type")
+  inputFileUrl     String?            @map("input_file_url")
+  inputText        String?            @map("input_text")
+  targetEntity     AITargetEntity     @map("target_entity")
+  templateId       String?            @map("template_id") @db.Uuid
+  extractedData    Json?              @map("extracted_data")
+  confidence       Float?
+  status           AIExtractionStatus @default(PENDING)
+  autoCreated      Boolean            @default(false) @map("auto_created")
+  createdEntityId  String?            @map("created_entity_id")
+  errorMessage     String?            @map("error_message")
+  reviewedById     String?            @map("reviewed_by_id") @db.Uuid
+  reviewedAt       DateTime?          @map("reviewed_at")
+  processingTimeMs Int?               @map("processing_time_ms")
+  createdAt        DateTime           @default(now()) @map("created_at")
+
+  user       User                  @relation("AIRequestedByUser", fields: [userId], references: [id])
+  reviewedBy User?                 @relation("AIReviewedByUser", fields: [reviewedById], references: [id])
+  template   AIExtractionTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([targetEntity])
+  @@index([createdAt])
+  @@map("ai_extractions")
+}
+
+model AIExtractionTemplate {
+  id             String         @id @default(uuid()) @db.Uuid
+  name           String
+  targetEntity   AITargetEntity @map("target_entity")
+  description    String?
+  promptTemplate String         @map("prompt_template")
+  expectedFields Json           @map("expected_fields")
+  exampleOutput  Json?          @map("example_output")
+  isActive       Boolean        @default(true) @map("is_active")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  extractions AIExtraction[]
+
+  @@index([targetEntity])
+  @@map("ai_extraction_templates")
+}
+
+// ==================== AUDIT & IMPORT ====================
+
+model AuditLog {
+  id         String      @id @default(uuid()) @db.Uuid
+  userId     String      @map("user_id") @db.Uuid
+  action     AuditAction
+  entityType String      @map("entity_type")
+  entityId   String      @map("entity_id")
+  changes    Json?
+  ipAddress  String?     @map("ip_address")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model ImportBatch {
+  id           String            @id @default(uuid()) @db.Uuid
+  fileName     String            @map("file_name")
+  importType   ImportType        @map("import_type")
+  totalRows    Int               @default(0) @map("total_rows")
+  successRows  Int               @default(0) @map("success_rows")
+  failedRows   Int               @default(0) @map("failed_rows")
+  status       ImportBatchStatus @default(PENDING)
+  importedById String            @map("imported_by_id") @db.Uuid
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  importedBy User           @relation(fields: [importedById], references: [id])
+  records    ImportRecord[]
+
+  @@index([importedById])
+  @@index([createdAt])
+  @@map("import_batches")
+}
+
+model ImportRecord {
+  id           String             @id @default(uuid()) @db.Uuid
+  batchId      String             @map("batch_id") @db.Uuid
+  rowNumber    Int                @map("row_number")
+  rawData      Json               @map("raw_data")
+  status       ImportRecordStatus
+  errorMessage String?            @map("error_message")
+  entityId     String?            @map("entity_id")
+  createdAt    DateTime           @default(now()) @map("created_at")
+
+  batch ImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+  @@map("import_records")
+}
+
+// ==================== TICKET MANAGEMENT (HELPDESK) ====================
+
+model Ticket {
+  id              String         @id @default(uuid()) @db.Uuid
+  ticketNumber    String         @unique @map("ticket_number")
+  title           String
+  description     String
+  category        TicketCategory @default(HARDWARE)
+  priority        TicketPriority @default(MEDIUM)
+  status          TicketStatus   @default(OPEN)
+  createdById     String         @map("created_by_id") @db.Uuid
+  assignedToId    String?        @map("assigned_to_id") @db.Uuid
+  assetId         String?        @map("asset_id") @db.Uuid
+  customAssetName String?        @map("custom_asset_name")
+  companyName     String?        @map("company_name")
+  subCategory     String?        @map("sub_category")
+  dueDate         DateTime?      @map("due_date")
+  resolvedAt      DateTime?      @map("resolved_at")
+  resolutionNotes String?        @map("resolution_notes")
+  attachmentUrls  Json?          @map("attachment_urls")
+  // === Routing Engine Fields ===
+  teamId          String?        @map("team_id") @db.Uuid
+  queueId         String?        @map("queue_id") @db.Uuid
+  incidentId      String?        @map("incident_id") @db.Uuid
+  routedAt        DateTime?      @map("routed_at")
+  routedByRule    String?        @map("routed_by_rule")
+  isAutoRouted    Boolean        @default(false) @map("is_auto_routed")
+  routingLog      Json?          @map("routing_log")
+  reassignmentCount Int          @default(0) @map("reassignment_count")
+  overrideReason  String?        @map("override_reason")
+  overriddenById  String?        @map("overridden_by_id") @db.Uuid
+  slaDeadline     DateTime?      @map("sla_deadline")
+  originalSlaDeadline DateTime?  @map("original_sla_deadline")
+  firstResponseAt DateTime?      @map("first_response_at")
+  slaPausedAt     DateTime?      @map("sla_paused_at")
+  totalSlaPausedMinutes Int      @default(0) @map("total_sla_paused_minutes")
+  isSlaExtended   Boolean        @default(false) @map("is_sla_extended")
+  slaExtensionReason String?     @map("sla_extension_reason")
+  slaExtensionHistory Json?      @map("sla_extension_history")
+  aiAnalysis      Json?          @map("ai_analysis")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  createdBy       User           @relation("TicketCreatedByUser", fields: [createdById], references: [id])
+  assignedTo      User?          @relation("TicketAssignedToUser", fields: [assignedToId], references: [id])
+  asset           Asset?         @relation(fields: [assetId], references: [id])
+  team            SupportTeam?   @relation(fields: [teamId], references: [id])
+  queue           SupportQueue?  @relation(fields: [queueId], references: [id])
+  incident        Incident?      @relation(fields: [incidentId], references: [id])
+  comments        TicketComment[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([category])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([assetId])
+  @@index([teamId])
+  @@index([queueId])
+  @@index([incidentId])
+  @@index([companyName])
+  @@index([createdAt])
+  @@map("tickets")
+}
+
+model TicketComment {
+  id             String    @id @default(uuid()) @db.Uuid
+  ticketId       String    @map("ticket_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  content        String
+  attachmentUrls Json?     @map("attachment_urls")
+  isInternal     Boolean   @default(false) @map("is_internal")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  ticket         Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id])
+
+  @@index([ticketId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("ticket_comments")
+}
+
+// ==================== IT ORGANIZATION (TEAM / QUEUE) ====================
+
+model SupportTeam {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String                                    // VD: "IT Hà Nội", "Network Team HN"
+  code          String   @unique                          // VD: "IT-HN", "NET-HN"
+  description   String?
+  parentId      String?  @map("parent_id") @db.Uuid       // Cho phép cây: IT → IT HN → Network Team HN
+  companyScope  String?  @map("company_scope")             // Phạm vi: Công ty phụ trách
+  locationScope String?  @map("location_scope")            // Phạm vi: Khu vực phụ trách
+  isActive      Boolean  @default(true) @map("is_active")
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  parent        SupportTeam?     @relation("TeamTree", fields: [parentId], references: [id])
+  children      SupportTeam[]    @relation("TeamTree")
+  members       TeamMember[]
+  queues        SupportQueue[]
+  routingRules  RoutingRule[]
+  tickets       Ticket[]
+  incidents     Incident[]
+
+  @@index([parentId])
+  @@index([companyScope])
+  @@map("support_teams")
+}
+
+model TeamMember {
+  id              String   @id @default(uuid()) @db.Uuid
+  teamId          String   @map("team_id") @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  role               String   @default("MEMBER")                // LEAD, MEMBER, MANAGER
+  primarySkills      String[] @map("primary_skills")             // ["Network", "Firewall", "WiFi"]
+  secondarySkills    String[] @map("secondary_skills")
+  supportedCompanies String[] @default([]) @map("supported_companies")
+  supportedLocations String[] @default([]) @map("supported_locations")
+  skillLevel         String?  @map("skill_level")                // JUNIOR, MID, SENIOR, EXPERT
+  maxTickets         Int      @default(20) @map("max_tickets")   // Giới hạn Ticket tối đa
+  isAvailable        Boolean  @default(true) @map("is_available")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  team            SupportTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+model SupportQueue {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String                                     // VD: "Network - Hà Nội", "Helpdesk General"
+  code          String   @unique                           // VD: "NET-HN-Q", "HD-GEN-Q"
+  teamId        String   @map("team_id") @db.Uuid
+  description   String?
+  isDefault     Boolean  @default(false) @map("is_default") // Queue mặc định (Fallback)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  team          SupportTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  tickets       Ticket[]
+
+  @@index([teamId])
+  @@map("support_queues")
+}
+
+// ==================== ROUTING ENGINE ====================
+
+model RoutingRule {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String                                     // VD: "Network HN Rule"
+  description   String?
+  priority      Int      @default(50)                       // 1 = cao nhất, 99 = thấp nhất
+  isActive      Boolean  @default(true) @map("is_active")
+  conditions    Json     @map("conditions")                 // [{field, operator, value}]
+  targetTeamId  String   @map("target_team_id") @db.Uuid
+  targetQueueId String?  @map("target_queue_id") @db.Uuid
+  targetUserId  String?  @map("target_user_id") @db.Uuid
+  autoAssign    Boolean  @default(false) @map("auto_assign")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  targetTeam    SupportTeam  @relation(fields: [targetTeamId], references: [id])
+  targetUser    User?        @relation("RuleTargetUser", fields: [targetUserId], references: [id])
+
+  @@index([priority])
+  @@index([isActive])
+  @@index([targetUserId])
+  @@map("routing_rules")
+}
+
+// ==================== INCIDENT MANAGEMENT ====================
+
+model Incident {
+  id                String          @id @default(uuid()) @db.Uuid
+  incidentNumber    String          @unique @map("incident_number")   // INC-2026-0001
+  title             String
+  description       String
+  severity          IncidentSeverity @default(MEDIUM_P3)
+  status            IncidentStatus  @default(INVESTIGATING)
+  impact            String?                                           // Phạm vi ảnh hưởng
+  affectedServices  String[]        @map("affected_services")
+  affectedLocations String[]        @map("affected_locations")
+  workaround        String?                                           // Biện pháp khôi phục tạm
+  resolutionNotes   String?         @map("resolution_notes")
+  teamId            String?         @map("team_id") @db.Uuid
+  createdById       String          @map("created_by_id") @db.Uuid
+  assignedToId      String?         @map("assigned_to_id") @db.Uuid
+  problemId         String?         @map("problem_id") @db.Uuid
+  startedAt         DateTime        @default(now()) @map("started_at")
+  identifiedAt      DateTime?       @map("identified_at")
+  resolvedAt        DateTime?       @map("resolved_at")
+  closedAt          DateTime?       @map("closed_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  createdBy         User            @relation("IncidentCreatedByUser", fields: [createdById], references: [id])
+  assignedTo        User?           @relation("IncidentAssignedToUser", fields: [assignedToId], references: [id])
+  team              SupportTeam?    @relation(fields: [teamId], references: [id])
+  problem           Problem?        @relation(fields: [problemId], references: [id])
+  tickets           Ticket[]
+  updates           IncidentUpdate[]
+
+  @@index([status])
+  @@index([severity])
+  @@index([teamId])
+  @@index([createdById])
+  @@index([problemId])
+  @@index([createdAt])
+  @@map("incidents")
+}
+
+model IncidentUpdate {
+  id            String   @id @default(uuid()) @db.Uuid
+  incidentId    String   @map("incident_id") @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  content       String
+  statusChange  String?  @map("status_change")
+  isPublic      Boolean  @default(true) @map("is_public")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  incident      Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id])
+
+  @@index([incidentId])
+  @@map("incident_updates")
+}
+
+// ==================== PROBLEM MANAGEMENT ====================
+
+model Problem {
+  id                String          @id @default(uuid()) @db.Uuid
+  problemNumber     String          @unique @map("problem_number")   // PRB-2026-0001
+  title             String
+  description       String
+  priority          ProblemPriority @default(MEDIUM)
+  status            ProblemStatus   @default(OPEN)
+  rootCause         String?         @map("root_cause")
+  permanentSolution String?         @map("permanent_solution")
+  workaround        String?
+  createdById       String          @map("created_by_id") @db.Uuid
+  assignedToId      String?         @map("assigned_to_id") @db.Uuid
+  resolvedAt        DateTime?       @map("resolved_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  createdBy         User            @relation("ProblemCreatedByUser", fields: [createdById], references: [id])
+  assignedTo        User?           @relation("ProblemAssignedToUser", fields: [assignedToId], references: [id])
+  incidents         Incident[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([createdById])
+  @@index([createdAt])
+  @@map("problems")
+}
+
+// ==================== DOCUMENT & CONTRACT MANAGEMENT ====================
+
+enum DocumentType {
+  INVOICE         // Hóa đơn (VAT / Điện tử)
+  CONTRACT        // Hợp đồng kinh tế / Dịch vụ
+  HANDOVER        // Biên bản bàn giao / Nghiệm thu
+  WARRANTY        // Phiếu / Thẻ bảo hành
+  QUOTATION       // Báo giá
+  PROPOSAL        // Tờ trình / Đề xuất mua sắm
+  OTHER           // Giấy tờ khác
+}
+
+model Document {
+  id              String        @id @default(uuid()) @db.Uuid
+  title           String
+  type            DocumentType  @default(INVOICE)
+  projectName     String?       @map("project_name")
+  projectCode     String?       @map("project_code")
+  contractNumber  String?       @map("contract_number")
+  invoiceNumber   String?       @map("invoice_number")
+  companyName     String?       @map("company_name")
+  vendorId        String?       @map("vendor_id") @db.Uuid
+  vendorName      String?       @map("vendor_name")
+  assetId         String?       @map("asset_id") @db.Uuid
+  licenseId       String?       @map("license_id") @db.Uuid
+  serviceId       String?       @map("service_id") @db.Uuid
+  documentDate    DateTime?     @map("document_date")
+  amount          Decimal?      @db.Decimal(15, 2)
+  amountCurrency  String?       @default("VND") @map("amount_currency")
+  fileUrl         String        @map("file_url")
+  fileName        String        @map("file_name")
+  fileSize        Int?          @map("file_size")
+  fileType        String?       @map("file_type")
+  attachments     Json?         @map("attachments")
+  notes           String?
+  createdById     String?       @map("created_by_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  vendor          Vendor?       @relation(fields: [vendorId], references: [id])
+  asset           Asset?        @relation(fields: [assetId], references: [id])
+  license         License?      @relation(fields: [licenseId], references: [id])
+  service         ITService?    @relation(fields: [serviceId], references: [id])
+  createdBy       User?         @relation("DocumentCreatedByUser", fields: [createdById], references: [id])
+
+  @@index([type])
+  @@index([projectName])
+  @@index([projectCode])
+  @@index([contractNumber])
+  @@index([invoiceNumber])
+  @@index([companyName])
+  @@index([vendorId])
+  @@index([assetId])
+  @@index([licenseId])
+  @@index([serviceId])
+  @@index([documentDate])
+  @@index([createdAt])
+  @@map("documents")
+}
+
+// ==================== PROJECT & PURCHASE BUNDLE ====================
+
+model Project {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  code        String?  @map("code")
+  companyName String?  @map("company_name")
+  vendorId    String?  @map("vendor_id") @db.Uuid
+  description String?
+  createdById String?  @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  vendor      Vendor?  @relation(fields: [vendorId], references: [id])
+  createdBy   User?    @relation("ProjectCreatedByUser", fields: [createdById], references: [id])
+
+  @@index([name])
+  @@index([code])
+  @@index([companyName])
+  @@index([vendorId])
+  @@map("projects")
+}
+
+
+// ==================== IT SERVICE & SUBSCRIPTION MANAGEMENT ====================
+
+model ITService {
+  id               String        @id @default(uuid()) @db.Uuid
+  serviceCode      String        @unique @map("service_code")
+  name             String
+  serviceType      ServiceType   @default(INTERNET) @map("service_type")
+  status           ServiceStatus @default(ACTIVE)
+  billingCycle     BillingCycle  @default(MONTHLY) @map("billing_cycle")
+  cost             Decimal?      @db.Decimal(15, 2)
+  currency         String?       @default("VND")
+  startDate        DateTime?     @map("start_date")
+  renewalDate      DateTime?     @map("renewal_date")
+  expiryDate       DateTime?     @map("expiry_date")
+  accountNumber    String?       @map("account_number")  // Mã thuê bao / Mã khách hàng / Thuê bao ID / IP tĩnh
+  contractNumber   String?       @map("contract_number") // Số hợp đồng
+  invoiceNumber    String?       @map("invoice_number")  // Số hóa đơn
+  vendorId         String?       @map("vendor_id") @db.Uuid
+  companyName      String?       @map("company_name")
+  locationId       String?       @map("location_id") @db.Uuid
+  contactSupport   String?       @map("contact_support") // Hotline / Kỹ thuật viên nhà mạng
+  specs            Json?         // Băng thông, IP Tĩnh, Dung lượng, SLA...
+  contractUrl      String?       @map("contract_url")
+  notes            String?
+  createdById      String?       @map("created_by_id") @db.Uuid
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  vendor           Vendor?       @relation(fields: [vendorId], references: [id])
+  location         Location?     @relation(fields: [locationId], references: [id])
+  createdBy        User?         @relation("ServiceCreatedByUser", fields: [createdById], references: [id])
+  documents        Document[]
+  passwordEntries  PasswordEntry[]
+
+  @@index([serviceCode])
+  @@index([serviceType])
+  @@index([status])
+  @@index([billingCycle])
+  @@index([renewalDate])
+  @@index([vendorId])
+  @@index([companyName])
+  @@index([locationId])
+  @@map("it_services")
+}
+
+// ==================== KEEPASS & PASSWORD VAULT ====================
+
+model PasswordEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  username    String?
+  password    String
+  url         String?
+  category    String   @default("GENERAL")
+  groupName   String?  @map("group_name")
+  companyName String?  @map("company_name")
+  assetId     String?  @map("asset_id") @db.Uuid
+  serviceId   String?  @map("service_id") @db.Uuid
+  vendorId    String?  @map("vendor_id") @db.Uuid
+  isFavorite  Boolean  @default(false) @map("is_favorite")
+  totpSecret  String?  @map("totp_secret")
+  notes       String?
+  createdById String?  @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  asset       Asset?     @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  service     ITService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  vendor      Vendor?    @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  createdBy   User?      @relation("PasswordCreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([category])
+  @@index([groupName])
+  @@index([companyName])
+  @@index([isFavorite])
+  @@map("password_entries")
+}
+
+// ==================== EMAIL SYSTEM ====================
+
+model EmailTemplate {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique            // "ticket.assigned", "license.expiring"
+  name        String                       // "Ticket Được Phân Công"
+  subject     String                       // Template subject with {{variables}}
+  bodyHtml    String   @db.Text @map("body_html")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  emailLogs   EmailLog[]
+
+  @@map("email_templates")
+}
+
+model EmailLog {
+  id          String    @id @default(uuid()) @db.Uuid
+  templateId  String?   @map("template_id") @db.Uuid
+  toEmail     String    @map("to_email")
+  subject     String
+  status      String    @default("PENDING") // PENDING, SENT, FAILED
+  error       String?   @db.Text
+  sentAt      DateTime? @map("sent_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  template    EmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([toEmail])
+  @@map("email_logs")
+}
+
+// ==================== APPROVAL WORKFLOW ====================
+
+model ApprovalRequest {
+  id              String          @id @default(uuid()) @db.Uuid
+  code            String          @unique      // AR-0001
+  type            ApprovalType
+  status          ApprovalStatus  @default(DRAFT)
+  
+  title           String                       // "Yêu cầu laptop Dell Latitude 5560"
+  description     String?         @db.Text
+  justification   String?         @db.Text     // Lý do cần thiết
+  estimatedCost   Decimal?        @db.Decimal(15, 2) @map("estimated_cost")
+  currency        String          @default("VND")
+  quantity        Int             @default(1)
+  
+  // Người yêu cầu
+  requesterId     String          @map("requester_id") @db.Uuid
+  requester       User            @relation("ApprovalRequester", fields: [requesterId], references: [id])
+  
+  // Cấp trên duyệt
+  managerId       String?         @map("manager_id") @db.Uuid
+  manager         User?           @relation("ApprovalManager", fields: [managerId], references: [id])
+  managerApprovedAt DateTime?     @map("manager_approved_at")
+  managerNote     String?         @db.Text @map("manager_note")
+  
+  // IT Admin xác nhận
+  itApproverId    String?         @map("it_approver_id") @db.Uuid
+  itApprover      User?           @relation("ApprovalIT", fields: [itApproverId], references: [id])
+  itApprovedAt    DateTime?       @map("it_approved_at")
+  itNote          String?         @db.Text @map("it_note")
+  
+  // Kết quả
+  rejectedBy      String?         @map("rejected_by") @db.Uuid
+  rejectedAt      DateTime?       @map("rejected_at")
+  rejectedReason  String?         @db.Text @map("rejected_reason")
+  deliveredAt     DateTime?       @map("delivered_at")
+  
+  // Liên kết tài sản / license sau khi bàn giao
+  linkedAssetId   String?         @map("linked_asset_id") @db.Uuid
+  linkedLicenseId String?         @map("linked_license_id") @db.Uuid
+  
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([requesterId])
+  @@index([managerId])
+  @@map("approval_requests")
+}
+
+// ==================== MAINTENANCE SCHEDULE ====================
+
+model MaintenanceSchedule {
+  id              String               @id @default(uuid()) @db.Uuid
+  name            String                             // "Vệ sinh máy tính định kỳ"
+  description     String?              @db.Text
+  frequency       MaintenanceFrequency
+  maintenanceType MaintenanceType      @map("maintenance_type")
+  
+  // Áp dụng cho (tài sản cụ thể hoặc theo category)
+  assetId         String?              @map("asset_id") @db.Uuid
+  asset           Asset?               @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  categoryId      String?              @map("category_id") @db.Uuid
+  category        AssetCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
+  // Lịch trình
+  lastRunAt       DateTime?            @map("last_run_at")
+  nextRunAt       DateTime             @map("next_run_at")
+  isActive        Boolean              @default(true) @map("is_active")
+  
+  // Ticket tự tạo
+  autoCreateTicket Boolean             @default(true) @map("auto_create_ticket")
+  ticketPriority   TicketPriority      @default(MEDIUM) @map("ticket_priority")
+  assignToId       String?             @map("assign_to_id") @db.Uuid
+  assignTo         User?               @relation("MaintenanceAssignedTo", fields: [assignToId], references: [id], onDelete: SetNull)
+  
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  @@index([nextRunAt])
+  @@index([isActive])
+  @@map("maintenance_schedules")
+}
+
+// ==================== SPARE PARTS INVENTORY ====================
+
+model SparePart {
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String                        // "RAM DDR4 16GB"
+  sku             String?  @unique              // Mã kho nội bộ
+  categoryId      String?  @map("category_id") @db.Uuid
+  category        AssetCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
+  quantity        Int      @default(0)
+  minStock        Int      @default(5) @map("min_stock")
+  unit            String   @default("cái")
+  
+  unitPrice       Decimal? @db.Decimal(15, 2) @map("unit_price")
+  currency        String   @default("VND")
+  
+  vendorId        String?  @map("vendor_id") @db.Uuid
+  vendor          Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  
+  locationId      String?  @map("location_id") @db.Uuid
+  location        Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  transactions    SparePartTransaction[]
+
+  @@index([quantity])
+  @@map("spare_parts")
+}
+
+model SparePartTransaction {
+  id              String    @id @default(uuid()) @db.Uuid
+  sparePartId     String    @map("spare_part_id") @db.Uuid
+  sparePart       SparePart @relation(fields: [sparePartId], references: [id], onDelete: Cascade)
+  
+  type            String                      // "IN" | "OUT" | "ADJUST"
+  quantity        Int                         // Số lượng (+/-)
+  note            String?   @db.Text
+  
+  maintenanceLogId String?  @map("maintenance_log_id") @db.Uuid
+  assetId          String?  @map("asset_id") @db.Uuid
+  
+  performedById   String    @map("performed_by_id") @db.Uuid
+  performedBy     User      @relation("SparePartPerformedBy", fields: [performedById], references: [id])
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([sparePartId])
+  @@index([type])
+  @@map("spare_part_transactions")
+}
+
+// ==================== FLOOR MAP ====================
+
+model FloorMap {
+  id          String   @id @default(uuid()) @db.Uuid
+  locationId  String   @map("location_id") @db.Uuid
+  location    Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  
+  name        String                       // "Tầng 3 - Văn phòng IT"
+  imageUrl    String   @map("image_url")   // Ảnh sơ đồ mặt bằng
+  markers     Json     @default("[]")      // [{ assetId, x, y, label }]
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("floor_maps")
+}
+
+// ==================== WEBHOOK CONFIG ====================
+
+model WebhookConfig {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String                       // "Thông báo IT Team - Zalo"
+  provider    String                       // "zalo" | "teams" | "slack" | "custom"
+  webhookUrl  String   @map("webhook_url")
+  events      Json     @default("[]")      // ["ticket.created", "ticket.urgent"]
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("webhook_configs")
+}
+

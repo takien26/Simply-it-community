@@ -1,0 +1,3055 @@
+'use client';
+
+import { QuickLink } from '@/components/common/QuickLink';
+
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import Link from 'next/link';
+import { useLanguage } from '@/lib/i18n/context';
+import {
+  LifeBuoy,
+  Plus,
+  Search,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  Flame,
+  MessageSquare,
+  Laptop,
+  Send,
+  Loader2,
+  Trash2,
+  X,
+  User as UserIcon,
+  Filter,
+  RotateCcw,
+  Sparkles,
+  Calendar,
+  Building,
+  Check,
+  Shield,
+  Layers,
+  ChevronDown,
+  ChevronUp,
+  Paperclip,
+  Image as ImageIcon,
+  FileText,
+  Download,
+  Eye,
+  ExternalLink,
+  Save,
+  BrainCircuit,
+  Wrench,
+  BarChart3,
+} from 'lucide-react';
+
+interface Ticket {
+  id: string;
+  ticketNumber: string;
+  title: string;
+  description: string;
+  category: 'HARDWARE' | 'SOFTWARE' | 'LICENSE' | 'ACCESS_REQUEST' | 'NETWORK' | 'OTHER';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  status: 'OPEN' | 'IN_PROGRESS' | 'WAITING' | 'RESOLVED' | 'CLOSED';
+  createdById: string;
+  assignedToId?: string | null;
+  assetId?: string | null;
+  customAssetName?: string | null;
+  dueDate?: string | null;
+  resolvedAt?: string | null;
+  resolutionNotes?: string | null;
+  attachmentUrls?: Array<{ url: string; name: string; size?: number; type?: string }> | null;
+  teamId?: string | null;
+  queueId?: string | null;
+  incidentId?: string | null;
+  companyName?: string | null;
+  overrideReason?: string | null;
+  reassignmentCount?: number | null;
+  isAutoRouted?: boolean;
+  routedByRule?: string | null;
+  team?: { id: string; name: string; code: string } | null;
+  queue?: { id: string; name: string; code: string } | null;
+  incident?: { id: string; incidentNumber: string; title: string; severity: string; status: string } | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: {
+    id: string;
+    fullName: string;
+    email: string;
+    department?: string | null;
+    avatarUrl?: string | null;
+  };
+  assignedTo?: {
+    id: string;
+    fullName: string;
+    email: string;
+    department?: string | null;
+    avatarUrl?: string | null;
+  } | null;
+  asset?: {
+    id: string;
+    assetTag: string;
+    name: string;
+    status: string;
+  } | null;
+  comments: Array<{
+    id: string;
+    content: string;
+    isInternal: boolean;
+    createdAt: string;
+    user: {
+      id: string;
+      fullName: string;
+      email: string;
+      role?: { name: string };
+    };
+  }>;
+}
+
+interface SearchableOption {
+  value: string;
+  label: string;
+  subLabel?: string;
+  icon?: string | React.ReactNode;
+  badge?: string;
+}
+
+interface SearchableDropdownProps {
+  label: string;
+  value: string;
+  options: SearchableOption[];
+  onChange: (value: string) => void;
+  searchPlaceholder?: string;
+  icon?: React.ReactNode;
+  highlightColor?: string;
+}
+
+function SearchableDropdown({
+  label,
+  value,
+  options,
+  onChange,
+  searchPlaceholder,
+  icon,
+}: SearchableDropdownProps) {
+  const { language } = useLanguage();
+  const isEn = language === 'en';
+    const effectivePlaceholder = searchPlaceholder || (language === 'en' ? 'Quick search...' : 'Tìm nhanh...');
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  // Focus input when opened
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [isOpen]);
+
+  const selectedOption = options.find((o) => o.value === value);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm.trim()) return options;
+    const q = searchTerm.toLowerCase();
+    return options.filter(
+      (o) =>
+        o.label.toLowerCase().includes(q) ||
+        (o.subLabel && o.subLabel.toLowerCase().includes(q))
+    );
+  }, [options, searchTerm]);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      {/* Trigger Button */}
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen(!isOpen);
+          setSearchTerm('');
+        }}
+        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between gap-1.5 transition-all border ${
+          value
+            ? 'bg-blue-50/80 border-blue-300 text-blue-800 shadow-2xs'
+            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 min-w-0 truncate">
+          {icon && <span className="shrink-0 text-slate-500">{icon}</span>}
+          <span className="truncate">
+            {selectedOption ? (
+              <span className="font-bold">{selectedOption.label}</span>
+            ) : (
+              <span className="text-slate-600">{label}</span>
+            )}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {value && (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange('');
+              }}
+              className="p-0.5 hover:bg-blue-200 rounded-full text-blue-600 hover:text-blue-900 cursor-pointer"
+              title={language === 'en' ? 'Clear selection' : 'Xóa lựa chọn'}
+            >
+              <X className="w-3 h-3" />
+            </span>
+          )}
+          <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+
+      {/* Floating Popover with Search Input */}
+      {isOpen && (
+        <div className="absolute left-0 top-full mt-1 w-64 sm:w-72 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95">
+          {/* Internal Search Input */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={effectivePlaceholder}
+              className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 font-medium"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Options List */}
+          <div className="max-h-52 overflow-y-auto space-y-0.5 pr-1">
+            {/* Clear / All Option */}
+            <button
+              type="button"
+              onClick={() => {
+                onChange('');
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
+                !value ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-600'
+              }`}
+            >
+              <span className="italic">-- {label} --</span>
+              {!value && <Check className="w-3.5 h-3.5 text-blue-600" />}
+            </button>
+
+            {filteredOptions.length === 0 ? (
+              <div className="text-center py-4 text-xs text-slate-400 italic">
+                {language === 'en' ? 'No matching results found' : 'Không tìm thấy kết quả phù hợp'}
+              </div>
+            ) : (
+              filteredOptions.map((opt) => {
+                const isSelected = opt.value === value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      onChange(opt.value);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
+                      isSelected
+                        ? 'bg-blue-600 text-white font-bold shadow-2xs'
+                        : 'hover:bg-slate-100 text-slate-800'
+                    }`}
+                  >
+                    <div className="min-w-0 pr-2">
+                      <div className="flex items-center gap-1.5 truncate">
+                        {opt.icon && <span>{opt.icon}</span>}
+                        <span className="truncate">{opt.label}</span>
+                      </div>
+                      {opt.subLabel && (
+                        <p className={`text-[10px] truncate ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                          {opt.subLabel}
+                        </p>
+                      )}
+                    </div>
+                    {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {/* Footer Item Count */}
+          <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-100 flex items-center justify-between px-1">
+            <span>{filteredOptions.length} {language === 'en' ? 'options' : 'lựa chọn'}</span>
+            {value && (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange('');
+                  setIsOpen(false);
+                }}
+                className="text-rose-600 hover:underline font-semibold"
+              >
+                Đặt lại
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const CATEGORY_MAP: Record<string, { label: string; icon: string; color: string }> = {
+  HARDWARE: { label: 'Phần cứng', icon: '💻', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  SOFTWARE: { label: 'Phần mềm', icon: '💿', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  LICENSE: { label: 'License / Bản quyền', icon: '🔑', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  ACCESS_REQUEST: { label: 'Cấp quyền truy cập', icon: '🛡️', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  NETWORK: { label: 'Mạng & Internet', icon: '🌐', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  OTHER: { label: 'Khác', icon: '📌', color: 'bg-slate-50 text-slate-700 border-slate-200' },
+};
+
+const PRIORITY_MAP: Record<string, { label: string; icon: any; badge: string }> = {
+  URGENT: { label: 'Khẩn cấp', icon: Flame, badge: 'bg-rose-100 text-rose-800 border-rose-200' },
+  HIGH: { label: 'Cao', icon: AlertTriangle, badge: 'bg-orange-100 text-orange-800 border-orange-200' },
+  MEDIUM: { label: 'Trung bình', icon: Clock, badge: 'bg-amber-100 text-amber-800 border-amber-200' },
+  LOW: { label: 'Thấp', icon: CheckCircle2, badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+};
+
+const STATUS_MAP: Record<string, { label: string; badge: string; dot: string }> = {
+  OPEN: { label: 'Mới mở', badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
+  IN_PROGRESS: { label: 'Đang xử lý', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+  WAITING: { label: 'Chờ phản hồi', badge: 'bg-purple-50 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
+  RESOLVED: { label: 'Đã giải quyết', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  CLOSED: { label: 'Đã đóng', badge: 'bg-slate-100 text-slate-700 border-slate-200', dot: 'bg-slate-500' },
+};
+function getCategoryLabel(category: string, lang: string) {
+  if (lang === 'en') {
+    switch (category) {
+      case 'HARDWARE': return 'Hardware';
+      case 'SOFTWARE': return 'Software';
+      case 'LICENSE': return 'License';
+      case 'ACCESS_REQUEST': return 'Access Request';
+      case 'NETWORK': return 'Network';
+      default: return 'Other';
+    }
+  }
+  return CATEGORY_MAP[category]?.label || category;
+}
+
+function getPriorityLabel(priority: string, lang: string) {
+  if (lang === 'en') {
+    switch (priority) {
+      case 'URGENT': return 'Urgent';
+      case 'HIGH': return 'High';
+      case 'MEDIUM': return 'Medium';
+      case 'LOW': return 'Low';
+      default: return priority;
+    }
+  }
+  return PRIORITY_MAP[priority]?.label || priority;
+}
+
+function getStatusLabel(status: string, lang: string) {
+  if (lang === 'en') {
+    switch (status) {
+      case 'OPEN': return 'Open';
+      case 'IN_PROGRESS': return 'In Progress';
+      case 'WAITING': return 'Pending Response';
+      case 'RESOLVED': return 'Resolved';
+      case 'CLOSED': return 'Closed';
+      default: return status;
+    }
+  }
+  return STATUS_MAP[status]?.label || status;
+}
+
+
+// ==================== SLA RULES & TIMELINE CALCULATOR ====================
+function getTicketSLA(
+  ticket: Ticket,
+  slaConfig?: { urgentHours: number; highHours: number; mediumHours: number; lowHours: number }
+) {
+  const createdAt = new Date(ticket.createdAt);
+
+  const config = slaConfig || { urgentHours: 4, highHours: 24, mediumHours: 48, lowHours: 72 };
+  let slaHours = config.mediumHours;
+  if (ticket.priority === 'URGENT') slaHours = config.urgentHours;
+  else if (ticket.priority === 'HIGH') slaHours = config.highHours;
+  else if (ticket.priority === 'MEDIUM') slaHours = config.mediumHours;
+  else if (ticket.priority === 'LOW') slaHours = config.lowHours;
+
+  const deadline = (ticket as any).slaDeadline
+    ? new Date((ticket as any).slaDeadline)
+    : new Date(createdAt.getTime() + slaHours * 60 * 60 * 1000);
+
+  const now = new Date();
+  const isResolved = ticket.status === 'RESOLVED' || ticket.status === 'CLOSED';
+  const isWaiting = ticket.status === 'WAITING' || !!(ticket as any).slaPausedAt;
+  const isExtended = !!(ticket as any).isSlaExtended;
+
+  // Actual resolved time if ticket is resolved/closed
+  const resolvedAtDate = (ticket as any).resolvedAt ? new Date((ticket as any).resolvedAt) : null;
+
+  let statusText = '';
+  let badgeClass = '';
+  let icon = '⏱️';
+  let isOverdue = false;
+  let isWarning = false;
+
+  if (isResolved) {
+    // If ticket is resolved/closed, compare resolvedAtDate with deadline!
+    const effectiveDoneTime = resolvedAtDate || new Date(ticket.updatedAt || ticket.createdAt);
+    const completionDiffMs = deadline.getTime() - effectiveDoneTime.getTime();
+    const completionDiffMins = Math.round(Math.abs(completionDiffMs) / (1000 * 60));
+    const completionDiffHours = Math.floor(completionDiffMins / 60);
+    const remainingMins = completionDiffMins % 60;
+    const timeStr =
+      completionDiffHours > 0
+        ? `${completionDiffHours}h ${remainingMins > 0 ? `${remainingMins}m` : ''}`
+        : `${completionDiffMins} phút`;
+
+    if (completionDiffMs < 0) {
+      // Overdue at completion!
+      statusText = `Hoàn thành trễ hạn (${timeStr})`;
+      badgeClass = 'bg-rose-100 text-rose-800 border-rose-300 font-bold';
+      icon = '❌';
+      isOverdue = true;
+    } else {
+      // Met SLA on time!
+      statusText = 'Đã hoàn thành đúng hạn';
+      badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold';
+      icon = '✅';
+      isOverdue = false;
+    }
+  } else if (isWaiting) {
+    statusText = '⏸️ SLA Đang Tạm Dừng (Chờ phản hồi)';
+    badgeClass = 'bg-purple-100 text-purple-800 border-purple-300 font-bold';
+    icon = '⏸️';
+  } else {
+    const diffMs = deadline.getTime() - now.getTime();
+    const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.round(diffMs / (1000 * 60));
+
+    if (diffMs < 0) {
+      const overdueMins = Math.abs(diffMins);
+      const overdueHours = Math.floor(overdueMins / 60);
+      const remMins = overdueMins % 60;
+      const overdueStr = overdueHours > 0 ? `${overdueHours}h ${remMins > 0 ? `${remMins}m` : ''}` : `${overdueMins} phút`;
+      statusText = `Đã quá hạn ${overdueStr}`;
+      badgeClass = 'bg-rose-100 text-rose-800 border-rose-300 animate-pulse font-bold';
+      icon = '🚨';
+      isOverdue = true;
+    } else if (diffHours <= 4) {
+      statusText = `Sắp quá hạn (còn ${diffMins > 60 ? `${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `${diffMins} phút`})`;
+      badgeClass = 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse font-bold';
+      icon = '⚠️';
+      isWarning = true;
+    } else {
+      statusText = `Còn ${diffHours} giờ`;
+      badgeClass = 'bg-blue-50 text-blue-700 border-blue-200 font-semibold';
+      icon = '⏱️';
+    }
+  }
+
+  return {
+    createdAtFormatted: createdAt.toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }),
+    deadlineFormatted: deadline.toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }),
+    resolvedAtFormatted: resolvedAtDate
+      ? resolvedAtDate.toLocaleString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        })
+      : null,
+    slaHours,
+    statusText,
+    badgeClass,
+    icon,
+    isWaiting,
+    isExtended,
+    isOverdue,
+    isWarning,
+  };
+}
+
+export default function TicketsPage() {
+  const { language, t } = useLanguage();
+  const isEn = language === 'en';
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [stats, setStats] = useState({ total: 0, open: 0, inProgress: 0, waiting: 0, resolved: 0, urgent: 0 });
+  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<any[]>([]);
+  const [assets, setAssets] = useState<any[]>([]);
+  const [myAssets, setMyAssets] = useState<any[]>([]);
+
+  // Main View Mode (ALL vs MY_TICKETS vs ASSIGNED_TO_ME)
+  const [scopeMode, setScopeMode] = useState<'ALL' | 'MINE' | 'ASSIGNED'>('ALL');
+
+  // Filters
+  const [search, setSearch] = useState('');
+  const [activeChip, setActiveChip] = useState<'ALL' | 'OPEN' | 'IN_PROGRESS' | 'URGENT' | 'RESOLVED'>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [creatorFilter, setCreatorFilter] = useState('');
+  const [assigneeFilter, setAssigneeFilter] = useState('');
+  const [assetFilter, setAssetFilter] = useState('');
+
+  // Modals & Drawers
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // IT Escalation & Internal Assistance State
+  const [escalateToId, setEscalateToId] = useState('');
+  const [escalateNote, setEscalateNote] = useState('');
+  const [escalateSending, setEscalateSending] = useState(false);
+  const [escalateSuccessMsg, setEscalateSuccessMsg] = useState('');
+
+  // New Ticket Form
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newRequesterId, setNewRequesterId] = useState('');
+  const [isRequesterDropdownOpen, setIsRequesterDropdownOpen] = useState(false);
+  const [requesterSearchTerm, setRequesterSearchTerm] = useState('');
+  const requesterDropdownRef = useRef<HTMLDivElement>(null);
+  const requesterInputRef = useRef<HTMLInputElement>(null);
+  const [newCategory, setNewCategory] = useState<string>('HARDWARE');
+  const [newPriority, setNewPriority] = useState<string>('MEDIUM');
+  const [newAssetId, setNewAssetId] = useState('');
+  const [customAssetName, setCustomAssetName] = useState('');
+  const [assignSuccessMsg, setAssignSuccessMsg] = useState('');
+  const [newAssignedToId, setNewAssignedToId] = useState('');
+  const [newStatus, setNewStatus] = useState<string>('OPEN');
+  const [newDueDate, setNewDueDate] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // AI Diagnostic State
+  const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
+  const [aiDiagnostic, setAiDiagnostic] = useState<any>(null);
+  const lastAnalyzedTextRef = useRef('');
+  const aiDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // SLA Extension Request State
+  const [isSlaExtModalOpen, setIsSlaExtModalOpen] = useState(false);
+  const [extHours, setExtHours] = useState(8);
+  const [extReason, setExtReason] = useState('');
+  const [extendingSla, setExtendingSla] = useState(false);
+  const [slaExtSuccessMsg, setSlaExtSuccessMsg] = useState('');
+
+  // New Comment
+  const [commentText, setCommentText] = useState('');
+  const [isInternalComment, setIsInternalComment] = useState(false);
+  const [sendingComment, setSendingComment] = useState(false);
+
+  // SLA Setup State
+  const [isSlaModalOpen, setIsSlaModalOpen] = useState(false);
+  const [slaConfig, setSlaConfig] = useState({ urgentHours: 4, highHours: 24, mediumHours: 48, lowHours: 72 });
+  const [savingSla, setSavingSla] = useState(false);
+
+  // Attachments State
+  const [newTicketAttachments, setNewTicketAttachments] = useState<Array<{ url: string; name: string; size?: number; type?: string }>>([]);
+  const [uploadingTicketFile, setUploadingTicketFile] = useState(false);
+  const [commentAttachments, setCommentAttachments] = useState<Array<{ url: string; name: string; size?: number; type?: string }>>([]);
+  const [uploadingCommentFile, setUploadingCommentFile] = useState(false);
+  const [previewImageModal, setPreviewImageModal] = useState<string | null>(null);
+  const isPastingRef = useRef(false);
+
+  const isAdmin = useMemo(() => {
+    if (!currentUser) return false;
+    const roleName = currentUser.role?.name || currentUser.roleName || '';
+    return roleName.toLowerCase().includes('admin') || roleName.toLowerCase().includes('quản trị');
+  }, [currentUser]);
+
+  const isITStaffOrAdmin = useMemo(() => {
+    if (!currentUser) return false;
+    const roleName = (currentUser.role?.name || currentUser.roleName || '').toLowerCase();
+    const dept = (currentUser.department || '').toLowerCase();
+    return (
+      roleName.includes('admin') ||
+      roleName.includes('quản trị') ||
+      roleName.includes('manager') ||
+      roleName.includes('it') ||
+      roleName.includes('support') ||
+      roleName.includes('kỹ thuật') ||
+      dept.includes('it') ||
+      dept.includes('kỹ thuật') ||
+      dept.includes('công nghệ')
+    );
+  }, [currentUser]);
+
+  const loadRequesterAssets = async (targetUserId: string) => {
+    if (!targetUserId) {
+      setMyAssets([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/users/${targetUserId}`);
+      if (res.ok) {
+        const uDetail = await res.json();
+        if (uDetail.assetAssignments) {
+          const active = uDetail.assetAssignments
+            .filter((aa: any) => !aa.returnedAt)
+            .map((aa: any) => aa.asset);
+          setMyAssets(active);
+          if (active.length > 0) {
+            setNewAssetId(active[0].id);
+          } else {
+            setNewAssetId('');
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error loading requester assets:', e);
+    }
+  };
+
+  const selectedSla = useMemo(() => {
+    return selectedTicket ? getTicketSLA(selectedTicket, slaConfig) : null;
+  }, [selectedTicket, slaConfig]);
+
+  // Clipboard Paste Handler for direct Ctrl + V screenshot pasting (de-duplicated)
+  const handlePasteImage = async (
+    e: React.ClipboardEvent,
+    target: 'ticket' | 'comment'
+  ) => {
+    e.stopPropagation();
+    if (isPastingRef.current) return;
+
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    // Find the first image item in clipboard
+    let imageItem: DataTransferItem | null = null;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.startsWith('image/')) {
+        imageItem = items[i];
+        break; // Stop at first image to avoid duplicates from multi-format clipboard items
+      }
+    }
+
+    if (!imageItem) return;
+
+    e.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+
+    isPastingRef.current = true;
+    setTimeout(() => {
+      isPastingRef.current = false;
+    }, 600);
+
+    const formData = new FormData();
+    const customName = `screenshot_${Date.now()}.png`;
+    formData.append('file', file, customName);
+    formData.append('category', target === 'ticket' ? 'ticket' : 'ticket_comment');
+
+    if (target === 'ticket') {
+      setUploadingTicketFile(true);
+    } else {
+      setUploadingCommentFile(true);
+    }
+
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        const newAtt = {
+          url: data.url,
+          name: data.originalName || customName,
+          size: file.size,
+          type: file.type || 'image/png',
+        };
+        if (target === 'ticket') {
+          setNewTicketAttachments((prev) => [...prev, newAtt]);
+        } else {
+          setCommentAttachments((prev) => [...prev, newAtt]);
+        }
+      } else {
+        alert(data.error || 'Dán ảnh thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi tải ảnh dán');
+    } finally {
+      if (target === 'ticket') {
+        setUploadingTicketFile(false);
+      } else {
+        setUploadingCommentFile(false);
+      }
+    }
+  };
+
+  // File Upload Handlers
+  const handleUploadTicketFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingTicketFile(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('category', 'ticket');
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok && data.url) {
+          setNewTicketAttachments((prev) => [
+            ...prev,
+            { url: data.url, name: data.originalName || file.name, size: file.size, type: file.type },
+          ]);
+        } else {
+          alert(data.error || 'Tải file thất bại');
+        }
+      }
+    } catch {
+      alert('Lỗi kết nối khi tải file');
+    } finally {
+      setUploadingTicketFile(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleUploadCommentFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingCommentFile(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('category', 'ticket_comment');
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok && data.url) {
+          setCommentAttachments((prev) => [
+            ...prev,
+            { url: data.url, name: data.originalName || file.name, size: file.size, type: file.type },
+          ]);
+        } else {
+          alert(data.error || 'Tải file thất bại');
+        }
+      }
+    } catch {
+      alert('Lỗi kết nối khi tải file');
+    } finally {
+      setUploadingCommentFile(false);
+      e.target.value = '';
+    }
+  };
+
+  // Load Data
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [ticketsRes, usersRes, assetsRes, meRes, settingsRes] = await Promise.all([
+        fetch('/api/tickets'),
+        fetch('/api/users'),
+        fetch('/api/assets?pageSize=1000'),
+        fetch('/api/auth/me'),
+        fetch('/api/settings'),
+      ]);
+
+      if (settingsRes.ok) {
+        const sData = await settingsRes.json();
+        if (sData.success && Array.isArray(sData.data)) {
+          const uHours = Number(sData.data.find((s: any) => s.key === 'sla.urgent_hours')?.value || 4);
+          const hHours = Number(sData.data.find((s: any) => s.key === 'sla.high_hours')?.value || 24);
+          const mHours = Number(sData.data.find((s: any) => s.key === 'sla.medium_hours')?.value || 48);
+          const lHours = Number(sData.data.find((s: any) => s.key === 'sla.low_hours')?.value || 72);
+          setSlaConfig({ urgentHours: uHours, highHours: hHours, mediumHours: mHours, lowHours: lHours });
+        }
+      }
+
+      if (ticketsRes.ok) {
+        const data = await ticketsRes.json();
+        const ticketList = data.tickets || [];
+        setTickets(ticketList);
+        if (data.stats) setStats(data.stats);
+
+        // Auto open detail modal if id in URL
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          const targetId = params.get('id');
+          if (targetId) {
+            const found = ticketList.find((t: any) => t.id === targetId);
+            if (found) {
+              setSelectedTicket(found);
+              setIsDetailModalOpen(true);
+            }
+          }
+        }
+      }
+
+      if (usersRes.ok) {
+        const u = await usersRes.json();
+        const userList = Array.isArray(u) ? u : u.data || u.users || [];
+        setUsers(userList);
+      }
+
+      if (assetsRes.ok) {
+        const a = await assetsRes.json();
+        const assetList = Array.isArray(a) ? a : a.data || a.assets || [];
+        setAssets(assetList);
+      }
+
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        if (meData.success && meData.data) {
+          setCurrentUser(meData.data);
+          setNewRequesterId((prev) => prev || meData.data.id);
+          if (meData.data.id) {
+            const userAssetsRes = await fetch(`/api/users/${meData.data.id}`);
+            if (userAssetsRes.ok) {
+              const uDetail = await userAssetsRes.json();
+              if (uDetail.assetAssignments) {
+                setMyAssets(uDetail.assetAssignments.map((aa: any) => aa.asset));
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load tickets data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+
+  // Helper to open ticket by ID (instant open from notification)
+  const openTicketById = useCallback(async (id: string) => {
+    if (!id) return;
+    // 1. Try finding in current tickets state
+    const found = tickets.find((t) => t.id === id);
+    if (found) {
+      setSelectedTicket(found);
+      setIsDetailModalOpen(true);
+      return;
+    }
+    // 2. Fetch directly from API
+    try {
+      const res = await fetch(`/api/tickets/${id}`);
+      if (res.ok) {
+        const tData = await res.json();
+        if (tData && tData.id) {
+          setSelectedTicket(tData);
+          setIsDetailModalOpen(true);
+        }
+      }
+    } catch {}
+  }, [tickets]);
+
+  // Instant notification event listener (even when already on /tickets)
+  useEffect(() => {
+    function handleNotifEvent(e: any) {
+      if (e.detail?.type === 'TICKET' && e.detail?.id) {
+        openTicketById(e.detail.id);
+      }
+    }
+    window.addEventListener('app:open-notification', handleNotifEvent);
+    return () => window.removeEventListener('app:open-notification', handleNotifEvent);
+  }, [openTicketById]);
+
+  // URL query param check on load or change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const queryId = params.get('id');
+      if (queryId) {
+        openTicketById(queryId);
+      }
+    }
+  }, [openTicketById]);
+
+  // Global ESC key listener to close any active modal
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (isRequesterDropdownOpen) setIsRequesterDropdownOpen(false);
+        if (isCreateModalOpen) setIsCreateModalOpen(false);
+        if (isDetailModalOpen) setIsDetailModalOpen(false);
+        if (selectedTicket) setSelectedTicket(null);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isRequesterDropdownOpen, isCreateModalOpen, isDetailModalOpen, selectedTicket]);
+
+  // Click outside listener for Searchable Requester dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        requesterDropdownRef.current &&
+        !requesterDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsRequesterDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Auto focus input when requester dropdown opens
+  useEffect(() => {
+    if (isRequesterDropdownOpen && requesterInputRef.current) {
+      setTimeout(() => requesterInputRef.current?.focus(), 50);
+    }
+  }, [isRequesterDropdownOpen]);
+
+  // Filter users specifically belonging to IT / Technical support
+  const itUsers = useMemo(() => {
+    return users.filter((u) => {
+      const roleName = (u.role?.name || '').toLowerCase();
+      const dept = (u.department || '').toLowerCase();
+      const pos = (u.position || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      return (
+        roleName.includes('admin') ||
+        roleName.includes('manager') ||
+        roleName.includes('it') ||
+        roleName.includes('support') ||
+        roleName.includes('kỹ thuật') ||
+        roleName.includes('helpdesk') ||
+        dept.includes('it') ||
+        dept.includes('cntt') ||
+        dept.includes('kỹ thuật') ||
+        dept.includes('ky thuat') ||
+        dept.includes('công nghệ') ||
+        dept.includes('cong nghe') ||
+        dept.includes('support') ||
+        pos.includes('it') ||
+        pos.includes('kỹ thuật') ||
+        pos.includes('admin') ||
+        email.includes('admin') ||
+        email.includes('it@')
+      );
+    });
+  }, [users]);
+
+  // Options for Searchable Dropdowns
+  const creatorOptions: SearchableOption[] = useMemo(() => {
+    return users.map((u) => ({
+      value: u.id,
+      label: u.fullName,
+      subLabel: u.department ? `Phòng ban: ${u.department}` : u.email,
+      icon: '👤',
+    }));
+  }, [users]);
+
+  // Selected requester user object & filtered list for searchable selector
+  const selectedRequesterUser = useMemo(() => {
+    if (!newRequesterId) return currentUser;
+    if (newRequesterId === currentUser?.id) return currentUser;
+    return users.find((u) => u.id === newRequesterId) || currentUser;
+  }, [newRequesterId, currentUser, users]);
+
+  const filteredRequesterUsers = useMemo(() => {
+    if (!requesterSearchTerm.trim()) return users;
+    const q = requesterSearchTerm.toLowerCase();
+    return users.filter(
+      (u) =>
+        (u.fullName || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        (u.department || '').toLowerCase().includes(q) ||
+        (u.phone || '').toLowerCase().includes(q)
+    );
+  }, [users, requesterSearchTerm]);
+
+  const itAssigneeOptions: SearchableOption[] = useMemo(() => {
+    const opts: SearchableOption[] = [
+      { value: 'UNASSIGNED', label: 'Chưa phân công IT', subLabel: 'Ticket mới chưa gán', icon: '⚪' },
+    ];
+    itUsers.forEach((u) => {
+      opts.push({
+        value: u.id,
+        label: u.fullName,
+        subLabel: `${u.role?.name || 'Kỹ thuật viên'} - ${u.department || 'IT'}`,
+        icon: '👨‍💻',
+      });
+    });
+    return opts;
+  }, [itUsers]);
+
+  const assetOptions: SearchableOption[] = useMemo(() => {
+    return assets.map((a) => ({
+      value: a.id,
+      label: `[${a.assetTag}] ${a.name}`,
+      subLabel: `SN: ${a.serialNumber || '—'} | ${a.status === 'AVAILABLE' ? 'Trong kho' : 'Đang sử dụng'}`,
+      icon: '💻',
+    }));
+  }, [assets]);
+
+  const categoryOptions: SearchableOption[] = [
+    { value: 'HARDWARE', label: 'Phần cứng', icon: '💻' },
+    { value: 'SOFTWARE', label: 'Phần mềm', icon: '💿' },
+    { value: 'LICENSE', label: 'License / Bản quyền', icon: '🔑' },
+    { value: 'ACCESS_REQUEST', label: 'Cấp quyền truy cập', icon: '🛡️' },
+    { value: 'NETWORK', label: 'Mạng & Internet', icon: '🌐' },
+    { value: 'OTHER', label: 'Khác', icon: '📌' },
+  ];
+
+  const priorityOptions: SearchableOption[] = [
+    { value: 'URGENT', label: 'Khẩn cấp (Dừng công việc)', icon: '🔥' },
+    { value: 'HIGH', label: 'Cao (Xử lý trong 24h)', icon: '🔴' },
+    { value: 'MEDIUM', label: 'Trung bình (Trong tuần)', icon: '🟡' },
+    { value: 'LOW', label: 'Thấp (Không gấp)', icon: '🟢' },
+  ];
+
+  const statusOptions: SearchableOption[] = [
+    { value: 'OPEN', label: 'Mới mở', icon: '🟡' },
+    { value: 'IN_PROGRESS', label: 'Đang xử lý', icon: '🔵' },
+    { value: 'WAITING', label: 'Chờ phản hồi', icon: '🟣' },
+    { value: 'RESOLVED', label: 'Đã giải quyết', icon: '🟢' },
+    { value: 'CLOSED', label: 'Đã đóng', icon: '⚪' },
+  ];
+
+  const resetAllFilters = () => {
+    setSearch('');
+    setActiveChip('ALL');
+    setCategoryFilter('');
+    setPriorityFilter('');
+    setStatusFilter('');
+    setCreatorFilter('');
+    setAssigneeFilter('');
+    setAssetFilter('');
+  };
+
+  const hasActiveFilters = Boolean(
+    search || categoryFilter || priorityFilter || statusFilter || creatorFilter || assigneeFilter || assetFilter || activeChip !== 'ALL'
+  );
+
+  // Filter logic
+  const filteredTickets = useMemo(() => {
+    return tickets.filter((t) => {
+      // Scope Mode
+      if (scopeMode === 'MINE' && currentUser && t.createdById !== currentUser.id) return false;
+      if (scopeMode === 'ASSIGNED' && currentUser && t.assignedToId !== currentUser.id) return false;
+
+      // Status chip filter
+      if (activeChip === 'OPEN' && t.status !== 'OPEN') return false;
+      if (activeChip === 'IN_PROGRESS' && t.status !== 'IN_PROGRESS') return false;
+      if (activeChip === 'URGENT' && t.priority !== 'URGENT') return false;
+      if (activeChip === 'RESOLVED' && t.status !== 'RESOLVED' && t.status !== 'CLOSED') return false;
+
+      // Dropdown filters
+      if (statusFilter && t.status !== statusFilter) return false;
+      if (categoryFilter && t.category !== categoryFilter) return false;
+      if (priorityFilter && t.priority !== priorityFilter) return false;
+      if (creatorFilter && t.createdById !== creatorFilter) return false;
+
+      // Assignee filter
+      if (assigneeFilter === 'UNASSIGNED') {
+        if (t.assignedToId) return false;
+      } else if (assigneeFilter && t.assignedToId !== assigneeFilter) {
+        return false;
+      }
+
+      if (assetFilter && t.assetId !== assetFilter) return false;
+
+      // Search keyword
+      if (search) {
+        const q = search.toLowerCase();
+        const matchNum = t.ticketNumber.toLowerCase().includes(q);
+        const matchTitle = t.title.toLowerCase().includes(q);
+        const matchDesc = t.description.toLowerCase().includes(q);
+        const matchCreator = (t.createdBy?.fullName || '').toLowerCase().includes(q) || (t.createdBy?.email || '').toLowerCase().includes(q);
+        const matchAssignee = (t.assignedTo?.fullName || '').toLowerCase().includes(q);
+        const matchAsset = (t.asset?.assetTag || '').toLowerCase().includes(q) || (t.asset?.name || '').toLowerCase().includes(q);
+        if (!matchNum && !matchTitle && !matchDesc && !matchCreator && !matchAssignee && !matchAsset) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [tickets, scopeMode, currentUser, activeChip, statusFilter, categoryFilter, priorityFilter, creatorFilter, assigneeFilter, assetFilter, search]);
+
+  // AI Analyze Ticket Handler with Auto-Analysis Support
+  const triggerAiAnalysis = async (titleVal?: string, descVal?: string, isAuto: boolean = false) => {
+    const t = (titleVal !== undefined ? titleVal : newTitle).trim();
+    const d = (descVal !== undefined ? descVal : newDesc).trim();
+    const rawText = d ? `${t}\n${d}` : t;
+
+    if (!rawText || rawText.length < 5) {
+      if (!isAuto) alert('Vui lòng nhập tiêu đề hoặc mô tả sự cố trước khi bấm Phân tích AI');
+      return;
+    }
+
+    if (isAuto && rawText === lastAnalyzedTextRef.current) {
+      return; // Skip duplicate auto analysis for same content
+    }
+
+    try {
+      setIsAiAnalyzing(true);
+      lastAnalyzedTextRef.current = rawText;
+      const res = await fetch('/api/tickets/ai-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: rawText, userId: newRequesterId || currentUser?.id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.data) {
+        setAiDiagnostic(data.data);
+        if (!isAuto && (!t || t.length < 10)) {
+          setNewTitle(data.data.suggestedTitle || t);
+        }
+        if (data.data.category) setNewCategory(data.data.category);
+        if (data.data.priority) setNewPriority(data.data.priority);
+        if (data.data.matchedAssetId && !newAssetId) setNewAssetId(data.data.matchedAssetId);
+      } else if (!isAuto) {
+        alert(data.error || 'Phân tích AI không thành công');
+      }
+    } catch {
+      if (!isAuto) alert('Lỗi kết nối phân tích AI');
+    } finally {
+      setIsAiAnalyzing(false);
+    }
+  };
+
+  const handleAiAnalyzeTicket = () => {
+    triggerAiAnalysis(newTitle, newDesc, false);
+  };
+
+  const handleTitleChange = (val: string) => {
+    setNewTitle(val);
+    if (aiDebounceTimerRef.current) clearTimeout(aiDebounceTimerRef.current);
+    if (val.trim().length >= 6) {
+      aiDebounceTimerRef.current = setTimeout(() => {
+        triggerAiAnalysis(val, newDesc, true);
+      }, 700);
+    }
+  };
+
+  const handleDescChange = (val: string) => {
+    setNewDesc(val);
+    if (aiDebounceTimerRef.current) clearTimeout(aiDebounceTimerRef.current);
+    if (val.trim().length >= 8) {
+      aiDebounceTimerRef.current = setTimeout(() => {
+        triggerAiAnalysis(newTitle, val, true);
+      }, 800);
+    }
+  };
+
+  // SLA Extension Handler
+  const handleExtendSla = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTicket || !extReason.trim()) {
+      alert('Vui lòng cung cấp lý do gia hạn cụ thể');
+      return;
+    }
+
+    try {
+      setExtendingSla(true);
+      const res = await fetch(`/api/tickets/${selectedTicket.id}/extend-sla`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ extensionHours: extHours, reason: extReason.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSlaExtSuccessMsg(`✅ ${data.message}`);
+        setSelectedTicket((prev: any) => ({ ...prev, ...data.data }));
+        setTickets((prev) => prev.map((t) => (t.id === selectedTicket.id ? { ...t, ...data.data } : t)));
+        setTimeout(() => {
+          setIsSlaExtModalOpen(false);
+          setSlaExtSuccessMsg('');
+          setExtReason('');
+        }, 2000);
+      } else {
+        alert(data.error || 'Gia hạn SLA thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi xin gia hạn SLA');
+    } finally {
+      setExtendingSla(false);
+    }
+  };
+
+  // Create Ticket
+  const handleCreateTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newDesc.trim()) return;
+
+    try {
+      setSubmitting(true);
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          description: newDesc.trim(),
+          category: newCategory,
+          priority: newPriority,
+          status: newStatus || 'OPEN',
+          requesterId: newRequesterId || currentUser?.id,
+          createdById: newRequesterId || currentUser?.id,
+          assetId: newAssetId || null,
+          customAssetName: customAssetName?.trim() || null,
+          assignedToId: newAssignedToId || null,
+          dueDate: newDueDate || null,
+          attachmentUrls: newTicketAttachments.length > 0 ? newTicketAttachments : null,
+          aiAnalysis: aiDiagnostic || null,
+        }),
+      });
+
+      if (res.ok) {
+        setIsCreateModalOpen(false);
+        setNewTitle('');
+        setNewDesc('');
+        setNewRequesterId(currentUser?.id || '');
+        setNewAssetId('');
+        setCustomAssetName('');
+        setNewAssignedToId(isITStaffOrAdmin && currentUser?.id ? currentUser.id : '');
+        setNewStatus('OPEN');
+        setNewDueDate('');
+        setAiDiagnostic(null);
+        lastAnalyzedTextRef.current = '';
+        setNewTicketAttachments([]);
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Tạo ticket thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi tạo ticket');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Update Status
+  const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTickets((prev) => prev.map((t) => (t.id === ticketId ? { ...t, ...updated } : t)));
+        if (selectedTicket && selectedTicket.id === ticketId) {
+          setSelectedTicket((prev: any) => ({ ...prev, ...updated }));
+        }
+        setAssignSuccessMsg('✅ Đã cập nhật phân công IT thành công!');
+        setTimeout(() => setAssignSuccessMsg(''), 3000);
+      }
+    } catch {
+      alert('Lỗi cập nhật trạng thái');
+    }
+  };
+
+  // Update Assignee
+  const handleUpdateAssignee = async (ticketId: string, assignedToId: string) => {
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignedToId: assignedToId || null }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTickets((prev) => prev.map((t) => (t.id === ticketId ? { ...t, ...updated } : t)));
+        if (selectedTicket && selectedTicket.id === ticketId) {
+          setSelectedTicket((prev: any) => ({ ...prev, ...updated }));
+        }
+      }
+    } catch {
+      alert('Lỗi phân công IT');
+    }
+  };
+
+  // Add Comment
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTicket || !commentText.trim()) return;
+
+    try {
+      setSendingComment(true);
+      const res = await fetch(`/api/tickets/${selectedTicket.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: commentText.trim(),
+          isInternal: isInternalComment,
+          attachmentUrls: commentAttachments.length > 0 ? commentAttachments : null,
+        }),
+      });
+
+      if (res.ok) {
+        const newC = await res.json();
+        setSelectedTicket((prev: any) => ({
+          ...prev,
+          comments: [...(prev.comments || []), newC],
+        }));
+        setTickets((prev) =>
+          prev.map((t) =>
+            t.id === selectedTicket.id
+              ? { ...t, comments: [...(t.comments || []), newC] }
+              : t
+          )
+        );
+        setCommentText('');
+        setCommentAttachments([]);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Gửi bình luận thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi gửi bình luận');
+    } finally {
+      setSendingComment(false);
+    }
+  };
+
+  // Send Internal IT Escalation / Assistance Request
+  const handleSendEscalation = async () => {
+    if (!selectedTicket || (!escalateToId && !escalateNote.trim())) return;
+    try {
+      setEscalateSending(true);
+      const targetUser = users.find((u) => u.id === escalateToId);
+      const mentionText = targetUser ? `@${targetUser.fullName} (${targetUser.role?.name || 'IT'})` : '';
+      const fullContent = `🚨 [YÊU CẦU HỖ TRỢ NỘI BỘ IT]\n${mentionText ? `👉 Kính nhờ: ${mentionText}\n` : ''}📝 Nội dung: ${escalateNote.trim() || 'Nhờ đồng nghiệp hỗ trợ xử lý sự cố này.'}`;
+
+      const res = await fetch(`/api/tickets/${selectedTicket.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: fullContent,
+          isInternal: true, // Chỉ nội bộ IT thấy
+        }),
+      });
+
+      if (res.ok) {
+        const newC = await res.json();
+        setSelectedTicket((prev: any) => ({
+          ...prev,
+          comments: [...(prev.comments || []), newC],
+        }));
+        setTickets((prev) =>
+          prev.map((t) =>
+            t.id === selectedTicket.id
+              ? { ...t, comments: [...(t.comments || []), newC] }
+              : t
+          )
+        );
+        setEscalateNote('');
+        setEscalateToId('');
+        setEscalateSuccessMsg('✅ Đã gửi yêu cầu hỗ trợ nội bộ thành công!');
+        setTimeout(() => setEscalateSuccessMsg(''), 4000);
+      } else {
+        alert('Gửi yêu cầu hỗ trợ thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi gửi yêu cầu');
+    } finally {
+      setEscalateSending(false);
+    }
+  };
+
+  // Delete Ticket
+  const handleDeleteTicket = async (ticketId: string) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa ticket này?')) return;
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, { method: 'DELETE' });
+      if (res.ok) {
+        if (selectedTicket?.id === ticketId) setIsDetailModalOpen(false);
+        loadData();
+      } else {
+        alert('Xóa ticket thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi xóa');
+    }
+  };
+
+  // Save SLA Config (Chỉ Admin mới có quyền)
+  const handleSaveSlaConfig = async () => {
+    if (!isAdmin) {
+      alert('Chỉ có Quản trị viên (Admin) mới có quyền thiết lập Quy chuẩn SLA.');
+      return;
+    }
+    try {
+      setSavingSla(true);
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: [
+            { key: 'sla.urgent_hours', value: String(slaConfig.urgentHours), group: 'sla', label: 'SLA Khẩn cấp (giờ)' },
+            { key: 'sla.high_hours', value: String(slaConfig.highHours), group: 'sla', label: 'SLA Mức cao (giờ)' },
+            { key: 'sla.medium_hours', value: String(slaConfig.mediumHours), group: 'sla', label: 'SLA Trung bình (giờ)' },
+            { key: 'sla.low_hours', value: String(slaConfig.lowHours), group: 'sla', label: 'SLA Mức thấp (giờ)' },
+          ],
+        }),
+      });
+
+      if (res.ok) {
+        setIsSlaModalOpen(false);
+        alert('✅ Đã lưu cấu hình quy chuẩn SLA thành công!');
+        loadData();
+      } else {
+        alert('Lưu quy chuẩn SLA thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi lưu cấu hình SLA');
+    } finally {
+      setSavingSla(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 pb-8">
+      {/* Header Banner */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-xl shadow-xs flex items-center justify-center shrink-0">
+            <LifeBuoy className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-base font-bold text-slate-900 leading-tight">Trung Tâm Tiếp Nhận & Xử Lý Ticket IT</h1>
+              <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-bold shrink-0">
+                Self-Service 24/7
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
+              Gửi yêu cầu và theo dõi xử lý sự cố phần cứng, phần mềm, cấp phát bản quyền license và quyền truy cập
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {/* Main Scope Switcher */}
+          <div className="flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 text-xs shrink-0">
+            <button
+              type="button"
+              onClick={() => setScopeMode('ALL')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                scopeMode === 'ALL' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              🌐 Tất cả
+            </button>
+            <button
+              type="button"
+              onClick={() => setScopeMode('MINE')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                scopeMode === 'MINE' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              👤 Của tôi
+            </button>
+            <button
+              type="button"
+              onClick={() => setScopeMode('ASSIGNED')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                scopeMode === 'ASSIGNED' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              👨‍💻 Việc tôi phụ trách
+            </button>
+          </div>
+
+          <Link
+            href="/tickets/reports"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 border border-slate-300 dark:border-slate-700"
+            title="Xem Dashboard & Báo Cáo Phân Tích Hỗ Trợ Đa Chiều"
+          >
+            <BarChart3 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <span>Báo Cáo & Thống Kê</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (currentUser?.id) {
+                setNewRequesterId(currentUser.id);
+                loadRequesterAssets(currentUser.id);
+              }
+              setNewTitle('');
+              setNewDesc('');
+              setAiDiagnostic(null);
+              lastAnalyzedTextRef.current = '';
+              // Auto-assign to current IT technician if creator is IT
+              if (isITStaffOrAdmin && currentUser?.id) {
+                setNewAssignedToId(currentUser.id);
+              } else {
+                setNewAssignedToId('');
+              }
+              setNewStatus('OPEN');
+              setIsCreateModalOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer shrink-0 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{isEn ? '+ Create Ticket' : 'Tạo Ticket Mới'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* KPI Quick Filter Chips Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-0.5 text-xs">
+        <button
+          type="button"
+          onClick={() => setActiveChip('ALL')}
+          className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+            activeChip === 'ALL'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <span>📦 Tất cả</span>
+          <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${activeChip === 'ALL' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700'}`}>
+            {stats.total}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveChip('OPEN')}
+          className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+            activeChip === 'OPEN'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-50/60'
+          }`}
+        >
+          <span>🟡 Mới mở</span>
+          <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${activeChip === 'OPEN' ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'}`}>
+            {stats.open}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveChip('IN_PROGRESS')}
+          className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+            activeChip === 'IN_PROGRESS'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'bg-white text-amber-700 border border-amber-200 hover:bg-amber-50/60'
+          }`}
+        >
+          <span>🔵 Đang xử lý</span>
+          <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${activeChip === 'IN_PROGRESS' ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-800'}`}>
+            {stats.inProgress}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveChip('URGENT')}
+          className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+            activeChip === 'URGENT'
+              ? 'bg-rose-600 text-white shadow-xs'
+              : 'bg-white text-rose-700 border border-rose-200 hover:bg-rose-50/60'
+          }`}
+        >
+          <span>🔥 Khẩn cấp</span>
+          <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${activeChip === 'URGENT' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-800'}`}>
+            {stats.urgent}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveChip('RESOLVED')}
+          className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+            activeChip === 'RESOLVED'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50/60'
+          }`}
+        >
+          <span>🟢 Đã xong</span>
+          <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${activeChip === 'RESOLVED' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+            {stats.resolved}
+          </span>
+        </button>
+      </div>
+
+      {/* Searchable Multi-Filter Toolbar */}
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-3 text-xs">
+        {/* Global Search Bar */}
+        <div className="relative w-full">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm theo mã TK, tiêu đề sự cố, tên người gửi, IT xử lý, tên máy tính hoặc số serial..."
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+          />
+        </div>
+
+        {/* Searchable Filters Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+          {/* Filter 1: Category */}
+          <SearchableDropdown
+            label="Loại sự cố"
+            value={categoryFilter}
+            options={categoryOptions}
+            onChange={setCategoryFilter}
+            searchPlaceholder="Tìm loại sự cố..."
+          />
+
+          {/* Filter 2: Priority */}
+          <SearchableDropdown
+            label="Mức ưu tiên"
+            value={priorityFilter}
+            options={priorityOptions}
+            onChange={setPriorityFilter}
+            searchPlaceholder="Tìm mức độ..."
+          />
+
+          {/* Filter 3: Status */}
+          <SearchableDropdown
+            label={isEn ? 'Status' : 'Trạng thái'}
+            value={statusFilter}
+            options={statusOptions}
+            onChange={setStatusFilter}
+            searchPlaceholder="Tìm trạng thái..."
+          />
+
+          {/* Filter 4: Creator (Searchable User List) */}
+          <SearchableDropdown
+            label={`Người gửi (${users.length})`}
+            value={creatorFilter}
+            options={creatorOptions}
+            onChange={setCreatorFilter}
+            searchPlaceholder="🔍 Tìm tên nhân viên..."
+          />
+
+          {/* Filter 5: Assignee (Searchable IT Staff List) */}
+          <SearchableDropdown
+            label="IT phụ trách"
+            value={assigneeFilter}
+            options={itAssigneeOptions}
+            onChange={setAssigneeFilter}
+            searchPlaceholder="🔍 Tìm kỹ thuật viên IT..."
+          />
+
+          {/* Filter 6: Asset (Searchable Equipment List) */}
+          <SearchableDropdown
+            label={`Thiết bị (${assets.length})`}
+            value={assetFilter}
+            options={assetOptions}
+            onChange={setAssetFilter}
+            searchPlaceholder="🔍 Tìm mã hoặc tên máy..."
+          />
+        </div>
+
+        {/* Reset Filters Status Row */}
+        {hasActiveFilters && (
+          <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[11px]">
+            <span className="text-slate-500">
+              Đang lọc hiển thị <strong>{filteredTickets.length}</strong> / {tickets.length} ticket
+            </span>
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Xóa toàn bộ bộ lọc</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Enterprise High-Density Table */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="table-fixed w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="py-3 px-3.5 w-[24%]">Mã & Tiêu Đề Sự Cố</th>
+                <th className="py-3 px-3 w-[13%]">Phân Loại</th>
+                <th className="py-3 px-2.5 w-[10%]">Mức Độ</th>
+                <th className="py-3 px-2.5 w-[10%]">Trạng Thái</th>
+                <th className="py-3 px-3 w-[19%]">Hạn SLA & Tiến Độ</th>
+                <th className="py-3 px-3 w-[15%]">Người Gửi & IT</th>
+                <th className="py-3 px-2.5 w-[9%] text-right whitespace-nowrap">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center text-slate-400">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
+                    <span className="font-semibold text-xs text-slate-500">Đang tải danh sách ticket...</span>
+                  </td>
+                </tr>
+              ) : filteredTickets.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center text-slate-400 space-y-2">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto text-xl font-bold">
+                      🎫
+                    </div>
+                    <p className="font-bold text-slate-700 text-sm">Không tìm thấy ticket nào</p>
+                    <p className="text-xs text-slate-400">Không có yêu cầu hỗ trợ nào phù hợp với bộ lọc hiện tại.</p>
+                    {hasActiveFilters && (
+                      <button
+                        type="button"
+                        onClick={resetAllFilters}
+                        className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-xs hover:underline font-bold inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Xóa bộ lọc</span>
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ) : (
+                filteredTickets.map((t) => {
+                  const cat = CATEGORY_MAP[t.category] || CATEGORY_MAP.OTHER;
+                  const pri = PRIORITY_MAP[t.priority] || PRIORITY_MAP.MEDIUM;
+                  const sta = STATUS_MAP[t.status] || STATUS_MAP.OPEN;
+                  const PriIcon = pri.icon;
+                  const sla = getTicketSLA(t, slaConfig);
+
+                  return (
+                    <tr
+                      key={t.id}
+                      className="hover:bg-blue-50/40 transition-colors group cursor-pointer"
+                      onClick={() => {
+                        setSelectedTicket(t);
+                        setIsDetailModalOpen(true);
+                      }}
+                    >
+                      {/* Mã & Tiêu Đề Sự Cố (2 DÒNG RÕ RÀNG) */}
+                      <td className="py-3 px-3.5">
+                        <div className="space-y-1.5">
+                          {/* Dòng 1: Mã Ticket + Sự cố + Team + Thiết bị + Số bình luận */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono font-bold text-[10.5px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200/80 shrink-0">
+                              {t.ticketNumber}
+                            </span>
+                            {t.incident && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/80 font-bold text-[10px] shrink-0" title={`Thuộc Sự cố: ${t.incident.incidentNumber} - ${t.incident.title}`}>
+                                <span>🚨 {t.incident.incidentNumber}</span>
+                              </span>
+                            )}
+                            {t.team && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-semibold text-[10px] shrink-0" title={`Phân tuyến đến Team: ${t.team.name}`}>
+                                <span>🏢 {t.team.name}</span>
+                              </span>
+                            )}
+                            {t.asset ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200/60 font-semibold text-[10px] truncate max-w-[160px]" title={`[${t.asset.assetTag}] ${t.asset.name}`}>
+                                <Laptop className="w-2.5 h-2.5 text-blue-600 shrink-0" />
+                                <span className="truncate">[{t.asset.assetTag}] {t.asset.name}</span>
+                              </span>
+                            ) : t.customAssetName ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 font-semibold text-[10px] truncate max-w-[160px]" title={t.customAssetName}>
+                                <span>🔧 {t.customAssetName}</span>
+                              </span>
+                            ) : null}
+                            <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 bg-slate-100/80 px-1.5 py-0.5 rounded font-medium shrink-0">
+                              <MessageSquare className="w-2.5 h-2.5 text-slate-400" />
+                              <span>{t.comments?.length || 0}</span>
+                            </span>
+                          </div>
+
+                          {/* Dòng 2: Tiêu Đề Sự Cố (Cho phép ngắt 2 dòng đọc rõ ràng) */}
+                          <div
+                            className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors text-xs leading-snug line-clamp-2"
+                            title={t.title}
+                          >
+                            {t.title}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Phân Loại */}
+                      <td className="py-3 px-3">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold border ${cat.color} whitespace-nowrap shadow-2xs`}>
+                          <span>{cat.icon}</span>
+                          <span>{cat.label}</span>
+                        </span>
+                      </td>
+
+                      {/* Mức Độ */}
+                      <td className="py-3 px-2.5">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border ${pri.badge} whitespace-nowrap shadow-2xs`}>
+                          <PriIcon className="w-3 h-3" />
+                          <span>{pri.label}</span>
+                        </span>
+                      </td>
+
+                      {/* Trạng Thái */}
+                      <td className="py-3 px-2.5">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border ${sta.badge} whitespace-nowrap shadow-2xs`}>
+                          <span className={`w-2 h-2 rounded-full ${sta.dot} ${t.status === 'OPEN' || t.status === 'IN_PROGRESS' ? 'animate-pulse' : ''}`} />
+                          <span>{sta.label}</span>
+                        </span>
+                      </td>
+
+                      {/* Hạn SLA & Tiến Độ */}
+                      <td className="py-3 px-3">
+                        <div className="space-y-1 text-[10.5px]">
+                          <div className="flex items-center gap-1 text-slate-600 font-medium">
+                            <span className="text-slate-400">🕒 Bắt đầu:</span>
+                            <span className="font-semibold text-slate-800">{sla.createdAtFormatted}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-slate-700">
+                            <span className="text-slate-400">🎯 Hạn SLA:</span>
+                            <span className="font-bold text-slate-900">{sla.deadlineFormatted} ({sla.slaHours}h)</span>
+                          </div>
+                          <div>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold border shadow-2xs ${sla.badgeClass}`}>
+                              <span>{sla.icon}</span>
+                              <span>{sla.statusText}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Người Gửi & IT Phụ Trách */}
+                      <td className="py-3 px-3 text-[11px]" onClick={(e) => e.stopPropagation()}>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-400 text-[10px]">Gửi:</span>
+                            {t.createdBy?.id ? (
+                              <QuickLink
+                                type="user"
+                                id={t.createdBy.id}
+                                label={t.createdBy.fullName}
+                                showIcon={false}
+                                className="font-bold text-slate-900 text-[11px]"
+                              />
+                            ) : (
+                              <span className="font-bold text-slate-900 truncate">{t.createdBy?.fullName || '—'}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-400 text-[10px]">IT:</span>
+                            {t.assignedTo?.id ? (
+                              <QuickLink
+                                type="user"
+                                id={t.assignedTo.id}
+                                label={t.assignedTo.fullName}
+                                icon="👨‍💻"
+                                showIcon={true}
+                                className="font-bold text-indigo-700 text-[11px]"
+                              />
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium italic text-[10px] border border-slate-200/60">
+                                Chưa phân công
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Thao Tác */}
+                      <td className="py-3 px-2.5 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setSelectedTicket(t);
+                              setIsDetailModalOpen(true);
+                            }}
+                            title="Xem chi tiết & trao đổi"
+                            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-all shadow-2xs cursor-pointer shrink-0"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Trao đổi</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTicket(t.id)}
+                            title="Xóa ticket"
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* MODAL 1: CHI TIẾT TICKET & TRAO ĐỔI (INTERACTIVE THREAD - WIDE & SPACIOUS) */}
+      {isDetailModalOpen && selectedTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full flex flex-col max-h-[92vh] border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-start justify-between gap-3 bg-gradient-to-r from-slate-50 via-blue-50/30 to-indigo-50/20">
+              <div className="space-y-1.5 min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono font-black text-xs px-2.5 py-0.5 rounded-lg bg-blue-600 text-white shadow-xs">
+                    {selectedTicket.ticketNumber}
+                  </span>
+                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-lg border ${STATUS_MAP[selectedTicket.status]?.badge || 'bg-slate-100 text-slate-700'}`}>
+                    {STATUS_MAP[selectedTicket.status]?.label}
+                  </span>
+                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-lg border ${PRIORITY_MAP[selectedTicket.priority]?.badge || 'bg-slate-100 text-slate-700'}`}>
+                    {getPriorityLabel(selectedTicket.priority, language)}
+                  </span>
+                  <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+                    {getCategoryLabel(selectedTicket.category, language)}
+                  </span>
+                </div>
+                <h2 className="text-base sm:text-lg font-extrabold text-slate-900 leading-snug tracking-tight">
+                  {selectedTicket.title}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDetailModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
+                title="Đóng modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body (Scrollable with 2-Column Wide Layout) */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1 text-xs">
+              {/* Meta Grid Banner */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 text-[11.5px]">
+                <div className="space-y-0.5">
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">{isEn ? 'Requester' : 'Người yêu cầu'}</span>
+                  {selectedTicket.createdBy?.id ? (
+                    <QuickLink
+                      type="user"
+                      id={selectedTicket.createdBy.id}
+                      label={selectedTicket.createdBy.fullName || 'Người dùng'}
+                      avatarUrl={selectedTicket.createdBy.avatarUrl}
+                      icon="👤"
+                      className="font-bold text-slate-900 text-xs"
+                    />
+                  ) : (
+                    <div className="font-bold text-slate-900 flex items-center gap-1.5 truncate">
+                      <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] shrink-0 font-extrabold">👤</span>
+                      <span className="truncate">{selectedTicket.createdBy?.fullName || 'Người dùng'}</span>
+                    </div>
+                  )}
+                  <span className="text-[10px] text-slate-400 block truncate">{selectedTicket.createdBy?.email}</span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">IT Phụ trách</span>
+                  {selectedTicket.assignedTo?.id ? (
+                    <QuickLink
+                      type="user"
+                      id={selectedTicket.assignedTo.id}
+                      label={selectedTicket.assignedTo.fullName}
+                      avatarUrl={selectedTicket.assignedTo.avatarUrl}
+                      icon="👨‍💻"
+                      className="font-bold text-blue-700 text-xs"
+                    />
+                  ) : (
+                    <div className="font-semibold text-slate-400 italic text-xs">Chưa phân công</div>
+                  )}
+                  <span className="text-[10px] text-slate-400 block truncate">{selectedTicket.assignedTo?.email || 'Đang chờ điều phối'}</span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Phân loại & Công ty</span>
+                  <div className="font-bold text-slate-800 truncate">
+                    {CATEGORY_MAP[selectedTicket.category]?.label}
+                  </div>
+                  <span className="text-[10px] text-slate-500 block truncate">🏢 {selectedTicket.companyName || selectedTicket.createdBy?.department || 'Tập đoàn ABC'}</span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Thiết bị sự cố</span>
+                  {selectedTicket.asset ? (
+                    <QuickLink
+                      type="asset"
+                      id={selectedTicket.asset.id}
+                      label={`[${selectedTicket.asset.assetTag}] ${selectedTicket.asset.name}`}
+                      icon="💻"
+                      className="font-bold text-blue-700 text-xs"
+                    />
+                  ) : selectedTicket.customAssetName ? (
+                    <div className="font-bold text-amber-800 flex items-center gap-1 truncate" title={selectedTicket.customAssetName}>
+                      <span className="truncate">🔧 {selectedTicket.customAssetName}</span>
+                    </div>
+                  ) : (
+                    <span className="text-slate-400 italic">Không chọn</span>
+                  )}
+                  <span className="text-[10px] text-slate-400 block">
+                    {selectedTicket.asset?.status ? `Trạng thái: ${selectedTicket.asset.status}` : 'Thiết bị tự do'}
+                  </span>
+                </div>
+              </div>
+
+              {/* SLA & Tiến Độ Thời Gian Bar */}
+              {selectedSla && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/60 via-indigo-50/40 to-slate-50 border border-blue-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11.5px]">
+                  <div className="flex items-center gap-5 flex-wrap">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">🕒 Mở ticket:</span>
+                      <span className="font-bold text-slate-900">{selectedSla.createdAtFormatted}</span>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">🎯 Hạn SLA chuẩn:</span>
+                      <span className="font-bold text-slate-900">{selectedSla.deadlineFormatted} ({selectedSla.slaHours}h)</span>
+                    </div>
+                    {(selectedTicket as any).isSlaExtended && (
+                      <span className="px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[10px] inline-flex items-center gap-1">
+                        <span>⏱️</span>
+                        <span>Đã Gia Hạn SLA</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`px-3 py-1 rounded-xl text-xs font-black border inline-flex items-center gap-1.5 shadow-2xs ${selectedSla.badgeClass}`}>
+                      <span>{selectedSla.icon}</span>
+                      <span>{selectedSla.statusText}</span>
+                    </span>
+
+                    {isITStaffOrAdmin && selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && (
+                      <button
+                        type="button"
+                        onClick={() => setIsSlaExtModalOpen(true)}
+                        className="px-3 py-1 bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold shadow-2xs cursor-pointer flex items-center gap-1.5 transition-all hover:scale-[1.02]"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Xin Gia Hạn SLA</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 2-COLUMN WORKSPACE: LEFT CONTENT (60%) & RIGHT INTERACTIVE CHAT/ESCALATION (40%) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* Left Column (7/12 cols) */}
+                <div className="lg:col-span-7 space-y-4">
+                  {/* Description Card */}
+                  <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
+                    <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Mô tả chi tiết sự cố & Yêu cầu:</span>
+                    </h4>
+                    <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100 text-slate-800 leading-relaxed whitespace-pre-wrap font-medium text-[11.5px]">
+                      {selectedTicket.description}
+                    </div>
+
+                    {/* Initial Attachments */}
+                    {Array.isArray(selectedTicket.attachmentUrls) && (selectedTicket.attachmentUrls as any[]).length > 0 && (
+                      <div className="pt-2 border-t border-slate-100 space-y-2">
+                        <span className="text-[11px] font-bold text-blue-900 flex items-center gap-1">
+                          <Paperclip className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Tệp & Hình ảnh đính kèm ({(selectedTicket.attachmentUrls as any[]).length}):</span>
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {(selectedTicket.attachmentUrls as any[]).map((att: any, aIdx: number) => {
+                            const isImg = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(att.url) || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(att.name || '');
+                            return (
+                              <div
+                                key={aIdx}
+                                className="bg-slate-50 p-2 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1.5 group"
+                              >
+                                <div className="flex items-center gap-1.5 truncate">
+                                  {isImg ? (
+                                    <img
+                                      src={att.url}
+                                      alt={att.name || 'Ảnh đính kèm'}
+                                      onClick={() => setPreviewImageModal(att.url)}
+                                      className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity border border-slate-200"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-16 rounded-lg bg-white flex items-center justify-center text-blue-600 border border-slate-200">
+                                      <FileText className="w-7 h-7" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-200 text-[10px]">
+                                  <span className="font-semibold text-slate-700 truncate" title={att.name}>{att.name || 'Tệp đính kèm'}</span>
+                                  <a
+                                    href={att.url}
+                                    download={att.name || 'file'}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="p-1 text-blue-600 hover:bg-blue-100 rounded-md"
+                                    title="Tải xuống"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 🤖 BẢNG MINH BẠCH PHÂN TUYẾN TỰ ĐỘNG (ROUTING TRANSPARENCY) */}
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-purple-50/40 to-slate-50 border border-indigo-200/80 space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 rounded-lg bg-indigo-600 text-white">
+                          <BrainCircuit className="w-3.5 h-3.5" />
+                        </span>
+                        <div>
+                          <h5 className="font-bold text-slate-900 text-xs">Minh Bạch Phân Tuyến (Routing Path)</h5>
+                          <p className="text-[10px] text-slate-500">Tự động định tuyến dựa trên ngữ cảnh người dùng & danh mục</p>
+                        </div>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-md font-bold text-[9.5px] border ${
+                        selectedTicket.isAutoRouted
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-purple-50 text-purple-700 border-purple-200'
+                      }`}>
+                        {selectedTicket.isAutoRouted ? '🤖 Tự động phân tuyến' : '✍️ Phân công thủ công'}
+                      </span>
+                    </div>
+
+                    {/* Visual Path */}
+                    <div className="p-2.5 bg-white rounded-xl border border-indigo-100 flex items-center gap-1.5 flex-wrap text-[11px]">
+                      <span className="font-bold text-slate-500">Đường dẫn:</span>
+                      <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold">{selectedTicket.companyName || selectedTicket.createdBy?.department || 'Tập đoàn'}</span>
+                      <span className="text-slate-400">➔</span>
+                      <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold">{getCategoryLabel(selectedTicket.category, language)}</span>
+                      <span className="text-slate-400">➔</span>
+                      <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold">Team: {selectedTicket.team?.name || 'Chưa gán'}</span>
+                      <span className="text-slate-400">➔</span>
+                      <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold">Queue: {selectedTicket.queue?.name || 'Default Queue'}</span>
+                      <span className="text-slate-400">➔</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Assignee: {selectedTicket.assignedTo?.fullName || 'Chờ tiếp nhận'}</span>
+                    </div>
+
+                    {selectedTicket.routedByRule && (
+                      <div className="text-[11px] text-indigo-900 font-medium">
+                        🎯 Rule áp dụng: <strong>"{selectedTicket.routedByRule}"</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Column (5/12 cols) */}
+                <div className="lg:col-span-5 space-y-4">
+                  {/* AI Diagnostic Summary Box for Technician if available */}
+                  {(selectedTicket as any).aiAnalysis && (
+                    <div className="p-3.5 bg-gradient-to-br from-purple-50 to-indigo-50/50 rounded-2xl border border-purple-200 text-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-purple-900 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                          <span>Chẩn Đoán Kỹ Thuật AI (Diagnostic)</span>
+                        </span>
+                        <span className="text-[10px] bg-purple-200/80 text-purple-900 px-2 py-0.5 rounded-md font-bold">
+                          Gemini AI
+                        </span>
+                      </div>
+                      <p className="text-purple-950 font-medium text-[11px] leading-relaxed">
+                        {(selectedTicket as any).aiAnalysis.diagnosticSummary}
+                      </p>
+                      {Array.isArray((selectedTicket as any).aiAnalysis.suggestedSteps) && (
+                        <div className="pt-1.5 border-t border-purple-200/80 space-y-1">
+                          <span className="font-bold text-[10.5px] text-purple-900">Gợi ý xử lý ban đầu:</span>
+                          <ul className="list-disc list-inside text-[10.5px] text-purple-900 space-y-0.5">
+                            {(selectedTicket as any).aiAnalysis.suggestedSteps.map((step: string, sIdx: number) => (
+                              <li key={sIdx}>{step}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 🛡️ KHU VỰC HỖ TRỢ NỘI BỘ IT (CHỈ IT & QUẢN LÝ THẤY) */}
+                  {isITStaffOrAdmin && (
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/80 via-amber-50/40 to-indigo-50/50 border border-amber-200/80 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold shadow-2xs">
+                            🛡️
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-slate-900 text-xs">Nhờ Thêm IT / Cấp Trên (Escalation)</h5>
+                            <p className="text-[10px] text-amber-800">Chỉ hiển thị với đội ngũ IT</p>
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 font-bold text-[9px] border border-amber-300">
+                          🔒 IT Only
+                        </span>
+                      </div>
+
+                      {escalateSuccessMsg && (
+                        <div className="p-2 bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold animate-in fade-in">
+                          {escalateSuccessMsg}
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <div>
+                          <select
+                            value={escalateToId}
+                            onChange={(e) => setEscalateToId(e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-white border border-amber-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                          >
+                            <option value="">-- Chọn IT / Quản lý --</option>
+                            {itUsers.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                👨‍💻 {u.fullName} ({u.role?.name || 'IT'})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={escalateNote}
+                            onChange={(e) => setEscalateNote(e.target.value)}
+                            placeholder="Ghi chú kỹ thuật cần hỗ trợ..."
+                            className="flex-1 px-3 py-1.5 bg-white border border-amber-200 rounded-xl text-xs text-slate-800 outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSendEscalation}
+                            disabled={escalateSending || (!escalateToId && !escalateNote.trim())}
+                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer shrink-0 flex items-center gap-1"
+                          >
+                            {escalateSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>⚡ Gửi</span>}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Comment & Chat Thread */}
+                  <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2.5">
+                    <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Trao đổi & Bình luận</span>
+                      </span>
+                    </h4>
+
+                    {/* Messages Container (Filtered by role: Users do not see internal notes) */}
+                    <div className="space-y-2 max-h-64 overflow-y-auto p-2 bg-slate-50/80 rounded-xl border border-slate-100">
+                      {(() => {
+                        const visibleComments = selectedTicket.comments?.filter((c) => isITStaffOrAdmin || !c.isInternal) || [];
+                        return visibleComments.length === 0 ? (
+                          <p className="text-center text-slate-400 italic py-4 text-xs">Chưa có bình luận nào.</p>
+                        ) : (
+                          visibleComments.map((c) => (
+                            <div
+                              key={c.id}
+                              className={`p-2.5 rounded-xl text-xs space-y-1 ${
+                                c.isInternal
+                                  ? 'bg-amber-50/80 border border-amber-200 text-amber-900'
+                                  : 'bg-white border border-slate-200 shadow-2xs text-slate-800'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span className="font-bold text-blue-700 flex items-center gap-1">
+                                  {c.user?.fullName}
+                                  {c.isInternal && (
+                                    <span className="px-1.5 py-0.2 bg-amber-200 text-amber-800 rounded font-bold text-[9px]">
+                                      🔒 Nội bộ IT
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="text-slate-400">{new Date(c.createdAt).toLocaleTimeString('vi-VN')} {new Date(c.createdAt).toLocaleDateString('vi-VN')}</span>
+                              </div>
+                              <p className="whitespace-pre-wrap leading-relaxed text-[11px]">{c.content}</p>
+
+                              {/* Comment Attachments */}
+                              {Array.isArray((c as any).attachmentUrls) && ((c as any).attachmentUrls as any[]).length > 0 && (
+                                <div className="pt-1.5 flex items-center gap-1.5 flex-wrap">
+                                  {((c as any).attachmentUrls as any[]).map((att: any, caIdx: number) => {
+                                    const isImg = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(att.url) || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(att.name || '');
+                                    return isImg ? (
+                                      <img
+                                        key={caIdx}
+                                        src={att.url}
+                                        alt={att.name || 'Hình ảnh'}
+                                        onClick={() => setPreviewImageModal(att.url)}
+                                        className="w-14 h-14 object-cover rounded-lg border border-slate-200 shadow-2xs cursor-pointer hover:scale-105 transition-transform"
+                                      />
+                                    ) : (
+                                      <a
+                                        key={caIdx}
+                                        href={att.url}
+                                        download={att.name || 'file'}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-lg text-[9.5px] font-semibold inline-flex items-center gap-1 transition-colors"
+                                      >
+                                        <FileText className="w-3 h-3 text-blue-600" />
+                                        <span className="max-w-[100px] truncate">{att.name || 'File'}</span>
+                                      </a>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        );
+                      })()}
+                    </div>
+
+                    {/* New Comment Input Box */}
+                    <form onSubmit={handleAddComment} className="space-y-2 pt-1 border-t border-slate-100">
+                      <div className="space-y-1.5">
+                        <textarea
+                          rows={2}
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          onPaste={(e) => handlePasteImage(e, 'comment')}
+                          placeholder={language === "en" ? "Write a response or paste screenshot (Ctrl + V)..." : "Viết phản hồi hoặc dán ảnh chụp (Ctrl + V)..."}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 resize-none font-medium"
+                        />
+
+                        {/* Comment Attachments Preview */}
+                        {commentAttachments.length > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {commentAttachments.map((att, attIdx) => (
+                              <span key={attIdx} className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[10px] font-semibold flex items-center gap-1">
+                                <span className="max-w-[100px] truncate">{att.name}</span>
+                                <button type="button" onClick={() => setCommentAttachments(prev => prev.filter((_, i) => i !== attIdx))} className="text-rose-500">×</button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <label className="cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-700 transition-colors" title="Đính kèm file/ảnh">
+                              <Paperclip className="w-4 h-4" />
+                              <input type="file" multiple onChange={handleUploadCommentFiles} className="hidden" />
+                            </label>
+                            {isITStaffOrAdmin && (
+                              <label className="flex items-center gap-1 text-[10.5px] font-semibold text-amber-800 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isInternalComment}
+                                  onChange={(e) => setIsInternalComment(e.target.checked)}
+                                  className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                                />
+                                <span>🔒 Ghi chú nội bộ</span>
+                              </label>
+                            )}
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={sendingComment || (!commentText.trim() && commentAttachments.length === 0)}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                          >
+                            {sendingComment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                            <span>Gửi</span>
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Fixed Footer: Fast Status Actions & Assignee */}
+            <div className="p-3 sm:p-4 bg-slate-50/90 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              {isITStaffOrAdmin ? (
+                <>
+                  {/* Quick Status Buttons for IT */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-slate-700 text-[11px] mr-1">Cập nhật nhanh:</span>
+                    {(['OPEN', 'IN_PROGRESS', 'WAITING', 'RESOLVED', 'CLOSED'] as const).map((st) => {
+                      const isActive = selectedTicket.status === st;
+                      return (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => handleUpdateStatus(selectedTicket.id, st)}
+                          className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
+                            isActive
+                              ? 'bg-blue-600 text-white shadow-xs font-extrabold ring-2 ring-blue-400/40'
+                              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                          }`}
+                        >
+                          {STATUS_MAP[st]?.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Assign IT dropdown & Close button */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-slate-200">
+                      <span className="text-[10.5px] font-bold text-slate-600">Phân công:</span>
+                      <select
+                        value={selectedTicket.assignedToId || ''}
+                        onChange={(e) => handleUpdateAssignee(selectedTicket.id, e.target.value)}
+                        className="bg-transparent text-xs font-bold text-blue-700 outline-none cursor-pointer"
+                      >
+                        <option value="">-- Chưa phân công --</option>
+                        {itUsers.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            👨‍💻 {u.fullName} {u.id === currentUser?.id ? '(Tôi)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsDetailModalOpen(false)}
+                      className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold transition-colors cursor-pointer"
+                    >{isEn ? 'Close' : 'Đóng'}</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Simple Status Display for Normal User */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-500 font-medium">Trạng thái xử lý:</span>
+                    <span className={`px-2.5 py-1 rounded-xl text-xs font-bold border ${STATUS_MAP[selectedTicket.status]?.badge || 'bg-slate-100'}`}>
+                      {STATUS_MAP[selectedTicket.status]?.label}
+                    </span>
+                    {selectedTicket.assignedTo && (
+                      <span className="text-[11px] text-slate-600 font-semibold flex items-center gap-1 ml-2">
+                        <span>👨‍💻 Kỹ thuật viên phụ trách:</span>
+                        <strong className="text-blue-700">{selectedTicket.assignedTo.fullName}</strong>
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsDetailModalOpen(false)}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors cursor-pointer shadow-xs ml-auto"
+                  >{isEn ? 'Close' : 'Đóng'}</button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: TẠO TICKET MỚI (FOR ALL USERS) */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full p-5 sm:p-6 space-y-4 border border-slate-200 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
+                  <LifeBuoy className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">Gửi Yêu Cầu Hỗ Trợ IT / Tạo Ticket</h3>
+                  <p className="text-[10px] text-slate-500">Hỗ trợ dán trực tiếp ảnh chụp màn hình (Ctrl + V)</p>
+                </div>
+              </div>
+              <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTicket} className="space-y-3.5 text-xs">
+              {/* 1. Người yêu cầu / Người gặp sự cố (Cho phép IT sửa / tạo hộ) */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                    <UserIcon className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Người yêu cầu / Người gặp sự cố</span>
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  {isITStaffOrAdmin && newRequesterId && newRequesterId !== currentUser?.id && (
+                    <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full font-bold text-[10px] flex items-center gap-1">
+                      <span>📝</span>
+                      <span>IT đang tạo hộ người dùng</span>
+                    </span>
+                  )}
+                </div>
+
+                {isITStaffOrAdmin ? (
+                  <div className="relative" ref={requesterDropdownRef}>
+                    {/* Trigger Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRequesterDropdownOpen(!isRequesterDropdownOpen);
+                        setRequesterSearchTerm('');
+                      }}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/80 hover:bg-slate-100/90 font-semibold text-slate-900 flex items-center justify-between transition-all cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 pr-2">
+                        <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-[10px] shrink-0">
+                          👤
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 text-xs truncate">
+                            {selectedRequesterUser?.id === currentUser?.id
+                              ? `Chính tôi (${selectedRequesterUser?.fullName || selectedRequesterUser?.email}) [Mặc định]`
+                              : selectedRequesterUser?.fullName || 'Chọn nhân viên'}
+                          </p>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            {selectedRequesterUser?.email} {selectedRequesterUser?.department ? `• ${selectedRequesterUser?.department}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isRequesterDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Searchable Dropdown Popup */}
+                    {isRequesterDropdownOpen && (
+                      <div className="absolute left-0 top-full mt-1.5 w-full bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 p-2.5 space-y-2 animate-in fade-in zoom-in-95">
+                        {/* Search Input */}
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            ref={requesterInputRef}
+                            type="text"
+                            value={requesterSearchTerm}
+                            onChange={(e) => setRequesterSearchTerm(e.target.value)}
+                            placeholder="🔍 Gõ tên, email hoặc phòng ban để lọc nhanh..."
+                            className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium text-slate-900"
+                          />
+                          {requesterSearchTerm && (
+                            <button
+                              type="button"
+                              onClick={() => setRequesterSearchTerm('')}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* List Options */}
+                        <div className="max-h-56 overflow-y-auto space-y-1 pr-1">
+                          {/* Option 1: Current User (Chính tôi) */}
+                          {currentUser && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNewRequesterId(currentUser.id);
+                                loadRequesterAssets(currentUser.id);
+                                setIsRequesterDropdownOpen(false);
+                                setRequesterSearchTerm('');
+                              }}
+                              className={`w-full text-left p-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                                newRequesterId === currentUser.id
+                                  ? 'bg-blue-600 text-white font-bold shadow-xs'
+                                  : 'hover:bg-blue-50/70 text-slate-800 border border-blue-100'
+                              }`}
+                            >
+                              <div className="min-w-0 pr-2">
+                                <div className="font-bold flex items-center gap-1.5 truncate">
+                                  <span>👤</span>
+                                  <span>Chính tôi ({currentUser.fullName || currentUser.email}) [Mặc định]</span>
+                                </div>
+                                <p className={`text-[10px] truncate ${newRequesterId === currentUser.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                                  {currentUser.email} {currentUser.department ? `• ${currentUser.department}` : ''}
+                                </p>
+                              </div>
+                              {newRequesterId === currentUser.id && <Check className="w-4 h-4 shrink-0" />}
+                            </button>
+                          )}
+
+                          <div className="px-1 py-0.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                            <span>Danh sách nhân viên (Tạo hộ)</span>
+                            <span>{filteredRequesterUsers.filter((u) => u.id !== currentUser?.id).length} người</span>
+                          </div>
+
+                          {/* Filtered Employees */}
+                          {filteredRequesterUsers.filter((u) => u.id !== currentUser?.id).length === 0 ? (
+                            <div className="text-center py-4 text-xs text-slate-400 italic">
+                              Không tìm thấy nhân viên nào khớp với &quot;{requesterSearchTerm}&quot;
+                            </div>
+                          ) : (
+                            filteredRequesterUsers
+                              .filter((u) => u.id !== currentUser?.id)
+                              .map((u) => {
+                                const isSelected = newRequesterId === u.id;
+                                return (
+                                  <button
+                                    key={u.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setNewRequesterId(u.id);
+                                      loadRequesterAssets(u.id);
+                                      setIsRequesterDropdownOpen(false);
+                                      setRequesterSearchTerm('');
+                                    }}
+                                    className={`w-full text-left p-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-blue-600 text-white font-bold shadow-xs'
+                                        : 'hover:bg-slate-100 text-slate-800'
+                                    }`}
+                                  >
+                                    <div className="min-w-0 pr-2">
+                                      <div className="font-bold flex items-center gap-1.5 truncate">
+                                        <span>👤</span>
+                                        <span className="truncate">{u.fullName}</span>
+                                      </div>
+                                      <p className={`text-[10px] truncate ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                                        {u.email} {u.department ? `• ${u.department}` : ''}
+                                      </p>
+                                    </div>
+                                    {isSelected && <Check className="w-4 h-4 shrink-0" />}
+                                  </button>
+                                );
+                              })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-slate-400 mt-0.5 italic">
+                      💡 Bạn có quyền IT: Bấm vào để gõ tìm nhanh nhân viên cần tạo ticket hộ khi họ không thể tự gửi.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center font-bold text-xs">
+                        👤
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800 text-xs">{currentUser?.fullName || 'Người dùng'}</p>
+                        <p className="text-[10px] text-slate-400">{currentUser?.email} {currentUser?.department ? `• ${currentUser?.department}` : ''}</p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-bold">
+                      Người gửi
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Tiêu đề sự cố / yêu cầu (Auto AI trigger on finish) */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-700">
+                    Tiêu đề sự cố / yêu cầu <span className="text-rose-500">*</span>
+                  </label>
+                  {isAiAnalyzing && (
+                    <span className="text-[10.5px] text-purple-600 font-bold animate-pulse flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-purple-600 animate-spin" />
+                      <span>AI đang tự động phân tích...</span>
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={newTitle}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  onBlur={() => triggerAiAnalysis(newTitle, newDesc, true)}
+                  placeholder="VD: Máy tính bị lỗi window, bị màn hình xanh ko sử dụng đc..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-900 bg-white"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  🤖 <em>AI sẽ tự động nhận diện loại sự cố ngay khi bạn nhập xong tiêu đề.</em>
+                </p>
+              </div>
+
+              {/* 3. Phân loại & Mức độ ưu tiên (AI tự động chọn) */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Loại yêu cầu</label>
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    className="w-full px-2.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium cursor-pointer"
+                  >
+                    <option value="HARDWARE">💻 Phần cứng</option>
+                    <option value="SOFTWARE">💿 Phần mềm</option>
+                    <option value="LICENSE">🔑 License / Bản quyền</option>
+                    <option value="ACCESS_REQUEST">🛡️ Cấp quyền truy cập</option>
+                    <option value="NETWORK">🌐 Mạng & Internet</option>
+                    <option value="OTHER">📌 Khác</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">{isEn ? 'Priority Level' : 'Mức độ ưu tiên'}</label>
+                  <select
+                    value={newPriority}
+                    onChange={(e) => setNewPriority(e.target.value)}
+                    className="w-full px-2.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium cursor-pointer"
+                  >
+                    <option value="LOW">🟢 Thấp (Không ảnh hưởng)</option>
+                    <option value="MEDIUM">🟡 Trung bình (Trong tuần)</option>
+                    <option value="HIGH">🔴 Cao (Cần xử lý gấp)</option>
+                    <option value="URGENT">🔥 Khẩn cấp (Dừng công việc)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 4. IT Assignee & Initial Status (Chỉ hiển thị cho người thuộc IT) */}
+              {isITStaffOrAdmin && (
+                <div className="p-3 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 border border-blue-200/80 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-blue-900 flex items-center gap-1.5">
+                      <span>👨‍💻</span>
+                      <span>Dành cho Nhân sự IT (Tự động gán & Cập nhật trạng thái)</span>
+                    </span>
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold text-[9px]">
+                      🔒 IT & Admin
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* IT Assignee */}
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1 text-xs">
+                        IT tiếp nhận & phụ trách
+                      </label>
+                      <select
+                        value={newAssignedToId}
+                        onChange={(e) => setNewAssignedToId(e.target.value)}
+                        className="w-full px-2.5 py-2 border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-semibold text-xs text-slate-900 cursor-pointer"
+                      >
+                        <option value="">-- Tự động phân phối (Chưa gán) --</option>
+                        {itUsers.map((u) => {
+                          const isMe = u.id === currentUser?.id;
+                          return (
+                            <option key={u.id} value={u.id}>
+                              👨‍💻 {u.fullName} {isMe ? '★ (Chính tôi)' : `(${u.role?.name || u.department || 'IT'})`}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <p className="text-[9.5px] text-blue-600 font-medium mt-0.5">
+                        {newAssignedToId === currentUser?.id
+                          ? '✨ Đã tự động gán chính bạn là người tiếp nhận.'
+                          : newAssignedToId
+                          ? '👉 Đã chọn phân công cho IT viên trên.'
+                          : '⚡ Chưa gán người nhận (Sẽ qua luồng tự động phân tuyến).'}
+                      </p>
+                    </div>
+
+                    {/* Initial Ticket Status */}
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1 text-xs">
+                        Trạng thái xử lý ban đầu
+                      </label>
+                      <select
+                        value={newStatus}
+                        onChange={(e) => setNewStatus(e.target.value)}
+                        className="w-full px-2.5 py-2 border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-semibold text-xs text-slate-900 cursor-pointer"
+                      >
+                        <option value="OPEN">🟡 Mới tạo (Chờ xử lý)</option>
+                        <option value="IN_PROGRESS">🔵 Đang xử lý (Bắt đầu làm ngay)</option>
+                        <option value="WAITING">🟠 Chờ phản hồi / Chờ linh kiện</option>
+                        <option value="RESOLVED">🟢 Đã hoàn thành (Xong ngay tại chỗ)</option>
+                        <option value="CLOSED">🔘 Đã đóng (Hoàn tất đóng ticket)</option>
+                      </select>
+                      <p className="text-[9.5px] text-slate-500 font-medium mt-0.5">
+                        {newStatus === 'RESOLVED'
+                          ? '🎉 Ticket sẽ được ghi nhận đã xử lý xong ngay khi tạo!'
+                          : newStatus === 'IN_PROGRESS'
+                          ? '🚀 Chuyển ngay sang trạng thái đang tiến hành xử lý.'
+                          : '📋 Ticket ở trạng thái mở mới chờ xử lý theo quy trình.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 5. Mô tả chi tiết (Auto AI trigger on finish) */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-700">
+                    Mô tả chi tiết hiện tượng / yêu cầu <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAiAnalyzeTicket}
+                    disabled={isAiAnalyzing || (!newDesc.trim() && !newTitle.trim())}
+                    className="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white rounded-lg text-[11px] font-bold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                  >
+                    {isAiAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 text-amber-300" />}
+                    <span>{isAiAnalyzing ? 'Đang phân tích...' : '✨ Phân Tích Bằng AI'}</span>
+                  </button>
+                </div>
+                <textarea
+                  required
+                  rows={3}
+                  value={newDesc}
+                  onChange={(e) => handleDescChange(e.target.value)}
+                  onBlur={() => triggerAiAnalysis(newTitle, newDesc, true)}
+                  onPaste={(e) => handlePasteImage(e, 'ticket')}
+                  placeholder="Mô tả cụ thể triệu chứng lỗi. Bạn có thể chụp ảnh màn hình rồi bấm Ctrl + V để dán trực tiếp vào đây..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-medium bg-white"
+                />
+              </div>
+
+              {/* 6. AI Diagnostic Output Card if triggered */}
+              {aiDiagnostic && (
+                <div className="p-3 bg-purple-50/80 border border-purple-200 rounded-2xl space-y-2 text-xs animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-purple-900 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                      <span>AI Đã Tự Động Phân Loại:</span>
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 bg-purple-200 text-purple-900 rounded-full font-bold">
+                      {aiDiagnostic.serviceName || 'Dịch vụ CNTT'}
+                    </span>
+                  </div>
+                  <p className="text-purple-950 font-medium text-[11px] leading-relaxed">
+                    {aiDiagnostic.diagnosticSummary}
+                  </p>
+                  {aiDiagnostic.matchedAssetName && (
+                    <div className="text-[11px] text-blue-800 font-bold bg-white/80 p-1.5 rounded-lg border border-purple-200 flex items-center gap-1">
+                      <span>💻</span>
+                      <span>Thiết bị nhận diện liên quan: <strong>{aiDiagnostic.matchedAssetName}</strong></span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 7. Quick Asset Selector for User's Active Devices */}
+              {myAssets && myAssets.length > 0 && (
+                <div className="p-2.5 bg-blue-50/60 rounded-2xl border border-blue-200 space-y-1.5">
+                  <label className="text-[11px] font-bold text-blue-950 block">
+                    💻 Thiết bị của người yêu cầu (Bấm để chọn nhanh):
+                  </label>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {myAssets.map((dev: any) => (
+                      <button
+                        key={dev.id}
+                        type="button"
+                        onClick={() => setNewAssetId(newAssetId === dev.id ? '' : dev.id)}
+                        className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-all cursor-pointer ${
+                          newAssetId === dev.id
+                            ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-2xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-blue-100/60'
+                        }`}
+                      >
+                        [{dev.assetTag || 'AST'}] {dev.name || dev.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Prominent Image & File Attachment Box with Paste Hint */}
+              <div className="p-3 bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-50 border-2 border-dashed border-blue-200 rounded-xl space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                      <ImageIcon className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                        <span>Hình ảnh & tệp đính kèm ({newTicketAttachments.length})</span>
+                        {uploadingTicketFile && <span className="text-[10px] text-blue-600 font-normal animate-pulse">(⚡ Đang tải ảnh...)</span>}
+                      </p>
+                      <p className="text-[10px] text-slate-500">
+                        📋 <strong>Mẹo:</strong> Nhấn <strong>Ctrl + V</strong> để dán ảnh chụp màn hình trực tiếp!
+                      </p>
+                    </div>
+                  </div>
+
+                  <label className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors shrink-0 self-start sm:self-center">
+                    {uploadingTicketFile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    <span>{uploadingTicketFile ? 'Đang tải...' : 'Chọn file / ảnh'}</span>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.log,.zip,.rar"
+                      onChange={handleUploadTicketFiles}
+                      className="hidden"
+                      disabled={uploadingTicketFile}
+                    />
+                  </label>
+                </div>
+
+                {/* Attachment Preview Grid */}
+                {newTicketAttachments.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-blue-100">
+                    {newTicketAttachments.map((att, idx) => {
+                      const isImg = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(att.url) || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(att.name);
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between gap-1.5 p-1.5 bg-white rounded-lg border border-slate-200 shadow-2xs text-[11px]"
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            {isImg ? (
+                              <img src={att.url} alt={att.name} className="w-8 h-8 object-cover rounded border border-slate-100 shrink-0" />
+                            ) : (
+                              <div className="w-8 h-8 rounded bg-slate-100 text-blue-600 flex items-center justify-center shrink-0">
+                                <FileText className="w-4 h-4" />
+                              </div>
+                            )}
+                            <span className="font-semibold text-slate-700 truncate" title={att.name}>{att.name}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setNewTicketAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer shrink-0"
+                            title="Xóa tệp"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg font-semibold hover:bg-slate-50 transition-colors cursor-pointer"
+                >{isEn ? 'Cancel' : 'Hủy'}</button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Gửi Yêu Cầu Hỗ Trợ</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: XIN GIA HẠN THỜI GIAN SLA (SLA EXTENSION WITH REASON AUDIT) */}
+      {isSlaExtModalOpen && selectedTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-5 space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-amber-100 text-amber-800 rounded-xl">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">{language === 'en' ? 'Request SLA Extension' : 'Xin Gia Hạn Thời Gian SLA'}</h3>
+                  <p className="text-[10.5px] text-slate-500">{language === 'en' ? 'Extend resolution deadline when the real issue is more complex than initial description' : 'Gia hạn thời hạn xử lý khi case thực tế phức tạp hơn mô tả ban đầu'}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsSlaExtModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {slaExtSuccessMsg && (
+              <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold animate-in fade-in">
+                {slaExtSuccessMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleExtendSla} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">{language === 'en' ? 'Additional hours requested (*)' : 'Số giờ xin gia hạn thêm (*)'}</label>
+                <select
+                  value={extHours}
+                  onChange={(e) => setExtHours(Number(e.target.value))}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl bg-slate-50 font-bold text-slate-800 outline-none"
+                >
+                  <option value={4}>+ 4 Giờ (Nửa ngày làm việc)</option>
+                  <option value={8}>+ 8 Giờ (1 Ngày làm việc)</option>
+                  <option value={24}>+ 24 Giờ (1 Ngày đêm)</option>
+                  <option value={48}>+ 48 Giờ (2 Ngày làm việc)</option>
+                  <option value={72}>+ 72 Giờ (3 Ngày làm việc)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">{language === 'en' ? 'Specific justification reason (*)' : 'Lý do giải trình cụ thể (*)'}</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={extReason}
+                  onChange={(e) => setExtReason(e.target.value)}
+                  placeholder={language === 'en' ? 'e.g. Hard drive bad sector requires spare part order, server requires off-hours maintenance...' : 'VD: Lỗi ổ cứng hỏng bad sector cần đặt linh kiện mới, máy chủ cần bảo trì ngoài giờ...'}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl resize-none font-medium outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  🛡️ Lưu ý: Lý do gia hạn được lưu lại trong Báo cáo Kiểm toán SLA để IT Lead theo dõi minh bạch.
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsSlaExtModalOpen(false)}
+                  className="px-3.5 py-1.5 border border-slate-200 text-slate-600 rounded-xl font-semibold hover:bg-slate-50 cursor-pointer"
+                >{isEn ? 'Cancel' : 'Hủy'}</button>
+                <button
+                  type="submit"
+                  disabled={extendingSla || !extReason.trim()}
+                  className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  {extendingSla ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  <span>{language === 'en' ? 'Confirm Extension' : 'Xác Nhận Gia Hạn'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* IMAGE LIGHTBOX PREVIEW MODAL */}
+      {previewImageModal && (
+        <div
+          onClick={() => setPreviewImageModal(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 cursor-pointer animate-in fade-in"
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-transparent" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setPreviewImageModal(null)}
+              className="absolute -top-10 right-0 text-white hover:text-slate-300 p-1.5 rounded-full bg-white/10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img
+              src={previewImageModal}
+              alt="Ảnh phóng to"
+              className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border border-white/20"
+            />
+          </div>
+        </div>
+      )}
+</div>
+  );
+}

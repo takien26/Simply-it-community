@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" style="background:#0b1329; font-family:system-ui, -apple-system, sans-serif;">
+  <defs>
+    <pattern id="whGrid" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#1e293b" stroke-width="0.8"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#whGrid)"/>
+  <rect x="40" y="40" width="1120" height="720" rx="14" fill="none" stroke="#f59e0b" stroke-width="5"/>
+
+  <text x="60" y="75" fill="#f59e0b" font-size="16" font-weight="900" letter-spacing="1">🏭 KHO VẬN LOGISTICS &amp; NHÀ XƯỞNG SẢN XUẤT (WAREHOUSE FLOOR)</text>
+
+  <!-- LOADING DOCK / RECEIVING (Top) -->
+  <rect x="60" y="100" width="1080" height="150" rx="8" fill="#1e293b" stroke="#0ea5e9" stroke-width="2"/>
+  <text x="80" y="130" fill="#38bdf8" font-size="14" font-weight="bold">🚚 CỬA NHẬP XUẤT HÀNG &amp; TRẠM QUÉT MÃ VẠCH (LOADING DOCKS)</text>
+
+  <g transform="translate(80, 150)">
+    <rect x="0" y="0" width="220" height="70" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="20" y="30" fill="#93c5fd" font-size="11" font-weight="bold">DOCK 01: NHẬP NGUYÊN LIỆU</text>
+    <text x="20" y="52" fill="#cbd5e1" font-size="10">Trạm Cân &amp; Máy Quét Barcode</text>
+
+    <rect x="250" y="0" width="220" height="70" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="270" y="30" fill="#93c5fd" font-size="11" font-weight="bold">DOCK 02: KIỂM HÀNG QA/QC</text>
+    <text x="270" y="52" fill="#cbd5e1" font-size="10">Máy Tính Công Nghiệp IPC-01</text>
+
+    <rect x="500" y="0" width="220" height="70" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="520" y="30" fill="#93c5fd" font-size="11" font-weight="bold">DOCK 03: XUẤT THÀNH PHẨM</text>
+    <text x="520" y="52" fill="#cbd5e1" font-size="10">Máy In Tem Nhãn Vận Đơn</text>
+
+    <rect x="750" y="0" width="230" height="70" rx="6" fill="#0f172a" stroke="#10b981" stroke-width="1.5"/>
+    <text x="765" y="30" fill="#a7f3d0" font-size="11" font-weight="bold">ĐẾ SẠC SCANNER KHÔNG DÂY</text>
+    <text x="765" y="52" fill="#6ee7b7" font-size="10">Trạm Sạc 10 Máy Quét Cầm Tay</text>
+  </g>
+
+  <!-- STORAGE RACK AISLES (Middle) -->
+  <g transform="translate(60, 280)">
+    <!-- Rack Row A -->
+    <rect x="0" y="0" width="700" height="60" rx="4" fill="#0f172a" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="20" y="35" fill="#fde68a" font-size="12" font-weight="bold">KỆ KHO HÀNG DÃY A (HIGH-BAY RACK A1 - A20)</text>
+
+    <!-- Rack Row B -->
+    <rect x="0" y="90" width="700" height="60" rx="4" fill="#0f172a" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="20" y="125" fill="#fde68a" font-size="12" font-weight="bold">KỆ KHO HÀNG DÃY B (HIGH-BAY RACK B1 - B20)</text>
+
+    <!-- Rack Row C -->
+    <rect x="0" y="180" width="700" height="60" rx="4" fill="#0f172a" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="20" y="215" fill="#fde68a" font-size="12" font-weight="bold">KỆ KHO HÀNG DÃY C (HIGH-BAY RACK C1 - C20)</text>
+
+    <!-- WiFi AP overhead -->
+    <circle cx="350" cy="75" r="14" fill="#0369a1" stroke="#38bdf8" stroke-width="2"/>
+    <text x="343" y="80" fill="#fff" font-size="9" font-weight="bold">AP1</text>
+    <circle cx="350" cy="165" r="14" fill="#0369a1" stroke="#38bdf8" stroke-width="2"/>
+    <text x="343" y="170" fill="#fff" font-size="9" font-weight="bold">AP2</text>
+  </g>
+
+  <!-- WAREHOUSE OPERATIONS & SHIFT SUPERVISOR OFFICE (Right) -->
+  <rect x="780" y="280" width="360" height="460" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+  <text x="800" y="310" fill="#38bdf8" font-size="14" font-weight="bold">📋 PHÒNG ĐIỀU HÀNH KHO &amp; GIÁM SÁT CA</text>
+
+  <g transform="translate(800, 335)">
+    <rect x="0" y="0" width="155" height="65" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="20" y="30" fill="#93c5fd" font-size="11">BÀN ĐIỀU ĐỘ 01</text>
+    <text x="20" y="50" fill="#cbd5e1" font-size="10">Phần mềm WMS</text>
+
+    <rect x="165" y="0" width="155" height="65" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="185" y="30" fill="#93c5fd" font-size="11">BÀN ĐIỀU ĐỘ 02</text>
+    <text x="185" y="50" fill="#cbd5e1" font-size="10">Theo Dõi Đơn Hàng</text>
+
+    <rect x="0" y="80" width="320" height="65" rx="4" fill="#0f172a" stroke="#f59e0b" stroke-width="1"/>
+    <text x="40" y="110" fill="#fde68a" font-size="11" font-weight="bold">BÀN QUẢN LÝ KHO &amp; TRƯỞNG CA</text>
+    <text x="40" y="130" fill="#fcd34d" font-size="10">Máy Tính Quản Lý &amp; Duyệt Xuất Kho</text>
+
+    <!-- Industrial Switch Rack -->
+    <rect x="0" y="160" width="320" height="90" rx="6" fill="#0369a1" fill-opacity="0.3" stroke="#0284c7" stroke-width="1.5"/>
+    <text x="15" y="195" fill="#38bdf8" font-size="11" font-weight="bold">TỦ MẠNG CÔNG NGHIỆP (INDUSTRIAL SWITCH)</text>
+    <text x="15" y="220" fill="#94a3b8" font-size="10">Kết nối Camera quan sát và Access Point</text>
+
+    <!-- CCTV Monitor Station -->
+    <rect x="0" y="270" width="320" height="90" rx="6" fill="#450a0a" stroke="#ef4444" stroke-width="1.5"/>
+    <text x="15" y="305" fill="#fca5a5" font-size="11" font-weight="bold">TRẠM MÀN HÌNH CCTV KHO (16 KÊNH)</text>
+    <text x="15" y="330" fill="#f87171" font-size="10">Giám sát 24/24 an ninh xuất nhập hàng</text>
+  </g>
+
+  <!-- PACKING & LABELING BENCH (Bottom Left) -->
+  <rect x="60" y="560" width="700" height="180" rx="8" fill="#1e293b" stroke="#10b981" stroke-width="2"/>
+  <text x="80" y="590" fill="#a7f3d0" font-size="13" font-weight="bold">📦 KHU VỰC ĐÓNG GÓI &amp; DÁN NHÃN VẬN CHUYỂN</text>
+  <g transform="translate(80, 610)">
+    <rect x="0" y="0" width="200" height="60" rx="4" fill="#0f172a" stroke="#10b981" stroke-width="1"/>
+    <text x="25" y="35" fill="#6ee7b7" font-size="11">BÀN ĐÓNG GÓI 01 (PC + IN)</text>
+
+    <rect x="230" y="0" width="200" height="60" rx="4" fill="#0f172a" stroke="#10b981" stroke-width="1"/>
+    <text x="255" y="35" fill="#6ee7b7" font-size="11">BÀN ĐÓNG GÓI 02 (PC + IN)</text>
+
+    <rect x="460" y="0" width="200" height="60" rx="4" fill="#0f172a" stroke="#10b981" stroke-width="1"/>
+    <text x="485" y="35" fill="#6ee7b7" font-size="11">BÀN ĐÓNG GÓI 03 (PC + IN)</text>
+  </g>
+</svg>

@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" style="background:#0f172a; font-family:system-ui, -apple-system, sans-serif;">
+  <defs>
+    <pattern id="hqGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e293b" stroke-width="0.8"/>
+    </pattern>
+    <linearGradient id="hqRoom" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e293b" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.9"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#hqGrid)"/>
+
+  <!-- Perimeter -->
+  <rect x="40" y="40" width="1120" height="720" rx="14" fill="none" stroke="#38bdf8" stroke-width="5"/>
+
+  <!-- TITLE -->
+  <text x="60" y="75" fill="#38bdf8" font-size="16" font-weight="900" letter-spacing="1">🏢 TRỤ SỞ DOANH NGHIỆP - TẦNG ĐA PHÒNG BAN (CORPORATE HQ)</text>
+
+  <!-- TOP ROW: EXECUTIVE & BOARD -->
+  <!-- CEO Suite -->
+  <rect x="60" y="100" width="250" height="190" rx="8" fill="url(#hqRoom)" stroke="#f59e0b" stroke-width="2"/>
+  <text x="80" y="130" fill="#fde68a" font-size="13" font-weight="bold">👔 PHÒNG CHỦ TỊCH / CEO</text>
+  <rect x="80" y="150" width="130" height="60" rx="4" fill="#0f172a" stroke="#f59e0b" stroke-width="1"/>
+  <text x="100" y="185" fill="#fde68a" font-size="10">BÀN LÀM VIỆC CEO</text>
+
+  <!-- CFO & Finance Suite -->
+  <rect x="330" y="100" width="250" height="190" rx="8" fill="url(#hqRoom)" stroke="#10b981" stroke-width="2"/>
+  <text x="350" y="130" fill="#a7f3d0" font-size="13" font-weight="bold">📑 PHÒNG GIÁM ĐỐC TÀI CHÍNH</text>
+  <rect x="350" y="150" width="130" height="60" rx="4" fill="#0f172a" stroke="#10b981" stroke-width="1"/>
+  <text x="370" y="185" fill="#a7f3d0" font-size="10">BÀN GIÁM ĐỐC CFO</text>
+
+  <!-- Main Executive Boardroom -->
+  <rect x="600" y="100" width="540" height="190" rx="8" fill="url(#hqRoom)" stroke="#818cf8" stroke-width="2"/>
+  <text x="620" y="130" fill="#c7d2fe" font-size="13" font-weight="bold">📊 PHÒNG HỘI ĐỒNG QUẢN TRỊ (BOARDROOM)</text>
+  <rect x="640" y="150" width="380" height="80" rx="20" fill="#0f172a" stroke="#818cf8" stroke-width="1.5"/>
+  <text x="750" y="195" fill="#e0e7ff" font-size="12" font-weight="bold">BÀN HỌP HỘI ĐỒNG 20 CHỖ</text>
+  <rect x="1040" y="145" width="80" height="90" rx="6" fill="#0f172a" stroke="#f43f5e" stroke-width="1.5"/>
+  <text x="1050" y="185" fill="#fda4af" font-size="10" font-weight="bold">VIDEO CONF</text>
+
+  <!-- MIDDLE ROW: DEPARTMENTS -->
+  <!-- Dept 1: Kế toán & Kiểm toán -->
+  <rect x="60" y="310" width="340" height="240" rx="8" fill="url(#hqRoom)" stroke="#475569" stroke-width="1.5"/>
+  <text x="80" y="340" fill="#38bdf8" font-size="13" font-weight="bold">💰 PHÒNG KẾ TOÁN &amp; KIỂM TOÁN (6 BÀN)</text>
+  <g transform="translate(80, 360)">
+    <rect x="0" y="0" width="140" height="50" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="25" y="30" fill="#93c5fd" font-size="10">BÀN KT-01</text>
+    <rect x="160" y="0" width="140" height="50" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="185" y="30" fill="#93c5fd" font-size="10">BÀN KT-02</text>
+    <rect x="0" y="65" width="140" height="50" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="25" y="95" fill="#93c5fd" font-size="10">BÀN KT-03</text>
+    <rect x="160" y="65" width="140" height="50" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="185" y="95" fill="#93c5fd" font-size="10">BÀN KT-04</text>
+    <rect x="0" y="130" width="300" height="35" rx="4" fill="#0f172a" stroke="#f43f5e" stroke-width="1"/>
+    <text x="70" y="152" fill="#fda4af" font-size="10">MÁY IN CHỨNG TỪ &amp; MÁY HỦY TÀI LIỆU</text>
+  </g>
+
+  <!-- Dept 2: Kinh doanh & Khách hàng -->
+  <rect x="420" y="310" width="350" height="240" rx="8" fill="url(#hqRoom)" stroke="#475569" stroke-width="1.5"/>
+  <text x="440" y="340" fill="#38bdf8" font-size="13" font-weight="bold">📈 PHÒNG KINH DOANH (SALES DEPT)</text>
+  <g transform="translate(440, 360)">
+    <rect x="0" y="0" width="145" height="50" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="35" y="30" fill="#93c5fd" font-size="10">BÀN KD-01</text>
+    <rect x="165" y="0" width="145" height="50" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="200" y="30" fill="#93c5fd" font-size="10">BÀN KD-02</text>
+    <rect x="0" y="65" width="145" height="50" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="35" y="95" fill="#93c5fd" font-size="10">BÀN KD-03</text>
+    <rect x="165" y="65" width="145" height="50" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="200" y="95" fill="#93c5fd" font-size="10">BÀN KD-04</text>
+    <rect x="0" y="130" width="310" height="35" rx="4" fill="#0f172a" stroke="#f59e0b" stroke-width="1"/>
+    <text x="90" y="152" fill="#fde68a" font-size="10">BÀN TRƯỞNG PHÒNG KINH DOANH</text>
+  </g>
+
+  <!-- Dept 3: IT & Hạ Tầng Mạng -->
+  <rect x="790" y="310" width="350" height="240" rx="8" fill="url(#hqRoom)" stroke="#38bdf8" stroke-width="2"/>
+  <text x="810" y="340" fill="#38bdf8" font-size="13" font-weight="bold">💻 PHÒNG CÔNG NGHỆ THÔNG TIN (IT DEPT)</text>
+  <g transform="translate(810, 360)">
+    <rect x="0" y="0" width="145" height="50" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="35" y="30" fill="#93c5fd" font-size="10">BÀN IT-SYS</text>
+    <rect x="165" y="0" width="145" height="50" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="195" y="30" fill="#93c5fd" font-size="10">BÀN IT-NET</text>
+    <rect x="0" y="65" width="145" height="50" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="30" y="95" fill="#93c5fd" font-size="10">BÀN IT-HELPDESK</text>
+    <rect x="165" y="65" width="145" height="50" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+    <text x="190" y="95" fill="#93c5fd" font-size="10">BÀN IT-APP/ERP</text>
+    <rect x="0" y="125" width="310" height="40" rx="4" fill="#0369a1" fill-opacity="0.3" stroke="#0284c7" stroke-width="1.5"/>
+    <text x="50" y="150" fill="#38bdf8" font-size="10" font-weight="bold">TỦ MẠNG RACK TẦNG (IDF CLOSET)</text>
+  </g>
+
+  <!-- BOTTOM ROW: RECEPTION, MEETING ROOMS, CAFE -->
+  <rect x="60" y="570" width="340" height="170" rx="8" fill="url(#hqRoom)" stroke="#475569" stroke-width="1.5"/>
+  <text x="80" y="600" fill="#94a3b8" font-size="12" font-weight="bold">🛎️ SẢNH ĐÓN KHÁCH &amp; LỄ TÂN</text>
+  <rect x="80" y="620" width="200" height="45" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+  <text x="120" y="648" fill="#e2e8f0" font-size="11">QUẦY LỄ TÂN 01</text>
+
+  <!-- Meeting Room A & B -->
+  <rect x="420" y="570" width="350" height="170" rx="8" fill="url(#hqRoom)" stroke="#a855f7" stroke-width="1.5"/>
+  <text x="440" y="600" fill="#d8b4fe" font-size="12" font-weight="bold">👥 PHÒNG HỌP NHỎ A &amp; B (QUICK MEETING)</text>
+  <rect x="440" y="620" width="140" height="90" rx="6" fill="#0f172a" stroke="#a855f7" stroke-width="1"/>
+  <text x="460" y="670" fill="#e9d5ff" font-size="11">PHÒNG HỌP A (6C)</text>
+  <rect x="610" y="620" width="140" height="90" rx="6" fill="#0f172a" stroke="#a855f7" stroke-width="1"/>
+  <text x="630" y="670" fill="#e9d5ff" font-size="11">PHÒNG HỌP B (6C)</text>
+
+  <!-- Pantry / Relax Zone -->
+  <rect x="790" y="570" width="350" height="170" rx="8" fill="url(#hqRoom)" stroke="#475569" stroke-width="1.5"/>
+  <text x="810" y="600" fill="#94a3b8" font-size="12" font-weight="bold">☕ KHÔNG GIAN THƯ GIÃN PANTRY</text>
+</svg>

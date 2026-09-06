@@ -1,0 +1,50 @@
+services:
+  # ========================================================
+  # 1. Cơ sở dữ liệu PostgreSQL 16
+  # ========================================================
+  db:
+    image: postgres:16-alpine
+    container_name: itsm-postgres-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Admin@123
+      POSTGRES_DB: it_asset_db
+    volumes:
+      - itsm_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d it_asset_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ========================================================
+  # 2. Ứng dụng Quản lý Tài sản & Dịch vụ IT (Next.js + Node.js)
+  # ========================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: itsm-web-app
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://postgres:Admin@123@db:5432/it_asset_db?schema=public"
+      JWT_SECRET: "itsm-enterprise-super-secret-key-2026"
+      JWT_EXPIRES_IN: "7d"
+      NODE_ENV: "production"
+      PORT: 3000
+    volumes:
+      - itsm_uploads_data:/app/public/uploads
+    ports:
+      - "3000:3000"
+
+volumes:
+  itsm_postgres_data:
+    driver: local
+  itsm_uploads_data:
+    driver: local

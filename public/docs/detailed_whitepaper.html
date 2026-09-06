@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>SIMPLY IT - Hồ Sơ Giải Pháp Toàn Diện</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+    
+    @page {
+      size: A4 portrait;
+      margin: 12mm 14mm 12mm 14mm;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      line-height: 1.45;
+      font-size: 9.5pt;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    .page-break {
+      page-break-before: always;
+    }
+    
+    /* Top Header */
+    .top-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2563eb;
+      margin-bottom: 12px;
+    }
+    
+    .brand-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .brand-text h1 {
+      font-size: 18pt;
+      font-weight: 900;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .brand-text h1 span.it {
+      color: #2563eb;
+    }
+    
+    .brand-text p {
+      font-size: 7.5pt;
+      font-weight: 800;
+      color: #0ea5e9;
+      letter-spacing: 1.5px;
+      margin-top: 3px;
+      text-transform: uppercase;
+    }
+    
+    .badge-pill {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+      font-size: 8pt;
+      font-weight: 800;
+      padding: 5px 12px;
+      border-radius: 20px;
+      display: inline-block;
+    }
+    
+    /* Cover Container */
+    .cover-container {
+      height: 250mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 2px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 36px 32px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+    
+    .cover-main h1 {
+      font-size: 24pt;
+      font-weight: 900;
+      color: #0f172a;
+      line-height: 1.25;
+      margin-bottom: 12px;
+    }
+    
+    .cover-main h2 {
+      font-size: 12pt;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+    
+    .cover-hero-box {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%);
+      color: #ffffff;
+      padding: 18px 22px;
+      border-radius: 14px;
+      font-size: 10pt;
+      line-height: 1.55;
+    }
+    
+    .sec-title {
+      font-size: 11pt;
+      font-weight: 900;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-top: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .sec-title .bar {
+      width: 4px;
+      height: 14px;
+      background: #2563eb;
+      border-radius: 2px;
+      display: inline-block;
+    }
+    
+    .module-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+    }
+    
+    .module-card.accent-cyan { border-left: 4px solid #06b6d4; }
+    .module-card.accent-yellow { border-left: 4px solid #eab308; }
+    .module-card.accent-orange { border-left: 4px solid #f97316; }
+    .module-card.accent-gold { border-left: 4px solid #d97706; }
+    .module-card.accent-emerald { border-left: 4px solid #10b981; }
+    .module-card.accent-blue { border-left: 4px solid #2563eb; }
+    
+    .module-card h3 {
+      font-size: 9.5pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    
+    .module-card p {
+      font-size: 8.5pt;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+    
+    .module-card ul {
+      margin-left: 16px;
+      font-size: 8.2pt;
+      color: #475569;
+    }
+    
+    .module-card li {
+      margin-bottom: 2px;
+    }
+    
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 8pt;
+      margin: 10px 0;
+    }
+    
+    .comp-table th {
+      background: #1e1b4b;
+      color: #ffffff;
+      font-weight: 800;
+      text-align: left;
+      padding: 8px 10px;
+    }
+    
+    .comp-table th:last-child {
+      background: #2563eb;
+    }
+    
+    .comp-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+    
+    .comp-table tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    
+    .comp-table td.brand-col {
+      font-weight: 700;
+      color: #1d4ed8;
+      background: #eff6ff !important;
+    }
+    
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    
+    .tech-box {
+      border: 1px solid #e2e8f0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+    
+    .tech-box strong {
+      color: #0f172a;
+      display: block;
+      font-size: 8.5pt;
+      margin-bottom: 2px;
+    }
+    
+    .tech-box p {
+      font-size: 7.8pt;
+      color: #475569;
+    }
+    
+    .page-num-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 7.5pt;
+      color: #94a3b8;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin-bottom: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TRANG 1: COVER BÌA -->
+  <div class="cover-container">
+    <div class="top-header" style="border: none; padding: 0; margin: 0;">
+      <div class="brand-box">
+        <svg width="42" height="42" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <path d="M78 28C78 19.1634 70.8366 12 62 12H34C21.8497 12 12 21.8497 12 34C12 46.1503 21.8497 56 34 56H66C72.6274 56 78 61.3726 78 68C78 74.6274 72.6274 80 66 80H30C23.3726 80 18 74.6274 18 68" stroke="url(#logoGrad)" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+        <div class="brand-text">
+          <h1>SIMPLY <span class="it">IT</span></h1>
+          <p>ONE PLATFORM. SIMPLE IT.</p>
+        </div>
+      </div>
+      <div class="badge-pill">SOLUTION WHITEPAPER</div>
+    </div>
+    
+    <div class="cover-main">
+      <h1>HỒ SƠ GIẢI PHÁP QUẢN TRỊ & VẬN HÀNH CNTT DOANH NGHIỆP</h1>
+      <h2>Chuẩn hóa quy trình — Tự động hóa kiểm kê — Trí tuệ nhân tạo AI chẩn đoán vận hành tập trung</h2>
+      
+      <div class="cover-hero-box">
+        <strong>Sứ mệnh của giải pháp:</strong> Hợp nhất toàn diện mọi mắt xích quản trị CNTT từ phần cứng, phần mềm, dịch vụ đám mây đến an toàn thông tin và hỗ trợ người dùng, chuyển đổi phòng CNTT thành đối tác chiến lược nâng cao năng suất doanh nghiệp.
+      </div>
+    </div>
+    
+    <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; display: flex; justify-content: space-between; font-size: 8.5pt; color: #64748b;">
+      <div><strong>Đơn vị phát triển:</strong> Đội ngũ Kỹ nghệ Hệ thống SIMPLY IT</div>
+      <div><strong>Phiên bản:</strong> Enterprise 2.0 (Dual-Currency & AI Edition)</div>
+    </div>
+  </div>
+
+  <!-- TRANG 2: HỆ SINH THÁI CÁC MODULE -->
+  <div class="page-break"></div>
+  
+  <div class="page-num-header">
+    <span>SIMPLY IT PLATFORM — HỒ SƠ GIẢI PHÁP CHI TIẾT</span>
+    <span>PHẦN 1: HỆ THỐNG PHÂN HỆ VẬN HÀNH</span>
+  </div>
+
+  <div class="sec-title">
+    <span class="bar"></span>
+    <span>I. CHI TIẾT CÁC PHÂN HỆ VẬN HÀNH CỐT LÕI</span>
+  </div>
+
+  <div class="module-card accent-cyan">
+    <h3>💻 1. Quản Lý Vòng Đời Tài Sản & Kho Phần Cứng (HAM)</h3>
+    <p>Quản lý tập trung mọi chủng loại thiết bị: Laptop, PC, Màn hình, Máy in, Server, Router, Switch...</p>
+    <ul>
+      <li><strong>Vòng đời trọn vẹn:</strong> Mua sắm -> Nhập kho -> Cấp phát -> Sửa chữa/Bảo dưỡng -> Thanh lý.</li>
+      <li><strong>PowerShell Agent Zero-Touch:</strong> Chạy 1 lệnh tự động đọc chính xác 100% CPU, RAM, SSD, Serial Number, OS gửi thẳng về CSDL.</li>
+      <li><strong>In Biên bản & Mã QR:</strong> Sinh biên bản bàn giao PDF chuẩn và in tem mã QR dán tài sản.</li>
+    </ul>
+  </div>
+
+  <div class="module-card accent-yellow">
+    <h3>🔑 2. Quản Lý Bản Quyền License & Phần Mềm (SAM)</h3>
+    <p>Kiểm soát chặt chẽ ngân sách bản quyền và đảm bảo tuân thủ pháp lý:</p>
+    <ul>
+      <li><strong>Hỗ trợ mọi hình thức:</strong> Vĩnh viễn (Perpetual), Thuê bao định kỳ (Subscription), OEM, Trial.</li>
+      <li><strong>Kiểm soát số lượng Seats:</strong> Trực quan hóa tỷ lệ đã dùng (VD: 48/50 seats), cảnh báo trước 30/60/90 ngày khi sắp hết hạn hợp đồng.</li>
+      <li><strong>Mã hóa License Key:</strong> Ẩn/Hiện an toàn, liên kết trực tiếp với máy tính của nhân viên.</li>
+    </ul>
+  </div>
+
+  <div class="module-card accent-orange">
+    <h3>📦 3. Dịch Vụ Viễn Thông, Hạ Tầng Mạng & Cloud</h3>
+    <p>Giám sát toàn bộ các dịch vụ định kỳ của doanh nghiệp:</p>
+    <ul>
+      <li>Đường truyền Internet FTTH, Leased Line, IP tĩnh, Thuê chỗ đặt Server (Colocation), Tên miền, SSL, Cloud VPS/Hosting.</li>
+      <li>Theo dõi chu kỳ thanh toán, quản lý lịch sử gia hạn các đợt (Đợt 1, Đợt 2...), lưu hợp đồng và hóa đơn đính kèm.</li>
+    </ul>
+  </div>
+
+  <div class="module-card accent-gold">
+    <h3>🎫 4. Helpdesk ITSM & Điều Phối Sự Cố Chuẩn ITIL</h3>
+    <p>Cổng tiếp nhận và điều phối yêu cầu hỗ trợ người dùng chuyên nghiệp:</p>
+    <ul>
+      <li><strong>Tiện ích dán ảnh:</strong> Dán ảnh chụp lỗi màn hình trực tiếp bằng <code>Ctrl + V</code>, hỗ trợ IT tạo ticket hộ người dùng với ô tìm kiếm nhanh.</li>
+      <li><strong>AI Gemini Chẩn đoán:</strong> Tự động phân tích mức độ khẩn cấp, dự đoán nguyên nhân và gợi ý giải pháp tức thì.</li>
+      <li><strong>Động cơ định tuyến (Routing Engine):</strong> Tự động phân luồng cho đúng kỹ thuật viên phụ trách theo chuyên môn và đo lường cam kết SLA.</li>
+    </ul>
+  </div>
+
+  <!-- TRANG 3: BẢO MẬT, TÀI CHÍNH & SO SÁNH -->
+  <div class="page-break"></div>
+  
+  <div class="page-num-header">
+    <span>SIMPLY IT PLATFORM — HỒ SƠ GIẢI PHÁP CHI TIẾT</span>
+    <span>PHẦN 2: BẢO MẬT & SO SÁNH GIÁ TRỊ</span>
+  </div>
+
+  <div class="module-card accent-emerald">
+    <h3>🔒 5. Két Sắt Mật Khẩu Doanh Nghiệp (Password Vault)</h3>
+    <p>Lưu trữ an toàn tuyệt đối mật khẩu Server, WiFi, Router, CSDL, Cloud Admin:</p>
+    <ul>
+      <li>Mã hóa đa tầng <strong>Argon2id + AES-GCM 256-bit</strong> chống rò rỉ dữ liệu ngay cả khi cơ sở dữ liệu bị sao chép trái phép.</li>
+      <li>Phân quyền chặt chẽ theo nguyên tắc đặc quyền tối thiểu (Least Privilege), ghi vết nhật ký truy cập (Audit Trail).</li>
+    </ul>
+  </div>
+
+  <div class="module-card accent-blue">
+    <h3>⚡ 6. Trợ Lý AI Vision & Bóc Tách Tự Động</h3>
+    <p>Ứng dụng thị giác máy tính và AI đa thể thức:</p>
+    <ul>
+      <li>Chụp ảnh hóa đơn hoặc tem máy -> AI tự động bóc tách cấu hình, model, hạn bảo hành trong 2 giây.</li>
+      <li>Tự động nhận diện thiết bị người dùng đang giữ khi tạo ticket yêu cầu hỗ trợ kỹ thuật.</li>
+    </ul>
+  </div>
+
+  <div class="sec-title">
+    <span class="bar"></span>
+    <span>II. SO SÁNH TRỰC DIỆN VỚI PHƯƠNG PHÁP CŨ</span>
+  </div>
+
+  <table class="comp-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Tiêu Chí</th>
+        <th style="width: 35%;">Phương Pháp Cũ (Excel / Sổ sách)</th>
+        <th style="width: 40%;">Nền Tảng SIMPLY IT</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Kiểm kê phần cứng</strong></td>
+        <td>Thủ công từng máy, mất 1-2 tuần lễ</td>
+        <td class="brand-col">PowerShell Agent quét tự động trong 5s</td>
+      </tr>
+      <tr>
+        <td><strong>Nhập liệu thông tin</strong></td>
+        <td>Gõ tay từng thông số, dễ nhầm lẫn</td>
+        <td class="brand-col">AI Vision đọc hóa đơn/tem máy 2 giây</td>
+      </tr>
+      <tr>
+        <td><strong>Hỗ trợ người dùng</strong></td>
+        <td>Nhắn Zalo, gọi điện, dễ sót việc</td>
+        <td class="brand-col">Ticket Helpdesk tập trung, đo lường SLA</td>
+      </tr>
+      <tr>
+        <td><strong>Quản lý bản quyền</strong></td>
+        <td>Mua thừa hoặc vi phạm pháp lý</td>
+        <td class="brand-col">Trực quan hóa Seats, cảnh báo hết hạn</td>
+      </tr>
+      <tr>
+        <td><strong>Bảo mật mật khẩu</strong></td>
+        <td>Lưu file Excel/Word, nguy cơ lộ lọt</td>
+        <td class="brand-col">Password Vault mã hóa AES-256 & Audit Log</td>
+      </tr>
+      <tr>
+        <td><strong>Báo cáo tài chính</strong></td>
+        <td>Tính toán thủ công, khó quy đổi ngoại tệ</td>
+        <td class="brand-col">Tự động tính khấu hao & Dual-Currency</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="sec-title">
+    <span class="bar"></span>
+    <span>III. NỀN TẢNG CÔNG NGHỆ & TÍNH SẴN SÀNG</span>
+  </div>
+
+  <div class="tech-grid">
+    <div class="tech-box">
+      <strong>⚡ Frontend Hiện Đại</strong>
+      <p>Next.js 15 App Router, React 19, Tailwind CSS, hỗ trợ Dark/Light Mode siêu mượt.</p>
+    </div>
+    <div class="tech-box">
+      <strong>🗄️ Cơ Sở Dữ Liệu</strong>
+      <p>PostgreSQL + Prisma ORM đảm bảo toàn vẹn dữ liệu, hiệu năng cao với hàng triệu bản ghi.</p>
+    </div>
+    <div class="tech-box">
+      <strong>🛡️ Phân Quyền RBAC</strong>
+      <p>Phân quyền chi tiết (Admin, Manager, Staff, User) chặt chẽ đến từng nút bấm và API.</p>
+    </div>
+    <div class="tech-box">
+      <strong>☁️ Triển Khai Linh Hoạt</strong>
+      <p>Sẵn sàng triển khai On-Premise trên máy chủ nội bộ hoặc Cloud (Docker, AWS, GCP).</p>
+    </div>
+  </div>
+
+  <div style="margin-top: 14px; padding: 10px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 8pt; color: #166534;">
+    <strong>🤝 CAM KẾT GIÁ TRỊ:</strong> SIMPLY IT giúp doanh nghiệp tiết kiệm đến 30% chi phí CNTT hàng năm, giảm 80% thời gian kiểm kê và nâng cao 100% tính minh bạch tài sản.
+  </div>
+
+</body>
+</html>

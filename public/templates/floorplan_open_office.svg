@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" style="background:#0f172a; font-family:system-ui, -apple-system, sans-serif;">
+  <defs>
+    <pattern id="cadGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e293b" stroke-width="0.8"/>
+    </pattern>
+    <pattern id="cadMajorGrid" width="100" height="100" patternUnits="userSpaceOnUse">
+      <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#334155" stroke-width="1.2"/>
+    </pattern>
+    <linearGradient id="wallGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#1d4ed8" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Grids -->
+  <rect width="1200" height="800" fill="url(#cadGrid)" />
+  <rect width="1200" height="800" fill="url(#cadMajorGrid)" />
+
+  <!-- Outer Walls -->
+  <rect x="40" y="40" width="1120" height="720" rx="12" fill="none" stroke="#60a5fa" stroke-width="6"/>
+  <rect x="44" y="44" width="1112" height="712" rx="8" fill="none" stroke="#1e40af" stroke-width="2"/>
+
+  <!-- ZONE 1: PHÒNG IT & HELPDESK (Top Left) -->
+  <rect x="40" y="40" width="280" height="260" fill="url(#wallGrad)" stroke="#60a5fa" stroke-width="3"/>
+  <text x="55" y="70" fill="#93c5fd" font-size="14" font-weight="bold" letter-spacing="1">🖥️ PHÒNG IT &amp; KỸ THUẬT</text>
+  <!-- IT Workbenches -->
+  <rect x="70" y="90" width="100" height="45" rx="4" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+  <text x="85" y="118" fill="#e2e8f0" font-size="11" font-weight="bold">BÀN KTV 01</text>
+  <rect x="190" y="90" width="100" height="45" rx="4" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+  <text x="205" y="118" fill="#e2e8f0" font-size="11" font-weight="bold">BÀN KTV 02</text>
+  <!-- IT Staging / Server Rack Area -->
+  <rect x="70" y="170" width="220" height="100" rx="6" fill="#0284c7" fill-opacity="0.15" stroke="#0284c7" stroke-width="2" stroke-dasharray="4 2"/>
+  <text x="100" y="200" fill="#38bdf8" font-size="12" font-weight="bold">KHU VỰC TEST &amp; STAGING THIẾT BỊ</text>
+  <rect x="85" y="215" width="45" height="40" rx="3" fill="#0f172a" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="92" y="240" fill="#7dd3fc" font-size="10">RACK 1</text>
+  <rect x="145" y="215" width="45" height="40" rx="3" fill="#0f172a" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="152" y="240" fill="#7dd3fc" font-size="10">RACK 2</text>
+  <rect x="205" y="215" width="70" height="40" rx="3" fill="#0f172a" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="215" y="240" fill="#7dd3fc" font-size="10">MÁY IN KỸ THUẬT</text>
+
+  <!-- ZONE 2: PHÒNG HỌP LỚN - BOARDROOM (Top Center) -->
+  <rect x="360" y="40" width="440" height="220" fill="url(#wallGrad)" stroke="#60a5fa" stroke-width="3"/>
+  <text x="380" y="70" fill="#93c5fd" font-size="14" font-weight="bold" letter-spacing="1">📊 PHÒNG HỌP TỔNG (BOARDROOM)</text>
+  <!-- Large Conference Table -->
+  <rect x="420" y="100" width="320" height="90" rx="25" fill="#1e293b" stroke="#818cf8" stroke-width="2"/>
+  <text x="510" y="152" fill="#c7d2fe" font-size="13" font-weight="bold">BÀN HỌP 16 CHỖ</text>
+  <!-- Screen TV -->
+  <rect x="520" y="42" width="120" height="8" rx="2" fill="#f43f5e" stroke="#fb7185" stroke-width="1"/>
+  <text x="540" y="60" fill="#fda4af" font-size="9" font-weight="bold">TIVI HỌP TRỰC TUYẾN</text>
+
+  <!-- ZONE 3: PHÒNG BAN GIÁM ĐỐC / EXECUTIVE (Top Right) -->
+  <rect x="840" y="40" width="320" height="220" fill="url(#wallGrad)" stroke="#60a5fa" stroke-width="3"/>
+  <text x="860" y="70" fill="#93c5fd" font-size="14" font-weight="bold" letter-spacing="1">👔 PHÒNG TỔNG GIÁM ĐỐC (CEO)</text>
+  <rect x="880" y="100" width="140" height="65" rx="6" fill="#1e293b" stroke="#f59e0b" stroke-width="1.8"/>
+  <text x="910" y="138" fill="#fde68a" font-size="11" font-weight="bold">BÀN LÀM VIỆC CEO</text>
+  <rect x="1050" y="100" width="90" height="110" rx="8" fill="#1e293b" stroke="#d97706" stroke-width="1.2"/>
+  <text x="1065" y="160" fill="#fcd34d" font-size="10">SOFA TIẾP KHÁCH</text>
+
+  <!-- ZONE 4: KHU VỰC VĂN PHÒNG MỞ - OPEN WORKSPACE (Middle & Bottom Center) -->
+  <!-- Cluster A: Phòng Kinh Doanh (Left Cluster) -->
+  <g transform="translate(100, 350)">
+    <text x="20" y="-15" fill="#38bdf8" font-size="13" font-weight="bold">💼 KHỐI KINH DOANH &amp; MARKETING</text>
+    <!-- Desk 1-4 -->
+    <rect x="0" y="0" width="130" height="60" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <text x="35" y="35" fill="#cbd5e1" font-size="11">BÀN KD-01</text>
+    <rect x="140" y="0" width="130" height="60" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <text x="175" y="35" fill="#cbd5e1" font-size="11">BÀN KD-02</text>
+    <!-- Desk 5-8 -->
+    <rect x="0" y="70" width="130" height="60" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <text x="35" y="105" fill="#cbd5e1" font-size="11">BÀN KD-03</text>
+    <rect x="140" y="70" width="130" height="60" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <text x="175" y="105" fill="#cbd5e1" font-size="11">BÀN KD-04</text>
+  </g>
+
+  <!-- Cluster B: Phòng Kế Toán & Tài Chính (Center Cluster) -->
+  <g transform="translate(460, 350)">
+    <text x="30" y="-15" fill="#34d399" font-size="13" font-weight="bold">📑 KHỐI TÀI CHÍNH &amp; KẾ TOÁN</text>
+    <rect x="0" y="0" width="130" height="60" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <text x="35" y="35" fill="#cbd5e1" font-size="11">BÀN KT-01</text>
+    <rect x="140" y="0" width="130" height="60" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <text x="175" y="35" fill="#cbd5e1" font-size="11">BÀN KT-02</text>
+    <rect x="0" y="70" width="130" height="60" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <text x="35" y="105" fill="#cbd5e1" font-size="11">BÀN KT-03</text>
+    <rect x="140" y="70" width="130" height="60" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <text x="175" y="105" fill="#cbd5e1" font-size="11">BÀN KT-04</text>
+  </g>
+
+  <!-- Cluster C: Phòng Nhân Sự & Hành Chính (Right Cluster) -->
+  <g transform="translate(820, 350)">
+    <text x="20" y="-15" fill="#a78bfa" font-size="13" font-weight="bold">👥 KHỐI NHÂN SỰ &amp; VẬN HÀNH</text>
+    <rect x="0" y="0" width="130" height="60" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <text x="35" y="35" fill="#cbd5e1" font-size="11">BÀN NS-01</text>
+    <rect x="140" y="0" width="130" height="60" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <text x="175" y="35" fill="#cbd5e1" font-size="11">BÀN NS-02</text>
+    <rect x="0" y="70" width="130" height="60" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <text x="35" y="105" fill="#cbd5e1" font-size="11">BÀN NS-03</text>
+    <rect x="140" y="70" width="130" height="60" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+    <text x="175" y="105" fill="#cbd5e1" font-size="11">BÀN NS-04</text>
+  </g>
+
+  <!-- SHARED PRINTING & SCANNING HUB -->
+  <rect x="520" y="550" width="160" height="70" rx="8" fill="#1e293b" stroke="#f43f5e" stroke-width="2"/>
+  <text x="535" y="580" fill="#fda4af" font-size="11" font-weight="bold">🖨️ TRẠM IN ẤN DÙNG CHUNG</text>
+  <text x="548" y="602" fill="#94a3b8" font-size="10">Máy In Màu + Scan A3</text>
+
+  <!-- ZONE 5: SẢNH LỄ TÂN & CỬA CHÍNH (Bottom Left) -->
+  <rect x="40" y="580" width="280" height="180" fill="url(#wallGrad)" stroke="#60a5fa" stroke-width="3"/>
+  <text x="60" y="610" fill="#93c5fd" font-size="13" font-weight="bold">🛎️ SẢNH LỄ TÂN &amp; CỬA VÀO</text>
+  <rect x="80" y="635" width="160" height="45" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+  <text x="105" y="662" fill="#e2e8f0" font-size="11" font-weight="bold">QUẦY LỄ TÂN (PC-01)</text>
+  <!-- Main Door Arc -->
+  <path d="M 40 700 A 40 40 0 0 1 80 740" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="3 3"/>
+  <text x="95" y="725" fill="#64748b" font-size="10">CỬA CHÍNH</text>
+
+  <!-- ZONE 6: PANTRY & KHU NGHỈ (Bottom Right) -->
+  <rect x="840" y="580" width="320" height="180" fill="url(#wallGrad)" stroke="#60a5fa" stroke-width="3"/>
+  <text x="860" y="610" fill="#93c5fd" font-size="13" font-weight="bold">☕ KHU PANTRY &amp; NGHỈ TRƯA</text>
+  <circle cx="940" cy="670" r="30" fill="#1e293b" stroke="#64748b" stroke-width="1.5"/>
+  <text x="920" y="675" fill="#94a3b8" font-size="10">BÀN TRÒN</text>
+  <circle cx="1060" cy="670" r="30" fill="#1e293b" stroke="#64748b" stroke-width="1.5"/>
+  <text x="1040" y="675" fill="#94a3b8" font-size="10">BÀN TRÒN</text>
+
+  <!-- Scale & North Arrow Stamp -->
+  <g transform="translate(1080, 700)">
+    <circle cx="20" cy="20" r="18" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+    <path d="M 20 6 L 26 26 L 20 22 L 14 26 Z" fill="#38bdf8"/>
+    <text x="17" y="0" fill="#38bdf8" font-size="10" font-weight="bold">N</text>
+  </g>
+</svg>

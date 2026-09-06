@@ -1,0 +1,67 @@
+{
+  "name": "SIMPLY IT — Quản Trị Tài Sản & Ticket ITSM",
+  "short_name": "SIMPLY IT",
+  "description": "Hệ thống Quản trị Tài sản, Bản quyền, Dịch vụ & Ticket ITSM Doanh nghiệp",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
+  "shortcuts": [
+    {
+      "name": "Quét Mã QR Tài Sản",
+      "short_name": "Quét QR",
+      "description": "Quét camera kiểm kê tài sản thiết bị tức thì",
+      "url": "/scan",
+      "icons": [
+        {
+          "src": "/logo-icon.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Hỗ Trợ & Ticket IT",
+      "short_name": "Ticket IT",
+      "description": "Xem danh sách và xử lý ticket cần hỗ trợ",
+      "url": "/tickets",
+      "icons": [
+        {
+          "src": "/logo-icon.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Danh Sách Thiết Bị",
+      "short_name": "Thiết Bị",
+      "description": "Tra cứu tài sản và thiết bị công ty",
+      "url": "/assets",
+      "icons": [
+        {
+          "src": "/logo-icon.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
