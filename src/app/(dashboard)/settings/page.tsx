@@ -61,6 +61,7 @@ import { EmailSettingsTab } from '@/components/settings/email-settings-tab';
 import { MaintenanceSchedulesTab } from '@/components/settings/maintenance-schedules-tab';
 import { WebhookSettingsTab } from '@/components/settings/webhook-settings-tab';
 import { AICopilotSettingsTab } from '@/components/settings/ai-settings-tab';
+import { EnterpriseFeatureLock } from '@/components/common/EnterpriseFeatureLock';
 import { useLanguage } from '@/lib/i18n/context';
 
 const MODULE_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
@@ -187,8 +188,8 @@ function getSettingsNavGroups(isEn: boolean): NavGroup[] {
       title: isEn ? 'Security & Access Control' : 'Bảo Mật & Phân Quyền',
       items: [
         { id: 'RBAC', label: isEn ? 'Role-Based Access Control (RBAC)' : 'Phân Quyền Vai Trò (RBAC)', icon: '🔐', desc: isEn ? 'Detailed permission matrix for Admin, IT, Staff' : 'Ma trận quyền hạn chi tiết Admin, IT, Staff' },
-        { id: 'SSO', label: isEn ? 'Microsoft 365 Single Sign-On' : 'Đăng Nhập SSO Microsoft 365', icon: '🔑', desc: isEn ? '1-click login via Microsoft Azure AD / Entra ID' : 'Đăng nhập 1 chạm qua Microsoft Azure AD' },
-        { id: 'LDAP', label: isEn ? 'LDAP / Active Directory' : 'Xác Thực LDAP / Active Directory', icon: '🏢', desc: isEn ? 'Synchronize Windows Server Active Directory accounts' : 'Đồng bộ tài khoản máy chủ Windows Server' },
+        { id: 'SSO', label: isEn ? 'Microsoft 365 Single Sign-On' : 'Đăng Nhập SSO Microsoft 365', icon: '🔑', badge: 'ENTERPRISE', desc: isEn ? '1-click login via Microsoft Azure AD / Entra ID' : 'Đăng nhập 1 chạm qua Microsoft Azure AD' },
+        { id: 'LDAP', label: isEn ? 'LDAP / Active Directory' : 'Xác Thực LDAP / Active Directory', icon: '🏢', badge: 'ENTERPRISE', desc: isEn ? 'Synchronize Windows Server Active Directory accounts' : 'Đồng bộ tài khoản máy chủ Windows Server' },
       ],
     },
     {
@@ -196,13 +197,13 @@ function getSettingsNavGroups(isEn: boolean): NavGroup[] {
       items: [
         { id: 'ALERTS', label: isEn ? 'Automated Alerts (Telegram/Email)' : 'Cảnh Báo Tự Động (Telegram/Email)', icon: '🚨', desc: isEn ? 'Scan expiry dates for IT services, licenses, warranties' : 'Quét hạn Dịch vụ IT, License, Bảo hành và bắn tin' },
         { id: 'EMAIL', label: isEn ? 'Email & SMTP Configuration' : 'Cấu Hình Email & SMTP', icon: '📧', desc: isEn ? 'Mail servers & 7 automated notification email templates' : 'Máy chủ gửi mail & 7 mẫu email có link CTA' },
-        { id: 'WEBHOOKS', label: isEn ? 'Multi-Channel Webhooks' : 'Webhook Đa Kênh (Teams/Zalo)', icon: '🔔', desc: isEn ? 'Instant alerts to Teams, Zalo, Slack webhooks' : 'Bắn thông báo tức thời qua Zalo, Teams, Slack' },
+        { id: 'WEBHOOKS', label: isEn ? 'Multi-Channel Webhooks' : 'Webhook Đa Kênh (Teams/Zalo)', icon: '🔔', badge: 'ENTERPRISE', desc: isEn ? 'Instant alerts to Teams, Zalo, Slack webhooks' : 'Bắn thông báo tức thời qua Zalo, Teams, Slack' },
       ],
     },
     {
       title: isEn ? 'ITSM Workflows & Operations' : 'Quy Trình & Vận Hành IT',
       items: [
-        { id: 'ROUTING', label: isEn ? 'IT Support Org, Routing & SLA' : 'Tổ Chức IT, Phân Tuyến & SLA', icon: '🎯', desc: isEn ? 'Support teams, queues, and committed SLA policies' : 'Đội ngũ hỗ trợ, hàng đợi và hạn cam kết SLA' },
+        { id: 'ROUTING', label: isEn ? 'IT Support Org, Routing & SLA' : 'Tổ Chức IT, Phân Tuyến & SLA', icon: '🎯', badge: 'ENTERPRISE', desc: isEn ? 'Support teams, queues, and committed SLA policies' : 'Đội ngũ hỗ trợ, hàng đợi và hạn cam kết SLA' },
         { id: 'MAINTENANCE', label: isEn ? 'Periodic Maintenance Schedules' : 'Lịch Bảo Trì Định Kỳ', icon: '📅', desc: isEn ? 'Automated maintenance schedules for enterprise assets' : 'Lên lịch tự động kiểm tra bảo dưỡng thiết bị' },
         { id: 'AI_COPILOT', label: isEn ? 'Artificial Intelligence (AI)' : 'Trí Tuệ Nhân Tạo (AI)', icon: '🤖', desc: isEn ? 'Configure Gemini AI models, Copilot assistant, and OCR' : 'Cấu hình Gemini API, Trợ lý AI và OCR hóa đơn' },
       ],
@@ -1448,13 +1449,20 @@ export default function SettingsPage() {
                                     {item.icon}
                                   </span>
                                   {isExpanded && (
-                                    <div className="min-w-0">
-                                      <div
-                                        className={`text-xs truncate ${
-                                          isActive ? 'font-bold text-blue-950' : 'font-semibold text-slate-700'
-                                        }`}
-                                      >
-                                        {item.label}
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <span
+                                          className={`text-xs truncate ${
+                                            isActive ? 'font-bold text-blue-950' : 'font-semibold text-slate-700'
+                                          }`}
+                                        >
+                                          {item.label}
+                                        </span>
+                                        {item.badge && (
+                                          <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
+                                            {item.badge}
+                                          </span>
+                                        )}
                                       </div>
                                       <div className="text-[10px] text-slate-400 truncate max-w-[190px]">
                                         {item.desc}
@@ -1528,9 +1536,31 @@ export default function SettingsPage() {
       )}
 
       {activeTab === 'ROUTING' && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <SupportOrgSettingsTab />
-        </div>
+        <EnterpriseFeatureLock
+          previewType="routing"
+          tier="ENTERPRISE"
+          icon="🎯"
+          title="Tổ Chức IT, Phân Tuyến Ticket & Cam Kết SLA"
+          titleEn="IT Support Org, Smart Routing & SLA Policies"
+          subtitle="Tự động phân luồng ticket theo chuyên môn nhóm IT (L1, L2, L3) và giám sát cam kết SLA"
+          subtitleEn="Automated ticket queue dispatching and multi-tier SLA response/resolution policies"
+          bullets={[
+            'Thiết lập đội nhóm hỗ trợ L1, L2, L3 chuyên trách',
+            'Phân tuyến tự động theo loại sự cố và khu vực',
+            'Giám sát thời gian phản hồi & xử lý SLA cam kết',
+            'Cảnh báo vượt hạn SLA tự động qua Email/Telegram',
+            'Báo cáo hiệu suất KPI nhân viên IT theo thời gian thực',
+            'Chính sách leo thang sự cố khẩn cấp (Escalation Matrix)',
+          ]}
+          bulletsEn={[
+            'Dedicated L1, L2, L3 IT support teams and queues',
+            'Auto-routing by incident categories and branch locations',
+            'Committed SLA response and resolution timeframes',
+            'Automated SLA breach notifications via Email/Telegram',
+            'Real-time IT specialist KPI & resolution analytics',
+            'Multi-level incident escalation matrices',
+          ]}
+        />
       )}
 
       {activeTab === 'AUDIT' && (
@@ -2252,322 +2282,88 @@ export default function SettingsPage() {
 
       {activeTab === 'MAINTENANCE' && <MaintenanceSchedulesTab />}
 
-      {activeTab === 'WEBHOOKS' && <WebhookSettingsTab />}
+      {activeTab === 'WEBHOOKS' && (
+        <EnterpriseFeatureLock
+          previewType="webhooks"
+          tier="ENTERPRISE"
+          icon="🔔"
+          title="Webhook Đa Kênh Tự Động Hóa (Teams, Zalo OA, Slack)"
+          titleEn="Multi-Channel Automated Webhooks (Teams, Zalo OA, Slack)"
+          subtitle="Bắn thông báo tức thời tới các nền tảng chat doanh nghiệp khi có ticket, sự cố, hoặc hết hạn bản quyền"
+          subtitleEn="Instant push notifications to corporate chat tools on tickets, incidents, and license expiries"
+          bullets={[
+            'Tích hợp Microsoft Teams Incoming Webhook thẻ tương tác',
+            'Tích hợp Zalo Official Account & Zalo ZNS Template',
+            'Tích hợp Slack Webhooks & kênh cảnh báo sự cố',
+            'Tự động kích hoạt khi có Ticket khẩn P1, P2',
+            'Tự động thông báo khi có yêu cầu mượn thiết bị mới',
+            'Cảnh báo sớm 30/15/7 ngày trước khi hết hạn License/Dịch vụ',
+          ]}
+          bulletsEn={[
+            'Microsoft Teams interactive card webhooks',
+            'Zalo Official Account & ZNS notification templates',
+            'Slack webhook integrations with dedicated incident channels',
+            'Auto-trigger on urgent P1/P2 incidents and requests',
+            'Instant notifications for asset checkout approvals',
+            'Automated reminders 30/15/7 days before contract expiration',
+          ]}
+        />
+      )}
 
       {activeTab === 'SSO' && (
-        /* MICROSOFT 365 SSO TAB */
-        <form onSubmit={handleSaveSettings} className="space-y-6">
-          {saved && (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold rounded-2xl flex items-center space-x-2 animate-in fade-in">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <span>Cấu hình SSO Microsoft 365 đã được lưu thành công!</span>
-            </div>
-          )}
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold">
-                  🪟
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Đăng Nhập Một Lần Microsoft 365 (SSO)</h3>
-                  <p className="text-xs text-slate-500">Tích hợp Azure Active Directory / Microsoft Entra ID cho tài khoản doanh nghiệp</p>
-                </div>
-              </div>
-
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={getSettingValue('sso.ms365_enabled') === 'true'}
-                  onChange={(e) => handleChange('sso.ms365_enabled', e.target.checked ? 'true' : 'false')}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                <span className="ml-2 text-xs font-bold text-slate-700">
-                  {getSettingValue('sso.ms365_enabled') === 'true' ? 'Đang BẬT' : 'Đang TẮT'}
-                </span>
-              </label>
-            </div>
-
-            {/* Redirect URI with Copy Button */}
-            <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-xl space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-indigo-900 flex items-center gap-1.5">
-                  <Info className="w-4 h-4 text-indigo-600" />
-                  <span>Redirect URI (Dán vào Azure Portal):</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={copyRedirectUri}
-                  className="px-2.5 py-1 bg-white hover:bg-indigo-100 text-indigo-700 rounded-lg font-semibold border border-indigo-200 inline-flex items-center gap-1 transition-colors"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>{copiedUri ? 'Đã sao chép!' : 'Sao chép URI'}</span>
-                </button>
-              </div>
-              <input
-                type="text"
-                readOnly
-                value={redirectUri}
-                className="w-full px-3 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-mono text-indigo-950 select-all outline-none"
-              />
-            </div>
-
-            {/* Credentials Fields */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Application (Client) ID <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="VD: 4a8b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d"
-                  value={getSettingValue('sso.ms365_client_id')}
-                  onChange={(e) => handleChange('sso.ms365_client_id', e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Client Secret (Secret Value) <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  placeholder="VD: ~aBcDeFgHiJkLmNoPqRsTuVwXyZ12345"
-                  value={getSettingValue('sso.ms365_client_secret')}
-                  onChange={(e) => handleChange('sso.ms365_client_secret', e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">Lưu ý: Lấy giá trị tại cột <strong>Value</strong> (không phải Secret ID) khi tạo mới trên Azure.</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Directory (Tenant) ID
-                </label>
-                <input
-                  type="text"
-                  placeholder="common hoặc ID thư mục Tenant"
-                  value={getSettingValue('sso.ms365_tenant_id') || 'common'}
-                  onChange={(e) => handleChange('sso.ms365_tenant_id', e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">Để <code>common</code> nếu muốn hỗ trợ mọi tài khoản Microsoft công ty hoặc nhập Tenant ID cụ thể của công ty bạn.</p>
-              </div>
-            </div>
-
-            {/* Quick 3-Step Guide Card */}
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs text-slate-700">
-              <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                <span>📖</span>
-                <span>Hướng dẫn 3 bước cấu hình trên Azure Portal (Microsoft Entra admin center):</span>
-              </h4>
-              <ol className="list-decimal list-inside space-y-1 text-slate-600 leading-relaxed text-[11px]">
-                <li>Truy cập <strong>portal.azure.com</strong> ➔ <strong>Microsoft Entra ID</strong> ➔ <strong>App registrations</strong> ➔ Bấm <strong>New registration</strong>.</li>
-                <li>Đặt tên (VD: <em>IT Asset Hub</em>), chọn <em>Accounts in any organizational directory</em>, và tại <strong>Redirect URI</strong> chọn nền tảng <strong>Web</strong> rồi dán link phía trên vào.</li>
-                <li>Vào mục <strong>Certificates & secrets</strong> ➔ Bấm <strong>New client secret</strong> ➔ Copy <strong>Client ID</strong> và <strong>Secret Value</strong> dán vào form trên rồi bấm <strong>Lưu Cấu Hình</strong>.</li>
-              </ol>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                type="submit"
-                className="inline-flex items-center space-x-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-md transition-all text-xs"
-              >
-                <Save className="w-4 h-4" />
-                <span>Lưu Cấu Hình SSO</span>
-              </button>
-            </div>
-          </div>
-        </form>
+        <EnterpriseFeatureLock
+          previewType="sso"
+          tier="ENTERPRISE"
+          icon="🔑"
+          title="Đăng Nhập Một Lần Microsoft 365 (SSO & Azure AD)"
+          titleEn="Microsoft 365 Single Sign-On (SSO / Entra ID)"
+          subtitle="Đăng nhập 1 chạm an toàn bằng tài khoản công ty @company.com qua Microsoft Azure AD / Entra ID"
+          subtitleEn="1-click secure enterprise login with corporate @company.com via Microsoft Azure AD / Entra ID"
+          bullets={[
+            'Đăng nhập 1 chạm an toàn với tài khoản Microsoft 365 công ty',
+            'Không cần nhớ mật khẩu riêng, hỗ trợ Microsoft Authenticator 2FA',
+            'Tự động phân quyền vai trò (Admin, IT, Staff) theo nhóm Azure AD',
+            'Tự động cấp tài khoản khi nhân sự đăng nhập lần đầu',
+            'Tuân thủ tiêu chuẩn bảo mật danh tính doanh nghiệp SSO SAML/OIDC',
+            'Hỗ trợ cấu hình đa Tenant hoặc Single Tenant chuyên biệt',
+          ]}
+          bulletsEn={[
+            '1-click login with corporate Microsoft 365 credentials',
+            'Zero password friction with full Microsoft 2FA / MFA enforcement',
+            'Auto-sync role permissions from Azure AD security groups',
+            'Just-in-time user auto-provisioning upon initial sign-in',
+            'Compliant with SAML 2.0 and OpenID Connect (OIDC) standards',
+            'Supports multi-tenant or single-tenant corporate directory',
+          ]}
+        />
       )}
 
       {activeTab === 'LDAP' && (
-        /* LDAP / ACTIVE DIRECTORY TAB */
-        <form onSubmit={handleSaveSettings} className="space-y-6">
-          {saved && (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold rounded-2xl flex items-center space-x-2 animate-in fade-in">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <span>Cấu hình xác thực LDAP / Active Directory đã được lưu thành công!</span>
-            </div>
-          )}
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-lg">
-                  🏢
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Máy Chủ Xác Thực LDAP / Active Directory (AD)</h3>
-                  <p className="text-xs text-slate-500">Đồng bộ đăng nhập với tài khoản Windows Domain / OpenLDAP của doanh nghiệp</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={getSettingValue('ldap.enabled') === 'true'}
-                    onChange={(e) => handleChange('ldap.enabled', e.target.checked ? 'true' : 'false')}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                  <span className="ml-2 text-xs font-bold text-slate-700">
-                    {getSettingValue('ldap.enabled') === 'true' ? 'Đang BẬT' : 'Đang TẮT'}
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            {/* Test connection alert */}
-            {ldapTestResult && (
-              <div
-                className={`p-4 rounded-xl border text-xs font-semibold flex items-start gap-2 animate-in fade-in ${
-                  ldapTestResult.success
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                    : 'bg-rose-50 border-rose-200 text-rose-800'
-                }`}
-              >
-                {ldapTestResult.success ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                )}
-                <span>{ldapTestResult.message}</span>
-              </div>
-            )}
-
-            {/* Form inputs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Địa chỉ máy chủ LDAP Server URL <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="VD: ldap://192.168.1.10:389 hoặc ldaps://dc.company.com:636"
-                  value={getSettingValue('ldap.server_url')}
-                  onChange={(e) => handleChange('ldap.server_url', e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">Cổng tiêu chuẩn: 389 (LDAP) hoặc 636 (LDAPS SSL/TLS)</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Base DN (Tên miền cơ sở tìm kiếm) <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="VD: dc=company,dc=com hoặc ou=Users,dc=company,dc=local"
-                  value={getSettingValue('ldap.base_dn')}
-                  onChange={(e) => handleChange('ldap.base_dn', e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">Phạm vi tìm kiếm tài khoản nhân viên trong cây thư mục</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Bind DN (Tài khoản kết nối quản trị)
-                </label>
-                <input
-                  type="text"
-                  placeholder="VD: cn=Administrator,dc=company,dc=com hoặc svc_ldap@company.com"
-                  value={getSettingValue('ldap.bind_dn')}
-                  onChange={(e) => handleChange('ldap.bind_dn', e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">Để trống nếu máy chủ cho phép Anonymous Bind</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Bind Password (Mật khẩu tài khoản kết nối)
-                </label>
-                <input
-                  type="password"
-                  placeholder="••••••••••••"
-                  value={getSettingValue('ldap.bind_password')}
-                  onChange={(e) => handleChange('ldap.bind_password', e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-2 border-t border-slate-100">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  User Search Filter (Bộ lọc tìm kiếm tài khoản)
-                </label>
-                <input
-                  type="text"
-                  placeholder="(|(sAMAccountName={{username}})(mail={{username}})(userPrincipalName={{username}}))"
-                  value={getSettingValue('ldap.user_search_filter') || '(|(sAMAccountName={{username}})(mail={{username}})(userPrincipalName={{username}}))'}
-                  onChange={(e) => handleChange('ldap.user_search_filter', e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Vai trò mặc định gán cho User LDAP mới
-                  </label>
-                  <select
-                    value={getSettingValue('ldap.default_role_id')}
-                    onChange={(e) => handleChange('ldap.default_role_id', e.target.value)}
-                    className="w-full p-2.5 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
-                  >
-                    <option value="">-- Mặc định (Nhân viên / Staff) --</option>
-                    {roles.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name} {r.isSystem ? '(Hệ thống)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2 pt-6">
-                  <input
-                    type="checkbox"
-                    id="autoCreateLdapUser"
-                    checked={getSettingValue('ldap.auto_create_user') !== 'false'}
-                    onChange={(e) => handleChange('ldap.auto_create_user', e.target.checked ? 'true' : 'false')}
-                    className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                  />
-                  <label htmlFor="autoCreateLdapUser" className="text-xs font-bold text-slate-700 cursor-pointer">
-                    Tự động tạo tài khoản trong hệ thống khi đăng nhập LDAP thành công lần đầu
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Test Connection Button & Save */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100 flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={testingLdap}
-                onClick={handleTestLdap}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-300 cursor-pointer disabled:opacity-50"
-              >
-                {testingLdap ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <span>⚡</span>}
-                <span>{testingLdap ? 'Đang thử kết nối...' : 'Kiểm Tra Kết Nối Máy Chủ LDAP'}</span>
-              </button>
-
-              <button
-                type="submit"
-                className="inline-flex items-center space-x-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
-              >
-                <Save className="w-4 h-4" />
-                <span>Lưu Cài Đặt LDAP / AD</span>
-              </button>
-            </div>
-          </div>
-        </form>
+        <EnterpriseFeatureLock
+          previewType="ldap"
+          tier="ENTERPRISE"
+          icon="🏢"
+          title="Đồng Bộ Thư Mục Active Directory (LDAP / Windows Server)"
+          titleEn="Active Directory / LDAP Directory Synchronization"
+          subtitle="Đồng bộ danh bạ người dùng và xác thực tập trung từ máy chủ Windows Server Active Directory On-Premise"
+          subtitleEn="Centralized user sync and authentication from On-Premise Windows Server Active Directory"
+          bullets={[
+            'Kết nối an toàn qua giao thức LDAPS (Cổng 636 mã hóa SSL/TLS)',
+            'Tự động đồng bộ danh sách nhân viên từ Organizational Unit (OU)',
+            'Xác thực trực tiếp với Domain Controller của doanh nghiệp',
+            'Tự động vô hiệu hóa tài khoản khi nhân viên thôi việc trên AD',
+            'Tùy biến bộ lọc User Search Filter linh hoạt',
+            'Hỗ trợ cả Windows Server AD và Linux OpenLDAP / FreeIPA',
+          ]}
+          bulletsEn={[
+            'Secure LDAPS communication over encrypted SSL/TLS port 636',
+            'Automated employee roster sync from target Organizational Units (OU)',
+            'Direct authentication against corporate Domain Controllers',
+            'Instant account deactivation upon AD offboarding',
+            'Customizable LDAP search filters and attribute mappings',
+            'Supports Windows Server AD, OpenLDAP, and FreeIPA',
+          ]}
+        />
       )}
 
       {activeTab === 'RBAC' && (

@@ -118,7 +118,10 @@ async function initServer() {
     }
   }
 
-  // 1. HTTP Server on port 3000
+  const HTTP_PORT = parseInt(process.env.PORT || '3001', 10);
+  const HTTPS_PORT = parseInt(process.env.HTTPS_PORT || '3444', 10);
+
+  // 1. HTTP Server
   const httpServer = http.createServer((req, res) => {
     if (serveUploadsDirect(req, res)) return;
     setupNoCache(req, res);
@@ -129,13 +132,12 @@ async function initServer() {
     handle(req, res);
   });
 
-  httpServer.listen(3000, '0.0.0.0', () => {
-    console.log('🚀 HTTP Server running on:');
-    console.log('   - Local:   http://localhost:3000');
-    console.log('   - Network: http://192.168.144.198:3000');
+  httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
+    console.log(`🚀 Simply IT [Community Edition] HTTP Server running on:`);
+    console.log(`   - Local:   http://localhost:${HTTP_PORT}`);
   });
 
-  // 2. HTTPS Server on port 3443
+  // 2. HTTPS Server
   const httpsServer = https.createServer(httpsOptions, (req, res) => {
     if (serveUploadsDirect(req, res)) return;
     if (req.headers.accept && req.headers.accept.includes('text/html')) {
@@ -145,10 +147,9 @@ async function initServer() {
     handle(req, res);
   });
 
-  httpsServer.listen(3443, '0.0.0.0', () => {
-    console.log('🔒 HTTPS Secure Server running for Mobile Camera:');
-    console.log('   - Local:   https://localhost:3443');
-    console.log('   - Network: https://192.168.144.198:3443');
+  httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+    console.log(`🔒 Simply IT [Community Edition] HTTPS Server running on:`);
+    console.log(`   - Local:   https://localhost:${HTTPS_PORT}`);
   });
 
   // 3. Automated Daily Alert Job (Runs in background, scans once per day)
