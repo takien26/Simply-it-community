@@ -16,8 +16,16 @@ namespace SimplyITCommunityLauncher
         [STAThread]
         static void Main()
         {
-            bool isNewInstance;
-            singleInstanceMutex = new Mutex(true, "Global\\SimplyIT_Community_Launcher_Mutex", out isNewInstance);
+            bool isNewInstance = true;
+            try
+            {
+                singleInstanceMutex = new Mutex(true, "Local\\SimplyIT_Community_Launcher_Mutex", out isNewInstance);
+            }
+            catch
+            {
+                isNewInstance = true;
+            }
+
             if (!isNewInstance)
             {
                 // Da co tien trinh dang chay ngam -> mo thang trinh duyet va thoat
@@ -76,21 +84,22 @@ namespace SimplyITCommunityLauncher
         private bool isStarting = false;
         private bool isExplicitExit = false;
 
-        protected override void SetVisibleCore(bool value)
+        protected override void OnShown(EventArgs e)
         {
+            base.OnShown(e);
             if (!allowShowDisplay)
             {
-                value = false;
-                if (!this.IsHandleCreated) CreateHandle();
+                this.Hide();
+                this.Opacity = 1.0;
             }
-            base.SetVisibleCore(value);
         }
 
         public MainForm()
         {
             allowShowDisplay = false;
-            this.WindowState = FormWindowState.Minimized;
+            this.Opacity = 0;
             this.ShowInTaskbar = false;
+            this.WindowState = FormWindowState.Normal;
 
             InitializeComponent();
             LocateAppDir();
