@@ -14,7 +14,7 @@ interface EnterpriseFeatureLockProps {
   tier?: 'ENTERPRISE' | 'PRO';
   bullets: string[];
   bulletsEn: string[];
-  previewType: 'sso' | 'ldap' | 'webhooks' | 'routing';
+  previewType: 'sso' | 'ldap' | 'webhooks' | 'routing' | 'alerts' | 'ai' | 'audit' | 'discovery' | 'floor_maps';
 }
 
 export function EnterpriseFeatureLock({
@@ -200,6 +200,30 @@ export function EnterpriseFeatureLock({
             </div>
           )}
 
+          {previewType === 'alerts' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center font-bold">🚨</div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Telegram Bot & Automated Expiration Alerts</h4>
+                    <p className="text-xs text-slate-500">Tự động quét hạn Dịch vụ IT, License, Bảo hành và bắn tin cảnh báo</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <label className="text-xs font-bold text-slate-500">Telegram Bot Token</label>
+                  <div className="text-xs font-mono text-slate-400 mt-1">7182938492:AAE1x2y3z4... (Enterprise Locked)</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <label className="text-xs font-bold text-slate-500">Telegram Chat / Group ID</label>
+                  <div className="text-xs font-mono text-slate-400 mt-1">-100192837465... (IT Support Group)</div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {previewType === 'routing' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -220,6 +244,114 @@ export function EnterpriseFeatureLock({
                 </div>
                 <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-600">
                   Chính sách Cam kết SLA P1 / P2 / P3
+                </div>
+              </div>
+            </div>
+          )}
+
+          {previewType === 'ai' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center font-bold">🤖</div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Google Gemini AI & Copilot Assistant</h4>
+                    <p className="text-xs text-slate-500">Mô hình AI tự động phân loại sự cố, gợi ý phản hồi và OCR quét hóa đơn</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <label className="text-xs font-bold text-slate-500">Google Gemini API Key</label>
+                  <div className="text-xs font-mono text-slate-400 mt-1">AIzaSyB1234567890... (Enterprise Locked)</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <label className="text-xs font-bold text-slate-500">AI Engine Model</label>
+                  <div className="text-xs font-mono text-purple-600 font-semibold mt-1">Gemini 2.5 Flash / Pro Multimodal</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {previewType === 'audit' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">📋</div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Chiến Dịch Kiểm Kê & Đối Soát Sai Lệch Tự Động</h4>
+                    <p className="text-xs text-slate-500">Quét mã QR/Barcode kiểm kê hàng loạt, đối soát vị trí thực tế vs hệ thống</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="text-[11px] font-bold text-slate-500">Tiến Độ Chiến Dịch</div>
+                  <div className="text-sm font-black text-emerald-600 mt-0.5">85% Đã Kiểm Kê</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="text-[11px] font-bold text-slate-500">Đối Soát Sai Lệch</div>
+                  <div className="text-sm font-black text-amber-600 mt-0.5">12 Thiết Bị Lệch Phòng</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="text-[11px] font-bold text-slate-500">Báo Cáo Kiểm Kê</div>
+                  <div className="text-sm font-black text-blue-600 mt-0.5">Xuất File Excel Ký Duyệt</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {previewType === 'discovery' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-cyan-50 text-cyan-700 flex items-center justify-center font-bold">📡</div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Network Discovery & Automated Hardware Agent</h4>
+                    <p className="text-xs text-slate-500">Quét dải mạng IP nội bộ và tự động thu thập cấu hình thiết bị</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="text-[11px] font-bold text-slate-500">Dải IP Quét Mạng</div>
+                  <div className="text-xs font-mono text-cyan-700 font-bold mt-1">192.168.1.0/24 (LAN)</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="text-[11px] font-bold text-slate-500">Agent Thu Thập</div>
+                  <div className="text-xs font-mono text-slate-700 font-semibold mt-1">CPU, RAM, Disk, OS Key</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="text-[11px] font-bold text-slate-500">Tự Động Khớp Tài Sản</div>
+                  <div className="text-xs font-mono text-emerald-600 font-bold mt-1">Khớp qua MAC & Serial</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {previewType === 'floor_maps' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center font-bold">🗺️</div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Sơ Đồ Mặt Bằng 2D & Định Vị Thiết Bị Trực Quan</h4>
+                    <p className="text-xs text-slate-500">Tải lên sơ đồ kiến trúc tòa nhà, phân vùng phòng ban và ghim tọa độ thiết bị / tủ rack</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="text-[11px] font-bold text-slate-500">Bản Đồ Phân Tầng</div>
+                  <div className="text-xs font-mono text-teal-700 font-bold mt-1">Tầng 1 - Tầng 5 & Server Room</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="text-[11px] font-bold text-slate-500">Ghim Tọa Độ Tương Tác</div>
+                  <div className="text-xs font-mono text-slate-700 font-semibold mt-1">PC, Switch, Server, Camera, AP</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="text-[11px] font-bold text-slate-500">Mô Phỏng Tủ Rack 42U</div>
+                  <div className="text-xs font-mono text-emerald-600 font-bold mt-1">Xem vị trí Rack Unit U1 - U42</div>
                 </div>
               </div>
             </div>

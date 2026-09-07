@@ -99,6 +99,35 @@ export function Sidebar({
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false);
+  const [isEnterprise, setIsEnterprise] = useState<boolean>(false);
+  const [activeModules, setActiveModules] = useState<string[]>([]);
+
+  const isModActive = (mod: string) => isEnterprise && (activeModules.length === 0 || activeModules.includes(mod) || activeModules.includes('*'));
+
+  const fetchLicenseStatus = () => {
+    fetch('/api/license')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.isEnterprise) {
+          setIsEnterprise(true);
+          setActiveModules(Array.isArray(data.modules) ? data.modules : []);
+        } else {
+          setIsEnterprise(false);
+          setActiveModules([]);
+        }
+      })
+      .catch(() => {
+        setIsEnterprise(false);
+        setActiveModules([]);
+      });
+  };
+
+  useEffect(() => {
+    fetchLicenseStatus();
+    const handleLicenseUpdated = () => fetchLicenseStatus();
+    window.addEventListener('simply:license-updated', handleLicenseUpdated);
+    return () => window.removeEventListener('simply:license-updated', handleLicenseUpdated);
+  }, []);
 
   const toggleMenu = (key: string) => {
     if (!isExpanded) setIsPinned(true);
@@ -280,7 +309,6 @@ export function Sidebar({
         },
         { label: t('nav.incidents', 'Sự cố & Vấn đề'), href: '/incidents', icon: AlertTriangle, permission: 'incidents.view' },
         { label: t('nav.kb', 'Hướng dẫn'), href: '/kb', icon: BookOpen, permission: 'kb.view' },
-        { label: t('nav.about_license', 'Thông tin & Bản quyền'), href: '/settings?tab=license', icon: ShieldCheck },
         {
           label: t('nav.reports', 'Báo cáo & Thống kê'),
           href: '/tickets/reports',
@@ -295,9 +323,15 @@ export function Sidebar({
       permission: 'assets.view',
       children: [
         { label: t('nav.assets_list', 'Danh sách Thiết bị'), href: '/assets', icon: Laptop, permission: 'assets.view' },
-        { label: t('nav.assets_audit', 'Kiểm kê Tài sản'), href: '/assets/audit', icon: ClipboardCheck, permission: 'assets.view' },
-        { label: t('nav.assets_scan', 'Scan Thiết bị'), href: '/discovery', icon: ScanLine, permission: 'assets.view' },
-        { label: t('nav.floor_maps', 'Sơ đồ Mặt bằng 2D'), href: '/floor-maps', icon: Map, permission: 'assets.view' },
+        ...(isModActive('AUDIT') ? [
+          { label: t('nav.assets_audit', 'Kiểm kê Tài sản'), href: '/assets/audit', icon: ClipboardCheck, permission: 'assets.view' },
+        ] : []),
+        ...(isModActive('DISCOVERY') ? [
+          { label: t('nav.assets_scan', 'Scan Thiết bị'), href: '/discovery', icon: ScanLine, permission: 'assets.view' },
+        ] : []),
+        ...(isModActive('FLOOR_MAPS') ? [
+          { label: t('nav.floor_maps', 'Sơ đồ Mặt bằng 2D'), href: '/floor-maps', icon: Map, permission: 'assets.view' },
+        ] : []),
         { label: t('nav.spare_parts', 'Kho Phụ tùng & Linh kiện'), href: '/spare-parts', icon: Boxes, permission: 'assets.view' },
       ],
     },

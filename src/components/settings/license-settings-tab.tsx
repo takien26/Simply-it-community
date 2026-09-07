@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Key, CheckCircle2, AlertCircle, Loader2, Building2, Calendar, Crown, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Key, CheckCircle2, AlertCircle, Loader2, Building2, Calendar, Crown, RefreshCw, Mail, Copy, Check, Sparkles } from 'lucide-react';
+import { EnterpriseUpgradeModal } from '@/components/common/EnterpriseUpgradeModal';
 import { useLanguage } from '@/lib/i18n/context';
 
 export function LicenseSettingsTab() {
@@ -22,6 +23,8 @@ export function LicenseSettingsTab() {
   const [licenseKey, setLicenseKey] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(false);
 
   const fetchLicense = async () => {
     try {
@@ -186,6 +189,26 @@ export function LicenseSettingsTab() {
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>Phân tuyến IT & SLA</span>
                   </div>
+                  <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-emerald-200 text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Cảnh báo Telegram</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-emerald-200 text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Trí Tuệ Nhân Tạo AI</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-emerald-200 text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Kiểm Kê Tài Sản (Audit)</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-emerald-200 text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Scan Thiết Bị (Discovery)</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-emerald-200 text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Sơ Đồ Mặt Bằng 2D</span>
+                  </div>
                 </div>
               </div>
 
@@ -267,9 +290,148 @@ export function LicenseSettingsTab() {
                 </button>
               </div>
             </form>
+
+            {/* Contact to Purchase Enterprise License Card */}
+            <div className="p-6 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-linear-to-br from-indigo-50/70 via-blue-50/40 to-slate-50 dark:from-slate-900 dark:to-indigo-950/20 space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-indigo-100 dark:border-indigo-900/40">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                    <Crown className="w-4 h-4 fill-current" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                      {isEn ? 'Interested in SIMPLY IT Enterprise Edition?' : 'Liên Hệ Đăng Ký Mua Bản Quyền Enterprise'}
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      {isEn ? 'Unlock full ITSM power, single sign-on, AI assistant, and unlimited assets' : 'Khai phóng toàn diện các tính năng cao cấp: SSO M365, LDAP, Webhook, SLA và Trợ lý AI'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="px-4 py-2 bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isEn ? 'Request Consultation & Pricing' : 'Đăng Ký Tư Vấn & Nhận Báo Giá'}</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs">
+                <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-2">
+                  <span className="text-base">🔑</span>
+                  <div>
+                    <strong className="block text-slate-900 dark:text-white text-[11.5px]">Microsoft 365 SSO</strong>
+                    <span className="text-[10.5px] text-slate-500">Đăng nhập 1 chạm Azure AD</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-2">
+                  <span className="text-base">🏢</span>
+                  <div>
+                    <strong className="block text-slate-900 dark:text-white text-[11.5px]">Active Directory / LDAP</strong>
+                    <span className="text-[10.5px] text-slate-500">Đồng bộ máy chủ Domain Windows</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-2">
+                  <span className="text-base">🚨</span>
+                  <div>
+                    <strong className="block text-slate-900 dark:text-white text-[11.5px]">Cảnh Báo Tự Động Telegram</strong>
+                    <span className="text-[10.5px] text-slate-500">Quét hạn License & Dịch vụ IT</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-2">
+                  <span className="text-base">🔔</span>
+                  <div>
+                    <strong className="block text-slate-900 dark:text-white text-[11.5px]">Webhook Đa Kênh</strong>
+                    <span className="text-[10.5px] text-slate-500">Bắn tin Teams, Zalo OA, Slack</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-2">
+                  <span className="text-base">🎯</span>
+                  <div>
+                    <strong className="block text-slate-900 dark:text-white text-[11.5px]">Phân Tuyến Ticket & SLA</strong>
+                    <span className="text-[10.5px] text-slate-500">Điều phối theo nhóm & cam kết SLA</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-2">
+                  <span className="text-base">🤖</span>
+                  <div>
+                    <strong className="block text-slate-900 dark:text-white text-[11.5px]">Trí Tuệ Nhân Tạo AI</strong>
+                    <span className="text-[10.5px] text-slate-500">Gemini AI Copilot & OCR hóa đơn</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-2">
+                  <span className="text-base">📋</span>
+                  <div>
+                    <strong className="block text-slate-900 dark:text-white text-[11.5px]">Kiểm Kê Tài Sản (Audit)</strong>
+                    <span className="text-[10.5px] text-slate-500">Quét QR camera điện thoại, đối soát sai lệch</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-2">
+                  <span className="text-base">📡</span>
+                  <div>
+                    <strong className="block text-slate-900 dark:text-white text-[11.5px]">Scan Thiết Bị (Discovery)</strong>
+                    <span className="text-[10.5px] text-slate-500">Quét dải IP LAN & Agent thu thập phần cứng</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-2">
+                  <span className="text-base">🗺️</span>
+                  <div>
+                    <strong className="block text-slate-900 dark:text-white text-[11.5px]">Sơ Đồ Mặt Bằng 2D</strong>
+                    <span className="text-[10.5px] text-slate-500">Bản đồ tầng, phòng máy chủ & tủ rack trực quan</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct Author & Commercial Contact Info */}
+              <div className="p-3.5 bg-white dark:bg-slate-800/90 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {isEn ? 'Commercial & Technical Contact:' : 'Đơn vị phát triển & Cung cấp bản quyền:'}
+                    </span>
+                    <strong className="text-blue-600 dark:text-blue-400">Tạ Trung Kiên</strong>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    {isEn
+                      ? 'Contact directly via email for custom licensing, pricing quotes, or deployment support.'
+                      : 'Liên hệ trực tiếp qua email để nhận báo giá, cấp mã bản quyền hoặc hỗ trợ triển khai cho doanh nghiệp.'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText('takien26@gmail.com');
+                      setCopiedEmail(true);
+                      setTimeout(() => setCopiedEmail(false), 2500);
+                    }}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {copiedEmail ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                    <span>{copiedEmail ? (isEn ? 'Copied!' : 'Đã sao chép') : 'takien26@gmail.com'}</span>
+                  </button>
+
+                  <a
+                    href="mailto:takien26@gmail.com?subject=[SIMPLY%20IT]%20Dang%20ky%20mua%20ban%20quyen%20Enterprise"
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>{isEn ? 'Send Email' : 'Gửi Email'}</span>
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
+
+      <EnterpriseUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+      />
     </div>
   );
 }

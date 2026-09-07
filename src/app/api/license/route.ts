@@ -13,7 +13,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { key } = body;
+    const key = body.key || body.licenseKey;
 
     if (!key) {
       return NextResponse.json({ error: 'Vui lòng cung cấp mã License Key' }, { status: 400 });

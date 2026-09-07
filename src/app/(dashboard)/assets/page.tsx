@@ -1994,16 +1994,7 @@ export default function AssetsPage() {
             <span>{isEn ? 'Download Agent / Script PS1' : 'Tải Agent / Script PS1'}</span>
           </button>
 
-          {/* AUDIT CAMPAIGN BUTTON */}
-          <button
-            type="button"
-            onClick={() => setIsAuditCampaignCreateOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer shrink-0"
-            title={isEn ? 'Create asset audit session and issue mobile QR codes' : 'Khởi tạo đợt kiểm kê tài sản và cấp mã QR di động'}
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-white" />
-            <span>{isEn ? '🛡️ Create Audit Session' : '🛡️ Tạo Đợt Kiểm Kê'}</span>
-          </button>
+          
 
           {/* QR AUDIT BUTTON */}
           <Link

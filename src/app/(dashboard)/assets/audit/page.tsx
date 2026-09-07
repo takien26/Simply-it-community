@@ -1,3 +1,4 @@
+import { EnterpriseFeatureLock } from '@/components/common/EnterpriseFeatureLock';
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -115,6 +116,32 @@ export interface AuditSession {
 export default function AssetsAuditPage() {
   const { language, t } = useLanguage();
   const isEn = language === 'en';
+  const [isEnterprise, setIsEnterprise] = useState<boolean | null>(null);
+  const [activeModules, setActiveModules] = useState<string[]>([]);
+  const isModActive = (mod: string) => Boolean(isEnterprise) && (activeModules.length === 0 || activeModules.includes(mod) || activeModules.includes('*'));
+
+  const fetchLicense = () => {
+    fetch('/api/license')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.isEnterprise) {
+          setIsEnterprise(true);
+          setActiveModules(Array.isArray(data.modules) ? data.modules : []);
+        } else {
+          setIsEnterprise(false);
+          setActiveModules([]);
+        }
+      })
+      .catch(() => setIsEnterprise(false));
+  };
+
+  useEffect(() => {
+    fetchLicense();
+    const handleUpdate = () => fetchLicense();
+    window.addEventListener('simply:license-updated', handleUpdate);
+    return () => window.removeEventListener('simply:license-updated', handleUpdate);
+  }, []);
+
 
   // Navigation mode: 'CAMPAIGNS' (list of all audit batches) vs 'WORKSPACE' (active scanning workspace)
   const [viewMode, setViewMode] = useState<'CAMPAIGNS' | 'WORKSPACE'>('CAMPAIGNS');

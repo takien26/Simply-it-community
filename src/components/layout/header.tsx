@@ -2,6 +2,8 @@
 
 import {
   Sparkles,
+  Crown,
+  Loader2,
   FileSpreadsheet,
   Bell,
   ShieldCheck,
@@ -122,7 +124,10 @@ export function Header({
   let currentIcon = pageDef?.icon || '💻';
 
   if (pathname === '/settings') {
-    if (currentTab === 'ai' || currentTab === 'ai_copilot' || currentTab === 'copilot') {
+    if (currentTab === 'license' || currentTab === 'lic' || currentTab === 'banquyen') {
+      currentTitle = language === 'en' ? 'Edition & License' : 'Giấy Phép & Bản Quyền';
+      currentIcon = '🛡️';
+    } else if (currentTab === 'ai' || currentTab === 'ai_copilot' || currentTab === 'copilot') {
       currentTitle = language === 'en' ? 'AI Copilot Settings' : 'Cài Đặt AI';
       currentIcon = '🤖';
     } else if (currentTab === 'email' || currentTab === 'smtp') {
@@ -170,8 +175,81 @@ export function Header({
   const langRef = useRef<HTMLDivElement>(null);
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isSystemHealthOpen, setIsSystemHealthOpen] = useState(false);
-  const [systemTab, setSystemTab] = useState<'ABOUT' | 'HELP' | 'SYSTEM'>('ABOUT');
+  const [systemTab, setSystemTab] = useState<'ABOUT' | 'LICENSE' | 'HELP' | 'SYSTEM'>('ABOUT');
   const [copiedEmail, setCopiedEmail] = useState(false);
+
+  // License state for Header & Help modal
+  const [licenseInfo, setLicenseInfo] = useState<{
+    isEnterprise: boolean;
+    tier: string;
+    customer?: string;
+    expiresAt?: string;
+    daysRemaining?: number;
+    maxAssets?: number;
+    modules: string[];
+  } | null>(null);
+  const [licKeyInput, setLicKeyInput] = useState('');
+  const [licSubmitting, setLicSubmitting] = useState(false);
+  const [licMsg, setLicMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const fetchLicenseInfo = async () => {
+    try {
+      const res = await fetch('/api/license');
+      if (res.ok) {
+        const data = await res.json();
+        setLicenseInfo(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchLicenseInfo();
+    const handleLicenseUpdated = () => fetchLicenseInfo();
+    window.addEventListener('simply:license-updated', handleLicenseUpdated);
+    return () => window.removeEventListener('simply:license-updated', handleLicenseUpdated);
+  }, []);
+
+  const handleActivateKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLicMsg(null);
+    if (!licKeyInput.trim()) {
+      setLicMsg({
+        type: 'error',
+        text: language === 'en' ? 'Please enter a License Key' : 'Vui lòng dán mã License Key',
+      });
+      return;
+    }
+
+    try {
+      setLicSubmitting(true);
+      const res = await fetch('/api/license', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: licKeyInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setLicMsg({
+          type: 'error',
+          text: data.error || (language === 'en' ? 'Activation failed' : 'Kích hoạt thất bại'),
+        });
+      } else {
+        setLicMsg({
+          type: 'success',
+          text: language === 'en' ? 'Enterprise Edition activated successfully!' : 'Kích hoạt bản quyền Enterprise thành công!',
+        });
+        setLicKeyInput('');
+        await fetchLicenseInfo();
+        window.dispatchEvent(new CustomEvent('simply:license-updated'));
+      }
+    } catch (err: any) {
+      setLicMsg({ type: 'error', text: err.message || 'Lỗi kết nối máy chủ' });
+    } finally {
+      setLicSubmitting(false);
+    }
+  };
 
   const [user, setUser] = useState<{
     id?: string;
@@ -238,7 +316,7 @@ export function Header({
     return userPerms.includes(permission);
   };
 
-  const canUseAI = hasAccess(['ai.extract', 'ai.templates.manage', 'ai.auto_save']);
+  const canUseAI = Boolean(licenseInfo?.isEnterprise) && hasAccess(['ai.extract', 'ai.templates.manage', 'ai.auto_save']);
   const canImportExcel = hasAccess(['assets.import', 'licenses.import', 'services.import', 'import.view']);
 
   // Click outside to close notification / health popovers
@@ -388,88 +466,6 @@ export function Header({
       <div className="flex items-center space-x-2.5 sm:space-x-3">
         {/* GLOBAL SEARCH — Command Palette (Ctrl+K) */}
         <GlobalSearch />
-
-        {/* MULTI-LANGUAGE DROPDOWN SWITCHER (EXTENSIBLE) */}
-        <div className="relative" ref={langRef}>
-          <button
-            type="button"
-            onClick={() => setIsLangOpen(!isLangOpen)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-2xs ${
-              isLangOpen
-                ? 'bg-blue-50 border-blue-300 text-blue-800 shadow-sm'
-                : 'bg-slate-100 hover:bg-slate-200/90 border-slate-200 text-slate-700 hover:text-slate-900'
-            }`}
-            title={language === 'en' ? 'Switch Language (Extensible)' : 'Đổi ngôn ngữ giao diện (Sẵn sàng mở rộng)'}
-          >
-            <span className="text-sm leading-none">{SUPPORTED_LANGUAGES.find((l) => l.code === language)?.flag || '🌐'}</span>
-            <span className="font-extrabold text-[11px] tracking-wide uppercase">
-              {SUPPORTED_LANGUAGES.find((l) => l.code === language)?.code || language}
-            </span>
-            <ChevronDown
-              className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
-                isLangOpen ? 'rotate-180 text-blue-600' : ''
-              }`}
-            />
-          </button>
-
-          {isLangOpen && (
-            <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200/90 p-2 z-50 animate-in fade-in zoom-in-95 backdrop-blur-md">
-              <div className="px-2.5 py-1.5 border-b border-slate-100 flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {language === 'en' ? 'Select Language' : 'Chọn Ngôn Ngữ'}
-                </span>
-                <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md font-extrabold">
-                  {language.toUpperCase()}
-                </span>
-              </div>
-
-              <div className="py-1.5 space-y-1 max-h-72 overflow-y-auto">
-                {SUPPORTED_LANGUAGES.map((langItem) => {
-                  const isSelected = language === langItem.code;
-                  return (
-                    <button
-                      key={langItem.code}
-                      type="button"
-                      onClick={() => {
-                        setLanguage(langItem.code as any);
-                        setIsLangOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer text-left ${
-                        isSelected
-                          ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200/80 shadow-2xs'
-                          : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="text-base leading-none">{langItem.flag}</span>
-                        <div className="min-w-0">
-                          <p className="leading-tight font-semibold truncate">{langItem.label}</p>
-                          <p className="text-[10px] text-slate-400 font-normal leading-tight truncate">
-                            {langItem.sub}
-                          </p>
-                        </div>
-                      </div>
-
-                      {isSelected ? (
-                        <Check className="w-4 h-4 text-blue-600 shrink-0 ml-2" />
-                      ) : !langItem.ready ? (
-                        <span className="text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-medium shrink-0 ml-2">
-                          Soon
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="pt-1.5 border-t border-slate-100 px-2.5 py-1 text-center">
-                <p className="text-[10px] text-slate-400 font-medium">
-                  {language === 'en' ? '🌐 Multi-language system ready' : '🌐 Hệ thống sẵn sàng mở rộng đa ngôn ngữ'}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* NOTIFICATION BELL WITH LIVE POPUP */}
         <div className="relative" ref={notifRef}>
@@ -717,38 +713,48 @@ export function Header({
               <div className="flex border-b border-slate-100 bg-slate-50 p-1.5 gap-1 text-xs">
                 <button
                   type="button"
-                  onClick={() => setSystemTab('ABOUT')}
-                  className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                  onClick={() => { setSystemTab('ABOUT'); setLicMsg(null); }}
+                  className={`flex-1 py-1.5 px-1.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer ${
                     systemTab === 'ABOUT' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <Info className="w-3.5 h-3.5 text-blue-600" />
-                  <span>About SIMPLY IT</span>
+                  <Info className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span>About</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSystemTab('HELP')}
-                  className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                  onClick={() => { setSystemTab('LICENSE'); setLicMsg(null); }}
+                  className={`flex-1 py-1.5 px-1.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer ${
+                    systemTab === 'LICENSE' ? 'bg-white text-amber-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>{language === 'en' ? 'License' : 'Bản Quyền'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSystemTab('HELP'); setLicMsg(null); }}
+                  className={`flex-1 py-1.5 px-1.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer ${
                     systemTab === 'HELP' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Help Contents (F1)</span>
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span>{language === 'en' ? 'Help' : 'Trợ Giúp'}</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSystemTab('SYSTEM')}
-                  className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                  onClick={() => { setSystemTab('SYSTEM'); setLicMsg(null); }}
+                  className={`flex-1 py-1.5 px-1.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1 transition-colors cursor-pointer ${
                     systemTab === 'SYSTEM' ? 'bg-white text-emerald-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <Server className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{language === 'en' ? 'Technical (~8ms)' : 'Kỹ thuật (~8ms)'}</span>
+                  <Server className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>{language === 'en' ? 'Health' : 'Kỹ Thuật'}</span>
                 </button>
               </div>
 
               {/* Tab Content */}
-              <div className="p-4 text-xs max-h-[420px] overflow-y-auto space-y-3">
+              <div className="p-4 text-xs max-h-[520px] overflow-y-auto space-y-3">
                 {systemTab === 'ABOUT' && (
                   <div className="space-y-3.5">
                     {/* COMPACT AUTHOR CARD (NO TK BADGE) */}
@@ -795,6 +801,292 @@ export function Header({
                           📩 <strong>Hình thức trao đổi & Hợp tác:</strong> Liên hệ qua email để trao đổi nghiệp vụ, yêu cầu thêm tính năng mới, đóng góp phát triển hoặc nhận hỗ trợ kỹ thuật chuyên sâu về hệ thống.
                         </div>
                       </div>
+                    </div>
+
+                    {/* Phiên bản đang dùng & Nhập License Key trực tiếp */}
+                    <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+                      <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                            <ShieldCheck className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-slate-900 text-xs">
+                              {language === 'en' ? 'Edition & License Status' : 'Phiên Bản Đang Dùng & Bản Quyền'}
+                            </h4>
+                            <p className="text-[10px] text-slate-500">
+                              SIMPLY IT v1.0.0
+                            </p>
+                          </div>
+                        </div>
+
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide flex items-center gap-1 ${
+                          licenseInfo?.isEnterprise
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}>
+                          {licenseInfo?.isEnterprise ? (
+                            <>
+                              <Crown className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span>ENTERPRISE</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span>COMMUNITY</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+
+                      {licenseInfo?.isEnterprise ? (
+                        <div className="space-y-2.5">
+                          <div className="p-2.5 bg-amber-50/60 border border-amber-200/70 rounded-xl space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-500">{language === 'en' ? 'Licensed To:' : 'Đơn vị sở hữu:'}</span>
+                              <strong className="text-slate-900">{licenseInfo.customer || 'Doanh Nghiệp'}</strong>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-500">{language === 'en' ? 'License Status:' : 'Trạng thái:'}</span>
+                              <span className="font-bold text-emerald-600 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>{language === 'en' ? 'Active' : 'Đã kích hoạt hợp lệ'}</span>
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-500">{language === 'en' ? 'Device Limit:' : 'Hạn mức tài sản:'}</span>
+                              <span className="font-bold text-slate-800">
+                                {licenseInfo.maxAssets ? `${licenseInfo.maxAssets} thiết bị` : (language === 'en' ? 'Unlimited' : 'Không giới hạn')}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-500">{language === 'en' ? 'Expiry:' : 'Hạn bản quyền:'}</span>
+                              <span className="font-bold text-slate-800">
+                                {licenseInfo.expiresAt
+                                  ? `${new Date(licenseInfo.expiresAt).toLocaleDateString('vi-VN')} (${licenseInfo.daysRemaining ?? 0} ngày)`
+                                  : (language === 'en' ? 'Lifetime (Perpetual)' : 'Vĩnh viễn (Không giới hạn)')}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-0.5">
+                            <Link
+                              href="/settings?tab=license"
+                              onClick={() => setIsSystemHealthOpen(false)}
+                              className="text-blue-600 hover:text-blue-800 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>{language === 'en' ? 'Manage in Settings →' : 'Quản lý trong Cài Đặt →'}</span>
+                            </Link>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          <p className="text-[11px] text-slate-600 leading-relaxed">
+                            {language === 'en'
+                              ? 'Community Edition is 100% free (supports up to 50 assets). To unlock Enterprise features (AI Copilot, SLA, LDAP/SSO), paste your license key:'
+                              : 'Bản Community miễn phí vĩnh viễn (tối đa 50 thiết bị). Nhập mã License Key để mở khóa trọn bộ tính năng Enterprise (AI Copilot, SLA, LDAP, SSO):'}
+                          </p>
+
+                          <form onSubmit={handleActivateKey} className="space-y-2">
+                            <div className="flex items-center gap-1.5">
+                              <div className="relative flex-1">
+                                <Key className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                  type="text"
+                                  value={licKeyInput}
+                                  onChange={(e) => setLicKeyInput(e.target.value)}
+                                  placeholder="SIMPLY-ENT-XXXX-XXXX..."
+                                  className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-[11px] font-mono text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                                />
+                              </div>
+                              <button
+                                type="submit"
+                                disabled={licSubmitting}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[11px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-50"
+                              >
+                                {licSubmitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />}
+                                <span>{licSubmitting ? '...' : (language === 'en' ? 'Activate' : 'Kích hoạt')}</span>
+                              </button>
+                            </div>
+
+                            {licMsg && (
+                              <div className={`p-2 rounded-xl text-[10.5px] font-medium flex items-center gap-1.5 ${
+                                licMsg.type === 'success'
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                  : 'bg-rose-50 text-rose-800 border border-rose-200'
+                              }`}>
+                                {licMsg.type === 'success' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />}
+                                <span>{licMsg.text}</span>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between text-[10.5px] pt-0.5">
+                              <button
+                                type="button"
+                                onClick={() => { setSystemTab('LICENSE'); setLicMsg(null); }}
+                                className="text-amber-700 hover:text-amber-900 font-bold flex items-center gap-1 cursor-pointer"
+                              >
+                                <Crown className="w-3 h-3 text-amber-600" />
+                                <span>{language === 'en' ? 'Compare Editions' : 'So sánh tính năng'}</span>
+                              </button>
+
+                              <Link
+                                href="/settings?tab=license"
+                                onClick={() => setIsSystemHealthOpen(false)}
+                                className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-0.5"
+                              >
+                                <span>{language === 'en' ? 'License Settings' : 'Mở Cài Đặt'}</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </Link>
+                            </div>
+                          </form>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {systemTab === 'LICENSE' && (
+                  <div className="space-y-3.5">
+                    {/* Full License Details Card */}
+                    <div className="bg-slate-900 text-white p-4 rounded-2xl border border-slate-700/70 shadow-lg space-y-3">
+                      <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-700/60">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center">
+                            <ShieldCheck className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-white text-xs sm:text-sm">
+                              {language === 'en' ? 'System License & Edition' : 'Thông Tin Giấy Phép & Bản Quyền'}
+                            </h4>
+                            <p className="text-[10px] text-slate-400">
+                              SIMPLY IT ITSM Platform v1.0.0
+                            </p>
+                          </div>
+                        </div>
+
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          licenseInfo?.isEnterprise
+                            ? 'bg-amber-400 text-slate-950 font-black'
+                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        }`}>
+                          {licenseInfo?.isEnterprise ? '👑 ENTERPRISE' : 'COMMUNITY'}
+                        </span>
+                      </div>
+
+                      {licenseInfo?.isEnterprise ? (
+                        <div className="space-y-3 text-xs">
+                          <div className="p-3 bg-slate-800/90 rounded-xl border border-slate-700/60 space-y-2 text-[11px]">
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">{language === 'en' ? 'Customer:' : 'Cấp phép cho:'}</span>
+                              <strong className="text-white text-xs">{licenseInfo.customer || 'Enterprise'}</strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">{language === 'en' ? 'Max Assets:' : 'Quy mô thiết bị:'}</span>
+                              <span className="text-emerald-400 font-bold font-mono">
+                                {licenseInfo.maxAssets ? `${licenseInfo.maxAssets} thiết bị` : (language === 'en' ? 'Unlimited' : 'Không giới hạn')}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">{language === 'en' ? 'Expires:' : 'Hạn dùng:'}</span>
+                              <span className="text-amber-300 font-bold font-mono">
+                                {licenseInfo.expiresAt
+                                  ? `${new Date(licenseInfo.expiresAt).toLocaleDateString('vi-VN')} (còn ${licenseInfo.daysRemaining ?? 0} ngày)`
+                                  : (language === 'en' ? 'Perpetual (Lifetime)' : 'Vĩnh viễn (Lifetime)')}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="p-2.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-emerald-300 text-[11px] flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span>{language === 'en' ? 'All Enterprise modules (AI, SLA, SSO, LDAP) are fully active.' : 'Toàn bộ tính năng cao cấp (AI, SLA, SSO M365, LDAP) đã được kích hoạt.'}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1">
+                            <Link
+                              href="/settings?tab=license"
+                              onClick={() => setIsSystemHealthOpen(false)}
+                              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[11px] font-bold transition-all shadow-xs flex items-center gap-1.5"
+                            >
+                              <span>{language === 'en' ? 'Open License Settings' : 'Mở Quản Lý Bản Quyền'}</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </Link>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-2 text-[10.5px]">
+                            <div className="p-2.5 bg-slate-800/80 rounded-xl border border-slate-700/50 space-y-1">
+                              <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                <Check className="w-3 h-3" /> Community
+                              </span>
+                              <p className="text-slate-400 text-[10px]">Tối đa 50 tài sản, Service Desk & Ticket, Quản lý người dùng cơ bản.</p>
+                            </div>
+                            <div className="p-2.5 bg-amber-950/30 rounded-xl border border-amber-700/40 space-y-1">
+                              <span className="text-amber-400 font-bold flex items-center gap-1">
+                                <Crown className="w-3 h-3" /> Enterprise
+                              </span>
+                              <p className="text-slate-300 text-[10px]">Không giới hạn tài sản, AI Copilot, SSO M365, LDAP, SLA & Routing.</p>
+                            </div>
+                          </div>
+
+                          {/* Key input inside License Tab */}
+                          <form onSubmit={handleActivateKey} className="space-y-2">
+                            <label className="block text-[11px] font-bold text-slate-300">
+                              {language === 'en' ? 'Activate License Key:' : 'Kích hoạt mã bản quyền Enterprise:'}
+                            </label>
+                            <div className="flex items-center gap-1.5">
+                              <div className="relative flex-1">
+                                <Key className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                  type="text"
+                                  value={licKeyInput}
+                                  onChange={(e) => setLicKeyInput(e.target.value)}
+                                  placeholder="SIMPLY-ENT-XXXX-XXXX..."
+                                  className="w-full pl-8 pr-2 py-1.5 bg-slate-800 border border-slate-600 rounded-xl text-[11px] font-mono text-white placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                                />
+                              </div>
+                              <button
+                                type="submit"
+                                disabled={licSubmitting}
+                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-[11px] transition-all shadow-xs flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-50"
+                              >
+                                {licSubmitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />}
+                                <span>{licSubmitting ? '...' : (language === 'en' ? 'Activate' : 'Kích hoạt')}</span>
+                              </button>
+                            </div>
+
+                            {licMsg && (
+                              <div className={`p-2 rounded-xl text-[10.5px] font-medium flex items-center gap-1.5 ${
+                                licMsg.type === 'success'
+                                  ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/40'
+                                  : 'bg-rose-950/60 text-rose-300 border border-rose-500/40'
+                              }`}>
+                                {licMsg.type === 'success' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />}
+                                <span>{licMsg.text}</span>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between text-[10.5px] pt-1 border-t border-slate-800">
+                              <a
+                                href="mailto:takien26@gmail.com?subject=[SIMPLY%20IT]%20Lien%20he%20mua%20key%20Enterprise"
+                                className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1"
+                              >
+                                <Mail className="w-3 h-3" />
+                                <span>{language === 'en' ? 'Contact to buy key' : 'Liên hệ mua key Enterprise'}</span>
+                              </a>
+                              <Link
+                                href="/settings?tab=license"
+                                onClick={() => setIsSystemHealthOpen(false)}
+                                className="text-blue-400 hover:text-blue-300 font-bold flex items-center gap-0.5"
+                              >
+                                <span>{language === 'en' ? 'Settings Page' : 'Trang Cài Đặt'}</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </Link>
+                            </div>
+                          </form>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

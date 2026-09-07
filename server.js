@@ -5,6 +5,14 @@ const path = require('path');
 const next = require('next');
 const selfsigned = require('selfsigned');
 
+process.on('uncaughtException', (err) => {
+  console.error('🔥 [Server Error] Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🔥 [Server Error] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 const dev = false;
 const app = next({ dev, dir: __dirname });
 const handle = app.getRequestHandler();
@@ -158,7 +166,7 @@ async function initServer() {
     const today = new Date().toISOString().split('T')[0];
     if (lastDailyAlertDate === today) return;
     try {
-      const req = http.request('http://127.0.0.1:3000/api/cron/alert-scanner?run=true', (res) => {
+      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/alert-scanner?run=true`, (res) => {
         if (res.statusCode === 200) {
           lastDailyAlertDate = today;
           console.log(`🔔 [Alert Engine] Daily alert scan completed successfully for ${today}`);

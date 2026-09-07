@@ -1,3 +1,4 @@
+import { EnterpriseFeatureLock } from '@/components/common/EnterpriseFeatureLock';
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -87,6 +88,32 @@ interface AgentReport {
 export default function DiscoveryPage() {
   const { language } = useLanguage();
   const isEn = language === 'en';
+  const [isEnterprise, setIsEnterprise] = useState<boolean | null>(null);
+  const [activeModules, setActiveModules] = useState<string[]>([]);
+  const isModActive = (mod: string) => Boolean(isEnterprise) && (activeModules.length === 0 || activeModules.includes(mod) || activeModules.includes('*'));
+
+  const fetchLicense = () => {
+    fetch('/api/license')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.isEnterprise) {
+          setIsEnterprise(true);
+          setActiveModules(Array.isArray(data.modules) ? data.modules : []);
+        } else {
+          setIsEnterprise(false);
+          setActiveModules([]);
+        }
+      })
+      .catch(() => setIsEnterprise(false));
+  };
+
+  useEffect(() => {
+    fetchLicense();
+    const handleUpdate = () => fetchLicense();
+    window.addEventListener('simply:license-updated', handleUpdate);
+    return () => window.removeEventListener('simply:license-updated', handleUpdate);
+  }, []);
+
   const [activeTab, setActiveTab] = useState<'SCAN' | 'AGENTS' | 'AI_ENRICH' | 'GUIDE'>('SCAN');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 

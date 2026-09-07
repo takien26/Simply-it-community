@@ -26,6 +26,7 @@ export interface LicenseStatus {
   customer?: string;
   expiresAt?: string;
   daysRemaining?: number;
+  maxAssets?: number;
   modules: string[];
 }
 
@@ -110,6 +111,7 @@ export async function getActiveLicense(): Promise<LicenseStatus> {
       customer: payload.customer,
       expiresAt: payload.expiresAt,
       daysRemaining,
+      maxAssets: payload.maxAssets,
       modules: payload.modules || [],
     };
   } catch (err) {

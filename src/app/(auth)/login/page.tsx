@@ -212,12 +212,6 @@ function LoginForm() {
           >
             {loading ? t('auth.signing_in', 'Đang đăng nhập...') : t('auth.signin_btn', 'Đăng nhập vào Hệ Thống')}
           </button>
-
-          <p className="text-[11px] text-center text-slate-400 pt-2 border-t border-slate-100">
-            {language === 'en' ? 'Default Admin Account:' : 'Tài khoản quản trị mặc định:'}{' '}
-            <span className="font-mono text-slate-600 font-semibold">admin@company.com</span> /{' '}
-            <span className="font-mono text-slate-600 font-semibold">Admin@123</span>
-          </p>
         </form>
       </div>
     </div>

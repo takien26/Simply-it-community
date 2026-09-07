@@ -65,8 +65,29 @@ export function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [creatingTicket, setCreatingTicket] = useState(false);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [isEnterprise, setIsEnterprise] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch('/api/license')
+      .then((res) => res.json())
+      .then((data) => {
+        setIsEnterprise(!!data?.isEnterprise);
+      })
+      .catch(() => {});
+
+    const handleLicenseUpdated = () => {
+      fetch('/api/license')
+        .then((res) => res.json())
+        .then((data) => {
+          setIsEnterprise(!!data?.isEnterprise);
+        })
+        .catch(() => {});
+    };
+    window.addEventListener('simply:license-updated', handleLicenseUpdated);
+    return () => window.removeEventListener('simply:license-updated', handleLicenseUpdated);
+  }, []);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -236,6 +257,8 @@ export function ChatWidget() {
       );
     });
   };
+
+  if (!isEnterprise) return null;
 
   return (
     <div className="fixed bottom-5 right-5 z-50">

@@ -176,22 +176,26 @@ function getLocalizedModule(mod: string, isEn: boolean) {
   return MODULE_CONFIG[mod] || (isEn ? MODULE_CONFIG_EN.other : MODULE_CONFIG.other);
 }
 
-function getSettingsNavGroups(isEn: boolean, isEnterprise: boolean): NavGroup[] {
+function getSettingsNavGroups(isEn: boolean, isEnterprise: boolean, activeModules: string[] = []): NavGroup[] {
+  const isModActive = (mod: string) => isEnterprise && (activeModules.length === 0 || activeModules.includes(mod) || activeModules.includes('*'));
+
   return [
     {
       title: isEn ? 'System & Interface' : 'Hệ Thống & Giao Diện',
       items: [
         { id: 'GENERAL', label: isEn ? 'General Settings & Logo' : 'Cài đặt Chung & Logo', icon: '⚙️', desc: isEn ? 'System name, logo, favicon, interface appearance' : 'Tên hệ thống, logo, favicon, màu sắc giao diện' },
         { id: 'CURRENCY', label: isEn ? 'Currency & Base Denomination' : 'Tiền Tệ & Đồng Tiền Gốc', icon: '💰', desc: isEn ? 'Configure VND, USD, EUR and exchange rates' : 'Cấu hình VND, USD, EUR và tỷ giá hối đoái' },
-        { id: 'LICENSE', label: isEn ? 'Edition & License' : 'Bản Quyền & Phiên Bản', icon: '📜', desc: isEn ? 'System edition, activation status' : 'Phiên bản hệ thống, kích hoạt bản quyền' },
+        { id: 'LICENSE', label: isEn ? 'Edition & License' : 'Giấy Phép & Bản Quyền', icon: '🛡️', desc: isEn ? 'System edition, activation status' : 'Phiên bản hệ thống, kích hoạt bản quyền Enterprise' },
       ],
     },
     {
       title: isEn ? 'Security & Access Control' : 'Bảo Mật & Phân Quyền',
       items: [
         { id: 'RBAC', label: isEn ? 'Role-Based Access Control (RBAC)' : 'Phân Quyền Vai Trò (RBAC)', icon: '🔐', desc: isEn ? 'Detailed permission matrix for Admin, IT, Staff' : 'Ma trận quyền hạn chi tiết Admin, IT, Staff' },
-        ...(isEnterprise ? [
+        ...(isModActive('SSO') ? [
           { id: 'SSO' as const, label: isEn ? 'Microsoft 365 Single Sign-On' : 'Đăng Nhập SSO Microsoft 365', icon: '🔑', desc: isEn ? '1-click login via Microsoft Azure AD / Entra ID' : 'Đăng nhập 1 chạm qua Microsoft Azure AD' },
+        ] : []),
+        ...(isModActive('LDAP') ? [
           { id: 'LDAP' as const, label: isEn ? 'LDAP / Active Directory' : 'Xác Thực LDAP / Active Directory', icon: '🏢', desc: isEn ? 'Synchronize Windows Server Active Directory accounts' : 'Đồng bộ tài khoản máy chủ Windows Server' },
         ] : []),
       ],
@@ -199,9 +203,11 @@ function getSettingsNavGroups(isEn: boolean, isEnterprise: boolean): NavGroup[] 
     {
       title: isEn ? 'Integrations & Notifications' : 'Tích Hợp & Thông Báo',
       items: [
-        { id: 'ALERTS', label: isEn ? 'Automated Alerts (Telegram/Email)' : 'Cảnh Báo Tự Động (Telegram/Email)', icon: '🚨', desc: isEn ? 'Scan expiry dates for IT services, licenses, warranties' : 'Quét hạn Dịch vụ IT, License, Bảo hành và bắn tin' },
+        ...(isModActive('ALERTS') ? [
+          { id: 'ALERTS' as const, label: isEn ? 'Automated Alerts (Telegram/Email)' : 'Cảnh Báo Tự Động (Telegram/Email)', icon: '🚨', desc: isEn ? 'Scan expiry dates for IT services, licenses, warranties' : 'Quét hạn Dịch vụ IT, License, Bảo hành và bắn tin' },
+        ] : []),
         { id: 'EMAIL', label: isEn ? 'Email & SMTP Configuration' : 'Cấu Hình Email & SMTP', icon: '📧', desc: isEn ? 'Mail servers & 7 automated notification email templates' : 'Máy chủ gửi mail & 7 mẫu email có link CTA' },
-        ...(isEnterprise ? [
+        ...(isModActive('WEBHOOKS') ? [
           { id: 'WEBHOOKS' as const, label: isEn ? 'Multi-Channel Webhooks' : 'Webhook Đa Kênh (Teams/Zalo)', icon: '🔔', desc: isEn ? 'Instant alerts to Teams, Zalo, Slack webhooks' : 'Bắn thông báo tức thời qua Zalo, Teams, Slack' },
         ] : []),
       ],
@@ -209,11 +215,13 @@ function getSettingsNavGroups(isEn: boolean, isEnterprise: boolean): NavGroup[] 
     {
       title: isEn ? 'ITSM Workflows & Operations' : 'Quy Trình & Vận Hành IT',
       items: [
-        ...(isEnterprise ? [
+        ...(isModActive('ROUTING') ? [
           { id: 'ROUTING' as const, label: isEn ? 'IT Support Org, Routing & SLA' : 'Tổ Chức IT, Phân Tuyến & SLA', icon: '🎯', desc: isEn ? 'Support teams, queues, and committed SLA policies' : 'Đội ngũ hỗ trợ, hàng đợi và hạn cam kết SLA' },
         ] : []),
         { id: 'MAINTENANCE', label: isEn ? 'Periodic Maintenance Schedules' : 'Lịch Bảo Trì Định Kỳ', icon: '📅', desc: isEn ? 'Automated maintenance schedules for enterprise assets' : 'Lên lịch tự động kiểm tra bảo dưỡng thiết bị' },
-        { id: 'AI_COPILOT', label: isEn ? 'Artificial Intelligence (AI)' : 'Trí Tuệ Nhân Tạo (AI)', icon: '🤖', desc: isEn ? 'Configure Gemini AI models, Copilot assistant, and OCR' : 'Cấu hình Gemini API, Trợ lý AI và OCR hóa đơn' },
+        ...(isModActive('AI_COPILOT') ? [
+          { id: 'AI_COPILOT' as const, label: isEn ? 'Artificial Intelligence (AI)' : 'Trí Tuệ Nhân Tạo (AI)', icon: '🤖', desc: isEn ? 'Configure Gemini AI models, Copilot assistant, and OCR' : 'Cấu hình Gemini API, Trợ lý AI và OCR hóa đơn' },
+        ] : []),
       ],
     },
     {
@@ -490,6 +498,7 @@ export default function SettingsPage() {
   const isEn = language === 'en';
   const [activeTab, setActiveTab] = useState<'GENERAL' | 'ALERTS' | 'EMAIL' | 'MAINTENANCE' | 'WEBHOOKS' | 'AI_COPILOT' | 'CURRENCY' | 'ROUTING' | 'RBAC' | 'SSO' | 'LDAP' | 'AUDIT' | 'LICENSE'>('GENERAL');
   const [isEnterprise, setIsEnterprise] = useState<boolean>(false);
+  const [activeModules, setActiveModules] = useState<string[]>([]);
   const [searchFilter, setSearchFilter] = useState('');
   const [isPinned, setIsPinned] = useState<boolean>(false);
   const [isHovered, setIsHovered] = useState<boolean>(false);
@@ -499,6 +508,30 @@ export default function SettingsPage() {
 
 
 
+
+  const isModActive = (mod: string) => isEnterprise && (activeModules.length === 0 || activeModules.includes(mod) || activeModules.includes('*'));
+
+  const fetchLicenseStatus = () => {
+    fetch('/api/license')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.isEnterprise) {
+          setIsEnterprise(true);
+          setActiveModules(Array.isArray(data.modules) ? data.modules : []);
+        } else {
+          setIsEnterprise(false);
+          setActiveModules([]);
+        }
+      })
+      .catch((err) => console.error(err));
+  };
+
+  useEffect(() => {
+    fetchLicenseStatus();
+    const handleLicenseUpdated = () => fetchLicenseStatus();
+    window.addEventListener('simply:license-updated', handleLicenseUpdated);
+    return () => window.removeEventListener('simply:license-updated', handleLicenseUpdated);
+  }, []);
 
   // Load pinned state & URL tab from localStorage / searchParams on mount
   useEffect(() => {
@@ -532,6 +565,8 @@ export default function SettingsPage() {
           setActiveTab('LDAP');
         } else if (tabParam === 'audit' || tabParam === 'logs') {
           setActiveTab('AUDIT');
+        } else if (tabParam === 'license' || tabParam === 'lic' || tabParam === 'banquyen') {
+          setActiveTab('LICENSE');
         } else if (tabParam === 'general') {
           setActiveTab('GENERAL');
         }
@@ -1276,7 +1311,7 @@ export default function SettingsPage() {
     );
   }
 
-  const navGroups = getSettingsNavGroups(isEn, isEnterprise);
+  const navGroups = getSettingsNavGroups(isEn, isEnterprise, activeModules);
   const filteredNavGroups = navGroups.map((group) => {
     if (!searchFilter.trim()) return group;
     const term = searchFilter.toLowerCase();
@@ -1303,7 +1338,9 @@ export default function SettingsPage() {
             <span>{isEn ? 'System Settings & Configuration' : 'Cài đặt & Cấu hình Hệ thống'}</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            {isEn ? 'Central administration for identity, role-based access control (RBAC), SSO/LDAP authentication, and ITSM integrations' : 'Trung tâm quản trị nhận diện, phân quyền vai trò (RBAC), bảo mật xác thực SSO/LDAP và tích hợp vận hành ITSM'}
+            {isEnterprise
+              ? (isEn ? 'Central administration for identity, role-based access control (RBAC), SSO/LDAP authentication, and ITSM integrations' : 'Trung tâm quản trị nhận diện, phân quyền vai trò (RBAC), bảo mật xác thực SSO/LDAP và tích hợp vận hành ITSM')
+              : (isEn ? 'Central administration for system configuration, role-based access control (RBAC), and ITSM operations' : 'Trung tâm cấu hình hệ thống, phân quyền vai trò (RBAC) và tích hợp vận hành ITSM')}
           </p>
         </div>
       </div>
@@ -1536,9 +1573,33 @@ export default function SettingsPage() {
           )}
 
           {activeTab === 'AI_COPILOT' && (
-            <div className="space-y-6">
-              <AICopilotSettingsTab />
-            </div>
+            isModActive('AI_COPILOT') ? (
+              <div className="space-y-6">
+                <AICopilotSettingsTab />
+              </div>
+            ) : (
+              <EnterpriseFeatureLock
+                previewType="ai"
+                tier="ENTERPRISE"
+                icon="🤖"
+                title="Trí Tuệ Nhân Tạo (Gemini AI & Trợ Lý Ảo Copilot)"
+                titleEn="Artificial Intelligence (Gemini AI & Copilot Assistant)"
+                subtitle="Tích hợp mô hình ngôn ngữ lớn Google Gemini AI để hỗ trợ vận hành ITSM và OCR hóa đơn tự động"
+                subtitleEn="Harness Google Gemini AI models for smart ITSM operations and automated receipt OCR"
+                bullets={[
+                  'Trợ lý ảo Copilot Chatbot hỗ trợ kỹ thuật viên và nhân viên tự phục vụ',
+                  'Quét và trích xuất tự động dữ liệu thiết bị từ ảnh chụp hóa đơn (OCR Invoice)',
+                  'Phân tích thông minh nội dung ticket, tự động gợi ý giải pháp và phân loại sự cố',
+                  'Tự do cấu hình Gemini Flash/Pro API Key hoặc Local AI Server',
+                ]}
+                bulletsEn={[
+                  'Virtual Copilot chatbot assistant for IT staff and employee self-service',
+                  'Automated hardware & invoice data extraction from uploaded photos (Receipt OCR)',
+                  'Smart ticket content analysis, auto-suggested resolutions and categorization',
+                  'Customizable Gemini Flash/Pro API key and local AI server integration',
+                ]}
+              />
+            )
           )}
 
       {activeTab === 'CURRENCY' && (
@@ -1548,7 +1609,7 @@ export default function SettingsPage() {
       )}
 
       {activeTab === 'ROUTING' && (
-        isEnterprise ? (
+        isModActive('ROUTING') ? (
           <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
             <SupportOrgSettingsTab />
           </div>
@@ -2299,14 +2360,42 @@ export default function SettingsPage() {
         </form>
       )}
 
-      {activeTab === 'ALERTS' && <AlertSettingsTab />}
+      {activeTab === 'ALERTS' && (
+        isModActive('ALERTS') ? (
+          <AlertSettingsTab />
+        ) : (
+          <EnterpriseFeatureLock
+            previewType="alerts"
+            tier="ENTERPRISE"
+            icon="🚨"
+            title="Cảnh Báo Tự Động Telegram & Quét Hạn Hợp Đồng"
+            titleEn="Automated Telegram Alerts & Expiration Monitoring"
+            subtitle="Tự động quét hạn dịch vụ IT, chứng chỉ SSL, domain, bản quyền phần mềm và bắn cảnh báo về Telegram Bot"
+            subtitleEn="Proactively monitor IT contracts, SSL certificates, domains, and push instant alerts via Telegram Bot"
+            bullets={[
+              'Tự động quét định kỳ hạn Dịch vụ IT, Bản quyền phần mềm, Hạn bảo hành thiết bị',
+              'Cảnh báo sớm đa mốc: 60 ngày, 30 ngày, 15 ngày, 7 ngày trước khi hết hạn',
+              'Bắn tin nhắn thông báo tức thì về kênh/nhóm Telegram nội bộ phòng IT',
+              'Gửi báo cáo tổng hợp tình trạng hạ tầng và dịch vụ sắp hết hạn định kỳ hàng tuần',
+              'Tự động kích hoạt thông báo sự cố khẩn cấp P1, P2 tới kỹ thuật viên trực',
+            ]}
+            bulletsEn={[
+              'Automated periodic scanning of IT services, software licenses, and hardware warranties',
+              'Multi-tier early warnings: 60 days, 30 days, 15 days, and 7 days prior to expiry',
+              'Instant push alerts to internal IT department Telegram channels/groups',
+              'Weekly summary reports of expiring assets and contracted services',
+              'Auto-escalation of critical P1/P2 incidents to on-duty engineers',
+            ]}
+          />
+        )
+      )}
 
       {activeTab === 'EMAIL' && <EmailSettingsTab />}
 
       {activeTab === 'MAINTENANCE' && <MaintenanceSchedulesTab />}
 
       {activeTab === 'WEBHOOKS' && (
-        isEnterprise ? (
+        isModActive('WEBHOOKS') ? (
           <WebhookSettingsTab />
         ) : (
           <EnterpriseFeatureLock
@@ -2338,7 +2427,7 @@ export default function SettingsPage() {
       )}
 
       {activeTab === 'SSO' && (
-        isEnterprise ? (
+        isModActive('SSO') ? (
           <form onSubmit={handleSaveSettings} className="space-y-6">
           {saved && (
             <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold rounded-2xl flex items-center space-x-2 animate-in fade-in">
@@ -2495,7 +2584,7 @@ export default function SettingsPage() {
       )}
 
       {activeTab === 'LDAP' && (
-        isEnterprise ? (
+        isModActive('LDAP') ? (
           <form onSubmit={handleSaveSettings} className="space-y-6">
           {saved && (
             <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold rounded-2xl flex items-center space-x-2 animate-in fade-in">
