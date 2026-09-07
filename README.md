@@ -9,7 +9,10 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg?style=flat-square)](https://opensource.org/licenses/Apache-2.0)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker)](https://www.docker.com/)
 
-[English Overview](#english-overview) • [Tổng Quan Tiếng Việt](#tổng-quan-tiếng-việt)
+[English Overview](#english-overview) • [Tổng Quan Tiếng Việt](#tổng-quan-tiếng-việt) • [📖 **Hướng Dẫn Cài Đặt Chi Tiết Từ A-Z (Tiếng Việt)**](./HUONG_DAN_CAI_DAT.md)
+
+> 💡 **Bạn mới làm quen hoặc không rành về kỹ thuật?**  
+> 👉 Xem ngay tài liệu hướng dẫn từng bước từ A đến Z cực kỳ dễ hiểu tại: **[HUONG_DAN_CAI_DAT.md](./HUONG_DAN_CAI_DAT.md)** *(Bao gồm Windows .exe, Windows Docker Desktop và Ubuntu Linux)*.
 
 ---
 
