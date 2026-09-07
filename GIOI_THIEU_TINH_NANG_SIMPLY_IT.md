@@ -164,6 +164,7 @@ Tương thích tối đa với thói quen làm việc hàng ngày:
 | **Quản lý Bản quyền phần mềm** | ✅ Đầy đủ | ✅ Đầy đủ |
 | **IT Helpdesk / Ticket SLA** | ✅ Đầy đủ | ✅ Đầy đủ |
 | **Tạo & In mã Barcode / QR Code** | ✅ Có sẵn | ✅ Có sẵn |
+| **Trí Tuệ Nhân Tạo AI (Gemini / ChatGPT / OCR)** | ✅ Có sẵn (Dùng Key cá nhân) | ✅ Đầy đủ + Tối ưu hóa |
 | **Nhập / Xuất dữ liệu Excel** | ✅ Có sẵn | ✅ Có sẵn |
 | **Chạy Portable (.exe) & Docker** | ✅ Có sẵn | ✅ Có sẵn |
 | **Sơ đồ mặt bằng văn phòng 2D (Floor Plan)** | Giao diện cơ bản | ✅ Tương tác trực quan 2D chuyên sâu |

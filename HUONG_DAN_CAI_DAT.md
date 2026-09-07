@@ -213,6 +213,56 @@ Khi mở phần mềm lên lần đầu tiên, hãy sử dụng tài khoản Qu�
 
 ---
 
+## 🤖 HƯỚNG DẪN CẤU HÌNH & THÊM KHÓA API AI (GOOGLE GEMINI & OPENAI)
+
+Hệ thống SIMPLY IT Community Edition tích hợp sẵn **Trí tuệ nhân tạo (AI Copilot & OCR Hóa đơn)** hoàn toàn **MIỄN PHÍ** và **KHÔNG CẦN BẢN QUYỀN ENTERPRISE**. Bạn chỉ cần sử dụng API Key cá nhân của mình để kích hoạt sức mạnh AI!
+
+### 🌟 Tính năng AI sẽ được kích hoạt ngay khi bạn nhập Key:
+* 💬 **Trợ lý ảo AI Copilot Chatbot**: Trả lời tự động câu hỏi hỗ trợ kỹ thuật (mạng, máy tính, máy in, email), hướng dẫn người dùng tự khắc phục sự cố.
+* 📄 **OCR Hóa đơn & Chứng từ thông minh**: Tải ảnh chụp hóa đơn mua hàng VAT lên, AI sẽ tự động đọc và điền thông tin thiết bị, số Serial, cấu hình phần cứng.
+* 🎫 **Phân tích Ticket tự động**: Gợi ý nguyên nhân gốc rễ và hướng xử lý sự cố cho kỹ thuật viên IT.
+
+---
+
+### 📌 Cách 1: Lấy API Key Google Gemini (MIỄN PHÍ 100% - KHUYÊN DÙNG)
+Google cung cấp gói Gemini API miễn phí với hạn ngạch rất lớn (15 yêu cầu/phút), hoàn toàn đủ cho nhu cầu vận hành của doanh nghiệp:
+
+1. **Bước 1**: Truy cập trang Google AI Studio: **[https://aistudio.google.com/](https://aistudio.google.com/)**
+2. **Bước 2**: Đăng nhập bằng tài khoản **Gmail** bất kỳ của bạn.
+3. **Bước 3**: Nhấp vào nút **"Get API key"** (ở menu bên trái).
+4. **Bước 4**: Nhấn **"Create API key"** > Chọn **"Create API key in new project"** (Tạo key trong dự án mới).
+5. **Bước 5**: Sao chép (Copy) chuỗi mã API Key được tạo ra (chuỗi bắt đầu bằng `AIzaSy...`).
+
+---
+
+### 📌 Cách 2: Lấy API Key OpenAI ChatGPT (Tùy chọn)
+Nếu bạn muốn sử dụng mô hình GPT-4o hoặc GPT-4o-mini của OpenAI:
+
+1. **Bước 1**: Truy cập trang OpenAI Platform: **[https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)**
+2. **Bước 2**: Đăng nhập tài khoản OpenAI của bạn.
+3. **Bước 3**: Nhấn **"Create new secret key"**, đặt tên cho key rồi nhấn **Create secret key**.
+4. **Bước 4**: Sao chép chuỗi mã API Key (chuỗi bắt đầu bằng `sk-proj-...`).
+
+---
+
+### 📌 Các bước nhập Key vào hệ thống SIMPLY IT:
+
+1. **Bước 1**: Mở trình duyệt, đăng nhập vào **SIMPLY IT** bằng tài khoản Admin (`admin@company.com`).
+2. **Bước 2**: Trên thanh Menu bên trái, nhấp vào biểu tượng **Cài đặt hệ thống (Settings)** (icon ⚙️ ở góc dưới cùng).
+3. **Bước 3**: Trong danh sách cài đặt, nhấp chọn mục **"Trí Tuệ Nhân Tạo (AI)"** (icon 🤖).
+4. **Bước 4**: Chọn Nhà cung cấp AI muốn dùng:
+   * Chọn **Google Gemini AI** (Được khuyến nghị vì miễn phí và tốc độ cực nhanh).
+   * Hoặc chọn **OpenAI ChatGPT**.
+5. **Bước 5**: Dán mã API Key bạn vừa copy vào ô **"Nhập API Key mới"**.
+6. **Bước 6**: Nhấp nút **"⚡ Kiểm Tra Kết Nối"**:
+   * Hệ thống sẽ gửi tín hiệu thử nghiệm đến Google/OpenAI.
+   * Khi hiện thông báo màu xanh lá: **`✅ Kết nối thành công!`** tức là Key hợp lệ.
+7. **Bước 7**: Nhấn nút **"💾 Lưu Toàn Bộ Cấu Hình"** ở góc trên bên phải.
+
+🎉 **Hoàn tất!** Biểu tượng Chatbot AI tròn ở góc dưới bên phải màn hình sẽ lập tức hoạt động và sẵn sàng phục vụ bạn!
+
+---
+
 ## ❓ XỬ LÝ SỰ CỐ THƯỜNG GẶP (TROUBLESHOOTING)
 
 ### 1. Báo lỗi: "Port 3000 hoặc 3001 already in use" (Cổng mạng bị trùng)

@@ -219,9 +219,7 @@ function getSettingsNavGroups(isEn: boolean, isEnterprise: boolean, activeModule
           { id: 'ROUTING' as const, label: isEn ? 'IT Support Org, Routing & SLA' : 'Tổ Chức IT, Phân Tuyến & SLA', icon: '🎯', desc: isEn ? 'Support teams, queues, and committed SLA policies' : 'Đội ngũ hỗ trợ, hàng đợi và hạn cam kết SLA' },
         ] : []),
         { id: 'MAINTENANCE', label: isEn ? 'Periodic Maintenance Schedules' : 'Lịch Bảo Trì Định Kỳ', icon: '📅', desc: isEn ? 'Automated maintenance schedules for enterprise assets' : 'Lên lịch tự động kiểm tra bảo dưỡng thiết bị' },
-        ...(isModActive('AI_COPILOT') ? [
-          { id: 'AI_COPILOT' as const, label: isEn ? 'Artificial Intelligence (AI)' : 'Trí Tuệ Nhân Tạo (AI)', icon: '🤖', desc: isEn ? 'Configure Gemini AI models, Copilot assistant, and OCR' : 'Cấu hình Gemini API, Trợ lý AI và OCR hóa đơn' },
-        ] : []),
+        { id: 'AI_COPILOT' as const, label: isEn ? 'Artificial Intelligence (AI)' : 'Trí Tuệ Nhân Tạo (AI)', icon: '🤖', desc: isEn ? 'Configure Gemini AI models, Copilot assistant, and OCR' : 'Cấu hình Gemini API, Trợ lý AI và OCR hóa đơn' },
       ],
     },
     {
@@ -1573,33 +1571,9 @@ export default function SettingsPage() {
           )}
 
           {activeTab === 'AI_COPILOT' && (
-            isModActive('AI_COPILOT') ? (
-              <div className="space-y-6">
-                <AICopilotSettingsTab />
-              </div>
-            ) : (
-              <EnterpriseFeatureLock
-                previewType="ai"
-                tier="ENTERPRISE"
-                icon="🤖"
-                title="Trí Tuệ Nhân Tạo (Gemini AI & Trợ Lý Ảo Copilot)"
-                titleEn="Artificial Intelligence (Gemini AI & Copilot Assistant)"
-                subtitle="Tích hợp mô hình ngôn ngữ lớn Google Gemini AI để hỗ trợ vận hành ITSM và OCR hóa đơn tự động"
-                subtitleEn="Harness Google Gemini AI models for smart ITSM operations and automated receipt OCR"
-                bullets={[
-                  'Trợ lý ảo Copilot Chatbot hỗ trợ kỹ thuật viên và nhân viên tự phục vụ',
-                  'Quét và trích xuất tự động dữ liệu thiết bị từ ảnh chụp hóa đơn (OCR Invoice)',
-                  'Phân tích thông minh nội dung ticket, tự động gợi ý giải pháp và phân loại sự cố',
-                  'Tự do cấu hình Gemini Flash/Pro API Key hoặc Local AI Server',
-                ]}
-                bulletsEn={[
-                  'Virtual Copilot chatbot assistant for IT staff and employee self-service',
-                  'Automated hardware & invoice data extraction from uploaded photos (Receipt OCR)',
-                  'Smart ticket content analysis, auto-suggested resolutions and categorization',
-                  'Customizable Gemini Flash/Pro API key and local AI server integration',
-                ]}
-              />
-            )
+            <div className="space-y-6">
+              <AICopilotSettingsTab />
+            </div>
           )}
 
       {activeTab === 'CURRENCY' && (
