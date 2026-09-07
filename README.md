@@ -9,10 +9,11 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg?style=flat-square)](https://opensource.org/licenses/Apache-2.0)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker)](https://www.docker.com/)
 
-[English Overview](#english-overview) • [Tổng Quan Tiếng Việt](#tổng-quan-tiếng-việt) • [📖 **Hướng Dẫn Cài Đặt Chi Tiết Từ A-Z (Tiếng Việt)**](./HUONG_DAN_CAI_DAT.md)
+[English Overview](#english-overview) • [Tổng Quan Tiếng Việt](#tổng-quan-tiếng-việt) • [📖 **Hướng Dẫn Cài Đặt (A-Z)**](./HUONG_DAN_CAI_DAT.md) • [📘 **Giới Thiệu Tính Năng Chi Tiết**](./GIOI_THIEU_TINH_NANG_SIMPLY_IT.md)
 
-> 💡 **Bạn mới làm quen hoặc không rành về kỹ thuật?**  
-> 👉 Xem ngay tài liệu hướng dẫn từng bước từ A đến Z cực kỳ dễ hiểu tại: **[HUONG_DAN_CAI_DAT.md](./HUONG_DAN_CAI_DAT.md)** *(Bao gồm Windows .exe, Windows Docker Desktop và Ubuntu Linux)*.
+> 💡 **Tài liệu PDF chính thức tải về máy:**  
+> * 📥 [**Tải File PDF Hướng Dẫn Cài Đặt Từ A-Z (HUONG_DAN_CAI_DAT_SIMPLY_IT.pdf)**](./HUONG_DAN_CAI_DAT_SIMPLY_IT.pdf)
+> * 📥 [**Tải File PDF Giới Thiệu Tính Năng Chi Tiết (GIOI_THIEU_TINH_NANG_SIMPLY_IT.pdf)**](./GIOI_THIEU_TINH_NANG_SIMPLY_IT.pdf)
 
 ---
 
@@ -156,3 +157,16 @@ Simply IT Community Edition is open-sourced software licensed under the **[Apach
 * **Email:** [takien26@gmail.com](mailto:takien26@gmail.com)
 * **GitHub:** [https://github.com/takien26](https://github.com/takien26)
 * **Website / Commercial Inquiries:** [Contact via Email](mailto:takien26@gmail.com)
+
+---
+
+## ☕ Ủng Hộ / Donate Phát Triển Dự Án
+
+Nếu bạn thấy phần mềm **SIMPLY IT** hữu ích và giúp công việc của bạn hiệu quả hơn, bạn có thể ủng hộ tác giả ly cà phê để tiếp thêm động lực phát triển thêm nhiều tính năng mới cho cộng đồng:
+
+| Quét mã VietQR | Thông tin chuyển khoản |
+| :--- | :--- |
+| <img src="./donate_qr.png" width="160" alt="VietQR Donate" /> | 🏦 **Ngân hàng**: **BIDV** (Ngân hàng TMCP Đầu tư và Phát triển Việt Nam)<br><br>💳 **Số tài khoản**: `2141876442`<br><br>👤 **Chủ tài khoản**: **TA TRUNG KIEN**<br><br>📝 **Nội dung**: `Ung ho Simply IT` |
+
+*Trân trọng cảm ơn sự ủng hộ của bạn!*
+

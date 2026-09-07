@@ -1,4 +1,4 @@
-﻿# 📖 HƯỚNG DẪN CÀI ĐẶT SIMPLY IT COMMUNITY EDITION TỪ A ĐẾN Z
+# 📖 HƯỚNG DẪN CÀI ĐẶT SIMPLY IT COMMUNITY EDITION TỪ A ĐẾN Z
 > **Dành cho mọi người dùng — Dễ hiểu, chi tiết từng bước, không cần am hiểu sâu về IT vẫn làm theo thành công 100%!**
 
 ---
@@ -222,12 +222,26 @@ Khi mở phần mềm lên lần đầu tiên, hãy sử dụng tài khoản Qu�
 
 ---
 
-## 📞 HỖ TRỢ KỸ THUẬT & LIÊN HỆ NÂNG CẤP
+## 👨‍💻 TÁC GIẢ & HỖ TRỢ KỸ THUẬT
 
-* 💬 **Tác giả & Hỗ trợ kỹ thuật**: Tạ Trung Kiên
+* 👤 **Tác giả phát triển**: **Tạ Trung Kiên**
 * 📧 **Email**: `takien26@gmail.com`
-* 🐙 **Mã nguồn chính thức**: [https://github.com/takien26/Simply-it-community](https://github.com/takien26/Simply-it-community)
-* 👑 **Bản Enterprise**: Nếu doanh nghiệp của bạn cần các tính năng nâng cao (Sơ đồ mặt bằng 2D, Tự động quét thiết bị mạng Auto-Discovery, Đợt kiểm kê tài sản chuyên sâu, Webhooks, Đăng nhập SSO/LDAP), vui lòng liên hệ email trên để được cấp License bản quyền chính hãng.
+* 🐙 **Mã nguồn chính thức (GitHub)**: [https://github.com/takien26/Simply-it-community](https://github.com/takien26/Simply-it-community)
+* 👑 **Bản Enterprise**: Nếu doanh nghiệp của bạn cần các tính năng nâng cao (Sơ đồ mặt bằng văn phòng 2D, Tự động quét thiết bị mạng Auto-Discovery, Đợt kiểm kê tài sản chuyên sâu, Webhooks tích hợp, Đăng nhập tập trung SSO/LDAP), vui lòng liên hệ tác giả qua email trên để được hỗ trợ và cấp License bản quyền chính hãng.
 
 ---
-*Chúc bạn cài đặt và vận hành hệ thống SIMPLY IT thành công tốt đẹp!*
+
+## ☕ ỦNG HỘ / DONATE PHÁT TRIỂN DỰ ÁN
+
+> **Lời ngỏ từ tác giả**:
+> *SIMPLY IT Community Edition* được phát triển và đóng gói hoàn toàn miễn phí nhằm hỗ trợ cộng đồng Quản trị viên hệ thống (IT Admin), các doanh nghiệp vừa & nhỏ (SME) và các bạn sinh viên tiếp cận một giải pháp ITAM & Helpdesk chuẩn mực, hiện đại.
+>
+> Nếu bạn thấy phần mềm và tài liệu này hữu ích, giúp tiết kiệm thời gian và tối ưu công việc của bạn, hãy dành tặng tác giả một ly cà phê ấm lòng để tiếp thêm động lực nghiên cứu, bảo trì và phát triển thêm nhiều tính năng mới cho cộng đồng!
+
+| Quét mã VietQR chuyển khoản nhanh | Thông tin tài khoản ngân hàng |
+| :--- | :--- |
+| ![Mã VietQR Ủng Hộ](./donate_qr.png) | 🏦 **Ngân hàng**: **BIDV** (Ngân hàng TMCP Đầu tư và Phát triển Việt Nam)<br><br>💳 **Số tài khoản**: `2141876442`<br><br>👤 **Chủ tài khoản**: **TA TRUNG KIEN**<br><br>📝 **Nội dung chuyển khoản**: `Ung ho Simply IT` *(hoặc lời nhắn gửi tùy tâm)* |
+
+---
+*Trân trọng cảm ơn sự đồng hành và ủng hộ quý báu của bạn dành cho dự án SIMPLY IT!*
+
