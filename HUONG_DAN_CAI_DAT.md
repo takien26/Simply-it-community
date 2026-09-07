@@ -135,7 +135,8 @@ sudo apt install -y docker.io docker-compose-v2 git
 sudo systemctl enable --now docker
 
 # 3. Tải mã nguồn Simply IT Community
-git clone https://github.com/takien26/Simply-it-community.git /opt/simply-it
+sudo git clone https://github.com/takien26/Simply-it-community.git /opt/simply-it
+sudo chown -R $USER:$USER /opt/simply-it
 cd /opt/simply-it
 
 # 4. Khởi chạy toàn bộ hệ thống bằng 1 lệnh duy nhất
@@ -163,7 +164,8 @@ sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD 'Admin@123';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE it_asset_db TO postgres;"
 
 # 3. Tải mã nguồn và cài thư viện
-git clone https://github.com/takien26/Simply-it-community.git /opt/simply-it
+sudo git clone https://github.com/takien26/Simply-it-community.git /opt/simply-it
+sudo chown -R $USER:$USER /opt/simply-it
 cd /opt/simply-it
 cp .env.example .env
 
