@@ -288,7 +288,76 @@ export function AICopilotSettingsTab() {
         </div>
       </div>
 
-      {/* 2. CONFIGURE OPENAI CHATGPT KEY */}
+      {/* 2. CONFIGURE GOOGLE GEMINI KEY (DEFAULT & RECOMMENDED) */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+            <span className="text-base">🔷</span>
+            <span>{isEn ? 'Google Gemini API Key (Google AI Studio - Free & Fast)' : 'Khóa API Google Gemini (Google AI Studio - Miễn Phí & Tốc Độ Cực Nhanh)'}</span>
+          </h3>
+          <span className="text-xs text-slate-400">AIzaSy...</span>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              {isEn ? 'Enter new Gemini API Key (if changing):' : 'Nhập Gemini API Key mới (Nếu muốn thay đổi):'}
+            </label>
+            <div className="relative flex items-center">
+              <input
+                type={showGeminiKey ? 'text' : 'password'}
+                value={geminiApiKey}
+                onChange={(e) => setGeminiApiKey(e.target.value)}
+                placeholder={hasGeminiKey ? (isEn ? `Currently using: ${maskedGeminiKey} (Enter to change)` : `Đang sử dụng: ${maskedGeminiKey} (Nhập để đổi mới)`) : 'AIzaSy...'}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-white font-mono outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowGeminiKey(!showGeminiKey)}
+                className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                {showGeminiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={handleTestGemini}
+              disabled={testingGemini}
+              className="px-4 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl text-xs font-bold border border-blue-200 dark:border-blue-800 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+            >
+              {testingGemini ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 text-blue-600" />}
+              <span>{isEn ? 'Test Gemini Connection' : 'Kiểm Tra Kết Nối Gemini'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={savingKey}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            >
+              {savingKey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              <span>{savingKey ? (isEn ? 'Saving...' : 'Đang Lưu...') : (isEn ? 'Save Gemini Configuration' : 'Lưu Cấu Hình Gemini')}</span>
+            </button>
+          </div>
+
+          {geminiTestResult && (
+            <div
+              className={`p-3 rounded-xl border text-xs font-medium ${
+                geminiTestResult.success
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 text-rose-800 dark:text-rose-200'
+              }`}
+            >
+              {geminiTestResult.message}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 3. CONFIGURE OPENAI CHATGPT KEY */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -321,7 +390,7 @@ export function AICopilotSettingsTab() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             <button
               type="button"
               onClick={handleTestOpenAI}
@@ -330,6 +399,16 @@ export function AICopilotSettingsTab() {
             >
               {testingOpenai ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 text-emerald-600" />}
               <span>{isEn ? 'Test OpenAI Connection' : 'Kiểm Tra Kết Nối OpenAI'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={savingKey}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            >
+              {savingKey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              <span>{savingKey ? (isEn ? 'Saving...' : 'Đang Lưu...') : (isEn ? 'Save OpenAI Configuration' : 'Lưu Cấu Hình OpenAI')}</span>
             </button>
           </div>
 
@@ -347,63 +426,20 @@ export function AICopilotSettingsTab() {
         </div>
       </div>
 
-      {/* 3. CONFIGURE GOOGLE GEMINI KEY */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-            <span className="text-base">🔷</span>
-            <span>{isEn ? 'Google Gemini API Key (Google AI Studio)' : 'Khóa API Google Gemini (Google AI Studio Key)'}</span>
-          </h3>
-          <span className="text-xs text-slate-400">AIzaSy...</span>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              {isEn ? 'Enter new Gemini API Key (if changing):' : 'Nhập Gemini API Key mới (Nếu muốn thay đổi):'}
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type={showGeminiKey ? 'text' : 'password'}
-                value={geminiApiKey}
-                onChange={(e) => setGeminiApiKey(e.target.value)}
-                placeholder={hasGeminiKey ? (isEn ? `Currently using: ${maskedGeminiKey} (Enter to change)` : `Đang sử dụng: ${maskedGeminiKey} (Nhập để đổi mới)`) : 'AIzaSy...'}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-white font-mono outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowGeminiKey(!showGeminiKey)}
-                className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                {showGeminiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleTestGemini}
-              disabled={testingGemini}
-              className="px-4 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl text-xs font-bold border border-blue-200 dark:border-blue-800 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
-            >
-              {testingGemini ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 text-blue-600" />}
-              <span>{isEn ? 'Test Gemini Connection' : 'Kiểm Tra Kết Nối Gemini'}</span>
-            </button>
-          </div>
-
-          {geminiTestResult && (
-            <div
-              className={`p-3 rounded-xl border text-xs font-medium ${
-                geminiTestResult.success
-                  ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 text-emerald-800 dark:text-emerald-200'
-                  : 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 text-rose-800 dark:text-rose-200'
-              }`}
-            >
-              {geminiTestResult.message}
-            </div>
-          )}
-        </div>
+      {/* Bottom Save Action Bar */}
+      <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          {isEn ? 'Make sure to test your API key connection before saving.' : 'Hãy kiểm tra kết nối API Key trước khi lưu để đảm bảo hệ thống hoạt động chính xác.'}
+        </p>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={savingKey}
+          className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+        >
+          {savingKey ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+          <span>{savingKey ? (isEn ? 'Saving...' : 'Đang Lưu...') : (isEn ? 'Save All AI Configurations' : 'Lưu Toàn Bộ Cấu Hình AI')}</span>
+        </button>
       </div>
     </div>
   );

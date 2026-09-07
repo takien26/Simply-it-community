@@ -498,11 +498,20 @@ export default function SettingsPage() {
   const [isEnterprise, setIsEnterprise] = useState<boolean>(false);
   const [activeModules, setActiveModules] = useState<string[]>([]);
   const [searchFilter, setSearchFilter] = useState('');
-  const [isPinned, setIsPinned] = useState<boolean>(false);
+  const [isPinned, setIsPinned] = useState<boolean>(true);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+  const navContainerRef = useRef<HTMLDivElement | null>(null);
   const [settings, setSettings] = useState<any[]>([]);
+
+  // Auto-scroll the settings sidebar so the active tab is visible
+  useEffect(() => {
+    if (activeTabRef.current) {
+      activeTabRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [activeTab, isPinned, isHovered]);
 
 
 
@@ -1349,7 +1358,7 @@ export default function SettingsPage() {
         <div
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          className={`shrink-0 transition-all duration-300 z-30 sticky top-4 ${
+          className={`shrink-0 transition-all duration-300 z-30 sticky top-20 ${
             isExpanded
               ? 'w-full lg:w-80'
               : 'w-full lg:w-16'
@@ -1410,9 +1419,10 @@ export default function SettingsPage() {
 
           {/* Navigation Groups List */}
           <div
-            className={`bg-white border border-slate-200/90 rounded-2xl shadow-xs transition-all duration-300 ${
+            ref={navContainerRef}
+            className={`bg-white border border-slate-200/90 rounded-2xl shadow-xs transition-all duration-300 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-thin ${
               isExpanded
-                ? 'p-2 divide-y divide-slate-100 max-h-[calc(100vh-220px)] overflow-y-auto'
+                ? 'p-2 divide-y divide-slate-100'
                 : 'p-1.5 w-16 mx-auto'
             }`}
           >
@@ -1456,6 +1466,7 @@ export default function SettingsPage() {
                           return (
                             <div key={item.id} className="relative group">
                               <button
+                                ref={isActive ? activeTabRef : undefined}
                                 type="button"
                                 onClick={() => {
                                   setActiveTab(item.id);
