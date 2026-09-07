@@ -30,7 +30,11 @@ cd simply-it-community
 docker compose up -d
 ```
 
-Open your browser at **`http://localhost:3000`** and log in with default credentials:
+Open your browser at:
+* **HTTP:** **`http://localhost:3000`**
+* **HTTPS (SSL):** **`https://localhost:3443`**
+
+Log in with default credentials:
 * **Email:** `admin@company.com`
 * **Password:** `Admin@123`
 

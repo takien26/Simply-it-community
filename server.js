@@ -127,7 +127,7 @@ async function initServer() {
   }
 
   const HTTP_PORT = parseInt(process.env.PORT || '3001', 10);
-  const HTTPS_PORT = parseInt(process.env.HTTPS_PORT || '3444', 10);
+  const HTTPS_PORT = parseInt(process.env.HTTPS_PORT || '3443', 10);
 
   // 1. HTTP Server
   const httpServer = http.createServer((req, res) => {

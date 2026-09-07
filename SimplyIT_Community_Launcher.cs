@@ -255,8 +255,11 @@ namespace SimplyITCommunityLauncher
             trayIcon.DoubleClick += (s, e) => RestoreFromTray();
 
             ContextMenu trayMenu = new ContextMenu();
-            trayMenu.MenuItems.Add("🌐 Mở Giao Diện SIMPLY IT", (s, e) => {
+            trayMenu.MenuItems.Add("🌐 Mở Giao Diện HTTP (Cổng 3001)", (s, e) => {
                 try { Process.Start(new ProcessStartInfo(targetUrl) { UseShellExecute = true }); } catch {}
+            });
+            trayMenu.MenuItems.Add("🔒 Mở Giao Diện HTTPS (Cổng 3443)", (s, e) => {
+                try { Process.Start(new ProcessStartInfo("https://localhost:3443") { UseShellExecute = true }); } catch {}
             });
             trayMenu.MenuItems.Add("🖥️ Hiện Cửa Sổ Máy Chủ", (s, e) => RestoreFromTray());
             trayMenu.MenuItems.Add("🔄 Khởi Động Lại Hệ Thống", (s, e) => {
@@ -629,7 +632,7 @@ namespace SimplyITCommunityLauncher
             btnLaunchBrowser.ForeColor = Color.FromArgb(10, 26, 47);
             btnLaunchBrowser.Text = "🚀 MỞ GIAO DIỆN SIMPLY IT (" + targetUrl + ")";
 
-            AppendLog("🎉 [3/3] SIMPLY IT ĐÃ SẴN SÀNG! Đang mở trình duyệt...");
+            AppendLog("🎉 [3/3] SIMPLY IT ĐÃ SẴN SÀNG! HTTP: " + targetUrl + " | HTTPS: https://localhost:3443");
             try
             {
                 trayIcon.ShowBalloonTip(3000, "SIMPLY IT Sẵn Sàng", "Hệ thống đã hoạt động tại " + targetUrl + ". Cửa sổ sẽ tự ẩn xuống khay sau 3 giây.", ToolTipIcon.Info);

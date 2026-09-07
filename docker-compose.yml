@@ -38,10 +38,12 @@ services:
       JWT_EXPIRES_IN: "7d"
       NODE_ENV: "production"
       PORT: 3000
+      HTTPS_PORT: 3443
     volumes:
       - itsm_uploads_data:/app/public/uploads
     ports:
       - "3000:3000"
+      - "3443:3443"
 
 volumes:
   itsm_postgres_data:

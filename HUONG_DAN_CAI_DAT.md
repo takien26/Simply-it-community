@@ -144,8 +144,11 @@ sudo docker compose up -d --build
 
 # 5. Mở cổng tường lửa (Firewall)
 sudo ufw allow 3000/tcp
+sudo ufw allow 3443/tcp
 ```
-👉 Truy cập ngay qua địa chỉ IP của máy chủ: **`http://<IP-MÁY-CHỦ>:3000`**
+👉 Truy cập ngay qua trình duyệt:
+* **HTTP (Mặc định)**: **`http://<IP-MÁY-CHỦ>:3000`**
+* **HTTPS (Bảo mật SSL)**: **`https://<IP-MÁY-CHỦ>:3443`** *(Bấm "Nâng cao" -> "Tiếp tục" nếu trình duyệt hiện cảnh báo SSL tự ký)*
 
 ---
 
@@ -177,7 +180,11 @@ npx prisma db push
 npm run seed
 npm run build
 
-# 4. Dùng PM2 để ứng dụng luôn chạy ngầm và tự bật lại khi khởi động lại server
+# 4. Mở cổng tường lửa
+sudo ufw allow 3001/tcp
+sudo ufw allow 3443/tcp
+
+# 5. Dùng PM2 để ứng dụng luôn chạy ngầm và tự bật lại khi khởi động lại server
 sudo npm install -g pm2
 pm2 start server.js --name "simply-it"
 pm2 save
@@ -186,15 +193,21 @@ pm2 startup
 
 ---
 
-## 🔑 THÔNG TIN ĐĂNG NHẬP MẶC ĐỊNH
+## 🔑 THÔNG TIN ĐĂNG NHẬP MẶC ĐỊNH & CỔNG KẾT NỐI
 
 Khi mở phần mềm lên lần đầu tiên, hãy sử dụng tài khoản Quản trị viên (Super Admin) sau để đăng nhập:
 
 * 👤 **Tài khoản (Email):** `admin@company.com`
 * 🔒 **Mật khẩu (Password):** `Admin@123`
-* 🌐 **Địa chỉ truy cập:**
-  * Nếu chạy Docker hoặc Ubuntu: **`http://localhost:3000`**
-  * Nếu chạy file `SimplyIT_Server.exe` trên Windows: **`http://localhost:3001`**
+* 🌐 **Cổng & Đường dẫn truy cập:**
+  * **Trên Windows (.exe Portable):**
+    * HTTP: **`http://localhost:3001`**
+    * HTTPS: **`https://localhost:3443`**
+  * **Trên Docker (Windows / Ubuntu):**
+    * HTTP: **`http://localhost:3000`** *(hoặc `http://<IP-MÁY-CHỦ>:3000`)*
+    * HTTPS: **`https://localhost:3443`** *(hoặc `https://<IP-MÁY-CHỦ>:3443`)*
+  * *Lưu ý*: Với giao thức HTTPS, trình duyệt sẽ cảnh báo chứng chỉ số nội bộ (Self-signed Certificate). Bạn chỉ cần nhấp **"Nâng cao" (Advanced)** -> **"Tiếp tục truy cập" (Proceed)** là vào bình thường và toàn bộ đường truyền vẫn được mã hóa an toàn tuyệt đối.
+
 
 > ⚠️ **LƯU Ý BẢO MẬT**: Ngay sau khi đăng nhập thành công, hãy vào mục **Cài đặt hệ thống > Đổi mật khẩu** để bảo vệ an toàn cho dữ liệu của bạn!
 

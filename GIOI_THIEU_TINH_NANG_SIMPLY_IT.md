@@ -29,6 +29,8 @@ SIMPLY IT được xây dựng trên nền tảng công nghệ web hiện đại
 * 📦 **Triển khai linh hoạt**:
   * **Portable Windows (.exe)**: Chạy ngay với 1-click, tích hợp khay hệ thống, không cần cấu hình phức tạp.
   * **Docker & Docker Compose**: Đóng gói chuẩn Container, sẵn sàng triển khai trên Ubuntu Linux, Synology NAS hoặc Cloud Server (AWS, GCP, Azure, DigitalOcean).
+  * **Bảo mật kép HTTP & HTTPS**: Tích hợp sẵn SSL Certificate, hỗ trợ song song HTTP (Cổng 3000/3001) và HTTPS (Cổng 3443) an toàn cao.
+
 
 ---
 
