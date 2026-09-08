@@ -8,7 +8,7 @@ import { useLanguage } from '@/lib/i18n/context';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage, t, supportedLanguages } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -87,32 +87,23 @@ function LoginForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 p-4 relative">
       {/* Top Bar Quick Language Switcher */}
-      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2 bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700/60 shadow-xl">
-        <Globe className="w-4 h-4 text-slate-400 ml-1.5" />
-        <button
-          type="button"
-          onClick={() => setLanguage('vi')}
-          className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-            language === 'vi'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <span>🇻🇳</span>
-          <span>Tiếng Việt</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setLanguage('en')}
-          className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-            language === 'en'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <span>🇬🇧</span>
-          <span>English</span>
-        </button>
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700/60 shadow-xl">
+        <Globe className="w-4 h-4 text-slate-400 ml-1.5 shrink-0" />
+        {supportedLanguages.map((lang) => (
+          <button
+            key={lang.code}
+            type="button"
+            onClick={() => setLanguage(lang.code as any)}
+            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              language === lang.code
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>{lang.flag}</span>
+            <span className="hidden sm:inline">{lang.nativeName}</span>
+          </button>
+        ))}
       </div>
 
       <div className="max-w-md w-full p-8 bg-white rounded-3xl shadow-2xl border border-slate-200 space-y-6">

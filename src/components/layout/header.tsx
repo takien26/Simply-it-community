@@ -84,7 +84,7 @@ export function Header({
 }) {
   const router = useRouter();
   const pathname = usePathname() || '/dashboard';
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage, t, supportedLanguages } = useLanguage();
   const isEn = language === 'en';
   const [currentTab, setCurrentTab] = useState<string>('');
   const [appName, setAppName] = useState('IT Asset Manager');
@@ -670,6 +670,53 @@ export function Header({
             <span>{t('header.excel_import', 'Import Excel')}</span>
           </button>
         )}
+
+        {/* QUICK LANGUAGE SWITCHER POPOVER */}
+        <div className="relative" ref={langRef}>
+          <button
+            type="button"
+            onClick={() => setIsLangOpen(!isLangOpen)}
+            className="h-8 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 shadow-2xs border border-slate-200 transition-all cursor-pointer shrink-0"
+            title={t('header.change_language', 'Đổi ngôn ngữ')}
+          >
+            <span className="text-sm shrink-0">
+              {supportedLanguages.find((l) => l.code === language)?.flag || '🌐'}
+            </span>
+            <span className="hidden sm:inline text-slate-800 font-bold text-xs uppercase">
+              {language}
+            </span>
+            <ChevronDown className="w-3 h-3 text-slate-500" />
+          </button>
+
+          {isLangOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+              <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                {t('header.change_language', 'Chọn ngôn ngữ')}
+              </div>
+              {supportedLanguages.map((lang) => (
+                <button
+                  key={lang.code}
+                  type="button"
+                  onClick={() => {
+                    setLanguage(lang.code as any);
+                    setIsLangOpen(false);
+                  }}
+                  className={`w-full px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between transition-colors cursor-pointer ${
+                    language === lang.code
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{lang.flag}</span>
+                    <span>{lang.nativeName}</span>
+                  </div>
+                  {language === lang.code && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* KEEPASS DESKTOP STYLE HELP MENU & AUTHOR INFO */}
         <div className="relative" ref={healthRef}>

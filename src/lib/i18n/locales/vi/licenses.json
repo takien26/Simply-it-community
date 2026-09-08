@@ -1,0 +1,14 @@
+{
+  "licenses.title": "Quản Lý Bản Quyền Phần Mềm",
+  "licenses.subtitle": "Quản lý giấy phép phần mềm, số lượng seat đã cấp phát, thời hạn gia hạn và hợp đồng",
+  "licenses.add_btn": "Thêm Bản Quyền",
+  "licenses.search_placeholder": "Tìm kiếm theo tên phần mềm, license key, nhà cung cấp...",
+  "licenses.col_name": "TÊN PHẦN MỀM & LOẠI",
+  "licenses.col_seats": "SỐ LƯỢNG SEAT",
+  "licenses.col_expiry": "HẠN BẢN QUYỀN",
+  "licenses.col_vendor": "NHÀ CUNG CẤP",
+  "licenses.col_status": "TRẠNG THÁI",
+  "licenses.status_active": "Đang kích hoạt",
+  "licenses.status_expired": "Hết hạn",
+  "licenses.status_suspended": "Tạm dừng"
+}

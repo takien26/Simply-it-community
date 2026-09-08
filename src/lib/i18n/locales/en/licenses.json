@@ -1,0 +1,14 @@
+{
+  "licenses.title": "Software License Management",
+  "licenses.subtitle": "Manage software licenses, allocated seats, renewals, and contracts",
+  "licenses.add_btn": "Add License",
+  "licenses.search_placeholder": "Search by software name, license key, vendor...",
+  "licenses.col_name": "SOFTWARE & TYPE",
+  "licenses.col_seats": "ALLOCATED SEATS",
+  "licenses.col_expiry": "EXPIRATION DATE",
+  "licenses.col_vendor": "VENDOR",
+  "licenses.col_status": "STATUS",
+  "licenses.status_active": "Active",
+  "licenses.status_expired": "Expired",
+  "licenses.status_suspended": "Suspended"
+}

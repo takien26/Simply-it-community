@@ -1,0 +1,16 @@
+{
+  "settings.general_title": "General Settings & Identity",
+  "settings.language_label": "System Default Language",
+  "settings.language_desc": "Primary language rendered on login screen and dashboard pages",
+  "settings.lang_vi": "🇻🇳 Tiếng Việt (Vietnamese)",
+  "settings.lang_en": "🇬🇧 English",
+  "settings.backup_title": "1-Click Full System Backup",
+  "settings.backup_desc": "Instantly download a compressed .ZIP archive containing PostgreSQL Clean Dump and complete photo/upload directory (public/uploads)",
+  "settings.backup_download_btn": "Download Full Backup (.ZIP)",
+  "settings.backup_downloading": "Compressing & preparing ZIP...",
+  "settings.backup_photos_size": "Photo Vault & Attachments",
+  "settings.backup_db_info": "Database",
+  "settings.backup_last_time": "Last backup download",
+  "settings.save_settings": "Save Settings",
+  "settings.saved_success": "System settings updated successfully!"
+}

@@ -492,7 +492,7 @@ function getLocalizedPermissionDesc(code: string, originalDesc: string | null | 
 }
 
 export default function SettingsPage() {
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage, t, supportedLanguages } = useLanguage();
   const isEn = language === 'en';
   const [activeTab, setActiveTab] = useState<'GENERAL' | 'ALERTS' | 'EMAIL' | 'MAINTENANCE' | 'WEBHOOKS' | 'AI_COPILOT' | 'CURRENCY' | 'ROUTING' | 'RBAC' | 'SSO' | 'LDAP' | 'AUDIT' | 'LICENSE'>('GENERAL');
   const [isEnterprise, setIsEnterprise] = useState<boolean>(false);
@@ -1689,44 +1689,41 @@ export default function SettingsPage() {
                     ? 'Select primary language for the entire platform interface and login screen'
                     : 'Chọn ngôn ngữ giao diện chính cho hệ thống và màn hình đăng nhập'}
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleChange('app.language', 'vi');
-                      setLanguage('vi');
-                    }}
-                    className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-all cursor-pointer ${
-                      (getSettingValue('app.language') || language) === 'vi'
-                        ? 'border-blue-500 bg-blue-50/80 ring-2 ring-blue-500/20 shadow-xs'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <span className="text-2xl">🇻🇳</span>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">Tiếng Việt (Vietnamese)</p>
-                      <p className="text-[11px] text-slate-500">Giao diện chuẩn tiếng Việt cho doanh nghiệp</p>
-                    </div>
-                  </button>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {supportedLanguages.map((lang) => {
+                    const currentSelected = (getSettingValue('app.language') || language);
+                    const isSelected = currentSelected === lang.code;
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleChange('app.language', 'en');
-                      setLanguage('en');
-                    }}
-                    className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-all cursor-pointer ${
-                      (getSettingValue('app.language') || language) === 'en'
-                        ? 'border-blue-500 bg-blue-50/80 ring-2 ring-blue-500/20 shadow-xs'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <span className="text-2xl">🇬🇧</span>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">English (Tiếng Anh)</p>
-                      <p className="text-[11px] text-slate-500">Standard English interface for global operations</p>
-                    </div>
-                  </button>
+                    return (
+                      <button
+                        key={lang.code}
+                        type="button"
+                        onClick={() => {
+                          handleChange('app.language', lang.code);
+                          setLanguage(lang.code as any);
+                        }}
+                        className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-blue-500 bg-blue-50/80 ring-2 ring-blue-500/20 shadow-xs'
+                            : 'border-slate-200 bg-white hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-2xl shrink-0">{lang.flag}</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-900 truncate">
+                            {lang.nativeName} ({lang.name})
+                          </p>
+                          <p className="text-[11px] text-slate-500 truncate">
+                            {lang.code === 'vi'
+                              ? 'Giao diện tiếng Việt chuẩn'
+                              : lang.code === 'en'
+                              ? 'Standard English interface'
+                              : `${lang.nativeName} interface`}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

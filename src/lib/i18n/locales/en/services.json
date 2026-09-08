@@ -1,0 +1,11 @@
+{
+  "services.title": "IT Services & Telecom Subscriptions",
+  "services.subtitle": "Track ISP internet circuits, cloud servers, hosting, domains, and VoIP telephony",
+  "services.add_btn": "Add Service",
+  "services.search_placeholder": "Search services, telco carriers, circuits...",
+  "services.col_name": "SERVICE NAME & PLAN",
+  "services.col_vendor": "VENDOR",
+  "services.col_expiry": "EXPIRATION DATE",
+  "services.col_cost": "RECURRING COST",
+  "services.col_status": "STATUS"
+}

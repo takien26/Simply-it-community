@@ -1,0 +1,21 @@
+{
+  "assets.title": "Quản Lý Tài Sản & Thiết Bị IT",
+  "assets.subtitle": "Theo dõi vòng đời thiết bị, thông số kỹ thuật, người đang sử dụng và vị trí lắp đặt",
+  "assets.add_btn": "Thêm Thiết Bị",
+  "assets.export_excel": "Xuất Excel",
+  "assets.import_excel": "Nhập Excel",
+  "assets.search_placeholder": "Tìm theo tên máy, mã tài sản (Asset Tag), số serial, người sử dụng, phòng ban...",
+  "assets.col_tag_name": "MÃ TÀI SẢN & TÊN THIẾT BỊ",
+  "assets.col_category": "DANH MỤC",
+  "assets.col_specs": "CẤU HÌNH & THÔNG SỐ",
+  "assets.col_status": "TRẠNG THÁI",
+  "assets.col_assigned_to": "NGƯỜI SỬ DỤNG",
+  "assets.col_location": "VỊ TRÍ",
+  "assets.col_actions": "THAO TÁC",
+  "assets.status_available": "Trong kho (Sẵn sàng)",
+  "assets.status_in_use": "Đang sử dụng",
+  "assets.status_maintenance": "Đang bảo trì/Sửa",
+  "assets.status_retired": "Thanh lý/Hỏng",
+  "assets.status_lost": "Thất lạc",
+  "assets.print_handover": "In biên bản bàn giao"
+}

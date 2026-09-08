@@ -1,0 +1,8 @@
+{
+  "dashboard.title": "IT Management Dashboard & Overview",
+  "dashboard.subtitle": "Real-time operations center tracking asset status, subscriptions, and support tickets",
+  "dashboard.total_assets": "Total Assets",
+  "dashboard.active_licenses": "Active Licenses",
+  "dashboard.expiring_services": "Expiring Services",
+  "dashboard.open_tickets": "Open Tickets"
+}

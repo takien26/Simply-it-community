@@ -1,0 +1,8 @@
+{
+  "dashboard.title": "Tổng Quan & Dashboard Quản Trị IT",
+  "dashboard.subtitle": "Trung tâm điều hành theo dõi thời gian thực tình trạng tài sản, dịch vụ và yêu cầu hỗ trợ",
+  "dashboard.total_assets": "Tổng Tài Sản",
+  "dashboard.active_licenses": "Bản Quyền Đang Dùng",
+  "dashboard.expiring_services": "Dịch Vụ Sắp Hết Hạn",
+  "dashboard.open_tickets": "Ticket Chờ Xử Lý"
+}

@@ -1,0 +1,16 @@
+{
+  "settings.general_title": "Cài đặt chung & Nhận diện",
+  "settings.language_label": "Ngôn ngữ mặc định của hệ thống",
+  "settings.language_desc": "Ngôn ngữ hiển thị chính trên giao diện đăng nhập và các trang quản trị",
+  "settings.lang_vi": "🇻🇳 Tiếng Việt (Vietnamese)",
+  "settings.lang_en": "🇬🇧 English (Tiếng Anh)",
+  "settings.backup_title": "Sao Lưu Toàn Bộ Hệ Thống 1-Click",
+  "settings.backup_desc": "Tải ngay gói file nén .ZIP chứa toàn bộ cơ sở dữ liệu (PostgreSQL Clean Dump) và toàn bộ kho ảnh hiện trạng, hóa đơn (public/uploads) về máy tính",
+  "settings.backup_download_btn": "Tải Gói Sao Lưu Toàn Bộ (.ZIP)",
+  "settings.backup_downloading": "Đang nén & chuẩn bị gói ZIP...",
+  "settings.backup_photos_size": "Kho ảnh & Tài liệu đính kèm",
+  "settings.backup_db_info": "Cơ sở dữ liệu",
+  "settings.backup_last_time": "Lần tải sao lưu gần nhất",
+  "settings.save_settings": "Lưu Cài Đặt",
+  "settings.saved_success": "Cài đặt hệ thống đã được cập nhật thành công!"
+}

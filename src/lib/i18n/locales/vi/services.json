@@ -1,0 +1,11 @@
+{
+  "services.title": "Dịch Vụ & Thuê Bao Viễn Thông CNTT",
+  "services.subtitle": "Theo dõi hợp đồng mạng cáp quang, cloud server, hosting, domain, tổng đài VoIP",
+  "services.add_btn": "Thêm Dịch Vụ",
+  "services.search_placeholder": "Tìm kiếm dịch vụ, nhà mạng, đường truyền...",
+  "services.col_name": "TÊN DỊCH VỤ & GÓI CƯỚC",
+  "services.col_vendor": "NHÀ CUNG CẤP",
+  "services.col_expiry": "NGÀY HẾT HẠN",
+  "services.col_cost": "CHI PHÍ ĐỊNH KỲ",
+  "services.col_status": "TRẠNG THÁI"
+}

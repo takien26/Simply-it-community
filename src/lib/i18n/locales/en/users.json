@@ -1,0 +1,6 @@
+{
+  "users.title": "Employees & User Accounts",
+  "users.subtitle": "Company directory, departments, RBAC roles, and assigned IT assets",
+  "users.add_btn": "Add User",
+  "users.search_placeholder": "Search by full name, email, department, job title..."
+}

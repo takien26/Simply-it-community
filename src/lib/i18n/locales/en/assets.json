@@ -1,0 +1,21 @@
+{
+  "assets.title": "IT Asset & Hardware Management",
+  "assets.subtitle": "Track device lifecycle, technical specifications, user assignments, and physical locations",
+  "assets.add_btn": "Add Device",
+  "assets.export_excel": "Export Excel",
+  "assets.import_excel": "Import Excel",
+  "assets.search_placeholder": "Search by device name, asset tag, serial number, user, department...",
+  "assets.col_tag_name": "ASSET TAG & DEVICE NAME",
+  "assets.col_category": "CATEGORY",
+  "assets.col_specs": "SPECIFICATIONS",
+  "assets.col_status": "STATUS",
+  "assets.col_assigned_to": "ASSIGNED TO",
+  "assets.col_location": "LOCATION",
+  "assets.col_actions": "ACTIONS",
+  "assets.status_available": "In Stock (Available)",
+  "assets.status_in_use": "In Use",
+  "assets.status_maintenance": "In Maintenance/Repair",
+  "assets.status_retired": "Retired/Disposed",
+  "assets.status_lost": "Lost",
+  "assets.print_handover": "Print Handover Form"
+}
