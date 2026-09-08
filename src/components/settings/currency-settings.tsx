@@ -331,7 +331,7 @@ export function CurrencySettingsCard() {
             </div>
             <p className="text-xs text-amber-800/80 dark:text-amber-300/70 mt-0.5">
               {isEn ? 'All total asset metrics, license costs and service budgets will be synchronized according to unit: ' : 'Mọi chỉ số tổng tài sản, chi phí license và ngân sách dịch vụ sẽ được đồng bộ tính toán theo đơn vị '}{' '}
-              <strong>{currencies.find((c) => c.code === baseCurrency)?.name || baseCurrency}</strong>.
+              <strong>{isEn && CURRENCY_EN_NAMES[baseCurrency] ? CURRENCY_EN_NAMES[baseCurrency] : (currencies.find((c) => c.code === baseCurrency)?.name || baseCurrency)}</strong>.
             </p>
           </div>
         </div>
@@ -346,7 +346,7 @@ export function CurrencySettingsCard() {
           >
             {currencies.map((c) => (
               <option key={c.code} value={c.code}>
-                {c.flag} {c.code} - {c.name}
+                {c.flag} {c.code} - {isEn && CURRENCY_EN_NAMES[c.code] ? CURRENCY_EN_NAMES[c.code] : c.name}
               </option>
             ))}
           </select>

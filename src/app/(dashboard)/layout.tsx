@@ -52,7 +52,7 @@ export default function DashboardLayout({
           onOpenAIModal={() => setIsAIModalOpen(true)}
           onOpenExcelModal={() => setIsExcelModalOpen(true)}
         />
-        <main className="flex-1 p-5 sm:p-6 lg:p-7 max-w-full overflow-y-auto">{children}</main>
+        <main className="flex-1 p-5 sm:p-6 lg:p-7 max-w-full">{children}</main>
       </div>
 
       {/* Global AI & Excel Modals (Only rendered when opened) */}

@@ -147,10 +147,10 @@ const SETTINGS_NAV_GROUPS: NavGroup[] = [
 
 
 const MODULE_CONFIG_EN: Record<string, { label: string; icon: string; color: string }> = {
+  portal: { label: 'Self-Service Portal', icon: '🌐', color: 'bg-purple-50 text-purple-700 border-purple-200' },
   dashboard: { label: 'Overview & Dashboard', icon: '📊', color: 'bg-blue-50 text-blue-700 border-blue-200' },
   kb: { label: 'Knowledge Base & IT Guides (KB)', icon: '📖', color: 'bg-amber-50 text-amber-800 border-amber-300' },
   tickets: { label: 'IT Support & Ticket Helpdesk', icon: '🎫', color: 'bg-rose-50 text-rose-700 border-rose-200' },
-  companies: { label: 'Companies & Legal Entities', icon: '🏢', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   approvals: { label: 'Device Requests & Allocations', icon: '📋', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   assets: { label: 'Hardware & Asset Management', icon: '💻', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
   'assets.maintenance': { label: 'Maintenance & Repair History', icon: '🔧', color: 'bg-orange-50 text-orange-700 border-orange-200' },
@@ -164,6 +164,7 @@ const MODULE_CONFIG_EN: Record<string, { label: string; icon: string; color: str
   categories: { label: 'Device Categories', icon: '🏢', color: 'bg-slate-50 text-slate-700 border-slate-200' },
   vendors: { label: 'Vendors & Partners', icon: '🤝', color: 'bg-orange-50 text-orange-700 border-orange-200' },
   locations: { label: 'Locations & Departments', icon: '📍', color: 'bg-lime-50 text-lime-700 border-lime-200' },
+  companies: { label: 'Companies & Legal Entities', icon: '🏢', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   users: { label: 'Users & RBAC', icon: '👥', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   ai: { label: 'AI Copilot & Chatbot', icon: '✨', color: 'bg-violet-50 text-violet-700 border-violet-200' },
   reports: { label: 'Reports & Analytics', icon: '📈', color: 'bg-sky-50 text-sky-700 border-sky-200' },
@@ -274,44 +275,13 @@ function getLocalizedRoleDesc(name: string, desc: string | null | undefined, isE
 }
 
 const PERM_NAME_EN_MAP: Record<string, string> = {
-  // Dashboard & Companies
+  // Portal
+  'portal.view': 'View Employee Self-Service Portal',
+
+  // Dashboard & Analytics
   'dashboard.view': 'View Dashboard & Analytics',
-  'companies.view': 'View Companies & Branches',
-  'companies.create': 'Create Company / Entity',
-  'companies.update': 'Update Company Info',
-  'companies.delete': 'Delete Company / Entity',
 
-  // Documents
-  'documents.create': 'Upload New Document / Invoice',
-  'documents.download': 'Download Original Attachment',
-  'documents.update': 'Edit Document Details & Links',
-  // AI
-  'ai.context.all': 'AI Full IT Data Retrieval Context',
-  'ai.vector.write': 'AI Auto-Save Data Context',
-  'ai.copilot.use': 'Use Copilot Virtual Assistant',
-  'ai.ticket.diagnose': 'AI Ticket Diagnosis & Suggestions',
-  'ai.ocr.scan': 'AI OCR Invoice & Quotation Scan',
-  'ai.settings.manage': 'Manage AI & API Keys Settings',
-  'ai.chat': 'Use Virtual IT Assistant',
-  'ai.extract': 'AI OCR Label/Invoice Extraction',
-  'ai.auto_save': 'AI Auto-Save Data',
-  'ai.templates.manage': 'Manage AI Prompts & Templates',
-  'ai.all_scope': 'AI Full IT Data Retrieval Context',
-
-  // Tickets
-  'tickets.view': 'View Ticket List',
-  'tickets.create': 'Create Support Ticket',
-  'tickets.update': 'Update & Process Ticket',
-  'tickets.assign': 'Assign IT Technician',
-  'tickets.delete': 'Delete Ticket',
-  'tickets.sla': 'Manage & Extend Ticket SLA',
-
-  // Approvals
-  'approvals.view': 'View Device Allocation Requests',
-  'approvals.create': 'Submit Device Request Form',
-  'approvals.approve': 'Approve / Reject Device Request',
-
-  // Assets
+  // Hardware & Asset Management
   'assets.view': 'View Assets & Devices List',
   'assets.create': 'Add New Asset Profile',
   'assets.update': 'Edit Asset Details & Warranty',
@@ -321,74 +291,133 @@ const PERM_NAME_EN_MAP: Record<string, string> = {
   'assets.export': 'Export Asset Data to Excel',
   'assets.audit': 'Asset Inventory Audit & QR Scan',
 
-  // Maintenance
-  'assets.maintenance.view': 'View Maintenance Logs',
+  // Maintenance & Repair History
+  'assets.maintenance.view': 'View Maintenance & Repair History',
   'assets.maintenance.create': 'Create Maintenance Ticket',
-  'assets.maintenance.update': 'Edit Maintenance Record',
+  'assets.maintenance.update': 'Update Repair Progress & Cost',
   'assets.maintenance.delete': 'Delete Maintenance Record',
 
-  // Licenses
+  // Software Licenses
   'licenses.view': 'View Software Licenses',
   'licenses.create': 'Add Software License Key',
-  'licenses.update': 'Edit License & Renewal Info',
+  'licenses.update': 'Edit License & Key Renewal',
   'licenses.delete': 'Delete Software License',
-  'licenses.assign': 'Allocate License Seats to Users',
+  'licenses.assign': 'Allocate & Revoke Licenses',
   'licenses.import': 'Import Licenses from Excel',
-  'licenses.export': 'Export Licenses to Excel',
+  'licenses.export': 'Export License Data',
 
-  // Services
+  // Telecom & IT Services
   'services.view': 'View IT & Telecom Services',
-  'services.create': 'Add New Telecom Service Contract',
-  'services.update': 'Update Service & Renewal Cost',
-  'services.delete': 'Delete Service Contract',
+  'services.create': 'Add IT Service / Circuit / VPS',
+  'services.update': 'Edit Service & Billing Cycle',
+  'services.delete': 'Delete IT Service',
+  'services.renew': 'Execute Service Contract Renewal',
+  'services.import': 'Import Services from Excel',
+  'services.export': 'Export IT Services Report',
 
-  // Spare parts
-  'spare_parts.view': 'View Spare Parts Inventory',
-  'spare_parts.manage': 'Manage Stock In/Out Transfers',
+  // Support Tickets & Helpdesk
+  'tickets.view': 'View IT Support Tickets',
+  'tickets.create': 'Create Support Ticket',
+  'tickets.update': 'Acknowledge & Process Ticket',
+  'tickets.delete': 'Delete Support Ticket',
+  'tickets.assign': 'Assign Technician to Ticket',
+  'tickets.comment': 'Internal Discussion & Comments',
+  'tickets.sla': 'Manage & Extend Ticket SLA',
+  'tickets.reports': 'View Ticket Analytics & Reports',
 
-  // Documents
-  'documents.view': 'View Documents & Contracts',
-  'documents.upload': 'Upload Document / Invoices',
-  'documents.delete': 'Delete Documents from Vault',
+  // Approvals & Allocations
+  'approvals.view': 'View Device Allocation Requests',
+  'approvals.create': 'Submit Device Request Form',
+  'approvals.approve': 'Approve / Reject Device Request',
+
+  // Documents & Contracts
+  'documents.view': 'View Documents & Invoices',
+  'documents.create': 'Upload New Document / Invoice',
+  'documents.upload': 'Upload New Document / Invoice',
+  'documents.update': 'Edit Document Details & Links',
+  'documents.delete': 'Delete Document / Invoice',
+  'documents.download': 'Download Original Attachment',
+
+  // Categories & Master Data
+  'categories.view': 'View Categories & Specs',
+  'categories.create': 'Add New Category',
+  'categories.update': 'Edit Category & Custom Fields',
+  'categories.delete': 'Delete Category',
+
+  // Vendors & Partners
+  'vendors.view': 'View Vendors & Partners',
+  'vendors.create': 'Add New Vendor',
+  'vendors.update': 'Edit Vendor Details & Contacts',
+  'vendors.delete': 'Delete Vendor',
+
+  // Locations & Branches
+  'locations.view': 'View Locations & Branches',
+  'locations.create': 'Add New Location',
+  'locations.update': 'Edit Location & Building Info',
+  'locations.delete': 'Delete Location',
+
+  // Companies & Legal Entities
+  'companies.view': 'View Companies & Branches',
+  'companies.create': 'Create Company / Entity',
+  'companies.update': 'Update Company Info',
+  'companies.delete': 'Delete Company / Entity',
+
+  // Users & Permissions
+  'users.view': 'View User Accounts Directory',
+  'users.create': 'Create New User Account',
+  'users.update': 'Edit User & Reset Password',
+  'users.delete': 'Deactivate / Delete User Account',
+  'users.permissions': 'Configure RBAC & Permissions',
+
+  // System Settings
+  'settings.view': 'View System Settings',
+  'settings.update': 'Modify System Config & Theme',
+  'settings.ldap': 'Configure LDAP / Active Directory',
+  'settings.backup': 'Backup & Restore Database',
+
+  // Reports & Analytics
+  'reports.view': 'View Analytics & Summary Reports',
+  'reports.export': 'Export Reports (Excel/PDF)',
+
+  // Audit Logs
+  'audit.view': 'View System Audit Activity Logs',
+
+  // AI & Automation
+  'ai.extract': 'AI OCR Label/Invoice Extraction',
+  'ai.auto_save': 'AI Auto-Save Data',
+  'ai.templates.manage': 'Manage AI Prompts & Templates',
+  'ai.history.view': 'View AI Extraction History',
+  'ai.context.all': 'AI Full IT Data Retrieval Context',
+  'ai.vector.write': 'AI Auto-Save Data Context',
+  'ai.copilot.use': 'Use Copilot Virtual Assistant',
+  'ai.ticket.diagnose': 'AI Ticket Diagnosis & Suggestions',
+  'ai.ocr.scan': 'AI OCR Invoice & Quotation Scan',
+  'ai.settings.manage': 'Manage AI & API Keys Settings',
+  'ai.chat': 'Use Virtual IT Assistant',
+  'ai.all_scope': 'AI Full IT Data Retrieval Context',
 
   // Incidents & Problems
-  'incidents.view': 'View IT Incidents (P1/P2)',
+  'incidents.view': 'View Incidents & Problems',
+  'incidents.create': 'Create New Incident / Problem',
+  'incidents.update': 'Update Incident Progress & RCA',
+  'incidents.delete': 'Delete Incident / Problem',
   'incidents.manage': 'Coordinate & Resolve Incidents',
   'problems.view': 'View Problem Management (RCA)',
   'problems.manage': 'Manage Problems & Permanent Fixes',
 
-  // Passwords
+  // Knowledge Base (KB)
+  'kb.view': 'View Knowledge Base & IT Guides',
+  'kb.create': 'Create New Knowledge Base Article',
+  'kb.update': 'Edit Knowledge Base Article',
+  'kb.delete': 'Delete Knowledge Base Article',
+
+  // Passwords & Secrets
   'passwords.view': 'View Password Vault (Authorized)',
   'passwords.manage': 'Manage & Share Password Vault',
 
-  // Master Data
-  'categories.view': 'View Device Categories',
-  'categories.create': 'Create Device Category',
-  'categories.update': 'Edit Device Category',
-  'categories.delete': 'Delete Device Category',
-  'vendors.view': 'View Vendors & Partners',
-  'vendors.create': 'Add New Vendor / Partner',
-  'vendors.update': 'Edit Vendor Contact Details',
-  'vendors.delete': 'Delete Vendor / Partner',
-  'locations.view': 'View Locations & Departments',
-  'locations.create': 'Add Office / Branch Location',
-  'locations.update': 'Edit Office Location & Floors',
-  'locations.delete': 'Delete Office Location',
-
-  // Users & RBAC
-  'users.view': 'View Employee Directory',
-  'users.create': 'Create New User Account',
-  'users.update': 'Edit User Account & Roles',
-  'users.delete': 'Deactivate / Remove User Account',
-  'users.permissions': 'Granular RBAC Permissions',
-
-  // Reports & Settings & Audit
-  'reports.view': 'View Summary Analytics Reports',
-  'reports.export': 'Export Reports to Excel',
-  'settings.view': 'View System Settings',
-  'settings.update': 'Modify System Configurations',
-  'settings.backup': 'Backup & Restore Database',
-  'audit.view': 'View Audit Activity Logs',
+  // Spare Parts
+  'spare_parts.view': 'View Spare Parts Inventory',
+  'spare_parts.manage': 'Manage Stock In/Out Transfers',
 };
 
 const PERM_DESC_EN_MAP: Record<string, string> = {
@@ -1389,7 +1418,7 @@ export default function SettingsPage() {
         <div
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          className={`shrink-0 transition-all duration-300 z-30 sticky top-4 ${
+          className={`shrink-0 transition-all duration-300 z-30 sticky top-20 self-start ${
             isExpanded
               ? 'w-full lg:w-80'
               : 'w-full lg:w-16'
