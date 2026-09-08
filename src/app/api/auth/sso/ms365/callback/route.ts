@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { signToken } from '@/lib/auth';
+import { signToken, PRIMARY_COOKIE_NAME } from '@/lib/jwt';
 import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {

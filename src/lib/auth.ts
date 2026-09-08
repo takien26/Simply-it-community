@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify } from 'jose';
+import { signToken, verifyToken, ALL_COOKIE_NAMES, PRIMARY_COOKIE_NAME } from './jwt';
 import { cookies } from 'next/headers';
 import { prisma } from './db';
 import bcrypt from 'bcryptjs';
@@ -136,7 +136,14 @@ export async function authenticate(
 
 export async function getCurrentUser(): Promise<JWTPayload | null> {
   const cookieStore = await cookies();
-  const token = cookieStore.get('auth-token')?.value;
+  let token: string | undefined;
+  for (const name of ALL_COOKIE_NAMES) {
+    const val = cookieStore.get(name)?.value;
+    if (val) {
+      token = val;
+      break;
+    }
+  }
   if (!token) return null;
   return verifyToken(token);
 }

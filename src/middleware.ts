@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken } from '@/lib/jwt';
+import { verifyToken, ALL_COOKIE_NAMES, PRIMARY_COOKIE_NAME } from '@/lib/jwt';
 
 // Routes that don't require authentication
 const publicRoutes = ['/login', '/api/auth/login', '/api/license', '/api/auto-scan', '/api/v1/auto-scan', '/api/scripts', '/api/cron'];
@@ -27,7 +27,14 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check auth token
-  const token = request.cookies.get('auth-token')?.value;
+  let token: string | undefined;
+  for (const name of ALL_COOKIE_NAMES) {
+    const val = request.cookies.get(name)?.value;
+    if (val) {
+      token = val;
+      break;
+    }
+  }
 
   if (!token) {
     // API routes return 401
@@ -41,15 +48,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Verify token
+  // Verify token against all known valid secrets
   const payload = await verifyToken(token);
   if (!payload) {
-    // Clear invalid token
-    const response = pathname.startsWith(protectedApiPrefix)
-      ? NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      : NextResponse.redirect(new URL('/login', request.url));
+    // API routes return 401 WITHOUT aggressively deleting the cookie (prevents wiping session on transient network errors)
+    if (pathname.startsWith(protectedApiPrefix)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    response.cookies.delete('auth-token');
+    // Page routes redirect to login and clear the session cookie
+    const response = NextResponse.redirect(new URL('/login', request.url));
+    for (const name of ALL_COOKIE_NAMES) {
+      response.cookies.delete(name);
+    }
     return response;
   }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth';
+import { PRIMARY_COOKIE_NAME, ALL_COOKIE_NAMES } from '@/lib/jwt';
 import { createAuditLog } from '@/lib/audit';
 
 export async function POST(request: Request) {
@@ -40,13 +41,18 @@ export async function POST(request: Request) {
       },
     });
 
-    response.cookies.set('auth-token', result.token, {
+    const cookieOptions = {
       httpOnly: true,
       secure: false,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      sameSite: 'lax' as const,
+      maxAge: 60 * 60 * 24 * 30, // 30 days
       path: '/',
-    });
+    };
+
+    // Set dedicated port-isolated cookie
+    response.cookies.set(PRIMARY_COOKIE_NAME, result.token, cookieOptions);
+    // Also set legacy auth-token for backward compatibility
+    response.cookies.set('auth-token', result.token, cookieOptions);
 
     return response;
   } catch (error) {
