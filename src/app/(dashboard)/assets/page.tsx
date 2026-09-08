@@ -667,6 +667,14 @@ export default function AssetsPage() {
   const [modalActiveTab, setModalActiveTab] = useState<'general' | 'specs' | 'finance' | 'licenses'>('general');
   const [licenses, setLicenses] = useState<any[]>([]);
   const [selectedLicenseIds, setSelectedLicenseIds] = useState<string[]>([]);
+  const [newLicForm, setNewLicForm] = useState({
+    name: '',
+    licenseKey: '',
+    licenseType: 'PERPETUAL',
+    totalSeats: 1,
+  });
+  const [isSubmittingNewLic, setIsSubmittingNewLic] = useState(false);
+  const [showAdminAddLicForm, setShowAdminAddLicForm] = useState(false);
   const [qrLabelSize, setQrLabelSize] = useState<'50x30' | '40x20' | 'A4'>('50x30');
 
   // Pro Upgrade Form State
@@ -1518,6 +1526,45 @@ export default function AssetsPage() {
     });
     setModalActiveTab('general');
     setIsEditModalOpen(true);
+  };
+
+  const handleAdminCreateAndAssignLicense = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newLicForm.name.trim()) {
+      alert('Vui lòng nhập tên phần mềm / license (*)');
+      return;
+    }
+    setIsSubmittingNewLic(true);
+    try {
+      const res = await fetch('/api/licenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newLicForm.name.trim(),
+          licenseKey: newLicForm.licenseKey.trim() || null,
+          licenseType: newLicForm.licenseType || 'PERPETUAL',
+          totalSeats: Number(newLicForm.totalSeats) || 1,
+          assignedAssetIds: editingAssetId ? [editingAssetId] : [],
+          notes: `Quản trị viên thêm trực tiếp từ modal tài sản ${editFormData.assetTag || ''}`,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`🎉 Đã thêm thành công License "${newLicForm.name}" vào Kho và gán cho thiết bị này!`);
+        setNewLicForm({ name: '', licenseKey: '', licenseType: 'PERPETUAL', totalSeats: 1 });
+        setShowAdminAddLicForm(false);
+        if (data.data?.id) {
+          setSelectedLicenseIds((prev) => [...prev, data.data.id]);
+        }
+        await loadData();
+      } else {
+        alert(`❌ Không thể tạo: ${data.error || 'Lỗi hệ thống'}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Lỗi kết nối: ${err?.message || err}`);
+    } finally {
+      setIsSubmittingNewLic(false);
+    }
   };
 
   const handleQuickAddLicenseFromModal = async (name: string, key?: string, type?: string) => {
@@ -3548,15 +3595,94 @@ export default function AssetsPage() {
                           </p>
                         </div>
                       </div>
-                      <Link
-                        href="/licenses?new=true"
-                        target="_blank"
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors shrink-0 shadow-xs inline-flex items-center gap-1"
+                      <button
+                        type="button"
+                        onClick={() => setShowAdminAddLicForm((prev) => !prev)}
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors shrink-0 shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Tạo Mới License</span>
-                      </Link>
+                        <span>{showAdminAddLicForm ? 'Đóng Form' : '+ Quản Trị Viên Thêm License'}</span>
+                      </button>
                     </div>
+
+                    {/* ADMIN DIRECT LICENSE CREATION FORM */}
+                    {showAdminAddLicForm && (
+                      <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl border-2 border-blue-300 dark:border-blue-700 space-y-3 animate-in fade-in">
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-xs text-blue-950 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
+                            <Key className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Thêm Nhanh License Mới Vào Kho & Gán Ngay Vào Máy Này</span>
+                          </span>
+                          <span className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">Tự quản trị viên thêm</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs">
+                          <div className="sm:col-span-2">
+                            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                              Tên Phần Mềm / License (*):
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="VD: AutoCAD 2024, Adobe Photoshop, Office 365..."
+                              value={newLicForm.name}
+                              onChange={(e) => setNewLicForm({ ...newLicForm, name: e.target.value })}
+                              className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                              Product Key (Tùy chọn):
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="VD: XXXXX-XXXXX..."
+                              value={newLicForm.licenseKey}
+                              onChange={(e) => setNewLicForm({ ...newLicForm, licenseKey: e.target.value })}
+                              className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                              Số Ghế (Seats):
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={newLicForm.totalSeats}
+                              onChange={(e) => setNewLicForm({ ...newLicForm, totalSeats: Math.max(1, parseInt(e.target.value) || 1) })}
+                              className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-1">
+                          <div className="flex items-center gap-2">
+                            <label className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Loại bản quyền:</label>
+                            {['PERPETUAL', 'SUBSCRIPTION', 'OEM'].map((t) => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setNewLicForm({ ...newLicForm, licenseType: t })}
+                                className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition-all ${
+                                  newLicForm.licenseType === t
+                                    ? 'bg-blue-600 text-white shadow-2xs'
+                                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                }`}
+                              >
+                                {t === 'PERPETUAL' ? 'Vĩnh viễn' : t === 'SUBSCRIPTION' ? 'Thuê bao' : 'Theo máy OEM'}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            disabled={isSubmittingNewLic || !newLicForm.name.trim()}
+                            onClick={() => handleAdminCreateAndAssignLicense()}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>{isSubmittingNewLic ? 'Đang thêm...' : 'Lưu Vào Kho & Gán Ngay'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* SECTION 1: KẾT QUẢ QUÉT BẢN QUYỀN TỪ MÁY TRẠM (AGENT PS1) */}
                     <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">

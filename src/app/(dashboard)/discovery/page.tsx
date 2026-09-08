@@ -155,7 +155,7 @@ export default function DiscoveryPage() {
     return () => window.removeEventListener('simply:license-updated', handleUpdate);
   }, []);
 
-  const [activeTab, setActiveTab] = useState<'SCAN' | 'AGENTS' | 'AI_ENRICH' | 'GUIDE'>('SCAN');
+  const [activeTab, setActiveTab] = useState<'SCAN' | 'AI_ENRICH' | 'GUIDE'>('SCAN');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // TAB 1: Network Scanner State
@@ -521,7 +521,7 @@ export default function DiscoveryPage() {
       </div>
 
       {/* Quick Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">{isEn ? "Discovered Devices" : "Thiết bị quét thấy"}</span>
@@ -546,18 +546,6 @@ export default function DiscoveryPage() {
             <span className="text-xs text-amber-700 font-semibold">{isEn ? "Pending" : "Chờ thêm"}</span>
           </div>
           <span className="text-[10.5px] text-slate-400">{isEn ? "Not yet in asset inventory" : "Chưa có trong kho tài sản"}</span>
-        </div>
-
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">{isEn ? "Audited Workstations" : "Máy trạm đã scan cấu hình"}</span>
-            <Laptop className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl font-black text-emerald-600">{agentReports.length}</span>
-            <span className="text-xs text-emerald-700 font-semibold">{isEn ? "PCs" : "Máy tính"}</span>
-          </div>
-          <span className="text-[10.5px] text-slate-400">{isEn ? "Hardware & software scanned" : "Đã scan phần mềm & cấu hình"}</span>
         </div>
 
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
@@ -595,27 +583,6 @@ export default function DiscoveryPage() {
 
         <button
           type="button"
-          onClick={() => {
-            setActiveTab('AGENTS');
-            loadAgentReports();
-          }}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'AGENTS'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Laptop className="w-3.5 h-3.5" />
-          <span>{isEn ? '2. Audited Workstations' : '2. Máy Trạm Đã Kiểm Kê'}</span>
-          {agentReports.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-[10px] font-mono">
-              {agentReports.length}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
           onClick={() => setActiveTab('AI_ENRICH')}
           className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'AI_ENRICH'
@@ -624,7 +591,7 @@ export default function DiscoveryPage() {
           }`}
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-          <span>3. Tra Cứu Thông Số Model</span>
+          <span>{isEn ? '2. AI Spec Lookup' : '2. Tra Cứu Thông Số Model (AI)'}</span>
         </button>
 
         <button
@@ -637,7 +604,7 @@ export default function DiscoveryPage() {
           }`}
         >
           <Terminal className="w-3.5 h-3.5" />
-          <span>4. Script PowerShell & Hướng Dẫn</span>
+          <span>{isEn ? '3. PowerShell & Deployment Guide' : '3. Script PowerShell & Hướng Dẫn'}</span>
         </button>
       </div>
 
@@ -894,369 +861,6 @@ export default function DiscoveryPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* TAB 2: AGENT AUDIT & INSTALLED SOFTWARE */}
-      {/* ======================================================== */}
-      {activeTab === 'AGENTS' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Machine List (5/12 cols) */}
-          <div className="lg:col-span-5 bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
-                Máy Trạm Đã Thu Thập ({agentReports.length})
-              </h3>
-              <button
-                type="button"
-                onClick={loadAgentReports}
-                disabled={loadingAgents}
-                className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100"
-                title={isEn ? 'Refresh' : 'Làm mới'}
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loadingAgents ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-
-            <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
-              {agentReports.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 text-xs">
-                  Chưa có máy trạm nào gửi báo cáo Agent.
-                </div>
-              ) : (
-                agentReports.map((item) => (
-                  <div
-                    key={item.assetId}
-                    onClick={() => setSelectedAgent(item)}
-                    className={`p-3 rounded-2xl border text-xs cursor-pointer transition-all ${
-                      selectedAgent?.assetId === item.assetId
-                        ? 'border-indigo-500 bg-indigo-50/70 ring-2 ring-indigo-400/40'
-                        : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold shrink-0 mt-0.5">
-                          <Laptop className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-slate-900">{item.name}</span>
-                            <span className="px-1.5 py-0.2 rounded bg-slate-200 text-slate-700 text-[10px] font-mono">
-                              {item.assetTag}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 mt-0.5">
-                            {safeText(item.brand)} {safeText(item.model)} · {safeText(item.os, 'Windows')}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-[10.5px] font-bold">
-                          {item.installedSoftwareCount} Phần mềm
-                        </span>
-                        {item.crackDetection?.hasSuspect && (
-                          <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 text-[9.5px] font-bold flex items-center gap-0.5">
-                            <AlertTriangle className="w-2.5 h-2.5 text-rose-600" />
-                            <span>Crack / Lậu</span>
-                          </span>
-                        )}
-                        {item.licenseMatches && item.licenseMatches.some((m) => m.matchStatus === 'UNASSIGNED_MATCH') && (
-                          <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9.5px] font-bold flex items-center gap-0.5">
-                            <Key className="w-2.5 h-2.5 text-amber-600" />
-                            <span>Trùng License</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-slate-100 text-[10.5px] text-slate-600">
-                      <div>👤 User: <strong>{safeText(item.assignedTo, 'Chưa gán')}</strong></div>
-                      <div>🌐 IP: <strong className="font-mono text-indigo-600">{safeText(item.ipAddress, 'LAN')}</strong></div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Machine Details & Installed Software (7/12 cols) */}
-          <div className="lg:col-span-7 bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-            {selectedAgent ? (
-              <>
-                <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-black text-sm text-slate-900">{selectedAgent.name}</h3>
-                      <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 text-xs font-mono font-bold">
-                        {selectedAgent.assetTag}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Serial BIOS: <strong>{safeText(selectedAgent.serialNumber, 'N/A')}</strong> · Quét lúc: {selectedAgent.lastScannedAt ? new Date(selectedAgent.lastScannedAt).toLocaleString('vi-VN') : 'Mới cập nhật'}
-                    </p>
-                  </div>
-
-                  <a
-                    href={`/assets?id=${selectedAgent.assetId}`}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-1"
-                  >
-                    <span>Mở Hồ Sơ Máy</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-
-                {/* Hardware Specs Grid */}
-                <div className="grid grid-cols-3 gap-2 text-xs bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                  <div>
-                    <span className="text-slate-400 text-[10.5px] block font-semibold">Bộ Xử Lý (CPU)</span>
-                    <span className="font-bold text-slate-800 line-clamp-1">{safeText(selectedAgent.cpu, 'Intel / AMD')}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10.5px] block font-semibold">Bộ Nhớ (RAM)</span>
-                    <span className="font-bold text-slate-800">{safeText(selectedAgent.ram, 'Chưa rõ')}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10.5px] block font-semibold">Ổ Cứng (Storage)</span>
-                    <span className="font-bold text-slate-800 line-clamp-1">{safeText(selectedAgent.storage, 'SSD NVMe')}</span>
-                  </div>
-                </div>
-
-                {/* Crack & Tamper Alert Banner */}
-                {selectedAgent.crackDetection?.hasSuspect && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl space-y-1.5 text-xs text-rose-950">
-                    <div className="flex items-center gap-2 font-bold text-rose-800">
-                      <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
-                      <span>Cảnh Báo An Toàn: Phát hiện dấu hiệu Bẻ khóa / Can thiệp bản quyền</span>
-                    </div>
-                    <ul className="list-disc list-inside space-y-0.5 text-[11.5px] text-rose-800 pl-1">
-                      {selectedAgent.crackDetection.warnings.map((w, wIdx) => (
-                        <li key={wIdx}>{w}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Warehouse License Match Notification (Unassigned) */}
-                {selectedAgent.licenseMatches && selectedAgent.licenseMatches.some((m) => m.matchStatus === 'UNASSIGNED_MATCH') && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl space-y-2 text-xs text-amber-950">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 font-bold text-amber-800">
-                        <Key className="w-4 h-4 text-amber-600 shrink-0" />
-                        <span>Phát hiện phần mềm trùng License trong kho (Chưa được gán):</span>
-                      </div>
-                      <span className="text-[11px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-semibold">
-                        Không tự động gán · Chờ Admin duyệt
-                      </span>
-                    </div>
-                    <div className="space-y-1.5">
-                      {selectedAgent.licenseMatches
-                        .filter((m) => m.matchStatus === 'UNASSIGNED_MATCH')
-                        .map((m, mIdx) => (
-                          <div key={mIdx} className="bg-white/80 p-2.5 rounded-xl border border-amber-200/80 flex items-center justify-between gap-2">
-                            <div>
-                              <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                                <span>{m.softwareName}</span>
-                                <span className="text-amber-700 font-normal">→ Trùng License kho:</span>
-                                <span className="text-indigo-700 font-bold">{m.licenseName}</span>
-                              </div>
-                              <div className="text-[11px] text-slate-500 mt-0.5">
-                                Ghế trống khả dụng: <strong className="text-emerald-600">{m.availableSeats} / {m.seats}</strong>
-                                {m.licenseKey && <span className="ml-2 font-mono text-[10.5px]">Key: {m.licenseKey.slice(0, 8)}...</span>}
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              disabled={assigningLicenseId === m.licenseId || m.availableSeats <= 0}
-                              onClick={() => handleQuickAssignLicense(m.licenseId, selectedAgent.assetId, m.licenseName)}
-                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>{assigningLicenseId === m.licenseId ? 'Đang gán...' : m.availableSeats > 0 ? 'Gán Ngay' : 'Hết ghế'}</span>
-                            </button>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* OS & Office License Status Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                  {/* Windows License */}
-                  <div className="p-3 rounded-2xl border bg-slate-50 border-slate-200 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                        Bản Quyền Windows
-                      </span>
-                      {selectedAgent.osLicense?.isKmsCrack ? (
-                        <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 text-[10px] font-bold">
-                          KMS Lậu / Bẻ khóa
-                        </span>
-                      ) : selectedAgent.osLicense?.status === 'Licensed' ? (
-                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                          Đã kích hoạt ({selectedAgent.osLicense.channel || 'Bản quyền'})
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-bold">
-                          {selectedAgent.osLicense?.status || 'Chưa kích hoạt'}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11.5px] text-slate-800 font-semibold truncate">
-                      {selectedAgent.osLicense?.name || selectedAgent.os || 'Windows OS'}
-                    </div>
-                    <div className="text-[10.5px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-200/60">
-                      <span>Kênh: <strong>{selectedAgent.osLicense?.channel || 'OEM / Retail'}</strong></span>
-                      {selectedAgent.osLicense?.partialKey && (
-                        <span className="font-mono">Key: ****-{selectedAgent.osLicense.partialKey}</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Office License */}
-                  <div className="p-3 rounded-2xl border bg-slate-50 border-slate-200 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5 text-orange-600" />
-                        Bản Quyền MS Office
-                      </span>
-                      {selectedAgent.officeLicense?.status === 'Licensed' ? (
-                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                          {selectedAgent.officeLicense.channel === 'Subscription' ? 'O365 Bản quyền' : 'Kích hoạt'}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-bold">
-                          {selectedAgent.officeLicense?.status || 'Chưa phát hiện'}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11.5px] text-slate-800 font-semibold truncate">
-                      {selectedAgent.officeLicense?.name || 'Chưa cài đặt Office hoặc phiên bản web'}
-                    </div>
-                    <div className="text-[10.5px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-200/60">
-                      <span>Kênh: <strong>{selectedAgent.officeLicense?.channel || 'Chưa rõ'}</strong></span>
-                      {selectedAgent.officeLicense?.partialKey && (
-                        <span className="font-mono">Key: ****-{selectedAgent.officeLicense.partialKey}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Installed Software List */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Danh Sách Ứng Dụng & Phần Mềm ({selectedAgent.installedSoftware.length})</span>
-                    </h4>
-
-                    <input
-                      type="text"
-                      placeholder="Lọc phần mềm..."
-                      value={searchSoftware}
-                      onChange={(e) => setSearchSoftware(e.target.value)}
-                      className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none w-44"
-                    />
-                  </div>
-
-                  <div className="max-h-[380px] overflow-y-auto border border-slate-100 rounded-2xl divide-y divide-slate-100">
-                    {selectedAgent.installedSoftware.length === 0 ? (
-                      <div className="p-6 text-center text-slate-400 text-xs">
-                        Máy trạm này chưa quét danh sách phần mềm hoặc chạy agent phiên bản cũ.
-                      </div>
-                    ) : (
-                      selectedAgent.installedSoftware
-                        .filter((s) => !searchSoftware || s.name.toLowerCase().includes(searchSoftware.toLowerCase()))
-                        .map((sw, sIdx) => {
-                          // Check license matches
-                          const match = (selectedAgent.licenseMatches || []).find((m) => {
-                            const mClean = m.softwareName.toLowerCase().replace(/[^a-z0-9]/g, '');
-                            const sClean = sw.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                            return sClean.includes(mClean) || mClean.includes(sClean);
-                          });
-
-                          // Check unmanaged commercial
-                          const isUnmanaged = !match && (selectedAgent.unmanagedCommercialApps || []).some((u) => {
-                            const uClean = u.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                            const sClean = sw.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                            return sClean.includes(uClean) || uClean.includes(sClean);
-                          });
-
-                          return (
-                            <div key={sIdx} className="p-2.5 hover:bg-slate-50 flex items-center justify-between gap-2 text-xs">
-                              <div>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-bold text-slate-900">{sw.name}</span>
-                                  {match ? (
-                                    match.matchStatus === 'ASSIGNED_MATCH' ? (
-                                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold inline-flex items-center gap-1">
-                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                        <span>Đã gán License ({match.licenseName})</span>
-                                      </span>
-                                    ) : (
-                                      <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px] font-bold inline-flex items-center gap-1">
-                                        <AlertTriangle className="w-3 h-3 text-amber-600" />
-                                        <span>Trùng License kho ({match.licenseName} · Còn {match.availableSeats}/{match.seats} ghế)</span>
-                                      </span>
-                                    )
-                                  ) : isUnmanaged ? (
-                                    <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 text-[9.5px] font-bold">
-                                      Phần mềm thương mại (Chưa có trong kho)
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <div className="text-[10.5px] text-slate-500">
-                                  {sw.publisher || 'Nhà phát triển không xác định'} {sw.version ? `· Phiên bản: ${sw.version}` : ''}
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2 shrink-0">
-                                {match && match.matchStatus === 'UNASSIGNED_MATCH' && (
-                                  <button
-                                    type="button"
-                                    disabled={assigningLicenseId === match.licenseId || match.availableSeats <= 0}
-                                    onClick={() => handleQuickAssignLicense(match.licenseId, selectedAgent.assetId, match.licenseName)}
-                                    className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold rounded-lg text-[10.5px] transition-colors shadow-xs cursor-pointer"
-                                  >
-                                    {assigningLicenseId === match.licenseId ? 'Đang gán...' : match.availableSeats > 0 ? 'Gán Ngay' : 'Hết ghế'}
-                                  </button>
-                                )}
-                                {isUnmanaged && (
-                                  <a
-                                    href={`/licenses?new=true&name=${encodeURIComponent(sw.name)}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-[10.5px] transition-colors inline-flex items-center gap-1"
-                                  >
-                                    <span>+ Thêm vào Kho</span>
-                                  </a>
-                                )}
-                                {sw.installDate && (
-                                  <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
-                                    {sw.installDate}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="p-12 text-center text-slate-400 space-y-2">
-                <Laptop className="w-10 h-10 text-slate-300 mx-auto" />
-                <p className="font-bold text-xs text-slate-700">Chọn một máy trạm bên trái để xem chi tiết</p>
-                <p className="text-[11px] text-slate-400">
-                  Xem cấu hình CPU, RAM, Ổ cứng và toàn bộ danh sách phần mềm đã cài đặt trên máy.
-                </p>
-              </div>
-            )}
           </div>
         </div>
       )}
