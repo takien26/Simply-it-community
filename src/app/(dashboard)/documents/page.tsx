@@ -1189,7 +1189,7 @@ export default function DocumentsPage() {
       {loading ? (
         <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
           <Loader2 className="w-7 h-7 animate-spin text-blue-600 mx-auto mb-2" />
-          <p className="text-xs text-slate-500 font-medium">Đang tải danh sách hồ sơ & chứng từ...</p>
+          <p className="text-xs text-slate-500 font-medium">{isEn ? 'Loading documents & attachments...' : 'Đang tải danh sách hồ sơ & chứng từ...'}</p>
         </div>
       ) : documents.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 space-y-3">

@@ -32,6 +32,17 @@ import {
   checkAndTriggerHourlySync,
 } from '@/lib/currency-store';
 
+const CURRENCY_EN_NAMES: Record<string, string> = {
+  VND: 'Vietnamese Dong',
+  USD: 'US Dollar (USD)',
+  EUR: 'Euro (EUR)',
+  JPY: 'Japanese Yen (JPY)',
+  SGD: 'Singapore Dollar (SGD)',
+  GBP: 'British Pound (GBP)',
+  AUD: 'Australian Dollar (AUD)',
+  CNY: 'Chinese Yuan (CNY)',
+};
+
 export function CurrencySettingsCard() {
   const { language } = useLanguage();
   const isEn = language === 'en';

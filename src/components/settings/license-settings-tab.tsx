@@ -187,27 +187,27 @@ export function LicenseSettingsTab() {
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-emerald-200 text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Phân tuyến IT & SLA</span>
+                    <span>{isEn ? 'IT Routing & SLA' : 'Phân tuyến IT & SLA'}</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-emerald-200 text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Cảnh báo Telegram</span>
+                    <span>{isEn ? 'Telegram Alerts' : 'Cảnh báo Telegram'}</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-emerald-200 text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Trí Tuệ Nhân Tạo AI</span>
+                    <span>{isEn ? 'Artificial Intelligence (AI)' : 'Trí Tuệ Nhân Tạo AI'}</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-emerald-200 text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Kiểm Kê Tài Sản (Audit)</span>
+                    <span>{isEn ? 'Asset Audit' : 'Kiểm Kê Tài Sản (Audit)'}</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-emerald-200 text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Scan Thiết Bị (Discovery)</span>
+                    <span>{isEn ? 'Device Discovery' : 'Scan Thiết Bị (Discovery)'}</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-emerald-200 text-emerald-800 dark:text-emerald-300 flex items-center gap-2 font-medium">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Sơ Đồ Mặt Bằng 2D</span>
+                    <span>{isEn ? '2D Floor Maps' : 'Sơ Đồ Mặt Bằng 2D'}</span>
                   </div>
                 </div>
               </div>

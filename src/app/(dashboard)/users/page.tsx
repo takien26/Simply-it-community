@@ -861,7 +861,7 @@ export default function UsersPage() {
           onChange={(e) => setSelectedCompany(e.target.value)}
           className="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 w-full md:w-auto font-bold"
         >
-          <option value="">🏢 Tất cả công ty quản lý</option>
+          <option value="">{language === 'en' ? '🏢 All Companies' : '🏢 Tất cả công ty quản lý'}</option>
           {companies.map((c) => (
             <option key={c} value={c}>
               🏢 {c}
@@ -875,7 +875,7 @@ export default function UsersPage() {
           onChange={(e) => setSelectedDeptFilter(e.target.value)}
           className="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 w-full md:w-auto font-bold max-w-xs"
         >
-          <option value="">📂 Tất cả Phòng ban & Bộ phận</option>
+          <option value="">{language === 'en' ? '📂 All Departments' : '📂 Tất cả Phòng ban & Bộ phận'}</option>
 
           {deptTree.map((parent) => (
             <optgroup key={parent.id} label={`${parent.icon || '📁'} ${parent.name}`}>
@@ -956,12 +956,12 @@ export default function UsersPage() {
                                 </button>
                               </div>
                               <div className="text-[11px] text-purple-700 dark:text-purple-400 font-semibold truncate">
-                                {u.position || 'Nhân viên'}
+                                {u.position || (language === 'en' ? 'Staff' : 'Nhân viên')}
                               </div>
                               {u.manager && (
                                 <div className="text-[10px] text-amber-700 dark:text-amber-300 font-bold flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-md border border-amber-200/80 w-fit">
                                   <Crown className="w-3 h-3 text-amber-600 shrink-0" />
-                                  <span>Cấp trên: {u.manager.fullName}</span>
+                                  <span>{language === 'en' ? 'Manager: ' : 'Cấp trên: '}{u.manager.fullName}</span>
                                 </div>
                               )}
                               {u.location && (
@@ -1068,7 +1068,7 @@ export default function UsersPage() {
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-slate-400 italic text-[11px] block">Chưa gán máy</span>
+                              <span className="text-slate-400 italic text-[11px] block">{language === 'en' ? 'No devices' : 'Chưa gán máy'}</span>
                             )}
 
                             <button
@@ -1076,7 +1076,7 @@ export default function UsersPage() {
                               className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 cursor-pointer"
                             >
                               <Plus className="w-3 h-3" />
-                              <span>Gán máy</span>
+                              <span>{language === 'en' ? 'Assign Device' : 'Gán máy'}</span>
                             </button>
                           </div>
                         </td>
@@ -1109,7 +1109,7 @@ export default function UsersPage() {
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-slate-400 italic text-[11px] block">Chưa cấp Lic</span>
+                              <span className="text-slate-400 italic text-[11px] block">{language === 'en' ? 'No licenses' : 'Chưa cấp Lic'}</span>
                             )}
 
                             <button
@@ -1117,7 +1117,7 @@ export default function UsersPage() {
                               className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-md border border-purple-200 cursor-pointer"
                             >
                               <Plus className="w-3 h-3" />
-                              <span>Gán Lic</span>
+                              <span>{language === 'en' ? 'Assign Lic' : 'Gán Lic'}</span>
                             </button>
                           </div>
                         </td>
