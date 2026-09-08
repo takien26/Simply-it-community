@@ -9,16 +9,19 @@ import {
   LifeBuoy,
   Settings,
 } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/context';
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const { language, t } = useLanguage();
+  const isEn = language === 'en';
 
   const navs = [
-    { label: 'Tổng quan', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Tài sản', href: '/assets', icon: Laptop },
-    { label: 'Quét QR', href: '/scan', icon: QrCode, isSpecial: true },
-    { label: 'Ticket IT', href: '/tickets', icon: LifeBuoy },
-    { label: 'Cài đặt', href: '/settings', icon: Settings },
+    { label: t('nav.dashboard', 'Tổng quan'), href: '/dashboard', icon: LayoutDashboard },
+    { label: t('nav.assets_mgmt', 'Tài sản'), href: '/assets', icon: Laptop },
+    { label: isEn ? 'Scan QR' : 'Quét QR', href: '/scan', icon: QrCode, isSpecial: true },
+    { label: t('nav.tickets', 'Ticket IT'), href: '/tickets', icon: LifeBuoy },
+    { label: t('nav.settings', 'Cài đặt'), href: '/settings', icon: Settings },
   ];
 
   return (
@@ -47,7 +50,7 @@ export function MobileBottomNav() {
                   <QrCode className="w-6 h-6 text-white animate-pulse" />
                 </div>
                 <span className="text-[10px] font-black text-blue-600 mt-1 tracking-tight">
-                  Quét QR
+                  {isEn ? 'Scan QR' : 'Quét QR'}
                 </span>
               </Link>
             );

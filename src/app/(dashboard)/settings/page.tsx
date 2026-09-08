@@ -219,7 +219,9 @@ function getSettingsNavGroups(isEn: boolean, isEnterprise: boolean, activeModule
           { id: 'ROUTING' as const, label: isEn ? 'IT Support Org, Routing & SLA' : 'Tổ Chức IT, Phân Tuyến & SLA', icon: '🎯', desc: isEn ? 'Support teams, queues, and committed SLA policies' : 'Đội ngũ hỗ trợ, hàng đợi và hạn cam kết SLA' },
         ] : []),
         { id: 'MAINTENANCE', label: isEn ? 'Periodic Maintenance Schedules' : 'Lịch Bảo Trì Định Kỳ', icon: '📅', desc: isEn ? 'Automated maintenance schedules for enterprise assets' : 'Lên lịch tự động kiểm tra bảo dưỡng thiết bị' },
-        { id: 'AI_COPILOT' as const, label: isEn ? 'Artificial Intelligence (AI)' : 'Trí Tuệ Nhân Tạo (AI)', icon: '🤖', desc: isEn ? 'Configure Gemini AI models, Copilot assistant, and OCR' : 'Cấu hình Gemini API, Trợ lý AI và OCR hóa đơn' },
+        ...(isModActive('AI_COPILOT') ? [
+          { id: 'AI_COPILOT' as const, label: isEn ? 'Artificial Intelligence (AI)' : 'Trí Tuệ Nhân Tạo (AI)', icon: '🤖', desc: isEn ? 'Configure Gemini AI models, Copilot assistant, and OCR' : 'Cấu hình Gemini API, Trợ lý AI và OCR hóa đơn' },
+        ] : []),
       ],
     },
     {
@@ -498,20 +500,23 @@ export default function SettingsPage() {
   const [isEnterprise, setIsEnterprise] = useState<boolean>(false);
   const [activeModules, setActiveModules] = useState<string[]>([]);
   const [searchFilter, setSearchFilter] = useState('');
-  const [isPinned, setIsPinned] = useState<boolean>(true);
+  const [isPinned, setIsPinned] = useState<boolean>(false);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const activeTabRef = useRef<HTMLButtonElement | null>(null);
-  const navContainerRef = useRef<HTMLDivElement | null>(null);
   const [settings, setSettings] = useState<any[]>([]);
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const langDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll the settings sidebar so the active tab is visible
   useEffect(() => {
-    if (activeTabRef.current) {
-      activeTabRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
-  }, [activeTab, isPinned, isHovered]);
+    const handleClickOutside = (e: MouseEvent) => {
+      if (langDropdownRef.current && !langDropdownRef.current.contains(e.target as Node)) {
+        setIsLangDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
 
 
@@ -1358,7 +1363,7 @@ export default function SettingsPage() {
         <div
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          className={`shrink-0 transition-all duration-300 z-30 sticky top-20 ${
+          className={`shrink-0 transition-all duration-300 z-30 sticky top-4 ${
             isExpanded
               ? 'w-full lg:w-80'
               : 'w-full lg:w-16'
@@ -1419,10 +1424,9 @@ export default function SettingsPage() {
 
           {/* Navigation Groups List */}
           <div
-            ref={navContainerRef}
-            className={`bg-white border border-slate-200/90 rounded-2xl shadow-xs transition-all duration-300 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-thin ${
+            className={`bg-white border border-slate-200/90 rounded-2xl shadow-xs transition-all duration-300 ${
               isExpanded
-                ? 'p-2 divide-y divide-slate-100'
+                ? 'p-2 divide-y divide-slate-100 max-h-[calc(100vh-220px)] overflow-y-auto'
                 : 'p-1.5 w-16 mx-auto'
             }`}
           >
@@ -1466,7 +1470,6 @@ export default function SettingsPage() {
                           return (
                             <div key={item.id} className="relative group">
                               <button
-                                ref={isActive ? activeTabRef : undefined}
                                 type="button"
                                 onClick={() => {
                                   setActiveTab(item.id);
@@ -1582,9 +1585,33 @@ export default function SettingsPage() {
           )}
 
           {activeTab === 'AI_COPILOT' && (
-            <div className="space-y-6">
-              <AICopilotSettingsTab />
-            </div>
+            isModActive('AI_COPILOT') ? (
+              <div className="space-y-6">
+                <AICopilotSettingsTab />
+              </div>
+            ) : (
+              <EnterpriseFeatureLock
+                previewType="ai"
+                tier="ENTERPRISE"
+                icon="🤖"
+                title="Trí Tuệ Nhân Tạo (Gemini AI & Trợ Lý Ảo Copilot)"
+                titleEn="Artificial Intelligence (Gemini AI & Copilot Assistant)"
+                subtitle="Tích hợp mô hình ngôn ngữ lớn Google Gemini AI để hỗ trợ vận hành ITSM và OCR hóa đơn tự động"
+                subtitleEn="Harness Google Gemini AI models for smart ITSM operations and automated receipt OCR"
+                bullets={[
+                  'Trợ lý ảo Copilot Chatbot hỗ trợ kỹ thuật viên và nhân viên tự phục vụ',
+                  'Quét và trích xuất tự động dữ liệu thiết bị từ ảnh chụp hóa đơn (OCR Invoice)',
+                  'Phân tích thông minh nội dung ticket, tự động gợi ý giải pháp và phân loại sự cố',
+                  'Tự do cấu hình Gemini Flash/Pro API Key hoặc Local AI Server',
+                ]}
+                bulletsEn={[
+                  'Virtual Copilot chatbot assistant for IT staff and employee self-service',
+                  'Automated hardware & invoice data extraction from uploaded photos (Receipt OCR)',
+                  'Smart ticket content analysis, auto-suggested resolutions and categorization',
+                  'Customizable Gemini Flash/Pro API key and local AI server integration',
+                ]}
+              />
+            )
           )}
 
       {activeTab === 'CURRENCY' && (
@@ -1642,7 +1669,7 @@ export default function SettingsPage() {
           {saved && (
             <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold rounded-2xl flex items-center space-x-2 animate-in fade-in">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <span>Cài đặt hệ thống đã được cập nhật thành công!</span>
+              <span>{isEn ? 'System settings have been updated successfully!' : 'Cài đặt hệ thống đã được cập nhật thành công!'}</span>
             </div>
           )}
 
@@ -1650,15 +1677,15 @@ export default function SettingsPage() {
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
             <div className="flex items-center space-x-2 text-slate-900 font-bold text-base pb-3 border-b border-slate-100">
               <Palette className="w-5 h-5 text-blue-600" />
-              <span>Tùy biến Logo & Nhận diện Thương hiệu</span>
+              <span>{isEn ? 'Brand Logo & Platform Identity' : 'Tùy biến Logo & Nhận diện Thương hiệu'}</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Tên ứng dụng hiển thị</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">{isEn ? 'Application Display Name' : 'Tên ứng dụng hiển thị'}</label>
                 <input
                   type="text"
-                  placeholder="VD: Quản lý tài sản, IT Asset Hub..."
+                  placeholder={isEn ? 'e.g., IT Asset Hub, Simply IT...' : 'VD: Quản lý tài sản, IT Asset Hub...'}
                   value={getSettingValue('app.name')}
                   onChange={(e) => handleChange('app.name', e.target.value)}
                   className="w-full p-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-800"
@@ -1671,7 +1698,7 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="VD: Công ty TechCorp, ABC Corporation..."
+                  placeholder={isEn ? 'e.g., TechCorp Ltd, ABC Corporation...' : 'VD: Công ty TechCorp, ABC Corporation...'}
                   value={getSettingValue('app.company_name')}
                   onChange={(e) => handleChange('app.company_name', e.target.value)}
                   className="w-full p-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-800"
@@ -1689,41 +1716,65 @@ export default function SettingsPage() {
                     ? 'Select primary language for the entire platform interface and login screen'
                     : 'Chọn ngôn ngữ giao diện chính cho hệ thống và màn hình đăng nhập'}
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {supportedLanguages.map((lang) => {
-                    const currentSelected = (getSettingValue('app.language') || language);
-                    const isSelected = currentSelected === lang.code;
+                <div className="relative max-w-md" ref={langDropdownRef}>
+                  {(() => {
+                    const currentLangCode = getSettingValue('app.language') || language;
+                    const selectedLang = supportedLanguages.find((l) => l.code === currentLangCode) || supportedLanguages[0];
 
                     return (
-                      <button
-                        key={lang.code}
-                        type="button"
-                        onClick={() => {
-                          handleChange('app.language', lang.code);
-                          setLanguage(lang.code as any);
-                        }}
-                        className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-all cursor-pointer ${
-                          isSelected
-                            ? 'border-blue-500 bg-blue-50/80 ring-2 ring-blue-500/20 shadow-xs'
-                            : 'border-slate-200 bg-white hover:bg-slate-50'
-                        }`}
-                      >
-                        <span className="text-2xl shrink-0">{lang.flag}</span>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-900 truncate">
-                            {lang.nativeName} ({lang.name})
-                          </p>
-                          <p className="text-[11px] text-slate-500 truncate">
-                            {lang.code === 'vi'
-                              ? 'Giao diện tiếng Việt chuẩn'
-                              : lang.code === 'en'
-                              ? 'Standard English interface'
-                              : `${lang.nativeName} interface`}
-                          </p>
-                        </div>
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                          className="w-full p-2.5 bg-white border border-slate-300 hover:border-slate-400 rounded-xl text-xs font-bold text-slate-800 flex items-center justify-between shadow-2xs focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-xl shrink-0">{selectedLang.flag}</span>
+                            <div className="text-left">
+                              <span className="text-slate-900 font-bold">{selectedLang.nativeName}</span>
+                              {selectedLang.name !== selectedLang.nativeName && (
+                                <span className="text-[11px] text-slate-500 font-normal ml-1.5">({selectedLang.name})</span>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isLangDropdownOpen ? 'rotate-180 text-blue-600' : ''}`} />
+                        </button>
+
+                        {isLangDropdownOpen && (
+                          <div className="absolute left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+                            {supportedLanguages.map((lang) => {
+                              const isSelected = lang.code === selectedLang.code;
+                              return (
+                                <button
+                                  key={lang.code}
+                                  type="button"
+                                  onClick={() => {
+                                    handleChange('app.language', lang.code);
+                                    setLanguage(lang.code as any);
+                                    setIsLangDropdownOpen(false);
+                                  }}
+                                  className={`w-full px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-blue-50 text-blue-700 font-bold'
+                                      : 'hover:bg-slate-50 text-slate-700 font-medium'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <span className="text-lg shrink-0">{lang.flag}</span>
+                                    <span>{lang.nativeName}</span>
+                                    {lang.name !== lang.nativeName && (
+                                      <span className="text-[11px] text-slate-400">({lang.name})</span>
+                                    )}
+                                  </div>
+                                  {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
                     );
-                  })}
+                  })()}
                 </div>
               </div>
             </div>
@@ -1732,7 +1783,7 @@ export default function SettingsPage() {
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold text-slate-800">
-                  Logo Thương hiệu (Tải ảnh từ máy tính hoặc dán URL)
+                  {isEn ? 'Brand Logo (Upload image or paste URL)' : 'Logo Thương hiệu (Tải ảnh từ máy tính hoặc dán URL)'}
                 </label>
                 {currentLogo && (
                   <button
@@ -1741,7 +1792,7 @@ export default function SettingsPage() {
                     className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1"
                   >
                     <Trash2 className="w-3 h-3" />
-                    <span>Xóa logo (Dùng icon mặc định)</span>
+                    <span>{isEn ? 'Reset logo (Use default)' : 'Xóa logo (Dùng icon mặc định)'}</span>
                   </button>
                 )}
               </div>
@@ -1771,7 +1822,7 @@ export default function SettingsPage() {
                   <div className="text-xs">
                     <p className="font-bold text-white leading-tight">{getSettingValue('app.name') || 'IT Asset Hub'}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">{getSettingValue('app.company_name') || 'Công ty TechCorp'}</p>
-                    <span className="text-[9px] text-emerald-400 font-mono">● Xem trước Sidebar</span>
+                    <span className="text-[9px] text-emerald-400 font-mono">{isEn ? '● Sidebar Preview' : '● Xem trước Sidebar'}</span>
                   </div>
                 </div>
 
@@ -1791,12 +1842,12 @@ export default function SettingsPage() {
                       className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs transition-colors shrink-0"
                     >
                       {uploadingLogo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                      <span>{uploadingLogo ? 'Đang tải lên...' : '📂 Chọn file ảnh từ máy tính'}</span>
+                      <span>{uploadingLogo ? (isEn ? 'Uploading...' : 'Đang tải lên...') : (isEn ? '📂 Choose image file' : '📂 Chọn file ảnh từ máy tính')}</span>
                     </label>
 
                     <input
                       type="text"
-                      placeholder="Hoặc dán URL: https://example.com/logo.png"
+                      placeholder={isEn ? 'Or paste URL: https://example.com/logo.png' : 'Hoặc dán URL: https://example.com/logo.png'}
                       value={currentLogo}
                       onChange={(e) => handleChange('app.logo', e.target.value)}
                       className="flex-1 p-2 bg-white border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-blue-500"
@@ -1804,7 +1855,9 @@ export default function SettingsPage() {
                   </div>
 
                   <p className="text-[11px] text-slate-500">
-                    💡 Hỗ trợ các định dạng ảnh: <strong>PNG, JPG, SVG, WebP, ICO</strong> (Kích thước đề xuất: vuông hoặc tỉ lệ 1:1 hoặc chữ nhật nhỏ, nền trong suốt).
+                    {isEn
+                      ? '💡 Supported formats: PNG, JPG, SVG, WebP, ICO (Recommended: 1:1 square or transparent background).'
+                      : '💡 Hỗ trợ các định dạng ảnh: PNG, JPG, SVG, WebP, ICO (Kích thước đề xuất: vuông hoặc tỉ lệ 1:1 hoặc chữ nhật nhỏ, nền trong suốt).'}
                   </p>
                 </div>
               </div>
@@ -1812,7 +1865,7 @@ export default function SettingsPage() {
 
             {/* COLOR PICKER */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Màu chủ đạo giao diện (Primary Color)</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">{isEn ? 'Primary Accent Color' : 'Màu chủ đạo giao diện (Primary Color)'}</label>
               <div className="flex items-center space-x-3">
                 <input
                   type="color"
@@ -1848,7 +1901,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center space-x-2 text-slate-900 font-bold text-base">
                 <QrCode className="w-5 h-5 text-indigo-600" />
-                <span>Cấu hình Server IP / Cổng & Link Quét Mã QR Code</span>
+                <span>{isEn ? 'Server IP / Domain & Mobile QR Scan Link' : 'Cấu hình Server IP / Cổng & Link Quét Mã QR Code'}</span>
               </div>
               <button
                 type="button"
@@ -1859,14 +1912,16 @@ export default function SettingsPage() {
                 }}
                 className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 transition-colors flex items-center space-x-1"
               >
-                <span>🌐 Tự động lấy URL máy chủ hiện tại</span>
+                <span>{isEn ? '🌐 Auto-detect current server URL' : '🌐 Tự động lấy URL máy chủ hiện tại'}</span>
               </button>
             </div>
 
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Địa chỉ Server / IP Mạng LAN & Port (VD: http://192.168.1.15:3000 hoặc https://it.mycompany.com)
+                  {isEn
+                    ? 'Server Address / LAN IP & Port (e.g. http://192.168.1.15:3000 or https://it.mycompany.com)'
+                    : 'Địa chỉ Server / IP Mạng LAN & Port (VD: http://192.168.1.15:3000 hoặc https://it.mycompany.com)'}
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -1878,7 +1933,11 @@ export default function SettingsPage() {
                   />
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  💡 <strong>Hướng dẫn:</strong> Khi quét mã QR dán trên máy tính bằng điện thoại, link sẽ trỏ về địa chỉ IP này để mở thẳng trang xem chi tiết thiết bị. Bạn có thể đổi IP máy chủ hoặc tên miền bất kỳ lúc nào tại đây.
+                  {isEn ? (
+                    <>💡 <strong>Guide:</strong> When scanning a device QR code with a mobile device, this URL redirects to the asset details view. You can update this domain or IP anytime.</>
+                  ) : (
+                    <>💡 <strong>Hướng dẫn:</strong> Khi quét mã QR dán trên máy tính bằng điện thoại, link sẽ trỏ về địa chỉ IP này để mở thẳng trang xem chi tiết thiết bị. Bạn có thể đổi IP máy chủ hoặc tên miền bất kỳ lúc nào tại đây.</>
+                  )}
                 </p>
               </div>
             </div>
@@ -1888,13 +1947,13 @@ export default function SettingsPage() {
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center space-x-2 text-slate-900 font-bold text-base pb-3 border-b border-slate-100">
               <Bell className="w-5 h-5 text-amber-600" />
-              <span>Cảnh báo nhắc hạn & Cấu hình AI</span>
+              <span>{isEn ? 'Expiry Reminders & AI Threshold' : 'Cảnh báo nhắc hạn & Cấu hình AI'}</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Nhắc License trước (ngày)
+                  {isEn ? 'License Expiry Notice (days)' : 'Nhắc License trước (ngày)'}
                 </label>
                 <input
                   type="number"
@@ -1906,7 +1965,7 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Nhắc bảo hành trước (ngày)
+                  {isEn ? 'Warranty Expiry Notice (days)' : 'Nhắc bảo hành trước (ngày)'}
                 </label>
                 <input
                   type="number"
@@ -1918,7 +1977,7 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Ngưỡng tự lưu AI (0.0 - 1.0)
+                  {isEn ? 'AI Auto-Save Confidence (0.0 - 1.0)' : 'Ngưỡng tự lưu AI (0.0 - 1.0)'}
                 </label>
                 <input
                   type="text"
@@ -1938,8 +1997,8 @@ export default function SettingsPage() {
                   <Database className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Dữ Liệu Mẫu & Demo (Sample Data Management)</h3>
-                  <p className="text-xs text-slate-500">Tạo bộ dữ liệu mẫu thực tế để người dùng mới dễ dàng trải nghiệm và xóa sạch bất kỳ lúc nào</p>
+                  <h3 className="text-base font-bold text-slate-900">{isEn ? 'Sample & Demo Data Management' : 'Dữ Liệu Mẫu & Demo (Sample Data Management)'}</h3>
+                  <p className="text-xs text-slate-500">{isEn ? 'Generate realistic sample dataset for evaluation and clear cleanly anytime' : 'Tạo bộ dữ liệu mẫu thực tế để người dùng mới dễ dàng trải nghiệm và xóa sạch bất kỳ lúc nào'}</p>
                 </div>
               </div>
 
@@ -1954,23 +2013,23 @@ export default function SettingsPage() {
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center">
                 <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Tài sản</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">{isEn ? 'Assets' : 'Tài sản'}</span>
                   <span className="text-sm font-extrabold text-indigo-600">{sampleDataStats?.sampleAssets ?? 0} mẫu</span>
                 </div>
                 <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Bản quyền</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">{isEn ? 'Licenses' : 'Bản quyền'}</span>
                   <span className="text-sm font-extrabold text-purple-600">{sampleDataStats?.sampleLicenses ?? 0} mẫu</span>
                 </div>
                 <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Dịch vụ IT</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">{isEn ? 'IT Services' : 'Dịch vụ IT'}</span>
                   <span className="text-sm font-extrabold text-emerald-600">{sampleDataStats?.sampleServices ?? 0} mẫu</span>
                 </div>
                 <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Ticket IT</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">{isEn ? 'IT Tickets' : 'Ticket IT'}</span>
                   <span className="text-sm font-extrabold text-rose-600">{sampleDataStats?.sampleTickets ?? 0} mẫu</span>
                 </div>
                 <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Pass KeePass</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">{isEn ? 'Vault Credentials' : 'Pass KeePass'}</span>
                   <span className="text-sm font-extrabold text-amber-600">{sampleDataStats?.samplePasswords ?? 0} mẫu</span>
                 </div>
               </div>
@@ -1988,7 +2047,7 @@ export default function SettingsPage() {
                     className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-50"
                   >
                     {loadingSampleData ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-amber-300" />}
-                    <span>+ Nạp Dữ Liệu Mẫu</span>
+                    <span>{isEn ? '+ Load Sample Data' : '+ Nạp Dữ Liệu Mẫu'}</span>
                   </button>
 
                   <button
@@ -1996,10 +2055,10 @@ export default function SettingsPage() {
                     disabled={loadingSampleData || (sampleDataStats?.totalSampleItems === 0)}
                     onClick={handleClearSampleData}
                     className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Xóa toàn bộ các bản ghi mẫu có tiền tố [MẪU]"
+                    title={isEn ? 'Delete all sample records prefixed with [SAMPLE]' : 'Xóa toàn bộ các bản ghi mẫu có tiền tố [MẪU]'}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Xóa Dữ Liệu Mẫu</span>
+                    <span>{isEn ? 'Clear Sample Data' : 'Xóa Dữ Liệu Mẫu'}</span>
                   </button>
                 </div>
               </div>
@@ -2015,8 +2074,8 @@ export default function SettingsPage() {
                     <Database className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">Sao Lưu & Phục Hồi Dữ Liệu Tự Động (Auto-Backup & Sync)</h3>
-                    <p className="text-xs text-slate-500">Tự động sao lưu định kỳ (Ngày/Tuần/Tháng), chỉ định thư mục lưu trữ và tự động đồng bộ file Hóa đơn / Hợp đồng mới</p>
+                    <h3 className="text-base font-bold text-slate-900">{isEn ? 'Automated Backup & Directory Sync' : 'Sao Lưu & Phục Hồi Dữ Liệu Tự Động (Auto-Backup & Sync)'}</h3>
+                    <p className="text-xs text-slate-500">{isEn ? 'Scheduled automated backups (Daily/Weekly/Monthly), custom directory storage, and file replication' : 'Tự động sao lưu định kỳ (Ngày/Tuần/Tháng), chỉ định thư mục lưu trữ và tự động đồng bộ file Hóa đơn / Hợp đồng mới'}</p>
                   </div>
                 </div>
 
@@ -2029,7 +2088,7 @@ export default function SettingsPage() {
                     title="Tải ngay file snapshot JSON về máy tính"
                   >
                     <Save className="w-3.5 h-3.5 text-purple-600" />
-                    <span>📥 Tải Snapshot</span>
+                    <span>{isEn ? '📥 Download Snapshot' : '📥 Tải Snapshot'}</span>
                   </button>
 
                   <input
@@ -2048,7 +2107,7 @@ export default function SettingsPage() {
                     title="Phục hồi cơ sở dữ liệu từ file backup"
                   >
                     {isRestoring ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5 text-slate-600" />}
-                    <span>{isRestoring ? 'Đang phục hồi...' : '📤 Phục Hồi'}</span>
+                    <span>{isRestoring ? (isEn ? 'Restoring...' : 'Đang phục hồi...') : (isEn ? '📤 Restore Snapshot' : '📤 Phục Hồi')}</span>
                   </button>
                 </div>
               </div>
@@ -2071,7 +2130,7 @@ export default function SettingsPage() {
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Sliders className="w-4 h-4 text-purple-600" />
-                    <span>1. Cấu Hình Tự Động Sao Lưu Định Kỳ & Thư Mục Máy Chủ</span>
+                    <span>{isEn ? '1. Scheduled Backup Configuration & Target Directory' : '1. Cấu Hình Tự Động Sao Lưu Định Kỳ & Thư Mục Máy Chủ'}</span>
                   </span>
                   <button
                     type="button"
@@ -2083,29 +2142,29 @@ export default function SettingsPage() {
                     }`}
                   >
                     <span className={`w-2.5 h-2.5 rounded-full transition-colors ${autoBackupConfig.autoEnabled ? 'bg-emerald-300 animate-pulse' : 'bg-slate-400'}`} />
-                    <span>{autoBackupConfig.autoEnabled ? 'BẬT SAO LƯU TỰ ĐỘNG' : 'ĐÃ TẮT SAO LƯU TỰ ĐỘNG'}</span>
+                    <span>{autoBackupConfig.autoEnabled ? (isEn ? 'AUTO-BACKUP ON' : 'BẬT SAO LƯU TỰ ĐỘNG') : (isEn ? 'AUTO-BACKUP OFF' : 'ĐÃ TẮT SAO LƯU TỰ ĐỘNG')}</span>
                   </button>
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   {/* Frequency */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Tần suất sao lưu:</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">{isEn ? 'Backup Frequency:' : 'Tần suất sao lưu:'}</label>
                     <select
                       value={autoBackupConfig.frequency}
                       onChange={(e) => setAutoBackupConfig({ ...autoBackupConfig, frequency: e.target.value })}
                       disabled={!autoBackupConfig.autoEnabled}
                       className="w-full p-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 cursor-pointer"
                     >
-                      <option value="DAILY">Hàng ngày</option>
-                      <option value="WEEKLY">Hàng tuần</option>
-                      <option value="MONTHLY">Hàng tháng</option>
+                      <option value="DAILY">{isEn ? 'Daily' : 'Hàng ngày'}</option>
+                      <option value="WEEKLY">{isEn ? 'Weekly' : 'Hàng tuần'}</option>
+                      <option value="MONTHLY">{isEn ? 'Monthly' : 'Hàng tháng'}</option>
                     </select>
                   </div>
 
                   {/* Time of Day */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Thời gian chạy sao lưu:</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">{isEn ? 'Scheduled Run Time:' : 'Thời gian chạy sao lưu:'}</label>
                     <input
                       type="time"
                       value={autoBackupConfig.time}
@@ -2117,7 +2176,7 @@ export default function SettingsPage() {
 
                   {/* Retention */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Lưu trữ tối đa (ngày):</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">{isEn ? 'Retention (Days):' : 'Lưu trữ tối đa (ngày):'}</label>
                     <input
                       type="number"
                       min="1"
@@ -2133,7 +2192,7 @@ export default function SettingsPage() {
                 {/* Storage Path / Network Directory */}
                 <div className="space-y-1.5 pt-1">
                   <label className="block text-[11px] font-bold text-slate-700 flex items-center justify-between">
-                    <span>Thư mục lưu trữ sao lưu:</span>
+                    <span>{isEn ? 'Backup Storage Directory:' : 'Thư mục lưu trữ sao lưu:'}</span>
                     <span className="text-[10px] text-slate-400 font-normal">File sẽ tự động ghi rõ ngày giờ: ITSM_Backup_YYYY-MM-DD_HH-mm-ss.json</span>
                   </label>
 
@@ -2176,7 +2235,7 @@ export default function SettingsPage() {
                       title="Mở hộp thoại chọn thư mục lưu trữ"
                     >
                       <FolderOpen className="w-4 h-4 text-purple-600" />
-                      <span>Chọn Thư Mục</span>
+                      <span>{isEn ? 'Browse Folder' : 'Chọn Thư Mục'}</span>
                     </button>
 
                     {/* Test Path Button */}
@@ -2188,7 +2247,7 @@ export default function SettingsPage() {
                       title="Kiểm tra xem máy chủ có quyền ghi vào thư mục này không"
                     >
                       {testingPath ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />}
-                      <span>Kiểm tra đường dẫn</span>
+                      <span>{isEn ? 'Test Path' : 'Kiểm tra đường dẫn'}</span>
                     </button>
                   </div>
 
@@ -2210,7 +2269,11 @@ export default function SettingsPage() {
                     className="mt-0.5 rounded border-purple-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
                   />
                   <label htmlFor="syncUploadsCheck" className="text-xs text-purple-950 cursor-pointer leading-relaxed">
-                    <strong>Tự động đồng bộ file Hóa đơn & Hợp đồng mới tải lên:</strong> Khi có file PDF/Word/Ảnh scan mới, hệ thống tự động sao chép ngay một bản lưu vào thư mục <code>{autoBackupConfig.directory}/uploads/</code>.
+                    {isEn ? (
+                      <><strong>Auto-sync new attachments & invoices:</strong> When new PDF/Word/scanned images are uploaded, automatically replicate a copy to <code>{autoBackupConfig.directory}/uploads/</code>.</>
+                    ) : (
+                      <><strong>Tự động đồng bộ file Hóa đơn & Hợp đồng mới tải lên:</strong> Khi có file PDF/Word/Ảnh scan mới, hệ thống tự động sao chép ngay một bản lưu vào thư mục <code>{autoBackupConfig.directory}/uploads/</code>.</>
+                    )}
                   </label>
                 </div>
 
@@ -2218,9 +2281,9 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 flex-wrap gap-2">
                   <div className="text-[11px] text-slate-500">
                     {autoBackupConfig.lastRun ? (
-                      <span>Lần sao lưu gần nhất: <strong>{new Date(autoBackupConfig.lastRun).toLocaleString('vi-VN')}</strong></span>
+                      <span>{isEn ? 'Last backup: ' : 'Lần sao lưu gần nhất: '}<strong>{new Date(autoBackupConfig.lastRun).toLocaleString(isEn ? 'en-US' : 'vi-VN')}</strong></span>
                     ) : (
-                      <span>Chưa thực hiện sao lưu tự động lần nào</span>
+                      <span>{isEn ? 'No automated backups executed yet' : 'Chưa thực hiện sao lưu tự động lần nào'}</span>
                     )}
                   </div>
 
@@ -2233,7 +2296,7 @@ export default function SettingsPage() {
                       title="Tạo ngay một bản sao lưu và đồng bộ toàn bộ file vào thư mục lưu trữ"
                     >
                       {isBackingUp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                      <span>⚡ Sao Lưu Ngay</span>
+                      <span>{isEn ? '⚡ Backup Now' : '⚡ Sao Lưu Ngay'}</span>
                     </button>
                   </div>
                 </div>
@@ -2251,13 +2314,15 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <h3 className="font-bold text-base text-white flex items-center gap-2">
-                      <span>Sao Lưu Toàn Bộ Hệ Thống 1-Click</span>
+                      <span>{isEn ? '1-Click Full System Backup' : 'Sao Lưu Toàn Bộ Hệ Thống 1-Click'}</span>
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
-                        Cơ Sở Dữ Liệu + Thư Mục Ảnh (.ZIP)
+                        {isEn ? 'Database + Attachments Vault (.ZIP)' : 'Cơ Sở Dữ Liệu + Thư Mục Ảnh (.ZIP)'}
                       </span>
                     </h3>
                     <p className="text-xs text-slate-300">
-                      Tải ngay gói file nén .ZIP chứa toàn bộ cơ sở dữ liệu (PostgreSQL Clean Dump) và toàn bộ kho ảnh hiện trạng, hóa đơn (public/uploads) về máy tính
+                      {isEn
+                        ? 'Download a compressed .ZIP archive containing clean PostgreSQL dump and complete photo/attachments directory (public/uploads)'
+                        : 'Tải ngay gói file nén .ZIP chứa toàn bộ cơ sở dữ liệu (PostgreSQL Clean Dump) và toàn bộ kho ảnh hiện trạng, hóa đơn (public/uploads) về máy tính'}
                     </p>
                   </div>
                 </div>
@@ -2265,30 +2330,32 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
-                  <p className="text-xs text-slate-400 font-medium">Kho ảnh & Tài liệu đính kèm:</p>
+                  <p className="text-xs text-slate-400 font-medium">{isEn ? 'Photo & Attachment Vault:' : 'Kho ảnh & Tài liệu đính kèm:'}</p>
                   <p className="text-sm font-bold text-indigo-300 mt-0.5">
                     {zipBackupStatus?.uploadsSizeFormatted || '35.8 MB'} ({zipBackupStatus?.uploadsCount || 20} tệp tin)
                   </p>
                 </div>
                 <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
-                  <p className="text-xs text-slate-400 font-medium">Cơ sở dữ liệu:</p>
+                  <p className="text-xs text-slate-400 font-medium">{isEn ? 'Database:' : 'Cơ sở dữ liệu:'}</p>
                   <p className="text-sm font-bold text-emerald-400 mt-0.5">
                     PostgreSQL 18 (Clean SQL Dump)
                   </p>
                 </div>
                 <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
-                  <p className="text-xs text-slate-400 font-medium">Lần tải sao lưu gần nhất:</p>
+                  <p className="text-xs text-slate-400 font-medium">{isEn ? 'Last backup download:' : 'Lần tải sao lưu gần nhất:'}</p>
                   <p className="text-sm font-bold text-amber-300 mt-0.5">
                     {zipBackupStatus?.lastBackupAt
-                      ? new Date(zipBackupStatus.lastBackupAt).toLocaleString('vi-VN')
-                      : 'Sẵn sàng sao lưu'}
+                      ? new Date(zipBackupStatus.lastBackupAt).toLocaleString(isEn ? 'en-US' : 'vi-VN')
+                      : (isEn ? 'Ready for backup' : 'Sẵn sàng sao lưu')}
                   </p>
                 </div>
               </div>
 
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
                 <p className="text-xs text-slate-400">
-                  💡 Gói file .ZIP có thể lưu trữ an toàn định kỳ vào Google Drive, ổ cứng ngoài hoặc dùng khôi phục hệ thống khi cần.
+                  {isEn
+                    ? '💡 The .ZIP archive can be safely backed up to Google Drive, external hard drives, or used to restore the system anytime.'
+                    : '💡 Gói file .ZIP có thể lưu trữ an toàn định kỳ vào Google Drive, ổ cứng ngoài hoặc dùng khôi phục hệ thống khi cần.'}
                 </p>
 
                 <button
@@ -2301,12 +2368,12 @@ export default function SettingsPage() {
                   {isDownloadingZip ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Đang nén & chuẩn bị gói ZIP...</span>
+                      <span>{isEn ? 'Compressing & preparing ZIP...' : 'Đang nén & chuẩn bị gói ZIP...'}</span>
                     </>
                   ) : (
                     <>
                       <Download className="w-4 h-4" />
-                      <span>Tải Gói Sao Lưu Toàn Bộ (.ZIP)</span>
+                      <span>{isEn ? 'Download Full Backup (.ZIP)' : 'Tải Gói Sao Lưu Toàn Bộ (.ZIP)'}</span>
                     </>
                   )}
                 </button>
@@ -2320,14 +2387,14 @@ export default function SettingsPage() {
                 ⚙️
               </span>
               <span className="text-xs font-medium text-slate-200 hidden sm:inline">
-                {saved ? '✅ Đã lưu cài đặt' : 'Cài đặt chung'}
+                {saved ? (isEn ? '✅ Settings saved' : '✅ Đã lưu cài đặt') : (isEn ? 'General Settings' : 'Cài đặt chung')}
               </span>
             </div>
 
             {saved && (
               <span className="text-xs text-emerald-400 font-bold flex items-center gap-1 animate-in fade-in">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Đã lưu!</span>
+                <span>{isEn ? 'Saved!' : 'Đã lưu!'}</span>
               </span>
             )}
 

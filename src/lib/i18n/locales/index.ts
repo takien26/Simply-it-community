@@ -10,7 +10,7 @@ export interface LanguageMeta {
 }
 
 export const SUPPORTED_LANGUAGES: LanguageMeta[] = [
-  { code: 'vi', name: 'Tiếng Việt', nativeName: 'Tiếng Việt', flag: '🇻🇳' },
+  { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt', flag: '🇻🇳' },
   { code: 'en', name: 'English', nativeName: 'English (US)', flag: '🇬🇧' },
   { code: 'ja', name: 'Japanese', nativeName: '日本語', flag: '🇯🇵' },
 ];
