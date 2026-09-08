@@ -1148,10 +1148,10 @@ export function SupportOrgSettingsTab() {
             <span className="p-1.5 rounded-xl bg-purple-600 text-white shadow-xs">
               <BrainCircuit className="w-4 h-4" />
             </span>
-            <span>Phân Tuyến & Tổ Chức IT (Ticket Routing Engine)</span>
+            <span>{isEn ? 'IT Routing & Organization (Ticket Routing Engine)' : 'Phân Tuyến & Tổ Chức IT (Ticket Routing Engine)'}</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Nguyên tắc <strong>"CREATE ONCE - USE EVERYWHERE"</strong>: Tự động phân tuyến dựa trên Master Data có sẵn.
+            {isEn ? <><strong>"CREATE ONCE - USE EVERYWHERE"</strong> Principle: Automatically route tickets based on unified Master Data.</> : <>Nguyên tắc <strong>"CREATE ONCE - USE EVERYWHERE"</strong>: Tự động phân tuyến dựa trên Master Data có sẵn.</>}
           </p>
         </div>
 
@@ -1166,7 +1166,7 @@ export function SupportOrgSettingsTab() {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer shrink-0 transition-all"
           >
             <FlaskConical className="w-4 h-4" />
-            <span>🧪 Kiểm Tra Phân Tuyến (Simulator)</span>
+            <span>{isEn ? '🧪 Test Routing (Simulator)' : '🧪 Kiểm Tra Phân Tuyến (Simulator)'}</span>
           </button>
 
           {activeTab === 'RULES' && (
@@ -1176,7 +1176,7 @@ export function SupportOrgSettingsTab() {
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer shrink-0 transition-all"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Tạo Luật Mới</span>
+              <span>{isEn ? '+ Create New Rule' : '+ Tạo Luật Mới'}</span>
             </button>
           )}
 
@@ -1187,7 +1187,7 @@ export function SupportOrgSettingsTab() {
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer shrink-0 transition-all"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Thêm Team IT / Phạm Vi Mới</span>
+              <span>{isEn ? '+ Add IT Team / Scope' : '+ Thêm Team IT / Phạm Vi Mới'}</span>
             </button>
           )}
 
@@ -1198,7 +1198,7 @@ export function SupportOrgSettingsTab() {
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer shrink-0 transition-all"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Thêm Hàng Đợi Mới</span>
+              <span>{isEn ? '+ Add New Queue' : '+ Thêm Hàng Đợi Mới'}</span>
             </button>
           )}
 
@@ -1211,7 +1211,7 @@ export function SupportOrgSettingsTab() {
                 title="Khôi phục danh sách quy chuẩn SLA về mặc định tiêu chuẩn"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Khôi Phục Mặc Định</span>
+                <span>{isEn ? 'Reset Defaults' : 'Khôi Phục Mặc Định'}</span>
               </button>
               <button
                 type="button"
@@ -1219,7 +1219,7 @@ export function SupportOrgSettingsTab() {
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer shrink-0 transition-all"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Thêm Quy Chuẩn SLA Mới</span>
+                <span>{isEn ? '+ Add New SLA Policy' : '+ Thêm Quy Chuẩn SLA Mới'}</span>
               </button>
             </div>
           )}
@@ -1229,10 +1229,10 @@ export function SupportOrgSettingsTab() {
       {/* Main Consolidated Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-1 flex-wrap">
         {[
-          { id: 'RULES', label: '1. Luật Phân Tuyến (Routing Rules)', icon: Sliders, count: rules.length },
-          { id: 'SCOPE', label: '2. Phạm Vi Phụ Trách & Đội Ngũ IT (Scope Matrix)', icon: Building2, count: masterData.teams.length },
-          { id: 'QUEUES', label: '3. Hàng Đợi (Queues)', icon: Layers, count: masterData.queues.length },
-          { id: 'SLA', label: '4. Cam Kết Thời Hạn (Quy Chuẩn SLA)', icon: Clock, count: slaPolicies.length },
+          { id: 'RULES', label: isEn ? '1. Routing Rules' : '1. Luật Phân Tuyến (Routing Rules)', icon: Sliders, count: rules.length },
+          { id: 'SCOPE', label: isEn ? '2. Scope Matrix & IT Teams' : '2. Phạm Vi Phụ Trách & Đội Ngũ IT (Scope Matrix)', icon: Building2, count: masterData.teams.length },
+          { id: 'QUEUES', label: isEn ? '3. Support Queues' : '3. Hàng Đợi (Queues)', icon: Layers, count: masterData.queues.length },
+          { id: 'SLA', label: isEn ? '4. SLA Policies' : '4. Cam Kết Thời Hạn (Quy Chuẩn SLA)', icon: Clock, count: slaPolicies.length },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1262,7 +1262,11 @@ export function SupportOrgSettingsTab() {
       {activeTab === 'RULES' && (
         <div className="space-y-4">
           <div className="p-3 bg-purple-50/70 dark:bg-purple-950/30 rounded-2xl border border-purple-100 dark:border-purple-900 text-xs text-purple-900 dark:text-purple-200 flex items-center justify-between">
-            <span>🛡️ <strong>Chỉ IT Manager & Admin thấy:</strong> Các luật được quét tự động theo thứ tự <strong>Ưu tiên (Số nhỏ chạy trước)</strong>. Khớp luật nào sẽ chuyển ngay vào Team đó.</span>
+            <span>{isEn ? (
+              <>🛡️ <strong>Visible to IT Manager & Admin only:</strong> Rules are evaluated automatically by <strong>Priority (lowest number first)</strong>. Matching rules will route directly to that Team.</>
+            ) : (
+              <>🛡️ <strong>Chỉ IT Manager & Admin thấy:</strong> Các luật được quét tự động theo thứ tự <strong>Ưu tiên (Số nhỏ chạy trước)</strong>. Khớp luật nào sẽ chuyển ngay vào Team đó.</>
+            )}</span>
           </div>
 
           <div className="space-y-3">

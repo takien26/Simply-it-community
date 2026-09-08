@@ -192,7 +192,7 @@ export function WebhookSettingsTab() {
           </div>
           <div>
             <h3 className="font-bold text-slate-800 text-base">{isEn ? 'Webhook Integrations & Multi-Channel Dispatch' : 'Tích Hợp Webhook & Thông Báo Đa Kênh'}</h3>
-            <p className="text-xs text-slate-500">Tự động bắn thông báo khi có Ticket khẩn cấp hoặc Yêu cầu phê duyệt vào Zalo OA, Microsoft Teams, Slack</p>
+            <p className="text-xs text-slate-500">{isEn ? 'Automatically dispatch alerts for urgent tickets or approval requests to Zalo OA, Microsoft Teams, Slack' : 'Tự động bắn thông báo khi có Ticket khẩn cấp hoặc Yêu cầu phê duyệt vào Zalo OA, Microsoft Teams, Slack'}</p>
           </div>
         </div>
 
@@ -220,7 +220,7 @@ export function WebhookSettingsTab() {
           <div className="p-12 text-center">
             <Webhook className="w-10 h-10 text-slate-300 mx-auto mb-2" />
             <p className="text-sm font-bold text-slate-700">{isEn ? 'No webhooks configured yet' : 'Chưa có Webhook nào được cấu hình'}</p>
-            <p className="text-xs text-slate-400 mt-1">Kết nối Teams hoặc Zalo để đội ngũ IT nhận thông báo sự cố ngay lập tức.</p>
+            <p className="text-xs text-slate-400 mt-1">{isEn ? 'Connect Teams or Zalo so the IT team receives incident alerts immediately.' : 'Kết nối Teams hoặc Zalo để đội ngũ IT nhận thông báo sự cố ngay lập tức.'}</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">

@@ -147,6 +147,10 @@ const SETTINGS_NAV_GROUPS: NavGroup[] = [
 
 
 const MODULE_CONFIG_EN: Record<string, { label: string; icon: string; color: string }> = {
+  dashboard: { label: 'Overview & Dashboard', icon: '📊', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  kb: { label: 'Knowledge Base & IT Guides (KB)', icon: '📖', color: 'bg-amber-50 text-amber-800 border-amber-300' },
+  tickets: { label: 'IT Support & Ticket Helpdesk', icon: '🎫', color: 'bg-rose-50 text-rose-700 border-rose-200' },
+  companies: { label: 'Companies & Legal Entities', icon: '🏢', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   approvals: { label: 'Device Requests & Allocations', icon: '📋', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   assets: { label: 'Hardware & Asset Management', icon: '💻', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
   'assets.maintenance': { label: 'Maintenance & Repair History', icon: '🔧', color: 'bg-orange-50 text-orange-700 border-orange-200' },
@@ -234,6 +238,9 @@ function getSettingsNavGroups(isEn: boolean, isEnterprise: boolean, activeModule
 }
 
 const ROLE_DESC_EN_MAP: Record<string, string> = {
+  'Quản lý tài sản & license': 'Manage IT assets & software licenses',
+  'Nhân viên - Xem tài sản/license được gán': 'Staff – View assigned assets & software licenses',
+  'Nhân viên – Xem tài sản/license được gán': 'Staff – View assigned assets & software licenses',
   'Quản trị viên Hệ thống - Toàn quyền quản lý và cấu hình': 'System Administrator - Full management and configuration access',
   'Quản trị viên Hệ thống - Toàn quyền cấu hình & quản lý': 'System Administrator - Full configuration and management access',
   'Quản lý IT - Phụ trách toàn bộ tài sản, dịch vụ và phân quyền': 'IT Manager - Oversees all IT assets, services, and permissions',
@@ -267,6 +274,17 @@ function getLocalizedRoleDesc(name: string, desc: string | null | undefined, isE
 }
 
 const PERM_NAME_EN_MAP: Record<string, string> = {
+  // Dashboard & Companies
+  'dashboard.view': 'View Dashboard & Analytics',
+  'companies.view': 'View Companies & Branches',
+  'companies.create': 'Create Company / Entity',
+  'companies.update': 'Update Company Info',
+  'companies.delete': 'Delete Company / Entity',
+
+  // Documents
+  'documents.create': 'Upload New Document / Invoice',
+  'documents.download': 'Download Original Attachment',
+  'documents.update': 'Edit Document Details & Links',
   // AI
   'ai.context.all': 'AI Full IT Data Retrieval Context',
   'ai.vector.write': 'AI Auto-Save Data Context',
@@ -374,6 +392,14 @@ const PERM_NAME_EN_MAP: Record<string, string> = {
 };
 
 const PERM_DESC_EN_MAP: Record<string, string> = {
+  'dashboard.view': 'View main dashboard, metrics, and summary analytics.',
+  'companies.view': 'View subsidiary companies and corporate branch offices.',
+  'companies.create': 'Add new subsidiary or legal entity to organization.',
+  'companies.update': 'Update subsidiary company details and tax code.',
+  'companies.delete': 'Remove subsidiary company from system directory.',
+  'documents.create': 'Upload new invoices, contracts, or handover forms.',
+  'documents.download': 'Download original attachment files and contracts.',
+  'documents.update': 'Edit document metadata, tags, and asset linkages.',
   // AI
   'ai.context.all': 'Allow Gemini AI assistant to query all hardware, software, contracts, and network data.',
   'ai.vector.write': 'Allow AI to automatically store new knowledge into Vector Memory after interactions.',
@@ -1578,7 +1604,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="hidden sm:inline-flex px-2.5 py-1 bg-white/90 text-blue-700 border border-blue-200 text-[11px] font-bold rounded-lg shadow-xs">
-                  Mục đang chọn
+                  {isEn ? 'Active Tab' : 'Mục đang chọn'}
                 </span>
               </div>
             </div>
@@ -2481,7 +2507,7 @@ export default function SettingsPage() {
           {saved && (
             <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold rounded-2xl flex items-center space-x-2 animate-in fade-in">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <span>Cấu hình SSO Microsoft 365 đã được lưu thành công!</span>
+              <span>{isEn ? 'Microsoft 365 SSO configuration has been saved successfully!' : 'Cấu hình SSO Microsoft 365 đã được lưu thành công!'}</span>
             </div>
           )}
 
@@ -2492,8 +2518,8 @@ export default function SettingsPage() {
                   🪟
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Đăng Nhập Một Lần Microsoft 365 (SSO)</h3>
-                  <p className="text-xs text-slate-500">Tích hợp Azure Active Directory / Microsoft Entra ID cho tài khoản doanh nghiệp</p>
+                  <h3 className="text-base font-bold text-slate-900">{isEn ? 'Microsoft 365 Single Sign-On (SSO)' : 'Đăng Nhập Một Lần Microsoft 365 (SSO)'}</h3>
+                  <p className="text-xs text-slate-500">{isEn ? 'Integrate Azure Active Directory / Microsoft Entra ID for enterprise accounts' : 'Tích hợp Azure Active Directory / Microsoft Entra ID cho tài khoản doanh nghiệp'}</p>
                 </div>
               </div>
 
@@ -2506,7 +2532,9 @@ export default function SettingsPage() {
                 />
                 <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                 <span className="ml-2 text-xs font-bold text-slate-700">
-                  {getSettingValue('sso.ms365_enabled') === 'true' ? 'Đang BẬT' : 'Đang TẮT'}
+                  {isEn
+                    ? (getSettingValue('sso.ms365_enabled') === 'true' ? 'ON' : 'OFF')
+                    : (getSettingValue('sso.ms365_enabled') === 'true' ? 'Đang BẬT' : 'Đang TẮT')}
                 </span>
               </label>
             </div>
@@ -2516,7 +2544,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <span className="font-bold text-indigo-900 flex items-center gap-1.5">
                   <Info className="w-4 h-4 text-indigo-600" />
-                  <span>Redirect URI (Dán vào Azure Portal):</span>
+                  <span>{isEn ? 'Redirect URI (Paste into Azure Portal):' : 'Redirect URI (Dán vào Azure Portal):'}</span>
                 </span>
                 <button
                   type="button"
@@ -2524,7 +2552,7 @@ export default function SettingsPage() {
                   className="px-2.5 py-1 bg-white hover:bg-indigo-100 text-indigo-700 rounded-lg font-semibold border border-indigo-200 inline-flex items-center gap-1 transition-colors"
                 >
                   <Copy className="w-3.5 h-3.5" />
-                  <span>{copiedUri ? 'Đã sao chép!' : 'Sao chép URI'}</span>
+                  <span>{isEn ? (copiedUri ? 'Copied!' : 'Copy URI') : (copiedUri ? 'Đã sao chép!' : 'Sao chép URI')}</span>
                 </button>
               </div>
               <input
@@ -2561,7 +2589,7 @@ export default function SettingsPage() {
                   onChange={(e) => handleChange('sso.ms365_client_secret', e.target.value)}
                   className="w-full p-2.5 border border-slate-300 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                <p className="text-[11px] text-slate-500 mt-1">Lưu ý: Lấy giá trị tại cột <strong>Value</strong> (không phải Secret ID) khi tạo mới trên Azure.</p>
+                <p className="text-[11px] text-slate-500 mt-1">{isEn ? 'Note: Use the Value column (not Secret ID) when generated in Azure.' : 'Lưu ý: Lấy giá trị tại cột Value (không phải Secret ID) khi tạo mới trên Azure.'}</p>
               </div>
 
               <div>
@@ -2570,12 +2598,12 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="common hoặc ID thư mục Tenant"
+                  placeholder={isEn ? 'common or Tenant directory ID' : 'common hoặc ID thư mục Tenant'}
                   value={getSettingValue('sso.ms365_tenant_id') || 'common'}
                   onChange={(e) => handleChange('sso.ms365_tenant_id', e.target.value)}
                   className="w-full p-2.5 border border-slate-300 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                <p className="text-[11px] text-slate-500 mt-1">Để <code>common</code> nếu muốn hỗ trợ mọi tài khoản Microsoft công ty hoặc nhập Tenant ID cụ thể của công ty bạn.</p>
+                <p className="text-[11px] text-slate-500 mt-1">{isEn ? <>Use <code>common</code> to support all organizational Microsoft accounts or enter your specific Tenant ID.</> : <>Để <code>common</code> nếu muốn hỗ trợ mọi tài khoản Microsoft công ty hoặc nhập Tenant ID cụ thể của công ty bạn.</>}</p>
               </div>
             </div>
 
@@ -2583,12 +2611,22 @@ export default function SettingsPage() {
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs text-slate-700">
               <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                 <span>📖</span>
-                <span>Hướng dẫn 3 bước cấu hình trên Azure Portal (Microsoft Entra admin center):</span>
+                <span>{isEn ? '3-step setup guide on Azure Portal (Microsoft Entra admin center):' : 'Hướng dẫn 3 bước cấu hình trên Azure Portal (Microsoft Entra admin center):'}</span>
               </h4>
               <ol className="list-decimal list-inside space-y-1 text-slate-600 leading-relaxed text-[11px]">
-                <li>Truy cập <strong>portal.azure.com</strong> ➔ <strong>Microsoft Entra ID</strong> ➔ <strong>App registrations</strong> ➔ Bấm <strong>New registration</strong>.</li>
-                <li>Đặt tên (VD: <em>IT Asset Hub</em>), chọn <em>Accounts in any organizational directory</em>, và tại <strong>Redirect URI</strong> chọn nền tảng <strong>Web</strong> rồi dán link phía trên vào.</li>
-                <li>Vào mục <strong>Certificates & secrets</strong> ➔ Bấm <strong>New client secret</strong> ➔ Copy <strong>Client ID</strong> và <strong>Secret Value</strong> dán vào form trên rồi bấm <strong>Lưu Cấu Hình</strong>.</li>
+                {isEn ? (
+                  <>
+                    <li>Navigate to <strong>portal.azure.com</strong> ➔ <strong>Microsoft Entra ID</strong> ➔ <strong>App registrations</strong> ➔ Click <strong>New registration</strong>.</li>
+                    <li>Enter name (e.g. <em>Simply IT Hub</em>), select <em>Accounts in any organizational directory</em>, and under <strong>Redirect URI</strong> choose platform <strong>Web</strong> and paste the link above.</li>
+                    <li>Go to <strong>Certificates & secrets</strong> ➔ Click <strong>New client secret</strong> ➔ Copy <strong>Client ID</strong> and <strong>Secret Value</strong> into the form above and click <strong>Save Configuration</strong>.</li>
+                  </>
+                ) : (
+                  <>
+                    <li>Truy cập <strong>portal.azure.com</strong> ➔ <strong>Microsoft Entra ID</strong> ➔ <strong>App registrations</strong> ➔ Bấm <strong>New registration</strong>.</li>
+                    <li>Đặt tên (VD: <em>IT Asset Hub</em>), chọn <em>Accounts in any organizational directory</em>, và tại <strong>Redirect URI</strong> chọn nền tảng <strong>Web</strong> rồi dán link phía trên vào.</li>
+                    <li>Vào mục <strong>Certificates & secrets</strong> ➔ Bấm <strong>New client secret</strong> ➔ Copy <strong>Client ID</strong> và <strong>Secret Value</strong> dán vào form trên rồi bấm <strong>Lưu Cấu Hình</strong>.</li>
+                  </>
+                )}
               </ol>
             </div>
 
@@ -2598,7 +2636,7 @@ export default function SettingsPage() {
                 className="inline-flex items-center space-x-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-md transition-all text-xs"
               >
                 <Save className="w-4 h-4" />
-                <span>Lưu Cấu Hình SSO</span>
+                <span>{isEn ? 'Save SSO Configuration' : 'Lưu Cấu Hình SSO'}</span>
               </button>
             </div>
           </div>
@@ -2638,7 +2676,7 @@ export default function SettingsPage() {
           {saved && (
             <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold rounded-2xl flex items-center space-x-2 animate-in fade-in">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <span>Cấu hình xác thực LDAP / Active Directory đã được lưu thành công!</span>
+              <span>{isEn ? 'LDAP / Active Directory configuration saved successfully!' : 'Cấu hình xác thực LDAP / Active Directory đã được lưu thành công!'}</span>
             </div>
           )}
 
@@ -2649,8 +2687,8 @@ export default function SettingsPage() {
                   🏢
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Máy Chủ Xác Thực LDAP / Active Directory (AD)</h3>
-                  <p className="text-xs text-slate-500">Đồng bộ đăng nhập với tài khoản Windows Domain / OpenLDAP của doanh nghiệp</p>
+                  <h3 className="text-base font-bold text-slate-900">{isEn ? 'LDAP / Active Directory (AD) Authentication Server' : 'Máy Chủ Xác Thực LDAP / Active Directory (AD)'}</h3>
+                  <p className="text-xs text-slate-500">{isEn ? 'Synchronize logins with enterprise Windows Domain / OpenLDAP accounts' : 'Đồng bộ đăng nhập với tài khoản Windows Domain / OpenLDAP của doanh nghiệp'}</p>
                 </div>
               </div>
 
@@ -2664,7 +2702,9 @@ export default function SettingsPage() {
                   />
                   <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                   <span className="ml-2 text-xs font-bold text-slate-700">
-                    {getSettingValue('ldap.enabled') === 'true' ? 'Đang BẬT' : 'Đang TẮT'}
+                    {isEn
+                      ? (getSettingValue('ldap.enabled') === 'true' ? 'ON' : 'OFF')
+                      : (getSettingValue('ldap.enabled') === 'true' ? 'Đang BẬT' : 'Đang TẮT')}
                   </span>
                 </label>
               </div>
@@ -2692,7 +2732,7 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Địa chỉ máy chủ LDAP Server URL <span className="text-rose-500">*</span>
+                  {isEn ? 'LDAP Server URL' : 'Địa chỉ máy chủ LDAP Server URL'} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -2701,12 +2741,12 @@ export default function SettingsPage() {
                   onChange={(e) => handleChange('ldap.server_url', e.target.value)}
                   className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Cổng tiêu chuẩn: 389 (LDAP) hoặc 636 (LDAPS SSL/TLS)</p>
+                <p className="text-[10px] text-slate-400 mt-1">{isEn ? 'Standard ports: 389 (LDAP) or 636 (LDAPS SSL/TLS)' : 'Cổng tiêu chuẩn: 389 (LDAP) hoặc 636 (LDAPS SSL/TLS)'}</p>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Base DN (Tên miền cơ sở tìm kiếm) <span className="text-rose-500">*</span>
+                  {isEn ? 'Base DN (Search Base)' : 'Base DN (Tên miền cơ sở tìm kiếm)'} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -2715,12 +2755,12 @@ export default function SettingsPage() {
                   onChange={(e) => handleChange('ldap.base_dn', e.target.value)}
                   className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Phạm vi tìm kiếm tài khoản nhân viên trong cây thư mục</p>
+                <p className="text-[10px] text-slate-400 mt-1">{isEn ? 'Search scope for user accounts in directory tree' : 'Phạm vi tìm kiếm tài khoản nhân viên trong cây thư mục'}</p>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Bind DN (Tài khoản kết nối quản trị)
+                  {isEn ? 'Bind DN (Admin Account)' : 'Bind DN (Tài khoản kết nối quản trị)'}
                 </label>
                 <input
                   type="text"
@@ -2729,12 +2769,12 @@ export default function SettingsPage() {
                   onChange={(e) => handleChange('ldap.bind_dn', e.target.value)}
                   className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Để trống nếu máy chủ cho phép Anonymous Bind</p>
+                <p className="text-[10px] text-slate-400 mt-1">{isEn ? 'Leave blank if server allows Anonymous Bind' : 'Để trống nếu máy chủ cho phép Anonymous Bind'}</p>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Bind Password (Mật khẩu tài khoản kết nối)
+                  {isEn ? 'Bind Password (Connection Password)' : 'Bind Password (Mật khẩu tài khoản kết nối)'}
                 </label>
                 <input
                   type="password"
@@ -2749,7 +2789,7 @@ export default function SettingsPage() {
             <div className="space-y-4 pt-2 border-t border-slate-100">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  User Search Filter (Bộ lọc tìm kiếm tài khoản)
+                  {isEn ? 'User Search Filter' : 'User Search Filter (Bộ lọc tìm kiếm tài khoản)'}
                 </label>
                 <input
                   type="text"
@@ -2763,14 +2803,14 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Vai trò mặc định gán cho User LDAP mới
+                    {isEn ? 'Default Role for New LDAP Users' : 'Vai trò mặc định gán cho User LDAP mới'}
                   </label>
                   <select
                     value={getSettingValue('ldap.default_role_id')}
                     onChange={(e) => handleChange('ldap.default_role_id', e.target.value)}
                     className="w-full p-2.5 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
                   >
-                    <option value="">-- Mặc định (Nhân viên / Staff) --</option>
+                    <option value="">{isEn ? '-- Default (Staff) --' : '-- Mặc định (Nhân viên / Staff) --'}</option>
                     {roles.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.name} {r.isSystem ? '(Hệ thống)' : ''}
@@ -2788,7 +2828,7 @@ export default function SettingsPage() {
                     className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                   />
                   <label htmlFor="autoCreateLdapUser" className="text-xs font-bold text-slate-700 cursor-pointer">
-                    Tự động tạo tài khoản trong hệ thống khi đăng nhập LDAP thành công lần đầu
+                    {isEn ? 'Automatically create system account upon first successful LDAP login' : 'Tự động tạo tài khoản trong hệ thống khi đăng nhập LDAP thành công lần đầu'}
                   </label>
                 </div>
               </div>
@@ -2803,7 +2843,7 @@ export default function SettingsPage() {
                 className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-300 cursor-pointer disabled:opacity-50"
               >
                 {testingLdap ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <span>⚡</span>}
-                <span>{testingLdap ? 'Đang thử kết nối...' : 'Kiểm Tra Kết Nối Máy Chủ LDAP'}</span>
+                <span>{testingLdap ? (isEn ? 'Testing connection...' : 'Đang thử kết nối...') : (isEn ? 'Test LDAP Server Connection' : 'Kiểm Tra Kết Nối Máy Chủ LDAP')}</span>
               </button>
 
               <button
@@ -2811,7 +2851,7 @@ export default function SettingsPage() {
                 className="inline-flex items-center space-x-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
               >
                 <Save className="w-4 h-4" />
-                <span>Lưu Cài Đặt LDAP / AD</span>
+                <span>{isEn ? 'Save LDAP / AD Settings' : 'Lưu Cài Đặt LDAP / AD'}</span>
               </button>
             </div>
           </div>
@@ -2936,7 +2976,7 @@ export default function SettingsPage() {
                               <span className="font-bold text-sm leading-tight">{r.name}</span>
                               {r.isSystem && (
                                 <span className="text-[9px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-mono">
-                                  Hệ thống
+                                  {isEn ? 'System' : 'Hệ thống'}
                                 </span>
                               )}
                             </div>
@@ -3049,7 +3089,9 @@ export default function SettingsPage() {
                                     <span className="font-semibold block truncate leading-tight">{getLocalizedPermissionName(p.code, p.name, isEn)}</span>
                                     <span className="text-[10px] text-slate-400 font-mono block truncate">{p.code}</span>
                                     {p.description && (
-                                      <span className="text-[10px] text-slate-500 block line-clamp-1 mt-0.5">{p.description}</span>
+                                      <span className="text-[10px] text-slate-500 block line-clamp-1 mt-0.5">
+                                        {isEn && PERM_DESC_EN_MAP[p.code] ? PERM_DESC_EN_MAP[p.code] : p.description}
+                                      </span>
                                     )}
                                   </div>
                                 </label>
