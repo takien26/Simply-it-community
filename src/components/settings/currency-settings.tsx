@@ -387,14 +387,14 @@ export function CurrencySettingsCard() {
                         <span className="text-xs font-bold text-slate-400">({curr.symbol})</span>
                       </div>
                       <span className="text-xs text-slate-500 dark:text-slate-400 truncate block max-w-[140px]">
-                        {curr.name}
+                        {isEn ? (CURRENCY_EN_NAMES[curr.code] || curr.name) : curr.name}
                       </span>
                     </div>
                   </div>
 
                   {isBase ? (
                     <span className="px-2 py-0.5 bg-amber-500 text-white rounded-full text-[10px] font-black uppercase tracking-wider shrink-0">
-                      GỐC & CHÍNH
+                      {isEn ? 'BASE & PRIMARY' : 'GỐC & CHÍNH'}
                     </span>
                   ) : (
                     <button
@@ -403,7 +403,7 @@ export function CurrencySettingsCard() {
                       className="px-2 py-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 rounded-lg border border-indigo-200 dark:border-indigo-800 cursor-pointer shrink-0 transition-colors"
                       title={isEn ? 'Set as software base currency' : 'Chọn làm đồng tiền gốc của phần mềm'}
                     >
-                      Đặt làm Gốc
+                      {isEn ? 'Set as Base' : 'Đặt làm Gốc'}
                     </button>
                   )}
                 </div>

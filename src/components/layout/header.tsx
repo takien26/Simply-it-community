@@ -268,7 +268,7 @@ export function Header({
   }, []);
 
   const loadNotifications = () => {
-    fetch('/api/notifications')
+    fetch(`/api/notifications?lang=${language}`)
       .then((res) => res.json())
       .then((data) => {
         if (data && data.success) {
@@ -279,6 +279,10 @@ export function Header({
         console.error('Failed to load notifications:', e);
       });
   };
+
+  useEffect(() => {
+    loadNotifications();
+  }, [language]);
 
   useEffect(() => {
     fetch('/api/auth/me')

@@ -12,7 +12,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
     }
 
-    const cached = notifCache.get(user.userId);
+    const lang = req.nextUrl.searchParams.get('lang') || 'vi';
+    const isEn = lang === 'en';
+    const cacheKey = `${user.userId}_${lang}`;
+    const cached = notifCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
       return NextResponse.json(cached.data);
     }
@@ -176,9 +179,9 @@ export async function GET(req: NextRequest) {
           ticketNumber: t.ticketNumber,
           type: 'TICKET',
           severity: 'CRITICAL',
-          title: `🚨 Ticket #${t.ticketNumber} ĐÃ QUÁ HẠN XỬ LÝ (SLA)`,
-          message: `Ticket "${t.title}" đã quá hạn xử lý ${overdueHours === 0 ? 'gần 1' : overdueHours} giờ! ${t.assignedTo ? 'IT phụ trách: ' + t.assignedTo.fullName : 'Chưa phân công IT'}.`,
-          detail: `Mức độ: ${t.priority === 'URGENT' ? 'Khẩn cấp (4h)' : t.priority === 'HIGH' ? 'Cao (24h)' : 'Quy chuẩn'} • Người gửi: ${t.createdBy.fullName}`,
+          title: isEn ? `🚨 Ticket #${t.ticketNumber} OVERDUE (SLA)` : `🚨 Ticket #${t.ticketNumber} ĐÃ QUÁ HẠN XỬ LÝ (SLA)`,
+          message: isEn ? `Ticket "${t.title}" is overdue by ${overdueHours === 0 ? 'almost 1' : overdueHours} hour(s)! ${t.assignedTo ? 'IT Assignee: ' + t.assignedTo.fullName : 'Unassigned IT'}.` : `Ticket "${t.title}" đã quá hạn xử lý ${overdueHours === 0 ? 'gần 1' : overdueHours} giờ! ${t.assignedTo ? 'IT phụ trách: ' + t.assignedTo.fullName : 'Chưa phân công IT'}.`,
+          detail: isEn ? `Priority: ${t.priority === 'URGENT' ? 'Urgent (4h)' : t.priority === 'HIGH' ? 'High (24h)' : 'Standard'} • Requester: ${t.createdBy.fullName}` : `Mức độ: ${t.priority === 'URGENT' ? 'Khẩn cấp (4h)' : t.priority === 'HIGH' ? 'Cao (24h)' : 'Quy chuẩn'} • Người gửi: ${t.createdBy.fullName}`,
           link: `/tickets?search=${encodeURIComponent(t.ticketNumber)}&id=${t.id}`,
           createdAt: deadline.toISOString(),
           isOverdue: true,
@@ -190,9 +193,9 @@ export async function GET(req: NextRequest) {
           ticketNumber: t.ticketNumber,
           type: 'TICKET',
           severity: t.priority === 'URGENT' ? 'CRITICAL' : t.priority === 'HIGH' ? 'WARNING' : 'INFO',
-          title: `Ticket #${t.ticketNumber} bạn đang phụ trách`,
-          message: `"${t.title}" từ ${t.createdBy.fullName} (${t.createdBy.department || 'Nhân viên'}).`,
-          detail: `Trạng thái: ${t.status === 'OPEN' ? 'Mới mở' : t.status === 'IN_PROGRESS' ? 'Đang xử lý' : 'Chờ phản hồi'}`,
+          title: isEn ? `Ticket #${t.ticketNumber} assigned to you` : `Ticket #${t.ticketNumber} bạn đang phụ trách`,
+          message: isEn ? `"${t.title}" from ${t.createdBy.fullName} (${t.createdBy.department || 'Employee'}).` : `"${t.title}" từ ${t.createdBy.fullName} (${t.createdBy.department || 'Nhân viên'}).`,
+          detail: isEn ? `Status: ${t.status === 'OPEN' ? 'Open' : t.status === 'IN_PROGRESS' ? 'In Progress' : 'Pending Response'}` : `Trạng thái: ${t.status === 'OPEN' ? 'Mới mở' : t.status === 'IN_PROGRESS' ? 'Đang xử lý' : 'Chờ phản hồi'}`,
           link: `/tickets?search=${encodeURIComponent(t.ticketNumber)}&id=${t.id}`,
           createdAt: t.createdAt,
         });
@@ -203,9 +206,9 @@ export async function GET(req: NextRequest) {
           ticketNumber: t.ticketNumber,
           type: 'TICKET',
           severity: 'INFO',
-          title: `Yêu cầu của bạn: #${t.ticketNumber}`,
-          message: `"${t.title}" - Trạng thái: ${t.status === 'OPEN' ? 'Mới mở' : t.status === 'IN_PROGRESS' ? 'Đang xử lý' : 'Chờ phản hồi'}`,
-          detail: `IT phụ trách: ${t.assignedTo?.fullName || 'Đang chờ phân công'}`,
+          title: isEn ? `Your request: #${t.ticketNumber}` : `Yêu cầu của bạn: #${t.ticketNumber}`,
+          message: isEn ? `"${t.title}" - Status: ${t.status === 'OPEN' ? 'Open' : t.status === 'IN_PROGRESS' ? 'In Progress' : 'Pending Response'}` : `"${t.title}" - Trạng thái: ${t.status === 'OPEN' ? 'Mới mở' : t.status === 'IN_PROGRESS' ? 'Đang xử lý' : 'Chờ phản hồi'}`,
+          detail: isEn ? `IT Assignee: ${t.assignedTo?.fullName || 'Pending assignment'}` : `IT phụ trách: ${t.assignedTo?.fullName || 'Đang chờ phân công'}`,
           link: `/tickets?search=${encodeURIComponent(t.ticketNumber)}&id=${t.id}`,
           createdAt: t.createdAt,
         });
@@ -217,10 +220,10 @@ export async function GET(req: NextRequest) {
           type: 'TICKET',
           severity: t.priority === 'URGENT' ? 'CRITICAL' : t.priority === 'HIGH' ? 'WARNING' : 'INFO',
           title: isUnassigned
-            ? `Ticket mới chờ nhận: #${t.ticketNumber}`
+            ? (isEn ? `New unassigned ticket: #${t.ticketNumber}` : `Ticket mới chờ nhận: #${t.ticketNumber}`)
             : `Ticket #${t.ticketNumber} (${t.assignedTo?.fullName || 'IT'})`,
-          message: `"${t.title}" từ ${t.createdBy.fullName} (${t.createdBy.department || 'Nhân viên'}).`,
-          detail: `Trạng thái: ${t.status === 'OPEN' ? 'Mới mở' : t.status === 'IN_PROGRESS' ? 'Đang xử lý' : 'Chờ phản hồi'}`,
+          message: isEn ? `"${t.title}" from ${t.createdBy.fullName} (${t.createdBy.department || 'Employee'}).` : `"${t.title}" từ ${t.createdBy.fullName} (${t.createdBy.department || 'Nhân viên'}).`,
+          detail: isEn ? `Status: ${t.status === 'OPEN' ? 'Open' : t.status === 'IN_PROGRESS' ? 'In Progress' : 'Pending Response'}` : `Trạng thái: ${t.status === 'OPEN' ? 'Mới mở' : t.status === 'IN_PROGRESS' ? 'Đang xử lý' : 'Chờ phản hồi'}`,
           link: `/tickets?search=${encodeURIComponent(t.ticketNumber)}&id=${t.id}`,
           createdAt: t.createdAt,
           isUnassigned,
@@ -235,9 +238,9 @@ export async function GET(req: NextRequest) {
         id: `service-${s.id}`,
         type: 'SERVICE',
         severity: daysLeft <= 7 ? 'CRITICAL' : daysLeft <= 15 ? 'WARNING' : 'INFO',
-        title: `🌐 Dịch vụ [${s.serviceCode}] sắp đến hạn gia hạn`,
-        message: `Gói "${s.name}" ${daysLeft <= 0 ? 'đã đến hạn hôm nay!' : `còn ${daysLeft} ngày là đến hạn gia hạn`}.`,
-        detail: s.vendor?.name ? `Đối tác: ${s.vendor.name}` : undefined,
+        title: isEn ? `🌐 Service [${s.serviceCode}] expiring soon` : `🌐 Dịch vụ [${s.serviceCode}] sắp đến hạn gia hạn`,
+        message: isEn ? `Package "${s.name}" ${daysLeft <= 0 ? 'is due today!' : `expires in ${daysLeft} day(s)`}.` : `Gói "${s.name}" ${daysLeft <= 0 ? 'đã đến hạn hôm nay!' : `còn ${daysLeft} ngày là đến hạn gia hạn`}.`,
+        detail: s.vendor?.name ? (isEn ? `Vendor: ${s.vendor.name}` : `Đối tác: ${s.vendor.name}`) : undefined,
         link: `/services`,
         createdAt: s.renewalDate!.toISOString(),
       });
@@ -250,9 +253,9 @@ export async function GET(req: NextRequest) {
         id: `license-${l.id}`,
         type: 'LICENSE',
         severity: daysLeft <= 7 ? 'CRITICAL' : daysLeft <= 15 ? 'WARNING' : 'INFO',
-        title: `🔑 Bản quyền "${l.name}" sắp hết hạn`,
-        message: `License ${daysLeft <= 0 ? 'đã hết hạn!' : `sẽ hết hạn trong ${daysLeft} ngày`}. Số seats: ${l.usedSeats}/${l.totalSeats}.`,
-        detail: l.vendor?.name ? `Đối tác: ${l.vendor.name}` : undefined,
+        title: isEn ? `🔑 License "${l.name}" expiring soon` : `🔑 Bản quyền "${l.name}" sắp hết hạn`,
+        message: isEn ? `License ${daysLeft <= 0 ? 'expired today!' : `expires in ${daysLeft} day(s)`}. Seats: ${l.usedSeats}/${l.totalSeats}.` : `License ${daysLeft <= 0 ? 'đã hết hạn!' : `sẽ hết hạn trong ${daysLeft} ngày`}. Số seats: ${l.usedSeats}/${l.totalSeats}.`,
+        detail: l.vendor?.name ? (isEn ? `Vendor: ${l.vendor.name}` : `Đối tác: ${l.vendor.name}`) : undefined,
         link: `/licenses`,
         createdAt: l.expiryDate!.toISOString(),
       });
@@ -322,8 +325,8 @@ export async function GET(req: NextRequest) {
           ticketNumber: c.ticket.ticketNumber,
           type: 'ESCALATION',
           severity: 'CRITICAL',
-          title: `🚨 Yêu cầu hỗ trợ IT: #${c.ticket.ticketNumber}`,
-          message: `${c.user.fullName} nhờ bạn hỗ trợ xử lý ticket "${c.ticket.title}".`,
+          title: isEn ? `🚨 IT Assistance Request: #${c.ticket.ticketNumber}` : `🚨 Yêu cầu hỗ trợ IT: #${c.ticket.ticketNumber}`,
+          message: isEn ? `${c.user.fullName} requested your assistance on ticket "${c.ticket.title}".` : `${c.user.fullName} nhờ bạn hỗ trợ xử lý ticket "${c.ticket.title}".`,
           detail: c.content.replace('🚨 [YÊU CẦU HỖ TRỢ NỘI BỘ IT]', '').trim(),
           link: `/tickets?search=${encodeURIComponent(c.ticket.ticketNumber)}&id=${c.ticket.id}`,
           createdAt: c.createdAt,
@@ -365,7 +368,7 @@ export async function GET(req: NextRequest) {
       notifications,
     };
 
-    notifCache.set(user.userId, { timestamp: Date.now(), data: responsePayload });
+    notifCache.set(cacheKey, { timestamp: Date.now(), data: responsePayload });
     return NextResponse.json(responsePayload);
   } catch (error: any) {
     console.error('Notifications API error:', error);
