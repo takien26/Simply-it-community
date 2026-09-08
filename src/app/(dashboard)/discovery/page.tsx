@@ -444,8 +444,8 @@ export default function DiscoveryPage() {
 
   // Copy powershell command
   const copyPowerShellCmd = () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-    const cmd = `powershell -ExecutionPolicy Bypass -Command "Invoke-RestMethod '${origin}/scripts/simply-it-collector.ps1' -OutFile '$env:TEMP\\collector.ps1'; & '$env:TEMP\\collector.ps1' -ServerUrl '${origin}'"`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001';
+    const cmd = `powershell -ExecutionPolicy Bypass -Command "iex (irm '${origin}/api/scripts/agent')"`;
     navigator.clipboard.writeText(cmd);
     showToast('📋 Đã sao chép lệnh PowerShell vào Clipboard!');
   };
@@ -1058,7 +1058,7 @@ export default function DiscoveryPage() {
             <h3 className="font-bold text-slate-800 text-xs">Cách 1: Chạy trực tiếp 1 dòng lệnh PowerShell trên máy tính người dùng</h3>
             <div className="p-3 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-2xl flex items-center justify-between gap-2 overflow-x-auto">
               <code>
-                powershell -ExecutionPolicy Bypass -Command &quot;Invoke-RestMethod &apos;{typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/scripts/simply-it-collector.ps1&apos; -OutFile &apos;$env:TEMP\collector.ps1&apos;; &amp; &apos;$env:TEMP\collector.ps1&apos; -ServerUrl &apos;{typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}&apos;&quot;
+                powershell -ExecutionPolicy Bypass -Command &quot;iex (irm &apos;{typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'}/api/scripts/agent&apos;)&quot;
               </code>
               <button
                 type="button"
@@ -1073,10 +1073,10 @@ export default function DiscoveryPage() {
           <div className="space-y-2 pt-3 border-t border-slate-100">
             <h3 className="font-bold text-slate-800 text-xs">Cách 2: Triển khai tự động hàng loạt qua Active Directory Group Policy (GPO)</h3>
             <ol className="list-decimal list-inside space-y-1 text-slate-600">
-              <li>Tải file script <a href="/scripts/simply-it-collector.ps1" className="text-indigo-600 font-bold underline" download>simply-it-collector.ps1</a> về máy chủ Domain Controller.</li>
+              <li>Tải file script <a href={`/api/scripts/agent?serverUrl=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001')}`} className="text-indigo-600 font-bold underline" download="get_system_info.ps1">get_system_info.ps1</a> (hoặc <a href="/scripts/simply-it-collector.ps1" className="text-indigo-600 font-bold underline" download="simply-it-collector.ps1">simply-it-collector.ps1</a>) về máy chủ Domain Controller hoặc máy trạm.</li>
               <li>Mở <strong>Group Policy Management Console (gpmc.msc)</strong>.</li>
               <li>Tạo một GPO mới gán vào OU chứa các máy tính người dùng: <code>Computer Configuration &gt; Policies &gt; Windows Settings &gt; Scripts (Startup/Shutdown)</code>.</li>
-              <li>Thêm script khởi động PowerShell với tham số <code>-ServerUrl &quot;{typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}&quot;</code>.</li>
+              <li>Chạy trực tiếp file script hoặc cấu hình qua GPO khởi động máy tính với tham số <code>-ServerUrl &quot;{typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'}&quot;</code>.</li>
               <li>Mỗi khi người dùng bật máy tính, thông số phần cứng và danh sách phần mềm sẽ tự động cập nhật về hệ thống Simply IT.</li>
             </ol>
           </div>

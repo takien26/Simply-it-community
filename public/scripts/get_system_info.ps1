@@ -1,16 +1,42 @@
 ﻿# ==============================================================================
-# SIMPLY IT - Enterprise Hardware, Software & License Auto-Discovery Agent (.ps1)
+# SIMPLY IT - Enterprise Hardware, Software & License Compliance Agent (.ps1)
 # Collects: Hardware, OS/Office License, Installed Software & Crack Detection
 # ==============================================================================
 
+param(
+    [string]$ServerUrl = "http://localhost:3001"
+)
+
+# Set UTF-8 Output Encoding for console compatibility
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference = 'SilentlyContinue'
 
-# SIMPLY IT Server Endpoint
-$serverUrl = "http://localhost:3000/api/v1/auto-scan/collect"
+# Auto-detect local port if not explicitly configured or port unreachable
+if (-not $ServerUrl -or $ServerUrl -match "localhost|127.0.0.1") {
+    $candidatePorts = @(3001, 3000, 3444)
+    foreach ($p in $candidatePorts) {
+        try {
+            $tcp = Test-NetConnection -ComputerName "127.0.0.1" -Port $p -WarningAction SilentlyContinue
+            if ($tcp.TcpTestSucceeded) {
+                $ServerUrl = "http://localhost:$p"
+                break
+            }
+        } catch {}
+    }
+    if (-not $ServerUrl) { $ServerUrl = "http://localhost:3001" }
+}
+
+$ServerUrl = $ServerUrl.TrimEnd('/')
+
+Write-Host "==========================================================" -ForegroundColor Cyan
+Write-Host "   SIMPLY IT - THU THAP PHAN CUNG, PHAN MEM & BAN QUYEN   " -ForegroundColor Yellow
+Write-Host "==========================================================" -ForegroundColor Cyan
 
 try {
     # 1. Hostname & User
+    Write-Host "[1/4] Dang thu thap thong so phan cung..." -ForegroundColor Green
     $hostname = $env:COMPUTERNAME
     $username = $env:USERNAME
     $userDomain = $env:USERDOMAIN
@@ -64,6 +90,7 @@ try {
     $macAddress = $activeNet.MACAddress
 
     # 10. Installed Software List
+    Write-Host "[2/4] Dang quet danh sach ung dung & phan mem da cai dat..." -ForegroundColor Green
     $RegistryPaths = @(
         "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*",
         "HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
@@ -93,8 +120,10 @@ try {
             }
         }
     }
+    Write-Host "-> Da phat hien $($InstalledApps.Count) phan mem/ung dung tren may tinh." -ForegroundColor Cyan
 
     # 11. Windows License Check
+    Write-Host "[3/4] Dang kiem tra ban quyen Windows, Office & dau hieu be khoa..." -ForegroundColor Green
     $WindowsLicense = @{ name = $os; status = "Unknown"; channel = "Unknown"; partialKey = ""; isKms = $false; isKmsCrack = $false; isGenuine = $false }
     try {
         $osLic = Get-CimInstance SoftwareLicensingProduct -Filter "PartialProductKey IS NOT NULL" -ErrorAction SilentlyContinue |
@@ -135,17 +164,17 @@ try {
         $HostsLines = Get-Content $HostsPath -ErrorAction SilentlyContinue
         $BlockedDomains = @($HostsLines | Where-Object { $_ -and (-not $_.Trim().StartsWith("#")) -and ($_ -match "adobe|autodesk|corel|jetbrains|photoshop|acrobat") })
         if ($BlockedDomains.Count -gt 0) {
-            $CrackWarnings += "File hosts chứa $($BlockedDomains.Count) dòng chặn server bản quyền của hãng (Adobe/Autodesk/Corel...)"
+            $CrackWarnings += "File hosts chua $($BlockedDomains.Count) dong chan server ban quyen (Adobe/Autodesk/Corel...)"
         }
     }
     $SuspectProcesses = @("AutoKMS", "KMSPico", "KMSAuto", "SECOH-QAD", "AAct", "HEU_KMS")
     $RunningProcs = Get-Process -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName
     foreach ($proc in $SuspectProcesses) {
-        if ($RunningProcs -contains $proc) { $CrackWarnings += "Phát hiện tiến trình crack đang chạy: $proc" }
+        if ($RunningProcs -contains $proc) { $CrackWarnings += "Phat hien tien trinh crack dang chay: $proc" }
     }
     if ($WindowsLicense.isKmsCrack) {
         $kmsTarget = if ($WindowsLicense.kmsHost) { $WindowsLicense.kmsHost } else { '127.0.0.1' }
-        $CrackWarnings += "Bản quyền Windows kích hoạt qua máy chủ KMS giả lập / lậu ($kmsTarget)"
+        $CrackWarnings += "Ban quyen Windows kich hoat qua may chu KMS gia lap ($kmsTarget)"
     }
     $CrackDetection = @{ hasSuspect = ($CrackWarnings.Count -gt 0); warnings = $CrackWarnings }
 
@@ -175,8 +204,32 @@ try {
     $jsonBody = $payload | ConvertTo-Json -Depth 6 -Compress
 
     # Send HTTP POST to SIMPLY IT Server
-    $response = Invoke-RestMethod -Uri $serverUrl -Method Post -Body $jsonBody -ContentType "application/json; charset=utf-8" -TimeoutSec 10
-    Write-Output "✅ [SIMPLY IT] Auto-Scan: $($response.message)"
+    Write-Host "[4/4] Dang gui du lieu ve he thong Simply IT ($ServerUrl)..." -ForegroundColor Green
+    $response = $null
+    $endpoints = @("$ServerUrl/api/v1/auto-scan/collect", "$ServerUrl/api/auto-scan/collect")
+    foreach ($ep in $endpoints) {
+        try {
+            $response = Invoke-RestMethod -Uri $ep -Method Post -Body $jsonBody -ContentType "application/json; charset=utf-8" -TimeoutSec 15
+            if ($response) { break }
+        } catch {}
+    }
+
+    if ($response) {
+        Write-Host "==========================================================" -ForegroundColor Green
+        Write-Host "   [SIMPLY IT] THANH CONG: $($response.message)" -ForegroundColor Green
+        Write-Host "   Ma Thiet Bi: $($response.assetTag)" -ForegroundColor White
+        if ($response.licenseMatchAlertCount -gt 0) {
+            Write-Host "   Phat hien trung khop: $($response.licenseMatchAlertCount) phan mem trung voi License trong kho (Cho duyet)!" -ForegroundColor Yellow
+        }
+        Write-Host "==========================================================" -ForegroundColor Green
+    } else {
+        Write-Host "==========================================================" -ForegroundColor Red
+        Write-Host "   [SIMPLY IT] LOI GUI DU LIEU: Khong the ket noi toi $ServerUrl" -ForegroundColor Red
+        Write-Host "   Vui long kiem tra dia chi ServerUrl hoac firewall." -ForegroundColor Yellow
+        Write-Host "==========================================================" -ForegroundColor Red
+    }
 } catch {
-    Write-Output "⚠️ [SIMPLY IT] Error: $($_.Exception.Message)"
+    Write-Host "==========================================================" -ForegroundColor Red
+    Write-Host "   [SIMPLY IT] Loi thuc thi: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "==========================================================" -ForegroundColor Red
 }
