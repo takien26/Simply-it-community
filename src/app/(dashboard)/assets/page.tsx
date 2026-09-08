@@ -1520,6 +1520,35 @@ export default function AssetsPage() {
     setIsEditModalOpen(true);
   };
 
+  const handleQuickAddLicenseFromModal = async (name: string, key?: string, type?: string) => {
+    try {
+      const res = await fetch('/api/licenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          licenseKey: key ? (key.startsWith('****-') ? key : `****-${key}`) : null,
+          licenseType: type === 'OEM' ? 'OEM' : type === 'Subscription' ? 'SUBSCRIPTION' : 'PERPETUAL',
+          totalSeats: 1,
+          assignedAssetIds: editingAssetId ? [editingAssetId] : [],
+          notes: `Tạo từ thông số quét của máy ${editFormData.assetTag || ''} (${editFormData.name || ''})`,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`🎉 Đã thêm thành công License "${name}" vào Kho và gán cho máy tính này!`);
+        if (data.data?.id) {
+          setSelectedLicenseIds((prev) => [...prev, data.data.id]);
+        }
+        await loadData();
+      } else {
+        alert(`❌ Không thể tạo: ${data.error || 'Lỗi server'}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Lỗi kết nối: ${err?.message || err}`);
+    }
+  };
+
   const handleUpdateAsset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAssetId) return;
@@ -3498,75 +3527,310 @@ export default function AssetsPage() {
               )}
 
               {/* TAB 4: BẢN QUYỀN & LICENSE */}
-              {modalActiveTab === 'licenses' && (
-                <div className="space-y-4 animate-in fade-in duration-100">
-                  <div className="p-3 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl flex items-start gap-2.5 text-xs text-blue-950 dark:text-blue-200">
-                    <Layers className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold">Gán bản quyền phần mềm khả dụng vào thiết bị này</span>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        Tích chọn phần mềm để tự động theo dõi số seat sử dụng và quản lý chi phí bản quyền.
-                      </p>
-                    </div>
-                  </div>
+              {modalActiveTab === 'licenses' && (() => {
+                const specs = (editFormData.specs || {}) as Record<string, any>;
+                const osLic = specs.osLicense;
+                const officeLic = specs.officeLicense;
+                const crack = specs.crackDetection;
+                const licMatches = Array.isArray(specs.licenseMatches) ? specs.licenseMatches : [];
+                const installedSw = Array.isArray(specs.installedSoftware) ? specs.installedSoftware : [];
 
-                  {licenses.length === 0 ? (
-                    <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl space-y-2">
-                      <Layers className="w-8 h-8 text-slate-300 mx-auto" />
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Chưa có bản quyền phần mềm nào trong hệ thống
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        Bạn có thể thêm License mới tại trang Quản lý Bản quyền.
-                      </p>
+                return (
+                  <div className="space-y-4 animate-in fade-in duration-100">
+                    {/* Header Banner */}
+                    <div className="p-3 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl flex items-start justify-between gap-2.5 text-xs text-blue-950 dark:text-blue-200">
+                      <div className="flex items-start gap-2.5">
+                        <Layers className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold">Quản Lý & Gán Bản Quyền Phần Mềm (Software & License)</span>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            Kiểm tra bản quyền OS/Office đã quét từ máy trạm, đối soát với kho License và gán ghế sử dụng.
+                          </p>
+                        </div>
+                      </div>
+                      <Link
+                        href="/licenses?new=true"
+                        target="_blank"
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors shrink-0 shadow-xs inline-flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Tạo Mới License</span>
+                      </Link>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {licenses.map((lic) => {
-                        const isAssigned = selectedLicenseIds.includes(lic.id);
-                        return (
-                          <div
-                            key={lic.id}
-                            onClick={() => {
-                              setSelectedLicenseIds((prev) =>
-                                isAssigned ? prev.filter((id) => id !== lic.id) : [...prev, lic.id]
-                              );
-                            }}
-                            className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
-                              isAssigned
-                                ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-300 dark:border-blue-700 ring-2 ring-blue-200 dark:ring-blue-900'
-                                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                            }`}
-                          >
-                            <div className="space-y-1 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-xs text-slate-900 dark:text-white">{lic.name}</span>
-                                <span className="text-[10px] font-bold px-1.5 py-0.2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">
-                                  {lic.licenseType || 'PERPETUAL'}
-                                </span>
-                              </div>
-                              <div className="text-[10.5px] text-slate-400 flex items-center gap-2">
-                                <span>Seats: {lic.usedSeats || 0}/{lic.totalSeats || 1}</span>
-                                {lic.expiryDate && (
-                                  <span>• Hạn: {new Date(lic.expiryDate).toLocaleDateString('vi-VN')}</span>
-                                )}
-                              </div>
-                            </div>
 
-                            <div className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-colors ${
-                              isAssigned
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900'
-                            }`}>
-                              {isAssigned && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                            </div>
+                    {/* SECTION 1: KẾT QUẢ QUÉT BẢN QUYỀN TỪ MÁY TRẠM (AGENT PS1) */}
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                          <span className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
+                            Bản Quyền Đã Quét Từ Thiết Bị (Agent PS1)
+                          </span>
+                        </div>
+                        {specs.lastScannedAt && (
+                          <span className="text-[10.5px] text-slate-400 font-medium">
+                            Quét lúc: {new Date(specs.lastScannedAt).toLocaleString('vi-VN')}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Cảnh báo Crack / Bẻ khóa (Nếu có) */}
+                      {crack?.hasSuspect && (
+                        <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl space-y-1.5 text-xs text-rose-950 dark:text-rose-200">
+                          <div className="flex items-center gap-2 font-bold text-rose-800 dark:text-rose-300">
+                            <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+                            <span>Cảnh Báo: Phát hiện dấu hiệu Bẻ khóa / Can thiệp bản quyền</span>
                           </div>
-                        );
-                      })}
+                          <ul className="list-disc list-inside space-y-0.5 text-[11.5px] text-rose-800 dark:text-rose-300 pl-1">
+                            {crack.warnings.map((w: string, wIdx: number) => (
+                              <li key={wIdx}>{w}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Grid 2 Card OS & Office License */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        {/* Windows OS License */}
+                        <div className="p-3 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                              <Laptop className="w-3.5 h-3.5 text-blue-600" />
+                              Bản Quyền Windows
+                            </span>
+                            {osLic?.isKmsCrack ? (
+                              <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 text-[10px] font-bold">
+                                KMS Lậu / Crack
+                              </span>
+                            ) : osLic?.status === 'Licensed' ? (
+                              <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
+                                Đã kích hoạt ({osLic.channel || 'Bản quyền'})
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold">
+                                {osLic?.status || 'Chưa phát hiện'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11.5px] text-slate-800 dark:text-slate-200 font-semibold truncate">
+                            {osLic?.name || specs.os || editFormData.os || 'Windows OS'}
+                          </div>
+                          <div className="text-[10.5px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                            <span>Kênh: <strong>{osLic?.channel || 'OEM / Retail'}</strong></span>
+                            {osLic?.partialKey && (
+                              <span className="font-mono">Key: ****-{osLic.partialKey}</span>
+                            )}
+                          </div>
+                          {osLic && (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickAddLicenseFromModal(osLic.name || 'Windows 11 Pro', osLic.partialKey, osLic.channel)}
+                              className="w-full py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg font-bold text-[11px] transition-colors flex items-center justify-center gap-1 cursor-pointer border border-blue-200 dark:border-blue-800"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Đưa Windows Này Vào Kho License</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* MS Office License */}
+                        <div className="p-3 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                              <FileText className="w-3.5 h-3.5 text-orange-600" />
+                              Bản Quyền MS Office
+                            </span>
+                            {officeLic?.status === 'Licensed' ? (
+                              <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
+                                {officeLic.channel === 'Subscription' ? 'O365 Bản quyền' : 'Kích hoạt'}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold">
+                                {officeLic?.status || 'Chưa phát hiện'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11.5px] text-slate-800 dark:text-slate-200 font-semibold truncate">
+                            {officeLic?.name || 'Chưa cài đặt Office hoặc phiên bản web'}
+                          </div>
+                          <div className="text-[10.5px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                            <span>Kênh: <strong>{officeLic?.channel || 'Chưa rõ'}</strong></span>
+                            {officeLic?.partialKey && (
+                              <span className="font-mono">Key: ****-{officeLic.partialKey}</span>
+                            )}
+                          </div>
+                          {officeLic && (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickAddLicenseFromModal(officeLic.name || 'Microsoft Office 365', officeLic.partialKey, officeLic.channel)}
+                              className="w-full py-1.5 bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/60 dark:hover:bg-orange-900 text-orange-700 dark:text-orange-300 rounded-lg font-bold text-[11px] transition-colors flex items-center justify-center gap-1 cursor-pointer border border-orange-200 dark:border-orange-800"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Đưa Office Này Vào Kho License</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* License Matches Alert (Unassigned) */}
+                      {licMatches.some((m: any) => m.matchStatus === 'UNASSIGNED_MATCH') && (
+                        <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl space-y-2 text-xs text-amber-950 dark:text-amber-200">
+                          <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
+                            <Key className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>Phát hiện phần mềm trên máy trùng với License trong kho (Chưa gán):</span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {licMatches
+                              .filter((m: any) => m.matchStatus === 'UNASSIGNED_MATCH')
+                              .map((m: any, mIdx: number) => (
+                                <div key={mIdx} className="bg-white/80 dark:bg-slate-900/80 p-2.5 rounded-lg border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-2">
+                                  <div>
+                                    <div className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                                      <span>{m.softwareName}</span>
+                                      <span className="text-amber-700 dark:text-amber-400 font-normal">→ Kho:</span>
+                                      <span className="text-blue-700 dark:text-blue-300 font-bold">{m.licenseName}</span>
+                                    </div>
+                                    <div className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                                      Ghế trống khả dụng: <strong className="text-emerald-600">{m.availableSeats} / {m.seats}</strong>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (!selectedLicenseIds.includes(m.licenseId)) {
+                                        setSelectedLicenseIds((prev) => [...prev, m.licenseId]);
+                                      }
+                                    }}
+                                    className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                    <span>{selectedLicenseIds.includes(m.licenseId) ? 'Đã chọn gán' : 'Chọn Gán Vào Máy'}</span>
+                                  </button>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
+
+                    {/* SECTION 2: DANH SÁCH LICENSE TRONG KHO HỆ THỐNG */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                          <Key className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Kho License Của Hệ Thống ({licenses.length})</span>
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          Đã chọn gán: <strong className="text-blue-600 dark:text-blue-400">{selectedLicenseIds.length}</strong> License
+                        </span>
+                      </div>
+
+                      {licenses.length === 0 ? (
+                        <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl space-y-2">
+                          <Layers className="w-7 h-7 text-slate-300 mx-auto" />
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Chưa có bản quyền phần mềm nào trong kho
+                          </p>
+                          <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+                            Bạn có thể nhấn các nút <strong>"+ Đưa vào Kho License"</strong> ở phần quét phía trên để tự động đưa Windows/Office vào kho, hoặc bấm <strong>"Tạo Mới License"</strong> để thêm thủ công.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
+                          {licenses.map((lic) => {
+                            const isAssigned = selectedLicenseIds.includes(lic.id);
+                            return (
+                              <div
+                                key={lic.id}
+                                onClick={() => {
+                                  setSelectedLicenseIds((prev) =>
+                                    isAssigned ? prev.filter((id) => id !== lic.id) : [...prev, lic.id]
+                                  );
+                                }}
+                                className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                                  isAssigned
+                                    ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-300 dark:border-blue-700 ring-2 ring-blue-200 dark:ring-blue-900'
+                                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                                }`}
+                              >
+                                <div className="space-y-1 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-xs text-slate-900 dark:text-white">{lic.name}</span>
+                                    <span className="text-[10px] font-bold px-1.5 py-0.2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">
+                                      {lic.licenseType || 'PERPETUAL'}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10.5px] text-slate-400 flex items-center gap-2">
+                                    <span>Seats: {lic.usedSeats || 0}/{lic.totalSeats || 1}</span>
+                                    {lic.expiryDate && (
+                                      <span>• Hạn: {new Date(lic.expiryDate).toLocaleDateString('vi-VN')}</span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-colors ${
+                                  isAssigned
+                                    ? 'bg-blue-600 text-white border-blue-600'
+                                    : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900'
+                                }`}>
+                                  {isAssigned && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* SECTION 3: DANH SÁCH PHẦN MỀM ĐÃ QUÉT TRÊN MÁY */}
+                    {installedSw.length > 0 && (
+                      <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                            <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Phần mềm & Ứng dụng đã cài đặt trên máy ({installedSw.length})</span>
+                          </span>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                          {installedSw.map((sw: any, sIdx: number) => {
+                            const isCommercial =
+                              sw.name?.toLowerCase().includes('office') ||
+                              sw.name?.toLowerCase().includes('photoshop') ||
+                              sw.name?.toLowerCase().includes('autocad') ||
+                              sw.name?.toLowerCase().includes('adobe');
+
+                            return (
+                              <div key={sIdx} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 flex items-center justify-between gap-2 text-xs">
+                                <div>
+                                  <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                    <span>{sw.name}</span>
+                                    {isCommercial && (
+                                      <span className="px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[9px] font-bold">
+                                        Cần License
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400">
+                                    {sw.publisher || 'Nhà phát triển không xác định'} {sw.version ? `· v${sw.version}` : ''}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickAddLicenseFromModal(sw.name, undefined, isCommercial ? 'COMMERCIAL' : 'PERPETUAL')}
+                                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-[10.5px] font-semibold transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                  <span>Thêm vào Kho</span>
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </form>
 
             {/* Modal Sticky Footer */}
