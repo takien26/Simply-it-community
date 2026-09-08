@@ -309,7 +309,7 @@ function SearchableDropdown({
                 }}
                 className="text-rose-600 hover:underline font-semibold"
               >
-                Đặt lại / Reset
+                {language === 'en' ? 'Reset' : 'Đặt lại'}
               </button>
             )}
           </div>
@@ -349,11 +349,18 @@ function getCategoryLabel(category: string, lang: string) {
       case 'SOFTWARE': return 'Software';
       case 'LICENSE': return 'License';
       case 'ACCESS_REQUEST': return 'Access Request';
-      case 'NETWORK': return 'Network';
+      case 'NETWORK': return 'Network & Internet';
       default: return 'Other';
     }
   }
-  return CATEGORY_MAP[category]?.label || category;
+  switch (category) {
+    case 'HARDWARE': return 'Phần cứng';
+    case 'SOFTWARE': return 'Phần mềm';
+    case 'LICENSE': return 'License / Bản quyền';
+    case 'ACCESS_REQUEST': return 'Cấp quyền truy cập';
+    case 'NETWORK': return 'Mạng & Internet';
+    default: return 'Khác';
+  }
 }
 
 function getPriorityLabel(priority: string, lang: string) {
@@ -366,7 +373,13 @@ function getPriorityLabel(priority: string, lang: string) {
       default: return priority;
     }
   }
-  return PRIORITY_MAP[priority]?.label || priority;
+  switch (priority) {
+    case 'URGENT': return 'Khẩn cấp';
+    case 'HIGH': return 'Cao';
+    case 'MEDIUM': return 'Trung bình';
+    case 'LOW': return 'Thấp';
+    default: return priority;
+  }
 }
 
 function getStatusLabel(status: string, lang: string) {
@@ -380,7 +393,14 @@ function getStatusLabel(status: string, lang: string) {
       default: return status;
     }
   }
-  return STATUS_MAP[status]?.label || status;
+  switch (status) {
+    case 'OPEN': return 'Mới mở';
+    case 'IN_PROGRESS': return 'Đang xử lý';
+    case 'WAITING': return 'Chờ phản hồi';
+    case 'RESOLVED': return 'Đã giải quyết';
+    case 'CLOSED': return 'Đã đóng';
+    default: return status;
+  }
 }
 
 
@@ -476,7 +496,7 @@ function getTicketSLA(
   }
 
   return {
-    createdAtFormatted: createdAt.toLocaleString('vi-VN', {
+    createdAtFormatted: createdAt.toLocaleString(isEn ? 'en-US' : 'vi-VN', {
       hour: '2-digit',
       minute: '2-digit',
       day: '2-digit',
@@ -491,7 +511,7 @@ function getTicketSLA(
       year: 'numeric',
     }),
     resolvedAtFormatted: resolvedAtDate
-      ? resolvedAtDate.toLocaleString('vi-VN', {
+      ? resolvedAtDate.toLocaleString(isEn ? 'en-US' : 'vi-VN', {
           hour: '2-digit',
           minute: '2-digit',
           day: '2-digit',
@@ -1497,7 +1517,7 @@ export default function TicketsPage() {
           <Link
             href="/tickets/reports"
             className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 border border-slate-300 dark:border-slate-700"
-            title="Xem Dashboard & Báo Cáo Phân Tích Hỗ Trợ Đa Chiều"
+            title={isEn ? 'View Dashboard & Multi-dimensional Support Reports' : 'Xem Dashboard & Báo Cáo Phân Tích Hỗ Trợ Đa Chiều'}
           >
             <BarChart3 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>{isEn ? 'Reports & Analytics' : 'Báo Cáo & Thống Kê'}</span>
@@ -1631,7 +1651,7 @@ export default function TicketsPage() {
             value={categoryFilter}
             options={categoryOptions}
             onChange={setCategoryFilter}
-            searchPlaceholder="Tìm loại sự cố..."
+            searchPlaceholder={isEn ? 'Search category...' : 'Tìm loại sự cố...'}
           />
 
           {/* Filter 2: Priority */}
@@ -1640,7 +1660,7 @@ export default function TicketsPage() {
             value={priorityFilter}
             options={priorityOptions}
             onChange={setPriorityFilter}
-            searchPlaceholder="Tìm mức độ..."
+            searchPlaceholder={isEn ? 'Search priority...' : 'Tìm mức độ...'}
           />
 
           {/* Filter 3: Status */}
@@ -1649,7 +1669,7 @@ export default function TicketsPage() {
             value={statusFilter}
             options={statusOptions}
             onChange={setStatusFilter}
-            searchPlaceholder="Tìm trạng thái..."
+            searchPlaceholder={isEn ? 'Search status...' : 'Tìm trạng thái...'}
           />
 
           {/* Filter 4: Creator (Searchable User List) */}
@@ -1658,7 +1678,7 @@ export default function TicketsPage() {
             value={creatorFilter}
             options={creatorOptions}
             onChange={setCreatorFilter}
-            searchPlaceholder="🔍 Tìm tên nhân viên..."
+            searchPlaceholder={isEn ? '🔍 Search employee name...' : '🔍 Tìm tên nhân viên...'}
           />
 
           {/* Filter 5: Assignee (Searchable IT Staff List) */}
@@ -1667,7 +1687,7 @@ export default function TicketsPage() {
             value={assigneeFilter}
             options={itAssigneeOptions}
             onChange={setAssigneeFilter}
-            searchPlaceholder="🔍 Tìm kỹ thuật viên IT..."
+            searchPlaceholder={isEn ? '🔍 Search IT technician...' : '🔍 Tìm kỹ thuật viên IT...'}
           />
 
           {/* Filter 6: Asset (Searchable Equipment List) */}
@@ -1676,7 +1696,7 @@ export default function TicketsPage() {
             value={assetFilter}
             options={assetOptions}
             onChange={setAssetFilter}
-            searchPlaceholder="🔍 Tìm mã hoặc tên máy..."
+            searchPlaceholder={isEn ? '🔍 Search device code or name...' : '🔍 Tìm mã hoặc tên máy...'}
           />
         </div>
 
@@ -1736,7 +1756,7 @@ export default function TicketsPage() {
                         className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-xs hover:underline font-bold inline-flex items-center gap-1 cursor-pointer"
                       >
                         <RotateCcw className="w-3 h-3" />
-                        <span>Xóa bộ lọc</span>
+                        <span>{isEn ? 'Clear filters' : 'Xóa bộ lọc'}</span>
                       </button>
                     )}
                   </td>
@@ -1767,12 +1787,12 @@ export default function TicketsPage() {
                               {t.ticketNumber}
                             </span>
                             {t.incident && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/80 font-bold text-[10px] shrink-0" title={`Thuộc Sự cố: ${t.incident.incidentNumber} - ${t.incident.title}`}>
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/80 font-bold text-[10px] shrink-0" title={isEn ? `Belongs to Incident: ${t.incident.incidentNumber} - ${t.incident.title}` : `Thuộc Sự cố: ${t.incident.incidentNumber} - ${t.incident.title}`}>
                                 <span>🚨 {t.incident.incidentNumber}</span>
                               </span>
                             )}
                             {t.team && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-semibold text-[10px] shrink-0" title={`Phân tuyến đến Team: ${t.team.name}`}>
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-semibold text-[10px] shrink-0" title={isEn ? `Routed to Team: ${t.team.name}` : `Phân tuyến đến Team: ${t.team.name}`}>
                                 <span>🏢 {t.team.name}</span>
                               </span>
                             )}
@@ -1806,7 +1826,7 @@ export default function TicketsPage() {
                       <td className="py-3 px-3">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold border ${cat.color} whitespace-nowrap shadow-2xs`}>
                           <span>{cat.icon}</span>
-                          <span>{cat.label}</span>
+                          <span>{getCategoryLabel(t.category, language)}</span>
                         </span>
                       </td>
 
@@ -1814,7 +1834,7 @@ export default function TicketsPage() {
                       <td className="py-3 px-2.5">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border ${pri.badge} whitespace-nowrap shadow-2xs`}>
                           <PriIcon className="w-3 h-3" />
-                          <span>{pri.label}</span>
+                          <span>{getPriorityLabel(t.priority, language)}</span>
                         </span>
                       </td>
 
@@ -1822,7 +1842,7 @@ export default function TicketsPage() {
                       <td className="py-3 px-2.5">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border ${sta.badge} whitespace-nowrap shadow-2xs`}>
                           <span className={`w-2 h-2 rounded-full ${sta.dot} ${t.status === 'OPEN' || t.status === 'IN_PROGRESS' ? 'animate-pulse' : ''}`} />
-                          <span>{sta.label}</span>
+                          <span>{getStatusLabel(t.status, language)}</span>
                         </span>
                       </td>
 
@@ -1891,15 +1911,15 @@ export default function TicketsPage() {
                               setSelectedTicket(t);
                               setIsDetailModalOpen(true);
                             }}
-                            title="Xem chi tiết & trao đổi"
+                            title={isEn ? 'View details & discuss' : 'Xem chi tiết & trao đổi'}
                             className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-all shadow-2xs cursor-pointer shrink-0"
                           >
                             <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
-                            <span>Trao đổi</span>
+                            <span>{isEn ? 'Discuss' : 'Trao đổi'}</span>
                           </button>
                           <button
                             onClick={() => handleDeleteTicket(t.id)}
-                            title="Xóa ticket"
+                            title={isEn ? 'Delete ticket' : 'Xóa ticket'}
                             className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1927,7 +1947,7 @@ export default function TicketsPage() {
                     {selectedTicket.ticketNumber}
                   </span>
                   <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-lg border ${STATUS_MAP[selectedTicket.status]?.badge || 'bg-slate-100 text-slate-700'}`}>
-                    {STATUS_MAP[selectedTicket.status]?.label}
+                    {getStatusLabel(selectedTicket.status, language)}
                   </span>
                   <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-lg border ${PRIORITY_MAP[selectedTicket.priority]?.badge || 'bg-slate-100 text-slate-700'}`}>
                     {getPriorityLabel(selectedTicket.priority, language)}
@@ -1944,7 +1964,7 @@ export default function TicketsPage() {
                 type="button"
                 onClick={() => setIsDetailModalOpen(false)}
                 className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
-                title="Đóng modal"
+                title={isEn ? 'Close modal' : 'Đóng modal'}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1960,7 +1980,7 @@ export default function TicketsPage() {
                     <QuickLink
                       type="user"
                       id={selectedTicket.createdBy.id}
-                      label={selectedTicket.createdBy.fullName || 'Người dùng'}
+                      label={selectedTicket.createdBy.fullName || (isEn ? 'User' : 'Người dùng')}
                       avatarUrl={selectedTicket.createdBy.avatarUrl}
                       icon="👤"
                       className="font-bold text-slate-900 text-xs"
@@ -1968,7 +1988,7 @@ export default function TicketsPage() {
                   ) : (
                     <div className="font-bold text-slate-900 flex items-center gap-1.5 truncate">
                       <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] shrink-0 font-extrabold">👤</span>
-                      <span className="truncate">{selectedTicket.createdBy?.fullName || 'Người dùng'}</span>
+                      <span className="truncate">{selectedTicket.createdBy?.fullName || (isEn ? 'User' : 'Người dùng')}</span>
                     </div>
                   )}
                   <span className="text-[10px] text-slate-400 block truncate">{selectedTicket.createdBy?.email}</span>
@@ -1996,7 +2016,7 @@ export default function TicketsPage() {
                   <div className="font-bold text-slate-800 truncate">
                     {CATEGORY_MAP[selectedTicket.category]?.label}
                   </div>
-                  <span className="text-[10px] text-slate-500 block truncate">🏢 {selectedTicket.companyName || selectedTicket.createdBy?.department || 'Tập đoàn ABC'}</span>
+                  <span className="text-[10px] text-slate-500 block truncate">🏢 {selectedTicket.companyName || selectedTicket.createdBy?.department || (isEn ? 'ABC Corp' : 'Tập đoàn ABC')}</span>
                 </div>
 
                 <div className="space-y-0.5">
@@ -2017,7 +2037,7 @@ export default function TicketsPage() {
                     <span className="text-slate-400 italic">{isEn ? 'Not selected' : 'Không chọn'}</span>
                   )}
                   <span className="text-[10px] text-slate-400 block">
-                    {selectedTicket.asset?.status ? `Trạng thái: ${selectedTicket.asset.status}` : 'Thiết bị tự do'}
+                    {selectedTicket.asset?.status ? `${isEn ? 'Status:' : 'Trạng thái:'} ${selectedTicket.asset.status}` : (isEn ? 'Unassigned device' : 'Thiết bị tự do')}
                   </span>
                 </div>
               </div>
@@ -2081,7 +2101,7 @@ export default function TicketsPage() {
                       <div className="pt-2 border-t border-slate-100 space-y-2">
                         <span className="text-[11px] font-bold text-blue-900 flex items-center gap-1">
                           <Paperclip className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Tệp & Hình ảnh đính kèm ({(selectedTicket.attachmentUrls as any[]).length}):</span>
+                          <span>{isEn ? 'Attachments & Images' : 'Tệp & Hình ảnh đính kèm'} ({(selectedTicket.attachmentUrls as any[]).length}):</span>
                         </span>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {(selectedTicket.attachmentUrls as any[]).map((att: any, aIdx: number) => {
@@ -2095,7 +2115,7 @@ export default function TicketsPage() {
                                   {isImg ? (
                                     <img
                                       src={att.url}
-                                      alt={att.name || 'Ảnh đính kèm'}
+                                      alt={att.name || (isEn ? 'Attachment image' : 'Ảnh đính kèm')}
                                       onClick={() => setPreviewImageModal(att.url)}
                                       className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity border border-slate-200"
                                     />
@@ -2106,14 +2126,14 @@ export default function TicketsPage() {
                                   )}
                                 </div>
                                 <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-200 text-[10px]">
-                                  <span className="font-semibold text-slate-700 truncate" title={att.name}>{att.name || 'Tệp đính kèm'}</span>
+                                  <span className="font-semibold text-slate-700 truncate" title={att.name}>{att.name || (isEn ? 'Attachment' : 'Tệp đính kèm')}</span>
                                   <a
                                     href={att.url}
                                     download={att.name || 'file'}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="p-1 text-blue-600 hover:bg-blue-100 rounded-md"
-                                    title="Tải xuống"
+                                    title={isEn ? 'Download' : 'Tải xuống'}
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                   </a>
@@ -2134,8 +2154,8 @@ export default function TicketsPage() {
                           <BrainCircuit className="w-3.5 h-3.5" />
                         </span>
                         <div>
-                          <h5 className="font-bold text-slate-900 text-xs">Minh Bạch Phân Tuyến (Routing Path)</h5>
-                          <p className="text-[10px] text-slate-500">Tự động định tuyến dựa trên ngữ cảnh người dùng & danh mục</p>
+                          <h5 className="font-bold text-slate-900 text-xs">{isEn ? 'Transparent Routing Path' : 'Minh Bạch Phân Tuyến (Routing Path)'}</h5>
+                          <p className="text-[10px] text-slate-500">{isEn ? 'Auto-routed based on user context & category' : 'Tự động định tuyến dựa trên ngữ cảnh người dùng & danh mục'}</p>
                         </div>
                       </div>
                       <span className={`px-2 py-0.5 rounded-md font-bold text-[9.5px] border ${
@@ -2143,27 +2163,27 @@ export default function TicketsPage() {
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           : 'bg-purple-50 text-purple-700 border-purple-200'
                       }`}>
-                        {selectedTicket.isAutoRouted ? '🤖 Tự động phân tuyến' : '✍️ Phân công thủ công'}
+                        {selectedTicket.isAutoRouted ? (isEn ? '🤖 Auto-routed' : '🤖 Tự động phân tuyến') : (isEn ? '✍️ Manual assignment' : '✍️ Phân công thủ công')}
                       </span>
                     </div>
 
                     {/* Visual Path */}
                     <div className="p-2.5 bg-white rounded-xl border border-indigo-100 flex items-center gap-1.5 flex-wrap text-[11px]">
-                      <span className="font-bold text-slate-500">Đường dẫn:</span>
-                      <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold">{selectedTicket.companyName || selectedTicket.createdBy?.department || 'Tập đoàn'}</span>
+                      <span className="font-bold text-slate-500">{isEn ? 'Path:' : 'Đường dẫn:'}</span>
+                      <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold">{selectedTicket.companyName || selectedTicket.createdBy?.department || (isEn ? 'Enterprise' : 'Tập đoàn')}</span>
                       <span className="text-slate-400">➔</span>
                       <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold">{getCategoryLabel(selectedTicket.category, language)}</span>
                       <span className="text-slate-400">➔</span>
-                      <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold">Team: {selectedTicket.team?.name || 'Chưa gán'}</span>
+                      <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold">Team: {selectedTicket.team?.name || (isEn ? 'Unassigned' : 'Chưa gán')}</span>
                       <span className="text-slate-400">➔</span>
                       <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold">Queue: {selectedTicket.queue?.name || 'Default Queue'}</span>
                       <span className="text-slate-400">➔</span>
-                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Assignee: {selectedTicket.assignedTo?.fullName || 'Chờ tiếp nhận'}</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Assignee: {selectedTicket.assignedTo?.fullName || (isEn ? 'Pending pickup' : 'Chờ tiếp nhận')}</span>
                     </div>
 
                     {selectedTicket.routedByRule && (
                       <div className="text-[11px] text-indigo-900 font-medium">
-                        🎯 Rule áp dụng: <strong>"{selectedTicket.routedByRule}"</strong>
+                        {isEn ? '🎯 Applied Rule:' : '🎯 Rule áp dụng:'} <strong>"{selectedTicket.routedByRule}"</strong>
                       </div>
                     )}
                   </div>
@@ -2177,7 +2197,7 @@ export default function TicketsPage() {
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-purple-900 flex items-center gap-1.5">
                           <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                          <span>Chẩn Đoán Kỹ Thuật AI (Diagnostic)</span>
+                          <span>{isEn ? 'AI Technical Diagnostic' : 'Chẩn Đoán Kỹ Thuật AI (Diagnostic)'}</span>
                         </span>
                         <span className="text-[10px] bg-purple-200/80 text-purple-900 px-2 py-0.5 rounded-md font-bold">
                           Gemini AI
@@ -2188,7 +2208,7 @@ export default function TicketsPage() {
                       </p>
                       {Array.isArray((selectedTicket as any).aiAnalysis.suggestedSteps) && (
                         <div className="pt-1.5 border-t border-purple-200/80 space-y-1">
-                          <span className="font-bold text-[10.5px] text-purple-900">Gợi ý xử lý ban đầu:</span>
+                          <span className="font-bold text-[10.5px] text-purple-900">{isEn ? 'Initial resolution suggestion:' : 'Gợi ý xử lý ban đầu:'}</span>
                           <ul className="list-disc list-inside text-[10.5px] text-purple-900 space-y-0.5">
                             {(selectedTicket as any).aiAnalysis.suggestedSteps.map((step: string, sIdx: number) => (
                               <li key={sIdx}>{step}</li>
@@ -2208,8 +2228,8 @@ export default function TicketsPage() {
                             🛡️
                           </div>
                           <div>
-                            <h5 className="font-bold text-slate-900 text-xs">Nhờ Thêm IT / Cấp Trên (Escalation)</h5>
-                            <p className="text-[10px] text-amber-800">Chỉ hiển thị với đội ngũ IT</p>
+                            <h5 className="font-bold text-slate-900 text-xs">{isEn ? 'Escalate / Request IT Help' : 'Nhờ Thêm IT / Cấp Trên (Escalation)'}</h5>
+                            <p className="text-[10px] text-amber-800">{isEn ? 'Visible to IT team only' : 'Chỉ hiển thị với đội ngũ IT'}</p>
                           </div>
                         </div>
                         <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 font-bold text-[9px] border border-amber-300">
@@ -2230,7 +2250,7 @@ export default function TicketsPage() {
                             onChange={(e) => setEscalateToId(e.target.value)}
                             className="w-full px-2.5 py-1.5 bg-white border border-amber-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
                           >
-                            <option value="">-- Chọn IT / Quản lý --</option>
+                            <option value="">{isEn ? '-- Select IT / Manager --' : '-- Chọn IT / Quản lý --'}</option>
                             {itUsers.map((u) => (
                               <option key={u.id} value={u.id}>
                                 👨‍💻 {u.fullName} ({u.role?.name || 'IT'})
@@ -2244,7 +2264,7 @@ export default function TicketsPage() {
                             type="text"
                             value={escalateNote}
                             onChange={(e) => setEscalateNote(e.target.value)}
-                            placeholder="Ghi chú kỹ thuật cần hỗ trợ..."
+                            placeholder={isEn ? 'Technical notes for assistance...' : 'Ghi chú kỹ thuật cần hỗ trợ...'}
                             className="flex-1 px-3 py-1.5 bg-white border border-amber-200 rounded-xl text-xs text-slate-800 outline-none focus:ring-1 focus:ring-amber-500 font-medium"
                           />
                           <button
@@ -2253,7 +2273,7 @@ export default function TicketsPage() {
                             disabled={escalateSending || (!escalateToId && !escalateNote.trim())}
                             className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer shrink-0 flex items-center gap-1"
                           >
-                            {escalateSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>⚡ Gửi</span>}
+                            {escalateSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>{isEn ? '⚡ Send' : '⚡ Gửi'}</span>}
                           </button>
                         </div>
                       </div>
@@ -2290,7 +2310,7 @@ export default function TicketsPage() {
                                   {c.user?.fullName}
                                   {c.isInternal && (
                                     <span className="px-1.5 py-0.2 bg-amber-200 text-amber-800 rounded font-bold text-[9px]">
-                                      🔒 Nội bộ IT
+                                      {isEn ? '🔒 IT Internal' : '🔒 Nội bộ IT'}
                                     </span>
                                   )}
                                 </span>
@@ -2307,7 +2327,7 @@ export default function TicketsPage() {
                                       <img
                                         key={caIdx}
                                         src={att.url}
-                                        alt={att.name || 'Hình ảnh'}
+                                        alt={att.name || (isEn ? 'Image' : 'Hình ảnh')}
                                         onClick={() => setPreviewImageModal(att.url)}
                                         className="w-14 h-14 object-cover rounded-lg border border-slate-200 shadow-2xs cursor-pointer hover:scale-105 transition-transform"
                                       />
@@ -2341,7 +2361,7 @@ export default function TicketsPage() {
                           value={commentText}
                           onChange={(e) => setCommentText(e.target.value)}
                           onPaste={(e) => handlePasteImage(e, 'comment')}
-                          placeholder={language === "en" ? "Write a response or paste screenshot (Ctrl + V)..." : "Viết phản hồi hoặc dán ảnh chụp (Ctrl + V)..."}
+                          placeholder={isEn ? "Write a response or paste screenshot (Ctrl + V)..." : "Viết phản hồi hoặc dán ảnh chụp (Ctrl + V)..."}
                           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 resize-none font-medium"
                         />
 
@@ -2359,7 +2379,7 @@ export default function TicketsPage() {
 
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <label className="cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-700 transition-colors" title="Đính kèm file/ảnh">
+                            <label className="cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-700 transition-colors" title={isEn ? 'Attach file/image' : 'Đính kèm file/ảnh'}>
                               <Paperclip className="w-4 h-4" />
                               <input type="file" multiple onChange={handleUploadCommentFiles} className="hidden" />
                             </label>
@@ -2371,7 +2391,7 @@ export default function TicketsPage() {
                                   onChange={(e) => setIsInternalComment(e.target.checked)}
                                   className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
                                 />
-                                <span>🔒 Ghi chú nội bộ</span>
+                                <span>{isEn ? '🔒 Internal Note' : '🔒 Ghi chú nội bộ'}</span>
                               </label>
                             )}
                           </div>
@@ -2382,7 +2402,7 @@ export default function TicketsPage() {
                             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
                           >
                             {sendingComment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                            <span>Gửi</span>
+                            <span>{isEn ? 'Send' : 'Gửi'}</span>
                           </button>
                         </div>
                       </div>
@@ -2412,7 +2432,7 @@ export default function TicketsPage() {
                               : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
                           }`}
                         >
-                          {STATUS_MAP[st]?.label}
+                          {getStatusLabel(st, language)}
                         </button>
                       );
                     })}
@@ -2482,7 +2502,7 @@ export default function TicketsPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-slate-900">{isEn ? 'Submit IT Support Request / Create Ticket' : 'Gửi Yêu Cầu Hỗ Trợ IT / Tạo Ticket'}</h3>
-                  <p className="text-[10px] text-slate-500">Hỗ trợ dán trực tiếp ảnh chụp màn hình (Ctrl + V)</p>
+                  <p className="text-[10px] text-slate-500">{isEn ? 'Supports direct screenshot paste (Ctrl + V)' : 'Hỗ trợ dán trực tiếp ảnh chụp màn hình (Ctrl + V)'}</p>
                 </div>
               </div>
               <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
@@ -2496,13 +2516,13 @@ export default function TicketsPage() {
                 <div className="flex items-center justify-between mb-1">
                   <label className="font-bold text-slate-700 flex items-center gap-1.5">
                     <UserIcon className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Người yêu cầu / Người gặp sự cố</span>
+                    <span>{isEn ? 'Requester / Affected Person' : 'Người yêu cầu / Người gặp sự cố'}</span>
                     <span className="text-rose-500">*</span>
                   </label>
                   {isITStaffOrAdmin && newRequesterId && newRequesterId !== currentUser?.id && (
                     <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full font-bold text-[10px] flex items-center gap-1">
                       <span>📝</span>
-                      <span>IT đang tạo hộ người dùng</span>
+                      <span>{isEn ? 'IT creating on behalf of user' : 'IT đang tạo hộ người dùng'}</span>
                     </span>
                   )}
                 </div>
@@ -2547,7 +2567,7 @@ export default function TicketsPage() {
                             type="text"
                             value={requesterSearchTerm}
                             onChange={(e) => setRequesterSearchTerm(e.target.value)}
-                            placeholder="🔍 Gõ tên, email hoặc phòng ban để lọc nhanh..."
+                            placeholder={isEn ? '🔍 Type name, email, or department to filter...' : '🔍 Gõ tên, email hoặc phòng ban để lọc nhanh...'}
                             className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium text-slate-900"
                           />
                           {requesterSearchTerm && (
@@ -2582,7 +2602,7 @@ export default function TicketsPage() {
                               <div className="min-w-0 pr-2">
                                 <div className="font-bold flex items-center gap-1.5 truncate">
                                   <span>👤</span>
-                                  <span>Chính tôi ({currentUser.fullName || currentUser.email}) [Mặc định]</span>
+                                  <span>{isEn ? `Myself (${currentUser.fullName || currentUser.email}) [Default]` : `Chính tôi (${currentUser.fullName || currentUser.email}) [Mặc định]`}</span>
                                 </div>
                                 <p className={`text-[10px] truncate ${newRequesterId === currentUser.id ? 'text-blue-100' : 'text-slate-400'}`}>
                                   {currentUser.email} {currentUser.department ? `• ${currentUser.department}` : ''}
@@ -2593,14 +2613,14 @@ export default function TicketsPage() {
                           )}
 
                           <div className="px-1 py-0.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                            <span>Danh sách nhân viên (Tạo hộ)</span>
-                            <span>{filteredRequesterUsers.filter((u) => u.id !== currentUser?.id).length} người</span>
+                            <span>{isEn ? 'Employee List (Create on behalf)' : 'Danh sách nhân viên (Tạo hộ)'}</span>
+                            <span>{filteredRequesterUsers.filter((u) => u.id !== currentUser?.id).length} {isEn ? 'people' : 'người'}</span>
                           </div>
 
                           {/* Filtered Employees */}
                           {filteredRequesterUsers.filter((u) => u.id !== currentUser?.id).length === 0 ? (
                             <div className="text-center py-4 text-xs text-slate-400 italic">
-                              Không tìm thấy nhân viên nào khớp với &quot;{requesterSearchTerm}&quot;
+                              {isEn ? `No employee matched "${requesterSearchTerm}"` : `Không tìm thấy nhân viên nào khớp với "${requesterSearchTerm}"`}
                             </div>
                           ) : (
                             filteredRequesterUsers
@@ -2641,7 +2661,7 @@ export default function TicketsPage() {
                       </div>
                     )}
                     <p className="text-[10px] text-slate-400 mt-0.5 italic">
-                      💡 Bạn có quyền IT: Bấm vào để gõ tìm nhanh nhân viên cần tạo ticket hộ khi họ không thể tự gửi.
+                      {isEn ? '💡 You have IT permissions: Click to search & create ticket on behalf of an employee who cannot submit it.' : '💡 Bạn có quyền IT: Bấm vào để gõ tìm nhanh nhân viên cần tạo ticket hộ khi họ không thể tự gửi.'}
                     </p>
                   </div>
                 ) : (
@@ -2651,7 +2671,7 @@ export default function TicketsPage() {
                         👤
                       </div>
                       <div>
-                        <p className="font-bold text-slate-800 text-xs">{currentUser?.fullName || 'Người dùng'}</p>
+                        <p className="font-bold text-slate-800 text-xs">{currentUser?.fullName || (isEn ? 'User' : 'Người dùng')}</p>
                         <p className="text-[10px] text-slate-400">{currentUser?.email} {currentUser?.department ? `• ${currentUser?.department}` : ''}</p>
                       </div>
                     </div>
@@ -2666,12 +2686,12 @@ export default function TicketsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="font-bold text-slate-700">
-                    Tiêu đề sự cố / yêu cầu <span className="text-rose-500">*</span>
+                    {isEn ? 'Incident / Request Title' : 'Tiêu đề sự cố / yêu cầu'} <span className="text-rose-500">*</span>
                   </label>
                   {isAiAnalyzing && (
                     <span className="text-[10.5px] text-purple-600 font-bold animate-pulse flex items-center gap-1">
                       <Sparkles className="w-3 h-3 text-purple-600 animate-spin" />
-                      <span>AI đang tự động phân tích...</span>
+                      <span>{isEn ? 'AI is analyzing automatically...' : 'AI đang tự động phân tích...'}</span>
                     </span>
                   )}
                 </div>
@@ -2681,18 +2701,18 @@ export default function TicketsPage() {
                   value={newTitle}
                   onChange={(e) => handleTitleChange(e.target.value)}
                   onBlur={() => triggerAiAnalysis(newTitle, newDesc, true)}
-                  placeholder="VD: Máy tính bị lỗi window, bị màn hình xanh ko sử dụng đc..."
+                  placeholder={isEn ? 'e.g., Computer Windows crash, blue screen of death unable to work...' : 'VD: Máy tính bị lỗi window, bị màn hình xanh ko sử dụng đc...'}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-900 bg-white"
                 />
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  🤖 <em>AI sẽ tự động nhận diện loại sự cố ngay khi bạn nhập xong tiêu đề.</em>
+                  🤖 <em>{isEn ? 'AI will automatically detect the issue type as soon as you enter the title.' : 'AI sẽ tự động nhận diện loại sự cố ngay khi bạn nhập xong tiêu đề.'}</em>
                 </p>
               </div>
 
               {/* 3. Phân loại & Mức độ ưu tiên (AI tự động chọn) */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Loại yêu cầu</label>
+                  <label className="font-bold text-slate-700 block mb-1">{isEn ? 'Request Category' : 'Loại yêu cầu'}</label>
                   <select
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value)}
@@ -2717,7 +2737,7 @@ export default function TicketsPage() {
                     <option value="LOW">{isEn ? '🟢 Low (No impact)' : '🟢 Thấp (Không ảnh hưởng)'}</option>
                     <option value="MEDIUM">{isEn ? '🟡 Medium (Within the week)' : '🟡 Trung bình (Trong tuần)'}</option>
                     <option value="HIGH">{isEn ? '🔴 High (Urgent)' : '🔴 Cao (Cần xử lý gấp)'}</option>
-                    <option value="URGENT">🔥 Khẩn cấp (Dừng công việc)</option>
+                    <option value="URGENT">{isEn ? '🔥 Urgent (Work stopped)' : '🔥 Khẩn cấp (Dừng công việc)'}</option>
                   </select>
                 </div>
               </div>
@@ -2728,7 +2748,7 @@ export default function TicketsPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-blue-900 flex items-center gap-1.5">
                       <span>👨‍💻</span>
-                      <span>Dành cho Nhân sự IT (Tự động gán & Cập nhật trạng thái)</span>
+                      <span>{isEn ? 'For IT Staff (Auto-assignment & Initial Status)' : 'Dành cho Nhân sự IT (Tự động gán & Cập nhật trạng thái)'}</span>
                     </span>
                     <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold text-[9px]">
                       🔒 IT & Admin
@@ -2739,54 +2759,54 @@ export default function TicketsPage() {
                     {/* IT Assignee */}
                     <div>
                       <label className="font-bold text-slate-700 block mb-1 text-xs">
-                        IT tiếp nhận & phụ trách
+                        {isEn ? 'IT Assignee' : 'IT tiếp nhận & phụ trách'}
                       </label>
                       <select
                         value={newAssignedToId}
                         onChange={(e) => setNewAssignedToId(e.target.value)}
                         className="w-full px-2.5 py-2 border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-semibold text-xs text-slate-900 cursor-pointer"
                       >
-                        <option value="">-- Tự động phân phối (Chưa gán) --</option>
+                        <option value="">{isEn ? '-- Auto-dispatch (Unassigned) --' : '-- Tự động phân phối (Chưa gán) --'}</option>
                         {itUsers.map((u) => {
                           const isMe = u.id === currentUser?.id;
                           return (
                             <option key={u.id} value={u.id}>
-                              👨‍💻 {u.fullName} {isMe ? '★ (Chính tôi)' : `(${u.role?.name || u.department || 'IT'})`}
+                              👨‍💻 {u.fullName} {isMe ? (isEn ? '★ (Myself)' : '★ (Chính tôi)') : `(${u.role?.name || u.department || 'IT'})`}
                             </option>
                           );
                         })}
                       </select>
                       <p className="text-[9.5px] text-blue-600 font-medium mt-0.5">
                         {newAssignedToId === currentUser?.id
-                          ? '✨ Đã tự động gán chính bạn là người tiếp nhận.'
+                          ? (isEn ? '✨ Automatically assigned to you.' : '✨ Đã tự động gán chính bạn là người tiếp nhận.')
                           : newAssignedToId
-                          ? '👉 Đã chọn phân công cho IT viên trên.'
-                          : '⚡ Chưa gán người nhận (Sẽ qua luồng tự động phân tuyến).'}
+                          ? (isEn ? '👉 Assigned to selected IT technician.' : '👉 Đã chọn phân công cho IT viên trên.')
+                          : (isEn ? '⚡ Unassigned (Will route via automated dispatch).' : '⚡ Chưa gán người nhận (Sẽ qua luồng tự động phân tuyến).')}
                       </p>
                     </div>
 
                     {/* Initial Ticket Status */}
                     <div>
                       <label className="font-bold text-slate-700 block mb-1 text-xs">
-                        Trạng thái xử lý ban đầu
+                        {isEn ? 'Initial Processing Status' : 'Trạng thái xử lý ban đầu'}
                       </label>
                       <select
                         value={newStatus}
                         onChange={(e) => setNewStatus(e.target.value)}
                         className="w-full px-2.5 py-2 border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-semibold text-xs text-slate-900 cursor-pointer"
                       >
-                        <option value="OPEN">🟡 Mới tạo (Chờ xử lý)</option>
-                        <option value="IN_PROGRESS">🔵 Đang xử lý (Bắt đầu làm ngay)</option>
-                        <option value="WAITING">🟠 Chờ phản hồi / Chờ linh kiện</option>
-                        <option value="RESOLVED">🟢 Đã hoàn thành (Xong ngay tại chỗ)</option>
-                        <option value="CLOSED">🔘 Đã đóng (Hoàn tất đóng ticket)</option>
+                        <option value="OPEN">{isEn ? '🟡 Open (Pending)' : '🟡 Mới tạo (Chờ xử lý)'}</option>
+                        <option value="IN_PROGRESS">{isEn ? '🔵 In Progress (Start immediately)' : '🔵 Đang xử lý (Bắt đầu làm ngay)'}</option>
+                        <option value="WAITING">{isEn ? '🟠 Waiting (Feedback / Spare parts)' : '🟠 Chờ phản hồi / Chờ linh kiện'}</option>
+                        <option value="RESOLVED">{isEn ? '🟢 Resolved (Completed on-site)' : '🟢 Đã hoàn thành (Xong ngay tại chỗ)'}</option>
+                        <option value="CLOSED">{isEn ? '🔘 Closed (Ticket closed)' : '🔘 Đã đóng (Hoàn tất đóng ticket)'}</option>
                       </select>
                       <p className="text-[9.5px] text-slate-500 font-medium mt-0.5">
                         {newStatus === 'RESOLVED'
-                          ? '🎉 Ticket sẽ được ghi nhận đã xử lý xong ngay khi tạo!'
+                          ? (isEn ? '🎉 Ticket will be recorded as resolved upon creation!' : '🎉 Ticket sẽ được ghi nhận đã xử lý xong ngay khi tạo!')
                           : newStatus === 'IN_PROGRESS'
-                          ? '🚀 Chuyển ngay sang trạng thái đang tiến hành xử lý.'
-                          : '📋 Ticket ở trạng thái mở mới chờ xử lý theo quy trình.'}
+                          ? (isEn ? '🚀 Immediately move to In Progress status.' : '🚀 Chuyển ngay sang trạng thái đang tiến hành xử lý.')
+                          : (isEn ? '📋 Ticket is in Open status awaiting standard workflow.' : '📋 Ticket ở trạng thái mở mới chờ xử lý theo quy trình.')}
                       </p>
                     </div>
                   </div>
@@ -2797,7 +2817,7 @@ export default function TicketsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="font-bold text-slate-700">
-                    Mô tả chi tiết hiện tượng / yêu cầu <span className="text-rose-500">*</span>
+                    {isEn ? 'Detailed Description / Requirements' : 'Mô tả chi tiết hiện tượng / yêu cầu'} <span className="text-rose-500">*</span>
                   </label>
                   <button
                     type="button"
@@ -2806,7 +2826,7 @@ export default function TicketsPage() {
                     className="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white rounded-lg text-[11px] font-bold inline-flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
                   >
                     {isAiAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 text-amber-300" />}
-                    <span>{isAiAnalyzing ? 'Đang phân tích...' : '✨ Phân Tích Bằng AI'}</span>
+                    <span>{isAiAnalyzing ? (isEn ? 'Analyzing...' : 'Đang phân tích...') : (isEn ? '✨ AI Diagnostic' : '✨ Phân Tích Bằng AI')}</span>
                   </button>
                 </div>
                 <textarea
@@ -2816,7 +2836,7 @@ export default function TicketsPage() {
                   onChange={(e) => handleDescChange(e.target.value)}
                   onBlur={() => triggerAiAnalysis(newTitle, newDesc, true)}
                   onPaste={(e) => handlePasteImage(e, 'ticket')}
-                  placeholder="Mô tả cụ thể triệu chứng lỗi. Bạn có thể chụp ảnh màn hình rồi bấm Ctrl + V để dán trực tiếp vào đây..."
+                  placeholder={isEn ? 'Describe specific symptoms in detail. You can take a screenshot and press Ctrl + V to paste directly here...' : 'Mô tả cụ thể triệu chứng lỗi. Bạn có thể chụp ảnh màn hình rồi bấm Ctrl + V để dán trực tiếp vào đây...'}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-medium bg-white"
                 />
               </div>
@@ -2827,10 +2847,10 @@ export default function TicketsPage() {
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-purple-900 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                      <span>AI Đã Tự Động Phân Loại:</span>
+                      <span>{isEn ? 'AI Automatically Classified:' : 'AI Đã Tự Động Phân Loại:'}</span>
                     </span>
                     <span className="text-[10px] px-2 py-0.5 bg-purple-200 text-purple-900 rounded-full font-bold">
-                      {aiDiagnostic.serviceName || 'Dịch vụ CNTT'}
+                      {aiDiagnostic.serviceName || (isEn ? 'IT Service' : 'Dịch vụ CNTT')}
                     </span>
                   </div>
                   <p className="text-purple-950 font-medium text-[11px] leading-relaxed">
@@ -2839,7 +2859,7 @@ export default function TicketsPage() {
                   {aiDiagnostic.matchedAssetName && (
                     <div className="text-[11px] text-blue-800 font-bold bg-white/80 p-1.5 rounded-lg border border-purple-200 flex items-center gap-1">
                       <span>💻</span>
-                      <span>Thiết bị nhận diện liên quan: <strong>{aiDiagnostic.matchedAssetName}</strong></span>
+                      <span>{isEn ? 'Related detected device:' : 'Thiết bị nhận diện liên quan:'} <strong>{aiDiagnostic.matchedAssetName}</strong></span>
                     </div>
                   )}
                 </div>
@@ -2849,7 +2869,7 @@ export default function TicketsPage() {
               {myAssets && myAssets.length > 0 && (
                 <div className="p-2.5 bg-blue-50/60 rounded-2xl border border-blue-200 space-y-1.5">
                   <label className="text-[11px] font-bold text-blue-950 block">
-                    💻 Thiết bị của người yêu cầu (Bấm để chọn nhanh):
+                    {isEn ? '💻 Requester devices (Click to select):' : '💻 Thiết bị của người yêu cầu (Bấm để chọn nhanh):'}
                   </label>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {myAssets.map((dev: any) => (
@@ -2879,18 +2899,18 @@ export default function TicketsPage() {
                     </div>
                     <div>
                       <p className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                        <span>Hình ảnh & tệp đính kèm ({newTicketAttachments.length})</span>
-                        {uploadingTicketFile && <span className="text-[10px] text-blue-600 font-normal animate-pulse">(⚡ Đang tải ảnh...)</span>}
+                        <span>{isEn ? 'Images & Attachments' : 'Hình ảnh & tệp đính kèm'} ({newTicketAttachments.length})</span>
+                        {uploadingTicketFile && <span className="text-[10px] text-blue-600 font-normal animate-pulse">({isEn ? '⚡ Uploading...' : '⚡ Đang tải ảnh...'})</span>}
                       </p>
                       <p className="text-[10px] text-slate-500">
-                        📋 <strong>Mẹo:</strong> Nhấn <strong>Ctrl + V</strong> để dán ảnh chụp màn hình trực tiếp!
+                        📋 <strong>{isEn ? 'Tip:' : 'Mẹo:'}</strong> {isEn ? 'Press' : 'Nhấn'} <strong>Ctrl + V</strong> {isEn ? 'to paste screenshots directly!' : 'để dán ảnh chụp màn hình trực tiếp!'}
                       </p>
                     </div>
                   </div>
 
                   <label className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors shrink-0 self-start sm:self-center">
                     {uploadingTicketFile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                    <span>{uploadingTicketFile ? 'Đang tải...' : 'Chọn file / ảnh'}</span>
+                    <span>{uploadingTicketFile ? (isEn ? 'Uploading...' : 'Đang tải...') : (isEn ? '+ Choose file / image' : '+ Chọn file / ảnh')}</span>
                     <input
                       type="file"
                       multiple
@@ -2926,7 +2946,7 @@ export default function TicketsPage() {
                             type="button"
                             onClick={() => setNewTicketAttachments((prev) => prev.filter((_, i) => i !== idx))}
                             className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer shrink-0"
-                            title="Xóa tệp"
+                            title={isEn ? 'Delete file' : 'Xóa tệp'}
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -2949,7 +2969,7 @@ export default function TicketsPage() {
                   className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Gửi Yêu Cầu Hỗ Trợ</span>
+                  <span>{isEn ? 'Submit Support Request' : 'Gửi Yêu Cầu Hỗ Trợ'}</span>
                 </button>
               </div>
             </form>
@@ -2990,11 +3010,11 @@ export default function TicketsPage() {
                   onChange={(e) => setExtHours(Number(e.target.value))}
                   className="w-full p-2.5 border border-slate-300 rounded-xl bg-slate-50 font-bold text-slate-800 outline-none"
                 >
-                  <option value={4}>+ 4 Giờ (Nửa ngày làm việc)</option>
-                  <option value={8}>+ 8 Giờ (1 Ngày làm việc)</option>
-                  <option value={24}>+ 24 Giờ (1 Ngày đêm)</option>
-                  <option value={48}>+ 48 Giờ (2 Ngày làm việc)</option>
-                  <option value={72}>+ 72 Giờ (3 Ngày làm việc)</option>
+                  <option value={4}>{language === 'en' ? '+ 4 Hours (Half work day)' : '+ 4 Giờ (Nửa ngày làm việc)'}</option>
+                  <option value={8}>{language === 'en' ? '+ 8 Hours (1 Work day)' : '+ 8 Giờ (1 Ngày làm việc)'}</option>
+                  <option value={24}>{language === 'en' ? '+ 24 Hours (1 Full day)' : '+ 24 Giờ (1 Ngày đêm)'}</option>
+                  <option value={48}>{language === 'en' ? '+ 48 Hours (2 Work days)' : '+ 48 Giờ (2 Ngày làm việc)'}</option>
+                  <option value={72}>{language === 'en' ? '+ 72 Hours (3 Work days)' : '+ 72 Giờ (3 Ngày làm việc)'}</option>
                 </select>
               </div>
 
@@ -3009,7 +3029,7 @@ export default function TicketsPage() {
                   className="w-full p-2.5 border border-slate-300 rounded-xl resize-none font-medium outline-none focus:ring-2 focus:ring-amber-500"
                 />
                 <span className="text-[10px] text-slate-400 mt-0.5 block">
-                  🛡️ Lưu ý: Lý do gia hạn được lưu lại trong Báo cáo Kiểm toán SLA để IT Lead theo dõi minh bạch.
+                  🛡️ {language === 'en' ? 'Note: Extension justifications are logged in the SLA Audit Report for IT Lead transparency.' : 'Lưu ý: Lý do gia hạn được lưu lại trong Báo cáo Kiểm toán SLA để IT Lead theo dõi minh bạch.'}
                 </span>
               </div>
 
@@ -3048,7 +3068,7 @@ export default function TicketsPage() {
             </button>
             <img
               src={previewImageModal}
-              alt="Ảnh phóng to"
+              alt={isEn ? 'Enlarged image' : 'Ảnh phóng to'}
               className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border border-white/20"
             />
           </div>
