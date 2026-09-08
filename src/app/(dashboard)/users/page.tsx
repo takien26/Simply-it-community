@@ -880,7 +880,7 @@ export default function UsersPage() {
           {deptTree.map((parent) => (
             <optgroup key={parent.id} label={`${parent.icon || '📁'} ${parent.name}`}>
               <option value={`PARENT:${parent.name}`}>
-                ★ Toàn bộ {parent.name}
+                {isEn ? `★ All of ${parent.name}` : `★ Toàn bộ ${parent.name}`}
               </option>
               {parent.children?.map((child) => (
                 <option key={child.id} value={`CHILD:${child.name}`}>
@@ -899,12 +899,12 @@ export default function UsersPage() {
             <table className="w-full text-left text-xs border-collapse min-w-[900px]">
               <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <tr>
-                  <th className="py-3 px-4 min-w-[200px]">{language === 'en' ? 'EMPLOYEE & TITLE' : 'NHÂN SỰ & CHỨC DANH'}</th>
-                  <th className="py-3 px-4 min-w-[230px]">CƠ CẤU PHÒNG BAN & ĐƠN VỊ</th>
-                  <th className="py-3 px-4 min-w-[160px]">LIÊN HỆ</th>
-                  <th className="py-3 px-4 min-w-[170px]">THIẾT BỊ ĐANG GIỮ</th>
-                  <th className="py-3 px-4 min-w-[170px]">LICENSE ĐANG GIỮ</th>
-                  <th className="py-3 px-4 text-right min-w-[100px]">{language === 'en' ? 'ACTIONS' : 'THAO TÁC'}</th>
+                  <th className="py-3 px-4 min-w-[200px]">{isEn ? 'EMPLOYEE & TITLE' : 'NHÂN SỰ & CHỨC DANH'}</th>
+                  <th className="py-3 px-4 min-w-[230px]">{isEn ? 'DEPARTMENT & UNIT HIERARCHY' : 'CƠ CẤU PHÒNG BAN & ĐƠN VỊ'}</th>
+                  <th className="py-3 px-4 min-w-[160px]">{isEn ? 'CONTACT' : 'LIÊN HỆ'}</th>
+                  <th className="py-3 px-4 min-w-[170px]">{isEn ? 'ASSIGNED DEVICES' : 'THIẾT BỊ ĐANG GIỮ'}</th>
+                  <th className="py-3 px-4 min-w-[170px]">{isEn ? 'ASSIGNED LICENSES' : 'LICENSE ĐANG GIỮ'}</th>
+                  <th className="py-3 px-4 text-right min-w-[100px]">{isEn ? 'ACTIONS' : 'THAO TÁC'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -912,13 +912,13 @@ export default function UsersPage() {
                   <tr>
                     <td colSpan={6} className="py-12 text-center text-slate-400">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-purple-600" />
-                      <span>Đang tải danh sách nhân sự...</span>
+                      <span>{isEn ? 'Loading employee list...' : 'Đang tải danh sách nhân sự...'}</span>
                     </td>
                   </tr>
                 ) : filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-12 text-center text-slate-400">
-                      Không tìm thấy nhân viên nào phù hợp
+                      {isEn ? 'No matching employees found' : 'Không tìm thấy nhân viên nào phù hợp'}
                     </td>
                   </tr>
                 ) : (
@@ -931,7 +931,7 @@ export default function UsersPage() {
                         key={u.id}
                         onClick={() => handleOpenEditUser(u)}
                         className="hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors group cursor-pointer"
-                        title="Nhấp vào hàng để xem & sửa chi tiết"
+                        title={isEn ? 'Click row to view & edit details' : 'Nhấp vào hàng để xem & sửa chi tiết'}
                       >
                         {/* Cột 1: Nhân Sự & Chức Danh */}
                         <td className="py-3 px-4">
@@ -949,19 +949,19 @@ export default function UsersPage() {
                                     e.stopPropagation();
                                     handleOpenEditUser(u);
                                   }}
-                                  title="Sửa thông tin"
+                                  title={isEn ? 'Edit details' : 'Sửa thông tin'}
                                   className="text-slate-400 hover:text-purple-600 p-0.5 shrink-0 cursor-pointer"
                                 >
                                   <Edit className="w-3 h-3" />
                                 </button>
                               </div>
                               <div className="text-[11px] text-purple-700 dark:text-purple-400 font-semibold truncate">
-                                {u.position || (language === 'en' ? 'Staff' : 'Nhân viên')}
+                                {u.position || (isEn ? 'Staff' : 'Nhân viên')}
                               </div>
                               {u.manager && (
                                 <div className="text-[10px] text-amber-700 dark:text-amber-300 font-bold flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-md border border-amber-200/80 w-fit">
                                   <Crown className="w-3 h-3 text-amber-600 shrink-0" />
-                                  <span>{language === 'en' ? 'Manager: ' : 'Cấp trên: '}{u.manager.fullName}</span>
+                                  <span>{isEn ? 'Manager: ' : 'Cấp trên: '}{u.manager.fullName}</span>
                                 </div>
                               )}
                               {u.location && (
@@ -995,7 +995,7 @@ export default function UsersPage() {
                                   }`}
                                 >
                                   <span>{isIT ? '⚡' : '📁'}</span>
-                                  <span>{parent || 'Chưa phân phòng'}</span>
+                                  <span>{parent || (isEn ? 'Unassigned' : 'Chưa phân phòng')}</span>
                                 </span>
 
                                 <span
@@ -1059,16 +1059,16 @@ export default function UsersPage() {
                                     </div>
                                     <button
                                       onClick={() => handleRevokeAsset(aa.asset.id)}
-                                      title="Thu hồi thiết bị về kho"
+                                      title={isEn ? 'Revoke device to inventory' : 'Thu hồi thiết bị về kho'}
                                       className="text-[10px] text-rose-600 hover:text-rose-800 font-bold px-1.5 py-0.2 bg-white rounded border border-rose-200 shrink-0 hover:bg-rose-50 cursor-pointer"
                                     >
-                                      Thu hồi
+                                      {isEn ? 'Revoke' : 'Thu hồi'}
                                     </button>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-slate-400 italic text-[11px] block">{language === 'en' ? 'No devices' : 'Chưa gán máy'}</span>
+                              <span className="text-slate-400 italic text-[11px] block">{isEn ? 'No devices' : 'Chưa gán máy'}</span>
                             )}
 
                             <button
@@ -1076,7 +1076,7 @@ export default function UsersPage() {
                               className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 cursor-pointer"
                             >
                               <Plus className="w-3 h-3" />
-                              <span>{language === 'en' ? 'Assign Device' : 'Gán máy'}</span>
+                              <span>{isEn ? 'Assign Device' : 'Gán máy'}</span>
                             </button>
                           </div>
                         </td>
@@ -1100,24 +1100,24 @@ export default function UsersPage() {
                                     />
                                     <button
                                       onClick={() => handleRevokeLicense(la.license.id, u.id)}
-                                      title="Thu hồi license"
+                                      title={isEn ? 'Revoke license' : 'Thu hồi license'}
                                       className="text-[10px] text-rose-600 hover:text-rose-800 font-bold px-1.5 py-0.2 bg-white rounded border border-rose-200 shrink-0 hover:bg-rose-50 cursor-pointer"
                                     >
-                                      Thu hồi
+                                      {isEn ? 'Revoke' : 'Thu hồi'}
                                     </button>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-slate-400 italic text-[11px] block">{language === 'en' ? 'No licenses' : 'Chưa cấp Lic'}</span>
+                              <span className="text-slate-400 italic text-[11px] block">{isEn ? 'No licenses' : 'Chưa cấp Lic'}</span>
                             )}
 
                             <button
                               onClick={() => handleOpenAssignLicense(u)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-md border border-purple-200 cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-md border border-blue-200 cursor-pointer"
                             >
                               <Plus className="w-3 h-3" />
-                              <span>{language === 'en' ? 'Assign Lic' : 'Gán Lic'}</span>
+                              <span>{isEn ? 'Assign Lic' : 'Gán Lic'}</span>
                             </button>
                           </div>
                         </td>
@@ -1128,22 +1128,22 @@ export default function UsersPage() {
                             <button
                               type="button"
                               onClick={() => handleResetSecondaryPassword(u)}
-                              title="Reset Mật Khẩu Cấp 2 khi người dùng quên"
+                              title={isEn ? 'Reset secondary password' : 'Reset Mật Khẩu Cấp 2 khi người dùng quên'}
                               className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
                             >
                               <KeyRound className="w-3 h-3 text-amber-600" />
-                              <span>{language === 'en' ? 'Reset Sec-Pwd' : 'Reset MK2'}</span>
+                              <span>{isEn ? 'Reset Sec-Pwd' : 'Reset MK2'}</span>
                             </button>
                             <button
                               onClick={() => handleOpenEditUser(u)}
-                              title="Chỉnh sửa toàn bộ thông tin nhân viên"
+                              title={isEn ? 'Edit employee details' : 'Chỉnh sửa toàn bộ thông tin nhân viên'}
                               className="p-1.5 text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-xl transition-all cursor-pointer"
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteUser(u)}
-                              title="Xóa nhân viên khỏi hệ thống"
+                              title={isEn ? 'Delete employee from system' : 'Xóa nhân viên khỏi hệ thống'}
                               className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl transition-all cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1217,7 +1217,6 @@ export default function UsersPage() {
           })}
         </div>
       )}
-
       {/* Modal: Edit Staff / User */}
       {isEditUserModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-3 sm:p-4">
@@ -1225,9 +1224,13 @@ export default function UsersPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70 rounded-t-3xl shrink-0">
               <div>
-                <h3 className="font-bold text-lg text-slate-900">Chỉnh Sửa Thông Tin Nhân Viên</h3>
+                <h3 className="font-bold text-lg text-slate-900">{isEn ? 'Edit Employee Information' : 'Chỉnh Sửa Thông Tin Nhân Viên'}</h3>
                 <p className="text-xs text-slate-400">
-                  Nhấn <kbd className="font-mono bg-slate-200 px-1 py-0.5 rounded text-[10px] text-slate-700">Esc</kbd> để đóng
+                  {isEn ? (
+                    <>Press <kbd className="font-mono bg-slate-200 px-1 py-0.5 rounded text-[10px] text-slate-700">Esc</kbd> to close</>
+                  ) : (
+                    <>Nhấn <kbd className="font-mono bg-slate-200 px-1 py-0.5 rounded text-[10px] text-slate-700">Esc</kbd> để đóng</>
+                  )}
                 </p>
               </div>
               <button onClick={() => setIsEditUserModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer">
@@ -1239,7 +1242,7 @@ export default function UsersPage() {
             <form id="edit-user-form" onSubmit={handleUpdateUser} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Họ và tên (*)</label>
+                  <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Full Name (*)' : 'Họ và tên (*)'}</label>
                   <input
                     type="text"
                     required
@@ -1250,7 +1253,7 @@ export default function UsersPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tài khoản / Email đăng nhập (*)</label>
+                  <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Account / Login Email (*)' : 'Tài khoản / Email đăng nhập (*)'}</label>
                   <input
                     type="email"
                     required
@@ -1267,18 +1270,18 @@ export default function UsersPage() {
                 {/* Cấp trên trực tiếp */}
                 <div className="p-3 bg-amber-50/50 border border-amber-200 rounded-2xl">
                   <ManageableDropdown
-                    label="Cấp Trên Trực Tiếp (Manager)"
-                    placeholder="-- Chọn cấp trên trực tiếp --"
-                    emptyLabel="-- Không có / Tự quản lý --"
+                    label={isEn ? 'Direct Manager' : 'Cấp Trên Trực Tiếp (Manager)'}
+                    placeholder={isEn ? '-- Select direct manager --' : '-- Chọn cấp trên trực tiếp --'}
+                    emptyLabel={isEn ? '-- None / Self-managed --' : '-- Không có / Tự quản lý --'}
                     icon={<Crown className="w-3.5 h-3.5 text-amber-600" />}
                     themeColor="amber"
-                    searchPlaceholder="Tìm theo tên, email, chức vụ..."
+                    searchPlaceholder={isEn ? 'Search by name, email, title...' : 'Tìm theo tên, email, chức vụ...'}
                     items={users
                       .filter((u: any) => u.id !== editingUserId)
                       .map((u: any) => ({
                         id: u.id,
                         name: u.fullName,
-                        subtitle: `${u.position || 'Nhân viên'} · ${u.email}`,
+                        subtitle: `${u.position || (isEn ? 'Staff' : 'Nhân viên')} · ${u.email}`,
                         icon: <Crown className="w-3.5 h-3.5 text-amber-600" />,
                       }))}
                     selectedValue={editUserFormData.managerId || ''}
@@ -1289,12 +1292,12 @@ export default function UsersPage() {
                 {/* Nơi làm việc (Vị trí) */}
                 <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl">
                   <ManageableDropdown
-                    label="Nơi Làm Việc (Vị Trí)"
-                    placeholder="-- Chọn nơi làm việc / vị trí --"
-                    emptyLabel="-- Chưa xác định vị trí --"
+                    label={isEn ? 'Workplace (Location)' : 'Nơi Làm Việc (Vị Trí)'}
+                    placeholder={isEn ? '-- Select workplace / location --' : '-- Chọn nơi làm việc / vị trí --'}
+                    emptyLabel={isEn ? '-- Unspecified location --' : '-- Chưa xác định vị trí --'}
                     icon={<MapPin className="w-3.5 h-3.5 text-emerald-600" />}
                     themeColor="emerald"
-                    searchPlaceholder="Tìm theo tên vị trí, tòa nhà, tầng..."
+                    searchPlaceholder={isEn ? 'Search by location name, building, floor...' : 'Tìm theo tên vị trí, tòa nhà, tầng...'}
                     onQuickAddClick={() => setIsAddLocationModalOpen(true)}
                     items={locations.map((loc: any) => ({
                       id: loc.id,
@@ -1311,8 +1314,8 @@ export default function UsersPage() {
               {/* Managing Company in Corporation */}
               <div className="p-3 bg-indigo-50/50 border border-indigo-200 rounded-2xl">
                 <ManageableDropdown
-                  label="Công Ty Quản Lý (Trong Tập Đoàn)"
-                  placeholder="-- Chọn công ty quản lý --"
+                  label={isEn ? 'Managing Company (Corporation)' : 'Công Ty Quản Lý (Trong Tập Đoàn)'}
+                  placeholder={isEn ? '-- Select managing company --' : '-- Chọn công ty quản lý --'}
                   icon={<Building2 className="w-3.5 h-3.5 text-indigo-600" />}
                   items={companies.map((c) => ({ id: c, name: c }))}
                   selectedValue={editUserFormData.companyName}
@@ -1324,10 +1327,10 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Chức danh / Vị trí công việc</label>
+                <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Job Title / Position' : 'Chức danh / Vị trí công việc'}</label>
                 <input
                   type="text"
-                  placeholder="VD: Senior Developer, Kế toán trưởng, IT Lead..."
+                  placeholder={isEn ? 'e.g. Senior Developer, Chief Accountant, IT Lead...' : 'VD: Senior Developer, Kế toán trưởng, IT Lead...'}
                   value={editUserFormData.position}
                   onChange={(e) => setEditUserFormData({ ...editUserFormData, position: e.target.value })}
                   className="w-full p-2.5 border border-slate-300 rounded-xl font-medium outline-none focus:ring-2 focus:ring-purple-500"
@@ -1338,13 +1341,13 @@ export default function UsersPage() {
               <div className="p-3.5 bg-purple-50/60 border border-purple-200 rounded-2xl space-y-3">
                 <div className="font-bold text-purple-950 flex items-center gap-1.5">
                   <FolderTree className="w-4 h-4 text-purple-600" />
-                  <span>Cơ Cấu Phòng Ban & Bộ Phận (Cha - Con)</span>
+                  <span>{isEn ? 'Department & Unit Hierarchy (Parent - Child)' : 'Cơ Cấu Phòng Ban & Bộ Phận (Cha - Con)'}</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Cấp 1: Phòng ban Cha */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">📁 1. Phòng Ban Chính (Cha)</label>
+                    <label className="block font-bold text-slate-700 mb-1">{isEn ? '📁 1. Main Department (Parent)' : '📁 1. Phòng Ban Chính (Cha)'}</label>
                     <select
                       value={isCustomParent ? '__CUSTOM__' : formParentDept}
                       onChange={(e) => {
@@ -1366,13 +1369,13 @@ export default function UsersPage() {
                           {d.icon || '📁'} {d.name}
                         </option>
                       ))}
-                      <option value="__CUSTOM__">➕ Thêm phòng ban mới...</option>
+                      <option value="__CUSTOM__">{isEn ? '➕ Add new department...' : '➕ Thêm phòng ban mới...'}</option>
                     </select>
                   </div>
 
                   {/* Cấp 2: Bộ phận / Tổ con */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">📂 2. Bộ Phận Con / Tổ Chuyên Môn</label>
+                    <label className="block font-bold text-slate-700 mb-1">{isEn ? '📂 2. Sub-department / Team' : '📂 2. Bộ Phận Con / Tổ Chuyên Môn'}</label>
                     <select
                       value={isCustomChild ? '__CUSTOM__' : formChildDept}
                       onChange={(e) => {
@@ -1385,24 +1388,24 @@ export default function UsersPage() {
                       }}
                       className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-purple-900 outline-none"
                     >
-                      <option value="">-- Trực thuộc chung phòng ban --</option>
+                      <option value="">{isEn ? '-- Direct under department --' : '-- Trực thuộc chung phòng ban --'}</option>
                       {activeModalParentNode?.children?.map((c) => (
                         <option key={c.id} value={c.name}>
                           📂 {c.name}
                         </option>
                       ))}
-                      <option value="__CUSTOM__">➕ Thêm bộ phận con mới...</option>
+                      <option value="__CUSTOM__">{isEn ? '➕ Add new sub-department...' : '➕ Thêm bộ phận con mới...'}</option>
                     </select>
                   </div>
                 </div>
 
                 {isCustomParent && (
                   <div>
-                    <label className="block font-bold text-purple-800 mb-1">Tên phòng ban chính mới:</label>
+                    <label className="block font-bold text-purple-800 mb-1">{isEn ? 'New main department name:' : 'Tên phòng ban chính mới:'}</label>
                     <input
                       type="text"
                       required
-                      placeholder="VD: Khối Nghiên Cứu & Phát Triển (R&D)..."
+                      placeholder={isEn ? 'e.g. Research & Development (R&D)...' : 'VD: Khối Nghiên Cứu & Phát Triển (R&D)...'}
                       value={customParentText}
                       onChange={(e) => setCustomParentText(e.target.value)}
                       className="w-full p-2 bg-white border border-purple-400 rounded-xl font-medium outline-none"
@@ -1412,11 +1415,11 @@ export default function UsersPage() {
 
                 {isCustomChild && (
                   <div>
-                    <label className="block font-bold text-purple-800 mb-1">Tên bộ phận / tổ con mới:</label>
+                    <label className="block font-bold text-purple-800 mb-1">{isEn ? 'New sub-department name:' : 'Tên bộ phận / tổ con mới:'}</label>
                     <input
                       type="text"
                       required
-                      placeholder="VD: Tổ Kỹ thuật Viễn thông & Tổng đài..."
+                      placeholder={isEn ? 'e.g. Telecom & Switchboard Team...' : 'VD: Tổ Kỹ thuật Viễn thông & Tổng đài...'}
                       value={customChildText}
                       onChange={(e) => setCustomChildText(e.target.value)}
                       className="w-full p-2 bg-white border border-purple-400 rounded-xl font-medium outline-none"
@@ -1427,7 +1430,7 @@ export default function UsersPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Vai trò (Role) (*)</label>
+                  <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Role (*)' : 'Vai trò (Role) (*)'}</label>
                   <select
                     value={editUserFormData.roleId}
                     onChange={(e) => setEditUserFormData({ ...editUserFormData, roleId: e.target.value })}
@@ -1442,7 +1445,7 @@ export default function UsersPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Số điện thoại</label>
+                  <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Phone Number' : 'Số điện thoại'}</label>
                   <input
                     type="text"
                     value={editUserFormData.phone}
@@ -1453,10 +1456,10 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Đổi mật khẩu đăng nhập mới (Bỏ trống nếu không đổi)</label>
+                <label className="block font-bold text-slate-700 mb-1">{isEn ? 'New login password (Leave blank if no change)' : 'Đổi mật khẩu đăng nhập mới (Bỏ trống nếu không đổi)'}</label>
                 <input
                   type="password"
-                  placeholder="Mật khẩu đăng nhập mới..."
+                  placeholder={isEn ? 'New login password...' : 'Mật khẩu đăng nhập mới...'}
                   value={editUserFormData.password}
                   onChange={(e) => setEditUserFormData({ ...editUserFormData, password: e.target.value })}
                   className="w-full p-2.5 border border-slate-300 rounded-xl outline-none"
@@ -1470,9 +1473,9 @@ export default function UsersPage() {
                     <KeyRound className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-xs text-amber-950 dark:text-amber-200">Mật Khẩu Cấp 2 (Bảo Vệ Kho Mật Khẩu)</h4>
+                    <h4 className="font-bold text-xs text-amber-950 dark:text-amber-200">{isEn ? 'Secondary Password (Vault Protection)' : 'Mật Khẩu Cấp 2 (Bảo Vệ Kho Mật Khẩu)'}</h4>
                     <p className="text-[11px] text-amber-800/80 dark:text-amber-300">
-                      Nếu nhân sự này quên Mật khẩu cấp 2, Quản trị viên có thể đặt lại ngay tại đây.
+                      {isEn ? 'If this employee forgets their secondary password, Admin can reset it here.' : 'Nếu nhân sự này quên Mật khẩu cấp 2, Quản trị viên có thể đặt lại ngay tại đây.'}
                     </p>
                   </div>
                 </div>
@@ -1485,7 +1488,7 @@ export default function UsersPage() {
                   className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0 transition-colors"
                 >
                   <KeyRound className="w-3.5 h-3.5" />
-                  <span>Reset Mật Khẩu Cấp 2</span>
+                  <span>{isEn ? 'Reset Secondary Pwd' : 'Reset Mật Khẩu Cấp 2'}</span>
                 </button>
               </div>
             </form>
@@ -1504,7 +1507,7 @@ export default function UsersPage() {
                 className="px-3.5 py-2 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Xóa Tài Khoản</span>
+                <span>{isEn ? 'Delete Account' : 'Xóa Tài Khoản'}</span>
               </button>
 
               <div className="flex items-center gap-2">
@@ -1513,7 +1516,7 @@ export default function UsersPage() {
                   onClick={() => setIsEditUserModalOpen(false)}
                   className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-white transition-all cursor-pointer"
                 >
-                  Hủy (Esc)
+                  {isEn ? 'Cancel (Esc)' : 'Hủy (Esc)'}
                 </button>
                 <button
                   type="submit"
@@ -1521,7 +1524,7 @@ export default function UsersPage() {
                   className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-1 cursor-pointer"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>Lưu Thay Đổi</span>
+                  <span>{isEn ? 'Save Changes' : 'Lưu Thay Đổi'}</span>
                 </button>
               </div>
             </div>
@@ -1536,9 +1539,13 @@ export default function UsersPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70 rounded-t-3xl shrink-0">
               <div>
-                <h3 className="font-bold text-lg text-slate-900">Thêm Mới Tài Khoản / Nhân Viên</h3>
+                <h3 className="font-bold text-lg text-slate-900">{isEn ? 'Add New Account / Employee' : 'Thêm Mới Tài Khoản / Nhân Viên'}</h3>
                 <p className="text-xs text-slate-400">
-                  Nhấn <kbd className="font-mono bg-slate-200 px-1 py-0.5 rounded text-[10px] text-slate-700">Esc</kbd> để đóng
+                  {isEn ? (
+                    <>Press <kbd className="font-mono bg-slate-200 px-1 py-0.5 rounded text-[10px] text-slate-700">Esc</kbd> to close</>
+                  ) : (
+                    <>Nhấn <kbd className="font-mono bg-slate-200 px-1 py-0.5 rounded text-[10px] text-slate-700">Esc</kbd> để đóng</>
+                  )}
                 </p>
               </div>
               <button onClick={() => setIsAddUserModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer">
@@ -1550,11 +1557,11 @@ export default function UsersPage() {
             <form id="add-user-form" onSubmit={handleCreateUser} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Họ và tên (*)</label>
+                  <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Full Name (*)' : 'Họ và tên (*)'}</label>
                   <input
                     type="text"
                     required
-                    placeholder="VD: Nguyễn Văn An"
+                    placeholder={isEn ? 'e.g. John Doe' : 'VD: Nguyễn Văn An'}
                     value={userFormData.fullName}
                     onChange={(e) => setUserFormData({ ...userFormData, fullName: e.target.value })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-medium outline-none focus:ring-2 focus:ring-purple-500"
@@ -1562,7 +1569,7 @@ export default function UsersPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tài khoản / Email đăng nhập (*)</label>
+                  <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Account / Login Email (*)' : 'Tài khoản / Email đăng nhập (*)'}</label>
                   <input
                     type="email"
                     required
@@ -1579,16 +1586,16 @@ export default function UsersPage() {
                 {/* Cấp trên trực tiếp */}
                 <div className="p-3 bg-amber-50/50 border border-amber-200 rounded-2xl">
                   <ManageableDropdown
-                    label="Cấp Trên Trực Tiếp (Manager)"
-                    placeholder="-- Chọn cấp trên trực tiếp --"
-                    emptyLabel="-- Không có / Tự quản lý --"
+                    label={isEn ? 'Direct Manager' : 'Cấp Trên Trực Tiếp (Manager)'}
+                    placeholder={isEn ? '-- Select direct manager --' : '-- Chọn cấp trên trực tiếp --'}
+                    emptyLabel={isEn ? '-- None / Self-managed --' : '-- Không có / Tự quản lý --'}
                     icon={<Crown className="w-3.5 h-3.5 text-amber-600" />}
                     themeColor="amber"
-                    searchPlaceholder="Tìm theo tên, email, chức vụ..."
+                    searchPlaceholder={isEn ? 'Search by name, email, title...' : 'Tìm theo tên, email, chức vụ...'}
                     items={users.map((u: any) => ({
                       id: u.id,
                       name: u.fullName,
-                      subtitle: `${u.position || 'Nhân viên'} · ${u.email}`,
+                      subtitle: `${u.position || (isEn ? 'Staff' : 'Nhân viên')} · ${u.email}`,
                       icon: <Crown className="w-3.5 h-3.5 text-amber-600" />,
                     }))}
                     selectedValue={userFormData.managerId || ''}
@@ -1599,12 +1606,12 @@ export default function UsersPage() {
                 {/* Nơi làm việc (Vị trí) */}
                 <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl">
                   <ManageableDropdown
-                    label="Nơi Làm Việc (Vị Trí)"
-                    placeholder="-- Chọn nơi làm việc / vị trí --"
-                    emptyLabel="-- Chưa xác định vị trí --"
+                    label={isEn ? 'Workplace (Location)' : 'Nơi Làm Việc (Vị Trí)'}
+                    placeholder={isEn ? '-- Select workplace / location --' : '-- Chọn nơi làm việc / vị trí --'}
+                    emptyLabel={isEn ? '-- Unspecified location --' : '-- Chưa xác định vị trí --'}
                     icon={<MapPin className="w-3.5 h-3.5 text-emerald-600" />}
                     themeColor="emerald"
-                    searchPlaceholder="Tìm theo tên vị trí, tòa nhà, tầng..."
+                    searchPlaceholder={isEn ? 'Search by location name, building, floor...' : 'Tìm theo tên vị trí, tòa nhà, tầng...'}
                     onQuickAddClick={() => setIsAddLocationModalOpen(true)}
                     items={locations.map((loc: any) => ({
                       id: loc.id,
@@ -1621,8 +1628,8 @@ export default function UsersPage() {
               {/* Managing Company in Corporation */}
               <div className="p-3 bg-indigo-50/50 border border-indigo-200 rounded-2xl">
                 <ManageableDropdown
-                  label="Công Ty Quản Lý (Trong Tập Đoàn)"
-                  placeholder="-- Chọn công ty quản lý --"
+                  label={isEn ? 'Managing Company (Corporation)' : 'Công Ty Quản Lý (Trong Tập Đoàn)'}
+                  placeholder={isEn ? '-- Select managing company --' : '-- Chọn công ty quản lý --'}
                   icon={<Building2 className="w-3.5 h-3.5 text-indigo-600" />}
                   items={companies.map((c) => ({ id: c, name: c }))}
                   selectedValue={userFormData.companyName}
@@ -1634,10 +1641,10 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Chức danh / Vị trí công việc (*)</label>
+                <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Job Title / Position (*)' : 'Chức danh / Vị trí công việc (*)'}</label>
                 <input
                   type="text"
-                  placeholder="VD: IT Lead, Kế toán tổng hợp, Senior Dev..."
+                  placeholder={isEn ? 'e.g. IT Lead, General Accountant, Senior Dev...' : 'VD: IT Lead, Kế toán tổng hợp, Senior Dev...'}
                   value={userFormData.position}
                   onChange={(e) => setUserFormData({ ...userFormData, position: e.target.value })}
                   className="w-full p-2.5 border border-slate-300 rounded-xl font-medium outline-none focus:ring-2 focus:ring-purple-500"
@@ -1648,13 +1655,13 @@ export default function UsersPage() {
               <div className="p-3.5 bg-purple-50/60 border border-purple-200 rounded-2xl space-y-3">
                 <div className="font-bold text-purple-950 flex items-center gap-1.5">
                   <FolderTree className="w-4 h-4 text-purple-600" />
-                  <span>Cơ Cấu Phòng Ban & Bộ Phận (Cha - Con)</span>
+                  <span>{isEn ? 'Department & Unit Hierarchy (Parent - Child)' : 'Cơ Cấu Phòng Ban & Bộ Phận (Cha - Con)'}</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Cấp 1: Phòng ban Cha */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">📁 1. Phòng Ban Chính (Cha)</label>
+                    <label className="block font-bold text-slate-700 mb-1">{isEn ? '📁 1. Main Department (Parent)' : '📁 1. Phòng Ban Chính (Cha)'}</label>
                     <select
                       value={isCustomParent ? '__CUSTOM__' : formParentDept}
                       onChange={(e) => {
@@ -1675,13 +1682,13 @@ export default function UsersPage() {
                           {d.icon || '📁'} {d.name}
                         </option>
                       ))}
-                      <option value="__CUSTOM__">➕ Thêm phòng ban mới...</option>
+                      <option value="__CUSTOM__">{isEn ? '➕ Add new department...' : '➕ Thêm phòng ban mới...'}</option>
                     </select>
                   </div>
 
                   {/* Cấp 2: Bộ phận / Tổ con */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">📂 2. Bộ Phận Con / Tổ Chuyên Môn</label>
+                    <label className="block font-bold text-slate-700 mb-1">{isEn ? '📂 2. Sub-department / Team' : '📂 2. Bộ Phận Con / Tổ Chuyên Môn'}</label>
                     <select
                       value={isCustomChild ? '__CUSTOM__' : formChildDept}
                       onChange={(e) => {
@@ -1694,24 +1701,24 @@ export default function UsersPage() {
                       }}
                       className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-purple-900 outline-none"
                     >
-                      <option value="">-- Trực thuộc chung phòng ban --</option>
+                      <option value="">{isEn ? '-- Direct under department --' : '-- Trực thuộc chung phòng ban --'}</option>
                       {activeModalParentNode?.children?.map((c) => (
                         <option key={c.id} value={c.name}>
                           📂 {c.name}
                         </option>
                       ))}
-                      <option value="__CUSTOM__">➕ Thêm bộ phận con mới...</option>
+                      <option value="__CUSTOM__">{isEn ? '➕ Add new sub-department...' : '➕ Thêm bộ phận con mới...'}</option>
                     </select>
                   </div>
                 </div>
 
                 {isCustomParent && (
                   <div>
-                    <label className="block font-bold text-purple-800 mb-1">Tên phòng ban chính mới:</label>
+                    <label className="block font-bold text-purple-800 mb-1">{isEn ? 'New main department name:' : 'Tên phòng ban chính mới:'}</label>
                     <input
                       type="text"
                       required
-                      placeholder="VD: Khối Nghiên Cứu & Phát Triển (R&D)..."
+                      placeholder={isEn ? 'e.g. Research & Development (R&D)...' : 'VD: Khối Nghiên Cứu & Phát Triển (R&D)...'}
                       value={customParentText}
                       onChange={(e) => setCustomParentText(e.target.value)}
                       className="w-full p-2 bg-white border border-purple-400 rounded-xl font-medium outline-none"
@@ -1721,11 +1728,11 @@ export default function UsersPage() {
 
                 {isCustomChild && (
                   <div>
-                    <label className="block font-bold text-purple-800 mb-1">Tên bộ phận / tổ con mới:</label>
+                    <label className="block font-bold text-purple-800 mb-1">{isEn ? 'New sub-department name:' : 'Tên bộ phận / tổ con mới:'}</label>
                     <input
                       type="text"
                       required
-                      placeholder="VD: Tổ Kỹ thuật Viễn thông & Tổng đài..."
+                      placeholder={isEn ? 'e.g. Telecom & Switchboard Team...' : 'VD: Tổ Kỹ thuật Viễn thông & Tổng đài...'}
                       value={customChildText}
                       onChange={(e) => setCustomChildText(e.target.value)}
                       className="w-full p-2 bg-white border border-purple-400 rounded-xl font-medium outline-none"
@@ -1736,7 +1743,7 @@ export default function UsersPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Vai trò (Role) (*)</label>
+                  <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Role (*)' : 'Vai trò (Role) (*)'}</label>
                   <select
                     value={userFormData.roleId}
                     onChange={(e) => setUserFormData({ ...userFormData, roleId: e.target.value })}
@@ -1751,7 +1758,7 @@ export default function UsersPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Số điện thoại</label>
+                  <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Phone Number' : 'Số điện thoại'}</label>
                   <input
                     type="text"
                     placeholder="0912345678"
@@ -1763,7 +1770,7 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Mật khẩu khởi tạo</label>
+                <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Initial Password' : 'Mật khẩu khởi tạo'}</label>
                 <input
                   type="text"
                   value={userFormData.password}
@@ -1778,14 +1785,14 @@ export default function UsersPage() {
                   onClick={() => setIsAddUserModalOpen(false)}
                   className="px-4 py-2 border border-slate-300 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                 >
-                  Hủy (Esc)
+                  {isEn ? 'Cancel (Esc)' : 'Hủy (Esc)'}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-md cursor-pointer flex items-center gap-1"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>Tạo Tài Khoản</span>
+                  <span>{isEn ? 'Create Account' : 'Tạo Tài Khoản'}</span>
                 </button>
               </div>
             </form>
@@ -1803,8 +1810,8 @@ export default function UsersPage() {
                   <MapPin className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900">Thêm Nơi Làm Việc / Vị Trí Mới</h3>
-                  <p className="text-[11px] text-slate-400">Đồng bộ vào danh mục Vị Trí & Phòng Ban</p>
+                  <h3 className="font-bold text-sm text-slate-900">{isEn ? 'Add New Workplace / Location' : 'Thêm Nơi Làm Việc / Vị Trí Mới'}</h3>
+                  <p className="text-[11px] text-slate-400">{isEn ? 'Synced to Location & Department catalog' : 'Đồng bộ vào danh mục Vị Trí & Phòng Ban'}</p>
                 </div>
               </div>
               <button
@@ -1818,11 +1825,11 @@ export default function UsersPage() {
 
             <form onSubmit={handleQuickAddLocation} className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Tên Vị Trí / Văn Phòng / Chi Nhánh (*)</label>
+                <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Workplace / Office / Branch Name (*)' : 'Tên Vị Trí / Văn Phòng / Chi Nhánh (*)'}</label>
                 <input
                   type="text"
                   required
-                  placeholder="VD: Chi nhánh Đà Nẵng, Tòa TechCorp - Tầng 8..."
+                  placeholder={isEn ? 'e.g. Da Nang Branch, TechCorp Tower - 8th Floor...' : 'VD: Chi nhánh Đà Nẵng, Tòa TechCorp - Tầng 8...'}
                   value={newLocName}
                   onChange={(e) => setNewLocName(e.target.value)}
                   className="w-full p-2.5 border border-slate-300 rounded-xl font-medium outline-none focus:ring-2 focus:ring-emerald-500"
@@ -1831,10 +1838,10 @@ export default function UsersPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tòa nhà (Building)</label>
+                  <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Building' : 'Tòa nhà (Building)'}</label>
                   <input
                     type="text"
-                    placeholder="VD: Tòa A, Saigon Centre..."
+                    placeholder={isEn ? 'e.g. Building A, Saigon Centre...' : 'VD: Tòa A, Saigon Centre...'}
                     value={newLocBuilding}
                     onChange={(e) => setNewLocBuilding(e.target.value)}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-medium outline-none focus:ring-2 focus:ring-emerald-500"
@@ -1842,10 +1849,10 @@ export default function UsersPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tầng (Floor)</label>
+                  <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Floor' : 'Tầng (Floor)'}</label>
                   <input
                     type="text"
-                    placeholder="VD: Tầng 5, Tầng 12..."
+                    placeholder={isEn ? 'e.g. 5th Floor, 12th Floor...' : 'VD: Tầng 5, Tầng 12...'}
                     value={newLocFloor}
                     onChange={(e) => setNewLocFloor(e.target.value)}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-medium outline-none focus:ring-2 focus:ring-emerald-500"
@@ -1859,7 +1866,7 @@ export default function UsersPage() {
                   onClick={() => setIsAddLocationModalOpen(false)}
                   className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                 >
-                  Hủy (Esc)
+                  {isEn ? 'Cancel (Esc)' : 'Hủy (Esc)'}
                 </button>
                 <button
                   type="submit"
@@ -1867,7 +1874,7 @@ export default function UsersPage() {
                   className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer flex items-center gap-1 transition-all disabled:opacity-50"
                 >
                   {isSavingLoc ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  <span>Lưu Vị Trí</span>
+                  <span>{isEn ? 'Save Location' : 'Lưu Vị Trí'}</span>
                 </button>
               </div>
             </form>
