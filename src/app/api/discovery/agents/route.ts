@@ -77,6 +77,11 @@ export async function GET() {
           hardwareChangeAlert: toSafeString(sp.hardwareChangeAlert) || null,
           installedSoftwareCount: safeInstalledSoftware.length,
           installedSoftware: safeInstalledSoftware,
+          osLicense: sp.osLicense || null,
+          officeLicense: sp.officeLicense || null,
+          crackDetection: sp.crackDetection || null,
+          licenseMatches: Array.isArray(sp.licenseMatches) ? sp.licenseMatches : [],
+          unmanagedCommercialApps: Array.isArray(sp.unmanagedCommercialApps) ? sp.unmanagedCommercialApps : [],
         };
       });
 

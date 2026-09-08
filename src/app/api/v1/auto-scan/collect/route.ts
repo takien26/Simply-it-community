@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { reconcileSoftwareLicenses } from '@/lib/license-reconciliation';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { hostname, serialNumber, brand, model, specs, scannedAt, installedSoftware = [] } = body;
+    const {
+      hostname,
+      serialNumber,
+      brand,
+      model,
+      specs,
+      scannedAt,
+      installedSoftware = [],
+      osLicense,
+      officeLicense,
+      crackDetection,
+    } = body;
 
     if (!serialNumber && !hostname) {
       return NextResponse.json(
@@ -55,13 +67,23 @@ export async function POST(request: NextRequest) {
         changeLogs.push(`Ổ cứng thay đổi từ "${currentSpecs.storage}" sang "${newSpecs.storage}"`);
       }
 
+      // Reconcile licenses against warehouse without mutating assignments
+      const targetSoftware = Array.isArray(installedSoftware) && installedSoftware.length > 0
+        ? installedSoftware
+        : (currentSpecs.installedSoftware || []);
+
+      const reconciliation = await reconcileSoftwareLicenses(targetSoftware, existingAsset.id);
+
       // Merge Specs
       const mergedSpecs = {
         ...currentSpecs,
         ...newSpecs,
-        installedSoftware: Array.isArray(installedSoftware) && installedSoftware.length > 0
-          ? installedSoftware
-          : (currentSpecs.installedSoftware || []),
+        installedSoftware: targetSoftware,
+        osLicense: osLicense || currentSpecs.osLicense || null,
+        officeLicense: officeLicense || currentSpecs.officeLicense || null,
+        crackDetection: crackDetection || currentSpecs.crackDetection || null,
+        licenseMatches: reconciliation.licenseMatches,
+        unmanagedCommercialApps: reconciliation.unmanagedCommercialApps,
         lastScannedAt: scannedAt || new Date().toISOString(),
         lastScannedHost: cleanHostname,
         hardwareChangeAlert: hasHardwareChange ? changeLogs.join('; ') : currentSpecs.hardwareChangeAlert,
@@ -77,14 +99,24 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      let statusNote = '';
+      if (reconciliation.summary.unassignedMatches > 0) {
+        statusNote += ` (Phát hiện ${reconciliation.summary.unassignedMatches} phần mềm trùng License trong kho chưa gán)`;
+      }
+      if (crackDetection?.hasSuspect) {
+        statusNote += ' (⚠️ Cảnh báo: Phát hiện dấu hiệu crack/bẻ khóa)';
+      }
+
       return NextResponse.json({
         success: true,
-        message: `✅ Đã cập nhật thông số quét tự động cho thiết bị ${existingAsset.assetTag} (${cleanHostname})`,
+        message: `✅ Đã cập nhật thông số quét tự động cho thiết bị ${existingAsset.assetTag} (${cleanHostname})${statusNote}`,
         assetId: updated.id,
         assetTag: updated.assetTag,
         hasHardwareChange,
         changeLogs,
         isNew: false,
+        reconciliation: reconciliation.summary,
+        crackDetection: crackDetection || null,
       });
     }
 
@@ -100,9 +132,17 @@ export async function POST(request: NextRequest) {
     const tagCount = await prisma.asset.count();
     const generatedTag = `AST-${String(tagCount + 1).padStart(4, '0')}`;
 
+    const targetSoftware = Array.isArray(installedSoftware) ? installedSoftware : [];
+    const reconciliation = await reconcileSoftwareLicenses(targetSoftware, null);
+
     const newSpecsData = {
       ...newSpecs,
-      installedSoftware: Array.isArray(installedSoftware) ? installedSoftware : [],
+      installedSoftware: targetSoftware,
+      osLicense: osLicense || null,
+      officeLicense: officeLicense || null,
+      crackDetection: crackDetection || null,
+      licenseMatches: reconciliation.licenseMatches,
+      unmanagedCommercialApps: reconciliation.unmanagedCommercialApps,
       lastScannedAt: scannedAt || new Date().toISOString(),
       lastScannedHost: cleanHostname,
       autoDiscovered: true,
@@ -128,6 +168,8 @@ export async function POST(request: NextRequest) {
       assetId: newAsset.id,
       assetTag: newAsset.assetTag,
       isNew: true,
+      reconciliation: reconciliation.summary,
+      crackDetection: crackDetection || null,
     });
   } catch (error: any) {
     console.error('Auto-Scan Collect API Error:', error);
