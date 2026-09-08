@@ -641,6 +641,8 @@ export default function AssetsPage() {
   }, [assets]);
 
   const [selectedDetailAsset, setSelectedDetailAsset] = useState<any>(null);
+  const [detailSoftwareSearch, setDetailSoftwareSearch] = useState('');
+  const [detailSoftwareFilter, setDetailSoftwareFilter] = useState<'ALL' | 'MATCHED' | 'UNMANAGED' | 'CRACK' | 'OTHER'>('ALL');
   const [detailMaintenanceLogs, setDetailMaintenanceLogs] = useState<any[]>([]);
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
 
@@ -1468,15 +1470,84 @@ export default function AssetsPage() {
     }
   };
 
+  const handleQuickCreateAndAssignLicenseForDetail = async (name: string, key?: string, type?: string) => {
+    if (!selectedDetailAsset) return;
+    try {
+      const res = await fetch('/api/licenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          licenseKey: key ? (key.startsWith('****-') ? key : `****-${key}`) : null,
+          licenseType: type === 'OEM' ? 'OEM' : type === 'Subscription' ? 'SUBSCRIPTION' : 'PERPETUAL',
+          totalSeats: 1,
+          assignedAssetIds: [selectedDetailAsset.id],
+          notes: `Tạo từ danh mục quét của máy ${selectedDetailAsset.assetTag || ''} (${selectedDetailAsset.name || ''})`,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`🎉 Đã thêm thành công License "${name}" vào Kho và gán cho máy tính này!`);
+        const resAsset = await fetch(`/api/assets/${selectedDetailAsset.id}`);
+        const assetData = await resAsset.json();
+        if (assetData.data) {
+          setSelectedDetailAsset(assetData.data);
+        }
+        await loadData();
+      } else {
+        alert(`❌ Không thể tạo: ${data.error || 'Lỗi server'}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Lỗi kết nối: ${err?.message || err}`);
+    }
+  };
+
+  const handleQuickAssignLicenseForDetail = async (licenseId: string, licenseName: string) => {
+    if (!selectedDetailAsset) return;
+    try {
+      const res = await fetch(`/api/licenses/${licenseId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assetId: selectedDetailAsset.id,
+          notes: `Gán trực tiếp từ danh mục phần mềm máy ${selectedDetailAsset.assetTag || ''}`,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`🎉 Đã gán License "${licenseName}" vào máy này thành công!`);
+        const resAsset = await fetch(`/api/assets/${selectedDetailAsset.id}`);
+        const assetData = await resAsset.json();
+        if (assetData.data) {
+          setSelectedDetailAsset(assetData.data);
+        }
+        await loadData();
+      } else {
+        alert(`❌ Không thể gán: ${data.error || 'Lỗi server'}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Lỗi kết nối: ${err?.message || err}`);
+    }
+  };
+
   const handleOpenDetail = async (asset: any) => {
     setSelectedDetailAsset(asset);
     setIsDetailModalOpen(true);
     setDetailMaintenanceLogs([]);
+    setDetailSoftwareSearch('');
+    setDetailSoftwareFilter('ALL');
     try {
-      const res = await fetch(`/api/assets/${asset.id}/maintenance`);
-      const data = await res.json();
+      const [maintRes, assetRes] = await Promise.all([
+        fetch(`/api/assets/${asset.id}/maintenance`),
+        fetch(`/api/assets/${asset.id}`),
+      ]);
+      const data = await maintRes.json();
       if (data.success && Array.isArray(data.data)) {
         setDetailMaintenanceLogs(data.data);
+      }
+      const assetData = await assetRes.json();
+      if (assetData.data) {
+        setSelectedDetailAsset(assetData.data);
       }
     } catch {
       console.error('Failed to load asset maintenance logs');
@@ -2408,6 +2479,25 @@ export default function AssetsPage() {
         {/* SECONDARY FILTER ROW: WARRANTY & RESET */}
         <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 flex-wrap gap-2">
           <div className="flex items-center gap-2 flex-wrap">
+            {/* QUICK FILTER: MÁY THU THẬP QUA FILE / AGENT */}
+            <button
+              type="button"
+              onClick={() => setSelectedSource(selectedSource === 'AUTO_SCAN' ? 'ALL' : 'AUTO_SCAN')}
+              className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                selectedSource === 'AUTO_SCAN'
+                  ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-300'
+                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+              }`}
+              title="Bấm để lọc nhanh các máy tính thu thập qua script/file tự động"
+            >
+              <span>🖥️ Thu Thập Qua File / Scan</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                selectedSource === 'AUTO_SCAN' ? 'bg-white text-emerald-800' : 'bg-emerald-200 text-emerald-900'
+              }`}>
+                {autoScannedAssetsCount}
+              </span>
+            </button>
+
             <span className="text-[11px] font-bold text-slate-400">{language === 'en' ? 'Warranty Filter:' : 'Lọc nhanh bảo hành:'}</span>
             {[
               { id: 'ALL', label: isEn ? 'All' : 'Tất cả' },
@@ -2575,9 +2665,9 @@ export default function AssetsPage() {
                                 {asset.assetTag}
                               </span>
                               {isAutoScanned && (
-                                <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[8px] font-extrabold block w-fit leading-none">
+                                <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[8px] font-extrabold block w-fit leading-none" title="Máy tính được quét tự động qua script PS1">
                                   <span>🤖</span>
-                                  <span>PS1</span>
+                                  <span>{Array.isArray(asset.specs?.installedSoftware) ? `${asset.specs.installedSoftware.length} apps` : 'Scan'}</span>
                                 </span>
                               )}
                             </div>
@@ -4152,18 +4242,45 @@ export default function AssetsPage() {
                 </div>
 
                 {/* Thông số kỹ thuật & Cấu hình chi tiết (Đồng bộ nhãn với Form Thêm/Sửa) */}
+                {/* THÔNG SỐ KỸ THUẬT CHI TIẾT */}
                 {(() => {
-                  const rawSpecs: Record<string, any> = selectedDetailAsset.specs || {};
+                  const rawSpecs = (selectedDetailAsset.specs || {}) as Record<string, any>;
                   const catFields = getCategoryFields(selectedDetailAsset.categoryId);
 
-                  // Process and normalize spec entries, eliminating duplicates like cpu & processor with identical values
+                  const SPECIAL_KEYS = new Set([
+                    'installedsoftware',
+                    'hardwarechangealert',
+                    'crackdetection',
+                    'oslicense',
+                    'officelicense',
+                    'licensereconciliation',
+                    'licensematches',
+                    'unmanagedcommercialapps',
+                    'licensematchalerts',
+                    'billingperiodcount',
+                    'billingperiodunit',
+                    'paymenthistory',
+                    'software',
+                    'exchangerate',
+                    'assignedlicenseids',
+                    'depreciationmonths',
+                    'lastscannedat',
+                    'lastscannedhost',
+                    'autoscanned',
+                    'autodiscovered',
+                    'source',
+                  ]);
+
                   const normalizedEntries: Array<{ key: string; label: string; value: string }> = [];
                   const seenLabels = new Set<string>();
 
                   // 1. Process category defined fields first
                   for (const f of catFields) {
+                    const cleanKey = f.key.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (SPECIAL_KEYS.has(cleanKey)) continue;
+
                     const v = rawSpecs[f.key] ?? rawSpecs[f.key.toLowerCase()] ?? rawSpecs[f.label];
-                    if (v !== undefined && v !== null && String(v).trim() !== '') {
+                    if (v !== undefined && v !== null && typeof v !== 'object' && String(v).trim() !== '') {
                       normalizedEntries.push({
                         key: f.key,
                         label: f.label,
@@ -4176,11 +4293,11 @@ export default function AssetsPage() {
 
                   // 2. Process extra dynamic fields from AI / Custom
                   for (const [k, v] of Object.entries(rawSpecs)) {
-                    if (v === undefined || v === null || String(v).trim() === '') continue;
-                    if (['billingperiodcount', 'billingperiodunit', 'paymenthistory'].includes(k.toLowerCase())) continue;
+                    if (v === undefined || v === null || typeof v === 'object' || Array.isArray(v) || String(v).trim() === '') continue;
+                    const cleanKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (SPECIAL_KEYS.has(cleanKey)) continue;
 
                     const label = getFriendlySpecLabel(k, selectedDetailAsset.categoryId);
-                    const cleanKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
 
                     // De-duplicate synonym fields if same label or value already rendered
                     if (seenLabels.has(label.toLowerCase()) || seenLabels.has(cleanKey)) continue;
@@ -4199,38 +4316,500 @@ export default function AssetsPage() {
                     seenLabels.add(cleanKey);
                   }
 
+                  const hwAlert = rawSpecs.hardwareChangeAlert;
+                  const crack = rawSpecs.crackDetection;
+                  const osLic = rawSpecs.osLicense;
+                  const officeLic = rawSpecs.officeLicense;
+
                   return (
-                    <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                          <Cpu className="w-4 h-4 text-blue-600" />
-                          <span>Thông số kỹ thuật & Cấu hình chi tiết:</span>
-                        </h4>
-                        <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-                          {normalizedEntries.length} thông số
-                        </span>
+                    <div className="space-y-4">
+                      {/* Grid thông số phần cứng cơ bản (Không bị [object Object]) */}
+                      <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <Cpu className="w-4 h-4 text-blue-600" />
+                            <span>Thông số kỹ thuật & Cấu hình chi tiết:</span>
+                          </h4>
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                            {normalizedEntries.length} thông số
+                          </span>
+                        </div>
+
+                        {normalizedEntries.length > 0 ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                            {normalizedEntries.map((item) => (
+                              <div key={item.key} className="p-3 bg-white border border-slate-200 rounded-xl space-y-1 shadow-2xs hover:border-blue-300 transition-colors">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate" title={item.label}>
+                                  {item.label}
+                                </span>
+                                <p className="text-xs font-bold text-slate-900 break-words leading-relaxed">{item.value}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic">Chưa nhập thông số cấu hình cụ thể.</p>
+                        )}
                       </div>
 
-                      {normalizedEntries.length > 0 ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                          {normalizedEntries.map((item) => (
-                            <div key={item.key} className="p-3 bg-white border border-slate-200 rounded-xl space-y-1 shadow-2xs hover:border-blue-300 transition-colors">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block truncate" title={item.label}>
-                                {item.label}
-                              </span>
-                              <p className="text-xs font-bold text-slate-900 break-words leading-relaxed">{item.value}</p>
-                            </div>
-                          ))}
+                      {/* ⚠️ CẢNH BÁO THAY ĐỔI CẤU HÌNH PHẦN CỨNG (NẾU CÓ) */}
+                      {hwAlert && (
+                        <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl space-y-1.5 animate-in fade-in">
+                          <div className="flex items-center gap-2 font-black text-xs text-amber-900 uppercase tracking-wider">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>Cảnh Báo Thay Đổi Linh Kiện Phần Cứng (Hardware Tamper / Change)</span>
+                          </div>
+                          <p className="text-xs font-bold text-amber-800 leading-relaxed">
+                            {hwAlert}
+                          </p>
+                          <p className="text-[11px] text-amber-600">
+                            Hệ thống phát hiện cấu hình thực tế máy trạm vừa quét có sự thay đổi so với thông số ban đầu.
+                          </p>
                         </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 italic">Chưa nhập thông số cấu hình cụ thể.</p>
+                      )}
+
+                      {/* 🛡️ CẢNH BÁO AN NINH: PHÁT HIỆN CÔNG CỤ CRACK / BẺ KHÓA (NẾU CÓ) */}
+                      {(crack?.hasSuspect || (Array.isArray(crack?.detectedTools) && crack.detectedTools.length > 0)) && (
+                        <div className="p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl space-y-2.5 animate-in fade-in">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 font-black text-xs text-rose-900 uppercase tracking-wider">
+                              <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+                              <span>Cảnh Báo An Ninh: Phát Hiện Công Cụ Bẻ Khóa / Crack / KMS</span>
+                            </div>
+                            <span className="text-[10px] font-extrabold bg-rose-200 text-rose-900 px-2.5 py-0.5 rounded-full">
+                              Vi phạm chính sách
+                            </span>
+                          </div>
+                          {Array.isArray(crack?.detectedTools) && crack.detectedTools.length > 0 && (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[11px] font-bold text-rose-800">Công cụ phát hiện:</span>
+                              {crack.detectedTools.map((tool: string, tIdx: number) => (
+                                <span key={tIdx} className="font-mono text-[11px] font-bold bg-white text-rose-700 px-2.5 py-0.5 rounded-lg border border-rose-300 shadow-2xs">
+                                  {tool}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {Array.isArray(crack?.warnings) && crack.warnings.length > 0 && (
+                            <ul className="list-disc list-inside space-y-0.5 text-xs text-rose-800 font-medium">
+                              {crack.warnings.map((w: string, wIdx: number) => (
+                                <li key={wIdx}>{w}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 📋 KẾT QUẢ QUÉT BẢN QUYỀN OS & OFFICE */}
+                      {(osLic || officeLic || rawSpecs.lastScannedAt) && (
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                              <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                              <span>Bản Quyền Hệ Điều Hành & Office (Quét Tự Động)</span>
+                            </h4>
+                            {rawSpecs.lastScannedAt && (
+                              <span className="text-[10.5px] text-slate-500 font-medium">
+                                Quét lúc: {new Date(rawSpecs.lastScannedAt).toLocaleString('vi-VN')}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            {/* Windows Card */}
+                            <div className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-2.5 shadow-2xs">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                                  <Laptop className="w-3.5 h-3.5 text-blue-600" />
+                                  <span>Hệ Điều Hành Windows</span>
+                                </span>
+                                {osLic?.isKmsCrack ? (
+                                  <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 text-[10px] font-black">
+                                    KMS Lậu / Crack
+                                  </span>
+                                ) : osLic?.status === 'Licensed' ? (
+                                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-black">
+                                    🟢 Đã kích hoạt ({osLic.channel || 'Bản quyền'})
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
+                                    {osLic?.status || 'Chưa phát hiện'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-bold text-slate-900 truncate">
+                                {osLic?.name || rawSpecs.os || 'Windows OS'}
+                              </p>
+                              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                                <span>Kênh: <b className="text-slate-700">{osLic?.channel || 'OEM / Retail'}</b></span>
+                                {osLic?.partialKey && (
+                                  <span className="font-mono font-bold text-blue-600">Key: ****-{osLic.partialKey}</span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleQuickCreateAndAssignLicenseForDetail(osLic?.name || 'Windows 11 Pro', osLic?.partialKey, osLic?.channel)}
+                                className="w-full py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-[11px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-blue-200"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>+ Đưa Windows Vào Kho License & Gán</span>
+                              </button>
+                            </div>
+
+                            {/* Office Card */}
+                            <div className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-2.5 shadow-2xs">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                                  <FileText className="w-3.5 h-3.5 text-orange-600" />
+                                  <span>Microsoft Office</span>
+                                </span>
+                                {officeLic?.status === 'Licensed' ? (
+                                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-black">
+                                    🟢 {officeLic.channel === 'Subscription' ? 'O365 Bản quyền' : 'Kích hoạt'}
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
+                                    {officeLic?.status || 'Chưa phát hiện'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-bold text-slate-900 truncate">
+                                {officeLic?.name || 'Chưa cài đặt Office hoặc phiên bản web'}
+                              </p>
+                              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                                <span>Kênh: <b className="text-slate-700">{officeLic?.channel || 'Chưa rõ'}</b></span>
+                                {officeLic?.partialKey && (
+                                  <span className="font-mono font-bold text-orange-600">Key: ****-{officeLic.partialKey}</span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleQuickCreateAndAssignLicenseForDetail(officeLic?.name || 'Microsoft Office', officeLic?.partialKey, officeLic?.channel)}
+                                className="w-full py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl font-bold text-[11px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-orange-200"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>+ Đưa Office Vào Kho License & Gán</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
                   );
                 })()}
 
-                
-                
+                {/* 📦 DANH MỤC PHẦN MỀM ĐANG CÀI ĐẶT TRÊN MÁY (INTERACTIVE SOFTWARE EXPLORER) */}
+                {(() => {
+                  const rawSpecs = (selectedDetailAsset.specs || {}) as Record<string, any>;
+                  const installedSw: any[] = Array.isArray(rawSpecs.installedSoftware) ? rawSpecs.installedSoftware : [];
+                  const licMatches: any[] = Array.isArray(rawSpecs.licenseMatches) ? rawSpecs.licenseMatches : [];
+                  const unmanagedApps: any[] = Array.isArray(rawSpecs.unmanagedCommercialApps) ? rawSpecs.unmanagedCommercialApps : [];
+                  const crack = rawSpecs.crackDetection;
+                  const assignedLicIds = (selectedDetailAsset.licenseAssignments || []).map((la: any) => la.licenseId || la.license?.id);
+
+                  // Classify each software item
+                  const classifiedSoftware = installedSw.map((sw: any) => {
+                    const swName = (sw.name || '').trim();
+                    const isCrack =
+                      crack?.detectedTools?.some((t: string) => t.toLowerCase().includes(swName.toLowerCase()) || swName.toLowerCase().includes(t.toLowerCase())) ||
+                      /kms|crack|patch|activator|loader|keygen|repack/i.test(swName);
+
+                    const matchedFromWarehouse = licenses.find((lic: any) => {
+                      const licClean = lic.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                      const swClean = swName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                      if (licClean.length < 3) return false;
+                      return swClean.includes(licClean) || licClean.includes(swClean);
+                    });
+
+                    const isMatched = Boolean(matchedFromWarehouse);
+                    const isAssigned = matchedFromWarehouse && assignedLicIds.includes(matchedFromWarehouse.id);
+
+                    const isCommercialUnmanaged =
+                      !isMatched &&
+                      !isCrack &&
+                      (unmanagedApps.some((u: any) => u.name?.toLowerCase() === swName.toLowerCase()) ||
+                       /office|photoshop|autocad|adobe|illustrator|premiere|acrobat|corel|revit|solidworks|sketchup|lumion|3ds\s*max|maya|jetbrains|intellij|webstorm|pycharm|vmware|winrar|teamviewer|anydesk|camtasia|foxit/i.test(swName));
+
+                    const category: 'CRACK' | 'MATCHED' | 'UNMANAGED' | 'OTHER' = isCrack
+                      ? 'CRACK'
+                      : isMatched
+                      ? 'MATCHED'
+                      : isCommercialUnmanaged
+                      ? 'UNMANAGED'
+                      : 'OTHER';
+
+                    return {
+                      ...sw,
+                      category,
+                      isMatched,
+                      isAssigned,
+                      matchedLicense: matchedFromWarehouse,
+                      isCommercialUnmanaged,
+                      isCrack,
+                    };
+                  });
+
+                  // Filter by category and search term
+                  const filteredSoftware = classifiedSoftware.filter((item) => {
+                    if (detailSoftwareFilter === 'MATCHED' && !item.isMatched) return false;
+                    if (detailSoftwareFilter === 'UNMANAGED' && !item.isCommercialUnmanaged) return false;
+                    if (detailSoftwareFilter === 'CRACK' && !item.isCrack) return false;
+                    if (detailSoftwareFilter === 'OTHER' && item.category !== 'OTHER') return false;
+
+                    if (detailSoftwareSearch.trim()) {
+                      const q = detailSoftwareSearch.toLowerCase();
+                      const matchName = item.name?.toLowerCase().includes(q);
+                      const matchPub = item.publisher?.toLowerCase().includes(q);
+                      const matchVer = item.version?.toLowerCase().includes(q);
+                      if (!matchName && !matchPub && !matchVer) return false;
+                    }
+                    return true;
+                  });
+
+                  const matchedCount = classifiedSoftware.filter((s) => s.isMatched).length;
+                  const unmanagedCount = classifiedSoftware.filter((s) => s.isCommercialUnmanaged).length;
+                  const crackCount = classifiedSoftware.filter((s) => s.isCrack).length;
+                  const otherCount = classifiedSoftware.filter((s) => s.category === 'OTHER').length;
+
+                  return (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs">
+                      {/* Header */}
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700">
+                            <Layers className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                              <span>Danh Mục Phần Mềm Đang Cài Đặt Trên Máy</span>
+                              <span className="text-blue-600 bg-blue-50 px-2 py-0.2 rounded-full border border-blue-200 text-[10.5px]">
+                                {installedSw.length} phần mềm
+                              </span>
+                            </h4>
+                            <p className="text-[11px] text-slate-400">
+                              Kiểm kê chi tiết phần mềm quét từ máy trạm, đối soát trùng khớp kho License và cảnh báo crack
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsDetailModalOpen(false);
+                            handleOpenEdit(selectedDetailAsset);
+                            setModalActiveTab('licenses');
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Chỉnh Sửa & Gán Bản Quyền Toàn Diện</span>
+                        </button>
+                      </div>
+
+                      {installedSw.length === 0 ? (
+                        <div className="text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-xl space-y-2">
+                          <p className="text-xs font-bold text-slate-700">Chưa có danh mục phần mềm quét từ máy trạm này</p>
+                          <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+                            Hãy chạy lệnh PowerShell (Agent PS1) trên máy này để tự động kiểm kê phần mềm đã cài đặt, đối soát license và phát hiện công cụ crack.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsDetailModalOpen(false);
+                              setIsScriptModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                          >
+                            <Terminal className="w-3.5 h-3.5" />
+                            <span>Xem Lệnh Quét Máy Trạm</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {/* Filter Pills & Search Box */}
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            {/* Category Filter Pills */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {[
+                                { id: 'ALL', label: 'Tất cả', count: installedSw.length },
+                                { id: 'MATCHED', label: '🟢 Khớp Kho License', count: matchedCount },
+                                { id: 'UNMANAGED', label: '🟠 Thương mại chưa lưu', count: unmanagedCount },
+                                { id: 'CRACK', label: '🔴 Nghi vấn Crack', count: crackCount },
+                                { id: 'OTHER', label: '⚪ Tiện ích / Khác', count: otherCount },
+                              ].map((tab) => (
+                                <button
+                                  key={tab.id}
+                                  type="button"
+                                  onClick={() => setDetailSoftwareFilter(tab.id as any)}
+                                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                    detailSoftwareFilter === tab.id
+                                      ? tab.id === 'MATCHED'
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : tab.id === 'UNMANAGED'
+                                        ? 'bg-amber-600 text-white shadow-xs'
+                                        : tab.id === 'CRACK'
+                                        ? 'bg-rose-600 text-white shadow-xs'
+                                        : 'bg-blue-600 text-white shadow-xs'
+                                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                  }`}
+                                >
+                                  <span>{tab.label}</span>
+                                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                                    detailSoftwareFilter === tab.id ? 'bg-white/20 text-white' : 'bg-white text-slate-600'
+                                  }`}>
+                                    {tab.count}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Search Input */}
+                            <div className="relative min-w-[240px] max-w-xs flex-1">
+                              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                              <input
+                                type="text"
+                                placeholder="Tìm phần mềm, nhà phát triển..."
+                                value={detailSoftwareSearch}
+                                onChange={(e) => setDetailSoftwareSearch(e.target.value)}
+                                className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                              />
+                              {detailSoftwareSearch && (
+                                <button
+                                  type="button"
+                                  onClick={() => setDetailSoftwareSearch('')}
+                                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Software List Items */}
+                          <div className="max-h-96 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
+                            {filteredSoftware.length === 0 ? (
+                              <div className="p-6 text-center text-xs text-slate-400 italic">
+                                Không tìm thấy phần mềm nào phù hợp với bộ lọc tìm kiếm.
+                              </div>
+                            ) : (
+                              filteredSoftware.map((sw: any, idx: number) => {
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`p-3 transition-colors flex items-center justify-between gap-3 ${
+                                      sw.isCrack
+                                        ? 'bg-rose-50/50 hover:bg-rose-50'
+                                        : sw.isMatched
+                                        ? 'bg-emerald-50/30 hover:bg-emerald-50/60'
+                                        : sw.isCommercialUnmanaged
+                                        ? 'bg-amber-50/30 hover:bg-amber-50/60'
+                                        : 'hover:bg-slate-50'
+                                    }`}
+                                  >
+                                    {/* Left Info */}
+                                    <div className="space-y-1 min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-bold text-xs text-slate-900 break-words">
+                                          {sw.name}
+                                        </span>
+
+                                        {/* Status Badge */}
+                                        {sw.isCrack && (
+                                          <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-black inline-flex items-center gap-1">
+                                            <ShieldAlert className="w-3 h-3" />
+                                            <span>Bẻ khóa / Nghi vấn Crack</span>
+                                          </span>
+                                        )}
+
+                                        {sw.isMatched && (
+                                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black inline-flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3" />
+                                            <span>Khớp với Kho License</span>
+                                          </span>
+                                        )}
+
+                                        {sw.isCommercialUnmanaged && (
+                                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold inline-flex items-center gap-1">
+                                            <span>Thương mại (Chưa lưu kho)</span>
+                                          </span>
+                                        )}
+
+                                        {!sw.isCrack && !sw.isMatched && !sw.isCommercialUnmanaged && (
+                                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium">
+                                            Tiện ích / Khác
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Meta: Publisher, Version, Install Date */}
+                                      <div className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap">
+                                        <span>🏢 {sw.publisher || 'Nhà phát triển không xác định'}</span>
+                                        {sw.version && <span>• v{sw.version}</span>}
+                                        {sw.installDate && <span>• Ngày cài: {sw.installDate}</span>}
+                                      </div>
+
+                                      {/* Matched License Detail Note */}
+                                      {sw.isMatched && sw.matchedLicense && (
+                                        <div className="text-[11px] text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 inline-block">
+                                          Trùng khớp với License: <strong>{sw.matchedLicense.name}</strong> ({sw.matchedLicense.licenseType || 'Vĩnh viễn'})
+                                          {' — '}Ghế: <strong>{sw.matchedLicense.usedSeats || 0}/{sw.matchedLicense.totalSeats || 1}</strong>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Right Action Buttons */}
+                                    <div className="shrink-0 flex items-center gap-2">
+                                      {sw.isMatched && sw.matchedLicense && (
+                                        sw.isAssigned ? (
+                                          <span className="px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold inline-flex items-center gap-1">
+                                            <Check className="w-3.5 h-3.5" />
+                                            <span>Đã gán vào máy</span>
+                                          </span>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleQuickAssignLicenseForDetail(sw.matchedLicense.id, sw.matchedLicense.name)}
+                                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1 cursor-pointer"
+                                          >
+                                            <Key className="w-3.5 h-3.5" />
+                                            <span>Gán License Vào Máy</span>
+                                          </button>
+                                        )
+                                      )}
+
+                                      {sw.isCommercialUnmanaged && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleQuickCreateAndAssignLicenseForDetail(sw.name, undefined, 'COMMERCIAL')}
+                                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <Plus className="w-3.5 h-3.5" />
+                                          <span>+ Đưa Vào Kho License</span>
+                                        </button>
+                                      )}
+
+                                      {!sw.isMatched && !sw.isCommercialUnmanaged && !sw.isCrack && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleQuickCreateAndAssignLicenseForDetail(sw.name, undefined, 'FREEWARE')}
+                                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                          title="Lưu phần mềm này vào kho License để theo dõi"
+                                        >
+                                          <Plus className="w-3 h-3" />
+                                          <span>Lưu License</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* 🔄 LỊCH SỬ ĐIỀU CHUYỂN & BÀN GIAO NHÂN SỰ */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-2xs">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
