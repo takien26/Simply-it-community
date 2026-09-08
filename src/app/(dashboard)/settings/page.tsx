@@ -182,8 +182,6 @@ function getLocalizedModule(mod: string, isEn: boolean) {
 }
 
 function getSettingsNavGroups(isEn: boolean, isEnterprise: boolean, activeModules: string[] = []): NavGroup[] {
-  const isModActive = (mod: string) => isEnterprise && (activeModules.length === 0 || activeModules.includes(mod) || activeModules.includes('*'));
-
   return [
     {
       title: isEn ? 'System & Interface' : 'Hệ Thống & Giao Diện',
@@ -197,36 +195,24 @@ function getSettingsNavGroups(isEn: boolean, isEnterprise: boolean, activeModule
       title: isEn ? 'Security & Access Control' : 'Bảo Mật & Phân Quyền',
       items: [
         { id: 'RBAC', label: isEn ? 'Role-Based Access Control (RBAC)' : 'Phân Quyền Vai Trò (RBAC)', icon: '🔐', desc: isEn ? 'Detailed permission matrix for Admin, IT, Staff' : 'Ma trận quyền hạn chi tiết Admin, IT, Staff' },
-        ...(isModActive('SSO') ? [
-          { id: 'SSO' as const, label: isEn ? 'Microsoft 365 Single Sign-On' : 'Đăng Nhập SSO Microsoft 365', icon: '🔑', desc: isEn ? '1-click login via Microsoft Azure AD / Entra ID' : 'Đăng nhập 1 chạm qua Microsoft Azure AD' },
-        ] : []),
-        ...(isModActive('LDAP') ? [
-          { id: 'LDAP' as const, label: isEn ? 'LDAP / Active Directory' : 'Xác Thực LDAP / Active Directory', icon: '🏢', desc: isEn ? 'Synchronize Windows Server Active Directory accounts' : 'Đồng bộ tài khoản máy chủ Windows Server' },
-        ] : []),
+        { id: 'SSO', label: isEn ? 'Microsoft 365 Single Sign-On' : 'Đăng Nhập SSO Microsoft 365', icon: '🔑', desc: isEn ? '1-click login via Microsoft Azure AD / Entra ID' : 'Đăng nhập 1 chạm qua Microsoft Azure AD', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
+        { id: 'LDAP', label: isEn ? 'LDAP / Active Directory' : 'Xác Thực LDAP / Active Directory', icon: '🏢', desc: isEn ? 'Synchronize Windows Server Active Directory accounts' : 'Đồng bộ tài khoản máy chủ Windows Server', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
       ],
     },
     {
       title: isEn ? 'Integrations & Notifications' : 'Tích Hợp & Thông Báo',
       items: [
-        ...(isModActive('ALERTS') ? [
-          { id: 'ALERTS' as const, label: isEn ? 'Automated Alerts (Telegram/Email)' : 'Cảnh Báo Tự Động (Telegram/Email)', icon: '🚨', desc: isEn ? 'Scan expiry dates for IT services, licenses, warranties' : 'Quét hạn Dịch vụ IT, License, Bảo hành và bắn tin' },
-        ] : []),
+        { id: 'ALERTS', label: isEn ? 'Automated Alerts (Telegram/Email)' : 'Cảnh Báo Tự Động (Telegram/Email)', icon: '🚨', desc: isEn ? 'Scan expiry dates for IT services, licenses, warranties' : 'Quét hạn Dịch vụ IT, License, Bảo hành và bắn tin', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
         { id: 'EMAIL', label: isEn ? 'Email & SMTP Configuration' : 'Cấu Hình Email & SMTP', icon: '📧', desc: isEn ? 'Mail servers & 7 automated notification email templates' : 'Máy chủ gửi mail & 7 mẫu email có link CTA' },
-        ...(isModActive('WEBHOOKS') ? [
-          { id: 'WEBHOOKS' as const, label: isEn ? 'Multi-Channel Webhooks' : 'Webhook Đa Kênh (Teams/Zalo)', icon: '🔔', desc: isEn ? 'Instant alerts to Teams, Zalo, Slack webhooks' : 'Bắn thông báo tức thời qua Zalo, Teams, Slack' },
-        ] : []),
+        { id: 'WEBHOOKS', label: isEn ? 'Multi-Channel Webhooks' : 'Webhook Đa Kênh (Teams/Zalo)', icon: '🔔', desc: isEn ? 'Instant alerts to Teams, Zalo, Slack webhooks' : 'Bắn thông báo tức thời qua Zalo, Teams, Slack', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
       ],
     },
     {
       title: isEn ? 'ITSM Workflows & Operations' : 'Quy Trình & Vận Hành IT',
       items: [
-        ...(isModActive('ROUTING') ? [
-          { id: 'ROUTING' as const, label: isEn ? 'IT Support Org, Routing & SLA' : 'Tổ Chức IT, Phân Tuyến & SLA', icon: '🎯', desc: isEn ? 'Support teams, queues, and committed SLA policies' : 'Đội ngũ hỗ trợ, hàng đợi và hạn cam kết SLA' },
-        ] : []),
+        { id: 'ROUTING', label: isEn ? 'IT Support Org, Routing & SLA' : 'Tổ Chức IT, Phân Tuyến & SLA', icon: '🎯', desc: isEn ? 'Support teams, queues, and committed SLA policies' : 'Đội ngũ hỗ trợ, hàng đợi và hạn cam kết SLA', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
         { id: 'MAINTENANCE', label: isEn ? 'Periodic Maintenance Schedules' : 'Lịch Bảo Trì Định Kỳ', icon: '📅', desc: isEn ? 'Automated maintenance schedules for enterprise assets' : 'Lên lịch tự động kiểm tra bảo dưỡng thiết bị' },
-        ...(isModActive('AI_COPILOT') ? [
-          { id: 'AI_COPILOT' as const, label: isEn ? 'Artificial Intelligence (AI)' : 'Trí Tuệ Nhân Tạo (AI)', icon: '🤖', desc: isEn ? 'Configure Gemini AI models, Copilot assistant, and OCR' : 'Cấu hình Gemini API, Trợ lý AI và OCR hóa đơn' },
-        ] : []),
+        { id: 'AI_COPILOT', label: isEn ? 'Artificial Intelligence (AI)' : 'Trí Tuệ Nhân Tạo (AI)', icon: '🤖', desc: isEn ? 'Configure Gemini AI models, Copilot assistant, and OCR' : 'Cấu hình Gemini API, Trợ lý AI và OCR hóa đơn', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
       ],
     },
     {
@@ -555,7 +541,7 @@ export default function SettingsPage() {
   const [isEnterprise, setIsEnterprise] = useState<boolean>(false);
   const [activeModules, setActiveModules] = useState<string[]>([]);
   const [searchFilter, setSearchFilter] = useState('');
-  const [isPinned, setIsPinned] = useState<boolean>(false);
+  const [isPinned, setIsPinned] = useState<boolean>(true);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1418,9 +1404,9 @@ export default function SettingsPage() {
         <div
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          className={`shrink-0 transition-all duration-300 z-30 sticky top-20 self-start ${
+          className={`shrink-0 transition-all duration-300 z-20 sticky top-20 self-start ${
             isExpanded
-              ? 'w-full lg:w-80'
+              ? 'w-full lg:w-72'
               : 'w-full lg:w-16'
           }`}
         >
@@ -1479,9 +1465,9 @@ export default function SettingsPage() {
 
           {/* Navigation Groups List */}
           <div
-            className={`bg-white border border-slate-200/90 rounded-2xl shadow-xs transition-all duration-300 ${
+            className={`bg-white border border-slate-200/90 rounded-2xl shadow-xs transition-all duration-300 max-h-[calc(100vh-140px)] overflow-y-auto ${
               isExpanded
-                ? 'p-2 divide-y divide-slate-100 max-h-[calc(100vh-220px)] overflow-y-auto'
+                ? 'p-2 divide-y divide-slate-100'
                 : 'p-1.5 w-16 mx-auto'
             }`}
           >
@@ -1529,6 +1515,7 @@ export default function SettingsPage() {
                                 onClick={() => {
                                   setActiveTab(item.id);
                                   if (typeof window !== 'undefined') {
+                                    window.scrollTo({ top: 0, behavior: 'instant' });
                                     const url = new URL(window.location.href);
                                     const tabSlug = item.id === 'AI_COPILOT' ? 'ai' : item.id.toLowerCase();
                                     url.searchParams.set('tab', tabSlug);
@@ -2973,7 +2960,7 @@ export default function SettingsPage() {
               {roleSaved && (
                 <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-xl flex items-center gap-2 animate-in fade-in">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Quyền hạn của vai trò đã được lưu thành công!</span>
+                  <span>{isEn ? 'Role permissions updated successfully!' : 'Quyền hạn của vai trò đã được lưu thành công!'}</span>
                 </div>
               )}
 
@@ -3168,13 +3155,13 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="text-xs text-slate-500">
-                  Hiển thị <strong>{
+                  {isEn ? 'Showing ' : 'Hiển thị '}<strong>{
                     allPermissions.filter((p) => {
                       const matchSearch = !permSearch || p.name.toLowerCase().includes(permSearch.toLowerCase()) || p.code.toLowerCase().includes(permSearch.toLowerCase()) || (p.description && p.description.toLowerCase().includes(permSearch.toLowerCase()));
                       const matchModule = permModuleFilter === 'ALL' || p.module === permModuleFilter;
                       return matchSearch && matchModule;
                     }).length
-                  }</strong> / {allPermissions.length} quyền hạn
+                  }</strong> / {allPermissions.length} {isEn ? 'permissions' : 'quyền hạn'}
                 </div>
               </div>
 

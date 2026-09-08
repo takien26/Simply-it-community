@@ -415,7 +415,7 @@ export function Header({
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+    <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs">
       <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
         {/* Mobile Sidebar Hamburger Toggle */}
         <button
