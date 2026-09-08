@@ -309,7 +309,7 @@ function SearchableDropdown({
                 }}
                 className="text-rose-600 hover:underline font-semibold"
               >
-                Đặt lại
+                Đặt lại / Reset
               </button>
             )}
           </div>
@@ -320,27 +320,27 @@ function SearchableDropdown({
 }
 
 const CATEGORY_MAP: Record<string, { label: string; icon: string; color: string }> = {
-  HARDWARE: { label: 'Phần cứng', icon: '💻', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  SOFTWARE: { label: 'Phần mềm', icon: '💿', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-  LICENSE: { label: 'License / Bản quyền', icon: '🔑', color: 'bg-purple-50 text-purple-700 border-purple-200' },
-  ACCESS_REQUEST: { label: 'Cấp quyền truy cập', icon: '🛡️', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-  NETWORK: { label: 'Mạng & Internet', icon: '🌐', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-  OTHER: { label: 'Khác', icon: '📌', color: 'bg-slate-50 text-slate-700 border-slate-200' },
+  HARDWARE: { label: 'Hardware', icon: '💻', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  SOFTWARE: { label: 'Software', icon: '💿', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  LICENSE: { label: 'License', icon: '🔑', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  ACCESS_REQUEST: { label: 'Access Request', icon: '🛡️', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  NETWORK: { label: 'Network & Internet', icon: '🌐', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  OTHER: { label: 'Other', icon: '📌', color: 'bg-slate-50 text-slate-700 border-slate-200' },
 };
 
 const PRIORITY_MAP: Record<string, { label: string; icon: any; badge: string }> = {
-  URGENT: { label: 'Khẩn cấp', icon: Flame, badge: 'bg-rose-100 text-rose-800 border-rose-200' },
-  HIGH: { label: 'Cao', icon: AlertTriangle, badge: 'bg-orange-100 text-orange-800 border-orange-200' },
-  MEDIUM: { label: 'Trung bình', icon: Clock, badge: 'bg-amber-100 text-amber-800 border-amber-200' },
-  LOW: { label: 'Thấp', icon: CheckCircle2, badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  URGENT: { label: 'Urgent', icon: Flame, badge: 'bg-rose-100 text-rose-800 border-rose-200' },
+  HIGH: { label: 'High', icon: AlertTriangle, badge: 'bg-orange-100 text-orange-800 border-orange-200' },
+  MEDIUM: { label: 'Medium', icon: Clock, badge: 'bg-amber-100 text-amber-800 border-amber-200' },
+  LOW: { label: 'Low', icon: CheckCircle2, badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
 };
 
 const STATUS_MAP: Record<string, { label: string; badge: string; dot: string }> = {
-  OPEN: { label: 'Mới mở', badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
-  IN_PROGRESS: { label: 'Đang xử lý', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
-  WAITING: { label: 'Chờ phản hồi', badge: 'bg-purple-50 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
-  RESOLVED: { label: 'Đã giải quyết', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
-  CLOSED: { label: 'Đã đóng', badge: 'bg-slate-100 text-slate-700 border-slate-200', dot: 'bg-slate-500' },
+  OPEN: { label: 'Open', badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
+  IN_PROGRESS: { label: 'In Progress', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+  WAITING: { label: 'Awaiting Response', badge: 'bg-purple-50 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
+  RESOLVED: { label: 'Resolved', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  CLOSED: { label: 'Closed', badge: 'bg-slate-100 text-slate-700 border-slate-200', dot: 'bg-slate-500' },
 };
 function getCategoryLabel(category: string, lang: string) {
   if (lang === 'en') {
@@ -387,8 +387,10 @@ function getStatusLabel(status: string, lang: string) {
 // ==================== SLA RULES & TIMELINE CALCULATOR ====================
 function getTicketSLA(
   ticket: Ticket,
-  slaConfig?: { urgentHours: number; highHours: number; mediumHours: number; lowHours: number }
+  slaConfig?: { urgentHours: number; highHours: number; mediumHours: number; lowHours: number },
+  lang?: string
 ) {
+  const isEn = lang === 'en';
   const createdAt = new Date(ticket.createdAt);
 
   const config = slaConfig || { urgentHours: 4, highHours: 24, mediumHours: 48, lowHours: 72 };
@@ -426,23 +428,23 @@ function getTicketSLA(
     const timeStr =
       completionDiffHours > 0
         ? `${completionDiffHours}h ${remainingMins > 0 ? `${remainingMins}m` : ''}`
-        : `${completionDiffMins} phút`;
+        : isEn ? `${completionDiffMins} min` : `${completionDiffMins} phút`;
 
     if (completionDiffMs < 0) {
       // Overdue at completion!
-      statusText = `Hoàn thành trễ hạn (${timeStr})`;
+      statusText = isEn ? `Completed Late (${timeStr})` : `Hoàn thành trễ hạn (${timeStr})`;
       badgeClass = 'bg-rose-100 text-rose-800 border-rose-300 font-bold';
       icon = '❌';
       isOverdue = true;
     } else {
       // Met SLA on time!
-      statusText = 'Đã hoàn thành đúng hạn';
+      statusText = isEn ? 'Completed On Time' : 'Đã hoàn thành đúng hạn';
       badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold';
       icon = '✅';
       isOverdue = false;
     }
   } else if (isWaiting) {
-    statusText = '⏸️ SLA Đang Tạm Dừng (Chờ phản hồi)';
+    statusText = isEn ? '⏸️ SLA Paused (Awaiting Response)' : '⏸️ SLA Đang Tạm Dừng (Chờ phản hồi)';
     badgeClass = 'bg-purple-100 text-purple-800 border-purple-300 font-bold';
     icon = '⏸️';
   } else {
@@ -454,18 +456,20 @@ function getTicketSLA(
       const overdueMins = Math.abs(diffMins);
       const overdueHours = Math.floor(overdueMins / 60);
       const remMins = overdueMins % 60;
-      const overdueStr = overdueHours > 0 ? `${overdueHours}h ${remMins > 0 ? `${remMins}m` : ''}` : `${overdueMins} phút`;
-      statusText = `Đã quá hạn ${overdueStr}`;
+      const overdueStr = overdueHours > 0 ? `${overdueHours}h ${remMins > 0 ? `${remMins}m` : ''}` : isEn ? `${overdueMins} min` : `${overdueMins} phút`;
+      statusText = isEn ? `Overdue ${overdueStr}` : `Đã quá hạn ${overdueStr}`;
       badgeClass = 'bg-rose-100 text-rose-800 border-rose-300 animate-pulse font-bold';
       icon = '🚨';
       isOverdue = true;
     } else if (diffHours <= 4) {
-      statusText = `Sắp quá hạn (còn ${diffMins > 60 ? `${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `${diffMins} phút`})`;
+      statusText = isEn
+        ? `Expiring Soon (${diffMins > 60 ? `${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `${diffMins} min`} left)`
+        : `Sắp quá hạn (còn ${diffMins > 60 ? `${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `${diffMins} phút`})`;
       badgeClass = 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse font-bold';
       icon = '⚠️';
       isWarning = true;
     } else {
-      statusText = `Còn ${diffHours} giờ`;
+      statusText = isEn ? `${diffHours}h remaining` : `Còn ${diffHours} giờ`;
       badgeClass = 'bg-blue-50 text-blue-700 border-blue-200 font-semibold';
       icon = '⏱️';
     }
@@ -640,8 +644,8 @@ export default function TicketsPage() {
   };
 
   const selectedSla = useMemo(() => {
-    return selectedTicket ? getTicketSLA(selectedTicket, slaConfig) : null;
-  }, [selectedTicket, slaConfig]);
+    return selectedTicket ? getTicketSLA(selectedTicket, slaConfig, language) : null;
+  }, [selectedTicket, slaConfig, language]);
 
   // Clipboard Paste Handler for direct Ctrl + V screenshot pasting (de-duplicated)
   const handlePasteImage = async (
@@ -971,7 +975,7 @@ export default function TicketsPage() {
     return users.map((u) => ({
       value: u.id,
       label: u.fullName,
-      subLabel: u.department ? `Phòng ban: ${u.department}` : u.email,
+      subLabel: u.department ? `${isEn ? 'Dept' : 'Phòng ban'}: ${u.department}` : u.email,
       icon: '👤',
     }));
   }, [users]);
@@ -997,50 +1001,50 @@ export default function TicketsPage() {
 
   const itAssigneeOptions: SearchableOption[] = useMemo(() => {
     const opts: SearchableOption[] = [
-      { value: 'UNASSIGNED', label: 'Chưa phân công IT', subLabel: 'Ticket mới chưa gán', icon: '⚪' },
+      { value: 'UNASSIGNED', label: isEn ? 'Unassigned' : 'Chưa phân công IT', subLabel: isEn ? 'New ticket, not yet assigned' : 'Ticket mới chưa gán', icon: '⚪' },
     ];
     itUsers.forEach((u) => {
       opts.push({
         value: u.id,
         label: u.fullName,
-        subLabel: `${u.role?.name || 'Kỹ thuật viên'} - ${u.department || 'IT'}`,
+        subLabel: `${u.role?.name || (isEn ? 'Technician' : 'Kỹ thuật viên')} - ${u.department || 'IT'}`,
         icon: '👨‍💻',
       });
     });
     return opts;
-  }, [itUsers]);
+  }, [itUsers, isEn]);
 
   const assetOptions: SearchableOption[] = useMemo(() => {
     return assets.map((a) => ({
       value: a.id,
       label: `[${a.assetTag}] ${a.name}`,
-      subLabel: `SN: ${a.serialNumber || '—'} | ${a.status === 'AVAILABLE' ? 'Trong kho' : 'Đang sử dụng'}`,
+      subLabel: `SN: ${a.serialNumber || '—'} | ${a.status === 'AVAILABLE' ? (isEn ? 'In Stock' : 'Trong kho') : (isEn ? 'In Use' : 'Đang sử dụng')}`,
       icon: '💻',
     }));
   }, [assets]);
 
   const categoryOptions: SearchableOption[] = [
-    { value: 'HARDWARE', label: 'Phần cứng', icon: '💻' },
-    { value: 'SOFTWARE', label: 'Phần mềm', icon: '💿' },
-    { value: 'LICENSE', label: 'License / Bản quyền', icon: '🔑' },
-    { value: 'ACCESS_REQUEST', label: 'Cấp quyền truy cập', icon: '🛡️' },
-    { value: 'NETWORK', label: 'Mạng & Internet', icon: '🌐' },
-    { value: 'OTHER', label: 'Khác', icon: '📌' },
+    { value: 'HARDWARE', label: isEn ? 'Hardware' : 'Phần cứng', icon: '💻' },
+    { value: 'SOFTWARE', label: isEn ? 'Software' : 'Phần mềm', icon: '💿' },
+    { value: 'LICENSE', label: isEn ? 'License' : 'License / Bản quyền', icon: '🔑' },
+    { value: 'ACCESS_REQUEST', label: isEn ? 'Access Request' : 'Cấp quyền truy cập', icon: '🛡️' },
+    { value: 'NETWORK', label: isEn ? 'Network & Internet' : 'Mạng & Internet', icon: '🌐' },
+    { value: 'OTHER', label: isEn ? 'Other' : 'Khác', icon: '📌' },
   ];
 
   const priorityOptions: SearchableOption[] = [
-    { value: 'URGENT', label: 'Khẩn cấp (Dừng công việc)', icon: '🔥' },
-    { value: 'HIGH', label: 'Cao (Xử lý trong 24h)', icon: '🔴' },
-    { value: 'MEDIUM', label: 'Trung bình (Trong tuần)', icon: '🟡' },
-    { value: 'LOW', label: 'Thấp (Không gấp)', icon: '🟢' },
+    { value: 'URGENT', label: isEn ? 'Urgent (Work Stopped)' : 'Khẩn cấp (Dừng công việc)', icon: '🔥' },
+    { value: 'HIGH', label: isEn ? 'High (Resolve within 24h)' : 'Cao (Xử lý trong 24h)', icon: '🔴' },
+    { value: 'MEDIUM', label: isEn ? 'Medium (Within the week)' : 'Trung bình (Trong tuần)', icon: '🟡' },
+    { value: 'LOW', label: isEn ? 'Low (Not urgent)' : 'Thấp (Không gấp)', icon: '🟢' },
   ];
 
   const statusOptions: SearchableOption[] = [
-    { value: 'OPEN', label: 'Mới mở', icon: '🟡' },
-    { value: 'IN_PROGRESS', label: 'Đang xử lý', icon: '🔵' },
-    { value: 'WAITING', label: 'Chờ phản hồi', icon: '🟣' },
-    { value: 'RESOLVED', label: 'Đã giải quyết', icon: '🟢' },
-    { value: 'CLOSED', label: 'Đã đóng', icon: '⚪' },
+    { value: 'OPEN', label: isEn ? 'Open' : 'Mới mở', icon: '🟡' },
+    { value: 'IN_PROGRESS', label: isEn ? 'In Progress' : 'Đang xử lý', icon: '🔵' },
+    { value: 'WAITING', label: isEn ? 'Awaiting Response' : 'Chờ phản hồi', icon: '🟣' },
+    { value: 'RESOLVED', label: isEn ? 'Resolved' : 'Đã giải quyết', icon: '🟢' },
+    { value: 'CLOSED', label: isEn ? 'Closed' : 'Đã đóng', icon: '⚪' },
   ];
 
   const resetAllFilters = () => {
@@ -1447,13 +1451,13 @@ export default function TicketsPage() {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base font-bold text-slate-900 leading-tight">Trung Tâm Tiếp Nhận & Xử Lý Ticket IT</h1>
+              <h1 className="text-base font-bold text-slate-900 leading-tight">{isEn ? 'IT Support Center' : 'Trung Tâm Tiếp Nhận & Xử Lý Ticket IT'}</h1>
               <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-bold shrink-0">
                 Self-Service 24/7
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
-              Gửi yêu cầu và theo dõi xử lý sự cố phần cứng, phần mềm, cấp phát bản quyền license và quyền truy cập
+              {isEn ? 'Submit requests and track hardware, software, license, and access issues' : 'Gửi yêu cầu và theo dõi xử lý sự cố phần cứng, phần mềm, cấp phát bản quyền license và quyền truy cập'}
             </p>
           </div>
         </div>
@@ -1468,7 +1472,7 @@ export default function TicketsPage() {
                 scopeMode === 'ALL' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              🌐 Tất cả
+              {isEn ? '🌐 All' : '🌐 Tất cả'}
             </button>
             <button
               type="button"
@@ -1477,7 +1481,7 @@ export default function TicketsPage() {
                 scopeMode === 'MINE' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              👤 Của tôi
+              {isEn ? '👤 Mine' : '👤 Của tôi'}
             </button>
             <button
               type="button"
@@ -1486,7 +1490,7 @@ export default function TicketsPage() {
                 scopeMode === 'ASSIGNED' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              👨‍💻 Việc tôi phụ trách
+              {isEn ? '👨‍💻 My Assignments' : '👨‍💻 Việc tôi phụ trách'}
             </button>
           </div>
 
@@ -1496,7 +1500,7 @@ export default function TicketsPage() {
             title="Xem Dashboard & Báo Cáo Phân Tích Hỗ Trợ Đa Chiều"
           >
             <BarChart3 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span>Báo Cáo & Thống Kê</span>
+            <span>{isEn ? 'Reports & Analytics' : 'Báo Cáo & Thống Kê'}</span>
           </Link>
 
           <button
@@ -1538,7 +1542,7 @@ export default function TicketsPage() {
               : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
           }`}
         >
-          <span>📦 Tất cả</span>
+          <span>{isEn ? '📦 All' : '📦 Tất cả'}</span>
           <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${activeChip === 'ALL' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700'}`}>
             {stats.total}
           </span>
@@ -1553,7 +1557,7 @@ export default function TicketsPage() {
               : 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-50/60'
           }`}
         >
-          <span>🟡 Mới mở</span>
+          <span>{isEn ? '🟡 Open' : '🟡 Mới mở'}</span>
           <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${activeChip === 'OPEN' ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'}`}>
             {stats.open}
           </span>
@@ -1568,7 +1572,7 @@ export default function TicketsPage() {
               : 'bg-white text-amber-700 border border-amber-200 hover:bg-amber-50/60'
           }`}
         >
-          <span>🔵 Đang xử lý</span>
+          <span>{isEn ? '🔵 In Progress' : '🔵 Đang xử lý'}</span>
           <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${activeChip === 'IN_PROGRESS' ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-800'}`}>
             {stats.inProgress}
           </span>
@@ -1583,7 +1587,7 @@ export default function TicketsPage() {
               : 'bg-white text-rose-700 border border-rose-200 hover:bg-rose-50/60'
           }`}
         >
-          <span>🔥 Khẩn cấp</span>
+          <span>{isEn ? '🔥 Urgent' : '🔥 Khẩn cấp'}</span>
           <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${activeChip === 'URGENT' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-800'}`}>
             {stats.urgent}
           </span>
@@ -1598,7 +1602,7 @@ export default function TicketsPage() {
               : 'bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50/60'
           }`}
         >
-          <span>🟢 Đã xong</span>
+          <span>{isEn ? '🟢 Done' : '🟢 Đã xong'}</span>
           <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${activeChip === 'RESOLVED' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
             {stats.resolved}
           </span>
@@ -1614,7 +1618,7 @@ export default function TicketsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm theo mã TK, tiêu đề sự cố, tên người gửi, IT xử lý, tên máy tính hoặc số serial..."
+            placeholder={isEn ? 'Search by ticket #, title, requester, IT assignee, device name or serial...' : 'Tìm theo mã TK, tiêu đề sự cố, tên người gửi, IT xử lý, tên máy tính hoặc số serial...'}
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
           />
         </div>
@@ -1623,7 +1627,7 @@ export default function TicketsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
           {/* Filter 1: Category */}
           <SearchableDropdown
-            label="Loại sự cố"
+            label={isEn ? 'Category' : 'Loại sự cố'}
             value={categoryFilter}
             options={categoryOptions}
             onChange={setCategoryFilter}
@@ -1632,7 +1636,7 @@ export default function TicketsPage() {
 
           {/* Filter 2: Priority */}
           <SearchableDropdown
-            label="Mức ưu tiên"
+            label={isEn ? 'Priority' : 'Mức ưu tiên'}
             value={priorityFilter}
             options={priorityOptions}
             onChange={setPriorityFilter}
@@ -1650,7 +1654,7 @@ export default function TicketsPage() {
 
           {/* Filter 4: Creator (Searchable User List) */}
           <SearchableDropdown
-            label={`Người gửi (${users.length})`}
+            label={isEn ? `Requester (${users.length})` : `Người gửi (${users.length})`}
             value={creatorFilter}
             options={creatorOptions}
             onChange={setCreatorFilter}
@@ -1659,7 +1663,7 @@ export default function TicketsPage() {
 
           {/* Filter 5: Assignee (Searchable IT Staff List) */}
           <SearchableDropdown
-            label="IT phụ trách"
+            label={isEn ? 'IT Assignee' : 'IT phụ trách'}
             value={assigneeFilter}
             options={itAssigneeOptions}
             onChange={setAssigneeFilter}
@@ -1668,7 +1672,7 @@ export default function TicketsPage() {
 
           {/* Filter 6: Asset (Searchable Equipment List) */}
           <SearchableDropdown
-            label={`Thiết bị (${assets.length})`}
+            label={isEn ? `Device (${assets.length})` : `Thiết bị (${assets.length})`}
             value={assetFilter}
             options={assetOptions}
             onChange={setAssetFilter}
@@ -1680,7 +1684,7 @@ export default function TicketsPage() {
         {hasActiveFilters && (
           <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[11px]">
             <span className="text-slate-500">
-              Đang lọc hiển thị <strong>{filteredTickets.length}</strong> / {tickets.length} ticket
+              {isEn ? 'Showing' : 'Đang lọc hiển thị'} <strong>{filteredTickets.length}</strong> / {tickets.length} {isEn ? 'ticket(s)' : 'ticket'}
             </span>
             <button
               type="button"
@@ -1688,7 +1692,7 @@ export default function TicketsPage() {
               className="text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />
-              <span>Xóa toàn bộ bộ lọc</span>
+              <span>{isEn ? 'Clear all filters' : 'Xóa toàn bộ bộ lọc'}</span>
             </button>
           </div>
         )}
@@ -1700,13 +1704,13 @@ export default function TicketsPage() {
           <table className="table-fixed w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3 px-3.5 w-[24%]">Mã & Tiêu Đề Sự Cố</th>
-                <th className="py-3 px-3 w-[13%]">Phân Loại</th>
-                <th className="py-3 px-2.5 w-[10%]">Mức Độ</th>
-                <th className="py-3 px-2.5 w-[10%]">Trạng Thái</th>
-                <th className="py-3 px-3 w-[19%]">Hạn SLA & Tiến Độ</th>
-                <th className="py-3 px-3 w-[15%]">Người Gửi & IT</th>
-                <th className="py-3 px-2.5 w-[9%] text-right whitespace-nowrap">Thao Tác</th>
+                <th className="py-3 px-3.5 w-[24%]">{isEn ? 'TICKET & TITLE' : 'Mã & Tiêu Đề Sự Cố'}</th>
+                <th className="py-3 px-3 w-[13%]">{isEn ? 'CATEGORY' : 'Phân Loại'}</th>
+                <th className="py-3 px-2.5 w-[10%]">{isEn ? 'PRIORITY' : 'Mức Độ'}</th>
+                <th className="py-3 px-2.5 w-[10%]">{isEn ? 'STATUS' : 'Trạng Thái'}</th>
+                <th className="py-3 px-3 w-[19%]">{isEn ? 'SLA DEADLINE' : 'Hạn SLA & Tiến Độ'}</th>
+                <th className="py-3 px-3 w-[15%]">{isEn ? 'REQUESTER & IT' : 'Người Gửi & IT'}</th>
+                <th className="py-3 px-2.5 w-[9%] text-right whitespace-nowrap">{isEn ? 'ACTIONS' : 'Thao Tác'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1714,7 +1718,7 @@ export default function TicketsPage() {
                 <tr>
                   <td colSpan={7} className="py-16 text-center text-slate-400">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
-                    <span className="font-semibold text-xs text-slate-500">Đang tải danh sách ticket...</span>
+                    <span className="font-semibold text-xs text-slate-500">{isEn ? 'Loading tickets...' : 'Đang tải danh sách ticket...'}</span>
                   </td>
                 </tr>
               ) : filteredTickets.length === 0 ? (
@@ -1723,8 +1727,8 @@ export default function TicketsPage() {
                     <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto text-xl font-bold">
                       🎫
                     </div>
-                    <p className="font-bold text-slate-700 text-sm">Không tìm thấy ticket nào</p>
-                    <p className="text-xs text-slate-400">Không có yêu cầu hỗ trợ nào phù hợp với bộ lọc hiện tại.</p>
+                    <p className="font-bold text-slate-700 text-sm">{isEn ? 'No tickets found' : 'Không tìm thấy ticket nào'}</p>
+                    <p className="text-xs text-slate-400">{isEn ? 'No support requests match the current filters.' : 'Không có yêu cầu hỗ trợ nào phù hợp với bộ lọc hiện tại.'}</p>
                     {hasActiveFilters && (
                       <button
                         type="button"
@@ -1743,7 +1747,7 @@ export default function TicketsPage() {
                   const pri = PRIORITY_MAP[t.priority] || PRIORITY_MAP.MEDIUM;
                   const sta = STATUS_MAP[t.status] || STATUS_MAP.OPEN;
                   const PriIcon = pri.icon;
-                  const sla = getTicketSLA(t, slaConfig);
+                  const sla = getTicketSLA(t, slaConfig, language);
 
                   return (
                     <tr
@@ -1826,11 +1830,11 @@ export default function TicketsPage() {
                       <td className="py-3 px-3">
                         <div className="space-y-1 text-[10.5px]">
                           <div className="flex items-center gap-1 text-slate-600 font-medium">
-                            <span className="text-slate-400">🕒 Bắt đầu:</span>
+                            <span className="text-slate-400">{isEn ? '🕒 Started:' : '🕒 Bắt đầu:'}</span>
                             <span className="font-semibold text-slate-800">{sla.createdAtFormatted}</span>
                           </div>
                           <div className="flex items-center gap-1 text-slate-700">
-                            <span className="text-slate-400">🎯 Hạn SLA:</span>
+                            <span className="text-slate-400">{isEn ? '🎯 SLA Deadline:' : '🎯 Hạn SLA:'}</span>
                             <span className="font-bold text-slate-900">{sla.deadlineFormatted} ({sla.slaHours}h)</span>
                           </div>
                           <div>
@@ -1846,7 +1850,7 @@ export default function TicketsPage() {
                       <td className="py-3 px-3 text-[11px]" onClick={(e) => e.stopPropagation()}>
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-slate-400 text-[10px]">Gửi:</span>
+                            <span className="text-slate-400 text-[10px]">{isEn ? 'From:' : 'Gửi:'}</span>
                             {t.createdBy?.id ? (
                               <QuickLink
                                 type="user"
@@ -1872,7 +1876,7 @@ export default function TicketsPage() {
                               />
                             ) : (
                               <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium italic text-[10px] border border-slate-200/60">
-                                Chưa phân công
+                                {isEn ? 'Unassigned' : 'Chưa phân công'}
                               </span>
                             )}
                           </div>
@@ -1971,7 +1975,7 @@ export default function TicketsPage() {
                 </div>
 
                 <div className="space-y-0.5">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">IT Phụ trách</span>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">{isEn ? 'IT Assignee' : 'IT Phụ trách'}</span>
                   {selectedTicket.assignedTo?.id ? (
                     <QuickLink
                       type="user"
@@ -1982,13 +1986,13 @@ export default function TicketsPage() {
                       className="font-bold text-blue-700 text-xs"
                     />
                   ) : (
-                    <div className="font-semibold text-slate-400 italic text-xs">Chưa phân công</div>
+                    <div className="font-semibold text-slate-400 italic text-xs">{isEn ? 'Unassigned' : 'Chưa phân công'}</div>
                   )}
-                  <span className="text-[10px] text-slate-400 block truncate">{selectedTicket.assignedTo?.email || 'Đang chờ điều phối'}</span>
+                  <span className="text-[10px] text-slate-400 block truncate">{selectedTicket.assignedTo?.email || (isEn ? 'Pending assignment' : 'Đang chờ điều phối')}</span>
                 </div>
 
                 <div className="space-y-0.5">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Phân loại & Công ty</span>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">{isEn ? 'Category & Company' : 'Phân loại & Công ty'}</span>
                   <div className="font-bold text-slate-800 truncate">
                     {CATEGORY_MAP[selectedTicket.category]?.label}
                   </div>
@@ -1996,7 +2000,7 @@ export default function TicketsPage() {
                 </div>
 
                 <div className="space-y-0.5">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Thiết bị sự cố</span>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">{isEn ? 'Incident Device' : 'Thiết bị sự cố'}</span>
                   {selectedTicket.asset ? (
                     <QuickLink
                       type="asset"
@@ -2010,7 +2014,7 @@ export default function TicketsPage() {
                       <span className="truncate">🔧 {selectedTicket.customAssetName}</span>
                     </div>
                   ) : (
-                    <span className="text-slate-400 italic">Không chọn</span>
+                    <span className="text-slate-400 italic">{isEn ? 'Not selected' : 'Không chọn'}</span>
                   )}
                   <span className="text-[10px] text-slate-400 block">
                     {selectedTicket.asset?.status ? `Trạng thái: ${selectedTicket.asset.status}` : 'Thiết bị tự do'}
@@ -2023,17 +2027,17 @@ export default function TicketsPage() {
                 <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/60 via-indigo-50/40 to-slate-50 border border-blue-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11.5px]">
                   <div className="flex items-center gap-5 flex-wrap">
                     <div className="space-y-0.5">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">🕒 Mở ticket:</span>
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">{isEn ? '🕒 Opened:' : '🕒 Mở ticket:'}</span>
                       <span className="font-bold text-slate-900">{selectedSla.createdAtFormatted}</span>
                     </div>
                     <div className="space-y-0.5">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">🎯 Hạn SLA chuẩn:</span>
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">{isEn ? '🎯 Standard SLA:' : '🎯 Hạn SLA chuẩn:'}</span>
                       <span className="font-bold text-slate-900">{selectedSla.deadlineFormatted} ({selectedSla.slaHours}h)</span>
                     </div>
                     {(selectedTicket as any).isSlaExtended && (
                       <span className="px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[10px] inline-flex items-center gap-1">
                         <span>⏱️</span>
-                        <span>Đã Gia Hạn SLA</span>
+                        <span>{isEn ? 'SLA Extended' : 'Đã Gia Hạn SLA'}</span>
                       </span>
                     )}
                   </div>
@@ -2051,7 +2055,7 @@ export default function TicketsPage() {
                         className="px-3 py-1 bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold shadow-2xs cursor-pointer flex items-center gap-1.5 transition-all hover:scale-[1.02]"
                       >
                         <Clock className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Xin Gia Hạn SLA</span>
+                        <span>{isEn ? 'Request SLA Extension' : 'Xin Gia Hạn SLA'}</span>
                       </button>
                     )}
                   </div>
@@ -2066,7 +2070,7 @@ export default function TicketsPage() {
                   <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
                     <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Mô tả chi tiết sự cố & Yêu cầu:</span>
+                      <span>{isEn ? 'Incident Description & Requirements:' : 'Mô tả chi tiết sự cố & Yêu cầu:'}</span>
                     </h4>
                     <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100 text-slate-800 leading-relaxed whitespace-pre-wrap font-medium text-[11.5px]">
                       {selectedTicket.description}
@@ -2261,7 +2265,7 @@ export default function TicketsPage() {
                     <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Trao đổi & Bình luận</span>
+                        <span>{isEn ? 'Discussion & Comments' : 'Trao đổi & Bình luận'}</span>
                       </span>
                     </h4>
 
@@ -2270,7 +2274,7 @@ export default function TicketsPage() {
                       {(() => {
                         const visibleComments = selectedTicket.comments?.filter((c) => isITStaffOrAdmin || !c.isInternal) || [];
                         return visibleComments.length === 0 ? (
-                          <p className="text-center text-slate-400 italic py-4 text-xs">Chưa có bình luận nào.</p>
+                          <p className="text-center text-slate-400 italic py-4 text-xs">{isEn ? 'No comments yet.' : 'Chưa có bình luận nào.'}</p>
                         ) : (
                           visibleComments.map((c) => (
                             <div
@@ -2394,7 +2398,7 @@ export default function TicketsPage() {
                 <>
                   {/* Quick Status Buttons for IT */}
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-bold text-slate-700 text-[11px] mr-1">Cập nhật nhanh:</span>
+                    <span className="font-bold text-slate-700 text-[11px] mr-1">{isEn ? 'Quick update:' : 'Cập nhật nhanh:'}</span>
                     {(['OPEN', 'IN_PROGRESS', 'WAITING', 'RESOLVED', 'CLOSED'] as const).map((st) => {
                       const isActive = selectedTicket.status === st;
                       return (
@@ -2417,16 +2421,16 @@ export default function TicketsPage() {
                   {/* Assign IT dropdown & Close button */}
                   <div className="flex items-center gap-2 shrink-0">
                     <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-slate-200">
-                      <span className="text-[10.5px] font-bold text-slate-600">Phân công:</span>
+                      <span className="text-[10.5px] font-bold text-slate-600">{isEn ? 'Assign:' : 'Phân công:'}</span>
                       <select
                         value={selectedTicket.assignedToId || ''}
                         onChange={(e) => handleUpdateAssignee(selectedTicket.id, e.target.value)}
                         className="bg-transparent text-xs font-bold text-blue-700 outline-none cursor-pointer"
                       >
-                        <option value="">-- Chưa phân công --</option>
+                        <option value="">{isEn ? '-- Unassigned --' : '-- Chưa phân công --'}</option>
                         {itUsers.map((u) => (
                           <option key={u.id} value={u.id}>
-                            👨‍💻 {u.fullName} {u.id === currentUser?.id ? '(Tôi)' : ''}
+                            👨‍💻 {u.fullName} {u.id === currentUser?.id ? (isEn ? '(Me)' : '(Tôi)') : ''}
                           </option>
                         ))}
                       </select>
@@ -2443,13 +2447,13 @@ export default function TicketsPage() {
                 <>
                   {/* Simple Status Display for Normal User */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-500 font-medium">Trạng thái xử lý:</span>
+                    <span className="text-[11px] text-slate-500 font-medium">{isEn ? 'Processing status:' : 'Trạng thái xử lý:'}</span>
                     <span className={`px-2.5 py-1 rounded-xl text-xs font-bold border ${STATUS_MAP[selectedTicket.status]?.badge || 'bg-slate-100'}`}>
                       {STATUS_MAP[selectedTicket.status]?.label}
                     </span>
                     {selectedTicket.assignedTo && (
                       <span className="text-[11px] text-slate-600 font-semibold flex items-center gap-1 ml-2">
-                        <span>👨‍💻 Kỹ thuật viên phụ trách:</span>
+                        <span>{isEn ? '👨‍💻 IT Technician:' : '👨‍💻 Kỹ thuật viên phụ trách:'}</span>
                         <strong className="text-blue-700">{selectedTicket.assignedTo.fullName}</strong>
                       </span>
                     )}
@@ -2477,7 +2481,7 @@ export default function TicketsPage() {
                   <LifeBuoy className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900">Gửi Yêu Cầu Hỗ Trợ IT / Tạo Ticket</h3>
+                  <h3 className="font-bold text-sm text-slate-900">{isEn ? 'Submit IT Support Request / Create Ticket' : 'Gửi Yêu Cầu Hỗ Trợ IT / Tạo Ticket'}</h3>
                   <p className="text-[10px] text-slate-500">Hỗ trợ dán trực tiếp ảnh chụp màn hình (Ctrl + V)</p>
                 </div>
               </div>
@@ -2694,12 +2698,12 @@ export default function TicketsPage() {
                     onChange={(e) => setNewCategory(e.target.value)}
                     className="w-full px-2.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium cursor-pointer"
                   >
-                    <option value="HARDWARE">💻 Phần cứng</option>
-                    <option value="SOFTWARE">💿 Phần mềm</option>
-                    <option value="LICENSE">🔑 License / Bản quyền</option>
-                    <option value="ACCESS_REQUEST">🛡️ Cấp quyền truy cập</option>
-                    <option value="NETWORK">🌐 Mạng & Internet</option>
-                    <option value="OTHER">📌 Khác</option>
+                    <option value="HARDWARE">{isEn ? '💻 Hardware' : '💻 Phần cứng'}</option>
+                    <option value="SOFTWARE">{isEn ? '💿 Software' : '💿 Phần mềm'}</option>
+                    <option value="LICENSE">{isEn ? '🔑 License' : '🔑 License / Bản quyền'}</option>
+                    <option value="ACCESS_REQUEST">{isEn ? '🛡️ Access Request' : '🛡️ Cấp quyền truy cập'}</option>
+                    <option value="NETWORK">{isEn ? '🌐 Network & Internet' : '🌐 Mạng & Internet'}</option>
+                    <option value="OTHER">{isEn ? '📌 Other' : '📌 Khác'}</option>
                   </select>
                 </div>
 
@@ -2710,9 +2714,9 @@ export default function TicketsPage() {
                     onChange={(e) => setNewPriority(e.target.value)}
                     className="w-full px-2.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium cursor-pointer"
                   >
-                    <option value="LOW">🟢 Thấp (Không ảnh hưởng)</option>
-                    <option value="MEDIUM">🟡 Trung bình (Trong tuần)</option>
-                    <option value="HIGH">🔴 Cao (Cần xử lý gấp)</option>
+                    <option value="LOW">{isEn ? '🟢 Low (No impact)' : '🟢 Thấp (Không ảnh hưởng)'}</option>
+                    <option value="MEDIUM">{isEn ? '🟡 Medium (Within the week)' : '🟡 Trung bình (Trong tuần)'}</option>
+                    <option value="HIGH">{isEn ? '🔴 High (Urgent)' : '🔴 Cao (Cần xử lý gấp)'}</option>
                     <option value="URGENT">🔥 Khẩn cấp (Dừng công việc)</option>
                   </select>
                 </div>

@@ -59,12 +59,14 @@ import {
 type Module = 'tickets' | 'assets' | 'licenses' | 'services';
 type TimeFilter = 'TODAY' | 'WEEK' | 'MONTH' | 'YEAR' | 'ALL' | 'CUSTOM';
 
-const modules: Record<Module, { label: string; href: string; icon: any; tint: string; color: string }> = {
-  tickets: { label: 'Ticket & Yêu Cầu Hỗ Trợ', href: '/tickets', icon: Ticket, tint: 'bg-blue-50 text-[#1976D2]', color: '#1976D2' },
-  assets: { label: 'Thiết Bị & Tài Sản', href: '/assets', icon: Laptop, tint: 'bg-emerald-50 text-emerald-700', color: '#10B981' },
-  licenses: { label: 'Bản Quyền & License', href: '/licenses', icon: KeyRound, tint: 'bg-purple-50 text-purple-700', color: '#8B5CF6' },
-  services: { label: 'Dịch Vụ & Thuê Bao IT', href: '/services', icon: Cloud, tint: 'bg-cyan-50 text-cyan-700', color: '#06B6D4' },
-};
+function getModules(isEn: boolean): Record<Module, { label: string; href: string; icon: any; tint: string; color: string }> {
+  return {
+    tickets: { label: isEn ? 'Tickets & IT Support' : 'Ticket & Yêu Cầu Hỗ Trợ', href: '/tickets', icon: Ticket, tint: 'bg-blue-50 text-[#1976D2]', color: '#1976D2' },
+    assets: { label: isEn ? 'Devices & Assets' : 'Thiết Bị & Tài Sản', href: '/assets', icon: Laptop, tint: 'bg-emerald-50 text-emerald-700', color: '#10B981' },
+    licenses: { label: isEn ? 'Licenses & Software' : 'Bản Quyền & License', href: '/licenses', icon: KeyRound, tint: 'bg-purple-50 text-purple-700', color: '#8B5CF6' },
+    services: { label: isEn ? 'IT Services & Subscriptions' : 'Dịch Vụ & Thuê Bao IT', href: '/services', icon: Cloud, tint: 'bg-cyan-50 text-cyan-700', color: '#06B6D4' },
+  };
+}
 
 const PIE_COLORS = ['#1976D2', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#64748B'];
 
@@ -913,7 +915,7 @@ export default function DashboardPage() {
           <div className="p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 space-y-1">
             <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-              <span>Sắp Quá Hạn (&lt; 4h)</span>
+              <span>{isEn ? 'Expiring Soon (< 4h)' : 'Sắp Quá Hạn (< 4h)'}</span>
             </span>
             <strong className="text-2xl font-black text-amber-900 dark:text-amber-200 block">{ticketPerformance.warning}</strong>
             <span className="text-[10px] text-amber-600 block">{language === 'en' ? 'High priority action required' : 'Cần ưu tiên xử lý gấp'}</span>
@@ -1006,7 +1008,7 @@ export default function DashboardPage() {
                   <div className="min-w-0 flex-1">
                     <strong className="block truncate font-bold text-slate-800 dark:text-slate-200 text-[11.5px]">{s.name}</strong>
                     <span className="text-[10px] text-slate-400 truncate block">
-                      {s.provider || 'Nhà cung cấp'} · {s.billingCycle === 'MONTHLY' ? 'Hàng tháng' : 'Hàng năm'}
+                      {s.provider || (isEn ? 'Provider' : 'Nhà cung cấp')} · {s.billingCycle === 'MONTHLY' ? (isEn ? 'Monthly' : 'Hàng tháng') : (isEn ? 'Annual' : 'Hàng năm')}
                     </span>
                   </div>
                   <span className="font-bold text-cyan-700 text-[11px] shrink-0 ml-2">
@@ -1054,7 +1056,7 @@ export default function DashboardPage() {
                   </Pie>
                   <Tooltip
                     contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', fontSize: '11px' }}
-                    formatter={(val: any) => [`${val} thiết bị`, 'Số lượng']}
+                    formatter={(val: any) => [`${val} ${isEn ? 'devices' : 'thiết bị'}`, isEn ? 'Count' : 'Số lượng']}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -1132,7 +1134,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200 text-purple-900 text-xs flex items-center justify-between font-bold">
-            <span>Chi phí đầu tư:</span>
+            <span>{isEn ? 'Investment Cost:' : 'Chi phí đầu tư:'}</span>
             <span>{formatVND(stats.licenses?.costTotal || 0)}</span>
           </div>
         </div>
@@ -1144,13 +1146,13 @@ export default function DashboardPage() {
           <div>
             <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
               <Activity className="w-4 h-4 text-indigo-600" />
-              <span>Yêu Cầu Hỗ Trợ Gần Đây Cần Theo Dõi</span>
+              <span>{isEn ? 'Recent IT Support Tickets' : 'Yêu Cầu Hỗ Trợ Gần Đây Cần Theo Dõi'}</span>
             </h3>
-            <p className="text-xs text-slate-400">Danh sách ticket mới tiếp nhận và trạng thái tiến độ thời gian thực</p>
+            <p className="text-xs text-slate-400">{isEn ? 'Newly received tickets and real-time progress status' : 'Danh sách ticket mới tiếp nhận và trạng thái tiến độ thời gian thực'}</p>
           </div>
 
           <Link href="/tickets" className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1">
-            <span>Mở trang Quản lý Ticket</span>
+            <span>{isEn ? 'Open Ticket Management →' : 'Mở trang Quản lý Ticket'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -1159,12 +1161,12 @@ export default function DashboardPage() {
           <table className="w-full text-left text-xs border-collapse min-w-[700px]">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-bold text-[11px] uppercase border-b border-slate-100">
-                <th className="py-3 px-4">MÃ TICKET</th>
-                <th className="py-3 px-4">TIÊU ĐỀ SỰ CỐ</th>
-                <th className="py-3 px-4">NGƯỜI GỬI</th>
-                <th className="py-3 px-4">ƯU TIÊN</th>
-                <th className="py-3 px-4">TRẠNG THÁI SLA</th>
-                <th className="py-3 px-4 text-right">THAO TÁC</th>
+                <th className="py-3 px-4">{isEn ? 'TICKET #' : 'MÃ TICKET'}</th>
+                <th className="py-3 px-4">{isEn ? 'INCIDENT TITLE' : 'TIÊU ĐỀ SỰ CỐ'}</th>
+                <th className="py-3 px-4">{isEn ? 'SUBMITTER' : 'NGƯỜI GỬI'}</th>
+                <th className="py-3 px-4">{isEn ? 'PRIORITY' : 'ƯU TIÊN'}</th>
+                <th className="py-3 px-4">{isEn ? 'SLA STATUS' : 'TRẠNG THÁI SLA'}</th>
+                <th className="py-3 px-4 text-right">{isEn ? 'ACTIONS' : 'THAO TÁC'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1175,7 +1177,7 @@ export default function DashboardPage() {
                     {t.title}
                   </td>
                   <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-medium">
-                    {t.createdBy?.fullName || 'Người dùng'}
+                    {t.createdBy?.fullName || (isEn ? 'User' : 'Người dùng')}
                   </td>
                   <td className="py-3 px-4">
                     <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
@@ -1193,7 +1195,7 @@ export default function DashboardPage() {
                         ? 'bg-purple-100 text-purple-800'
                         : 'bg-blue-50 text-blue-700'
                     }`}>
-                      {t.status === 'WAITING' || !!t.slaPausedAt ? '⏸️ SLA Tạm Dừng' : t.status}
+                      {t.status === 'WAITING' || !!t.slaPausedAt ? (isEn ? '⏸️ SLA Paused' : '⏸️ SLA Tạm Dừng') : t.status}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
@@ -1202,7 +1204,7 @@ export default function DashboardPage() {
                       className="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 rounded-lg font-bold text-[11px] inline-flex items-center gap-1 transition-colors"
                     >
                       <Eye className="w-3 h-3" />
-                      <span>Xem</span>
+                      <span>{isEn ? 'View' : 'Xem'}</span>
                     </Link>
                   </td>
                 </tr>
@@ -1236,7 +1238,8 @@ export default function DashboardPage() {
 function Drawer({ type, stats, items, close }: { type: Module; stats: any; items: any[]; close: () => void }) {
   const { language } = useLanguage();
   const isEn = language === 'en';
-    const item = modules[type];
+  const modules = getModules(isEn);
+  const item = modules[type];
   const Icon = item.icon;
   const data = stats[type] || {};
 
