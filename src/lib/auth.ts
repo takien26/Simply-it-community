@@ -1,4 +1,5 @@
-import { signToken, verifyToken, ALL_COOKIE_NAMES, PRIMARY_COOKIE_NAME } from './jwt';
+import { signToken, verifyToken, ALL_COOKIE_NAMES, PRIMARY_COOKIE_NAME, type JWTPayload } from './jwt';
+export type { JWTPayload };
 import { cookies } from 'next/headers';
 import { prisma } from './db';
 import bcrypt from 'bcryptjs';
