@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Hướng Dẫn Lấy Machine ID - SIMPLY IT</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm 15mm 15mm 15mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.55;
+      color: #1e293b;
+      background: #ffffff;
+      margin: 0;
+      padding: 0;
+    }
+    .header-banner {
+      background: linear-gradient(135deg, #1e3a8a, #2563eb, #4f46e5);
+      color: #ffffff;
+      padding: 22px 24px;
+      border-radius: 14px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(37,99,235,0.2);
+    }
+    .header-banner h1 {
+      margin: 0 0 6px 0;
+      font-size: 17pt;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+    }
+    .header-banner p {
+      margin: 0;
+      font-size: 11pt;
+      opacity: 0.92;
+      font-weight: 500;
+    }
+    .title-h1 {
+      display: none; /* Already in banner */
+    }
+    .title-h2 {
+      font-size: 13.5pt;
+      font-weight: 800;
+      color: #1e3a8a;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 5px;
+      margin-top: 22px;
+      margin-bottom: 12px;
+      page-break-after: avoid;
+    }
+    .title-h3 {
+      font-size: 11.5pt;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 14px;
+      margin-bottom: 6px;
+      page-break-after: avoid;
+    }
+    .title-h4 {
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #334155;
+      margin-top: 10px;
+      margin-bottom: 4px;
+      page-break-after: avoid;
+    }
+    .paragraph {
+      margin: 6px 0 10px 0;
+      font-size: 10.5pt;
+      color: #334155;
+    }
+    .bullet-list {
+      margin: 6px 0 12px 18px;
+      padding: 0;
+      font-size: 10.5pt;
+      color: #334155;
+    }
+    .bullet-list li {
+      margin-bottom: 5px;
+    }
+    .ordered-step {
+      display: flex;
+      align-items: flex-start;
+      margin: 6px 0;
+      font-size: 10.5pt;
+    }
+    .step-badge {
+      background: #2563eb;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 9pt;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+    .step-text {
+      flex: 1;
+      color: #334155;
+    }
+    .inline-code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 9.5pt;
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 2px 6px;
+      border-radius: 5px;
+      border: 1px solid #cbd5e1;
+      font-weight: 600;
+    }
+    .code-block {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin: 8px 0 12px 0;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 9pt;
+      overflow-x: auto;
+      border: 1px solid #1e293b;
+      page-break-inside: avoid;
+    }
+    .code-header {
+      font-size: 7.5pt;
+      font-weight: 800;
+      color: #94a3b8;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #334155;
+    }
+    .code-block code {
+      color: #38bdf8;
+      font-family: inherit;
+    }
+    .callout-box {
+      background: #eff6ff;
+      border-left: 4px solid #2563eb;
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      margin: 10px 0;
+      font-size: 10pt;
+      color: #1e40af;
+      page-break-inside: avoid;
+    }
+    .divider {
+      border: 0;
+      height: 1px;
+      background: #e2e8f0;
+      margin: 16px 0;
+    }
+    .footer-box {
+      margin-top: 25px;
+      padding: 12px 16px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 9pt;
+      color: #64748b;
+      text-align: center;
+      page-break-inside: avoid;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-banner">
+    <h1>HƯỚNG DẪN LẤY MÃ MÁY CHỦ (MACHINE ID) &amp; KÍCH HOẠT</h1>
+    <p>Hệ Thống Quản Trị Vận Hành &amp; Tài Sản CNTT — SIMPLY IT Enterprise</p>
+  </div>
+  <h1 class="title-h1">HƯỚNG DẪN LẤY MÃ MÁY CHỦ (MACHINE ID) & KÍCH HOẠT BẢN QUYỀN</h1>
+<h3 class="title-h3">HỆ THỐNG QUẢN TRỊ VẬN HÀNH & TÀI SẢN CNTT — SIMPLY IT</h3>
+<hr class="divider">
+<h2 class="title-h2">I. TỔNG QUAN VỀ MÃ ĐỊNH DANH MÁY CHỦ (MACHINE ID)</h2>
+<h3 class="title-h3">1. Machine ID là gì?</h3>
+<p class="paragraph"><strong>Machine ID (Hardware Fingerprint)</strong> là chuỗi mã định danh phần cứng duy nhất được sinh ra từ máy chủ (Server/PC/Máy ảo) đang cài đặt phần mềm SIMPLY IT. </p>
+<p class="paragraph">Chuỗi mã này được sử dụng để phát hành <strong>Giấy Phép Bản Quyền Doanh Nghiệp (Enterprise License Certificate)</strong> có tính năng bảo mật khóa theo máy chủ, giúp bảo vệ quyền sở hữu trí tuệ và chống sao chép trái phép.</p>
+<h3 class="title-h3">2. Định dạng chuẩn của Machine ID</h3>
+<p class="paragraph">Mã Machine ID có định dạng gồm 4 nhóm ký tự lục phân viết hoa kèm tiền tố:</p>
+<pre class="code-block"><div class="code-header">TERMINAL / BASH</div><code>SIMPLY-HW-XXXX-XXXX-XXXX-XXXX</code></pre>
+<p class="paragraph"><em>Ví dụ thực tế:</em> <code class="inline-code">SIMPLY-HW-FE18-E40A-551A-E2F0</code></p>
+<h3 class="title-h3">3. Nguyên tắc trích xuất phần cứng (Không phụ thuộc card mạng)</h3>
+<p class="paragraph">Để đảm bảo tính cố định tuyệt đối nhưng không gây phiền toái cho khách hàng khi thay đổi hạ tầng mạng, SIMPLY IT chỉ trích xuất từ 2 lớp phần cứng nền tảng:</p>
+<ul class="bullet-list">
+<li><strong>UUID Bo Mạch Chủ (Motherboard / BIOS UUID):</strong> Mã định danh phần cứng gốc của hãng sản xuất máy chủ (Dell, HP, Lenovo...) hoặc do Hypervisor (VMware ESXi, Hyper-V, Proxmox, KVM) gán cố định cho máy ảo.</li>
+<li><strong>CPU Processor ID:</strong> Mã định danh chip vi xử lý của máy chủ.</li>
+<li><strong>Hoàn toàn KHÔNG dùng địa chỉ MAC card mạng:</strong> Khách hàng có thể thay đổi card mạng, đổi cổng LAN, cắm USB Ethernet, gắn thêm card Wi-Fi hoặc cấu hình Network Teaming/Bonding mà <strong>không bao giờ bị lỗi hay mất bản quyền</strong>.</li>
+</ul>
+<hr class="divider">
+<h2 class="title-h2">II. CÁC PHƯƠNG PHÁP LẤY MACHINE ID CỦA MÁY CHỦ</h2>
+<h3 class="title-h3">👉 PHƯƠNG PHÁP 1: LẤY QUA GIAO DIỆN WEB (KHUYÊN DÙNG — 1 CHẠM, KHÔNG CẦN GÕ LỆNH)</h3>
+<p class="paragraph">Đây là cách đơn giản và thuận tiện nhất, áp dụng cho mọi người dùng và quản trị viên:</p>
+<div class="ordered-step"><span class="step-badge">1</span><div class="step-text"><strong>Bước 1:</strong> Mở trình duyệt và truy cập vào trang <strong>SIMPLY IT</strong> (<code class="inline-code">http://<IP_Server>:3000</code> hoặc <code class="inline-code">http://<IP_Server>:3001</code>).</div></div>
+<div class="ordered-step"><span class="step-badge">2</span><div class="step-text"><strong>Bước 2:</strong> Đăng nhập với tài khoản Quản trị viên (Admin) ➔ Truy cập menu <strong>Cài Đặt</strong> ➔ Chọn tab <strong>Bản Quyền & Phiên Bản</strong> (hoặc click icon chiếc khiên/hỗ trợ ở góc trang).</div></div>
+<div class="ordered-step"><span class="step-badge">3</span><div class="step-text"><strong>Bước 3:</strong> Quan sát ô <strong>"Mã Máy Chủ (Machine ID)"</strong>:</div></div>
+<ul class="bullet-list">
+<li>Mã định danh máy chủ hiển thị sẵn tại đây (VD: <code class="inline-code">SIMPLY-HW-FE18-E40A-551A-E2F0</code>).</li>
+</ul>
+<div class="ordered-step"><span class="step-badge">4</span><div class="step-text"><strong>Bước 4:</strong> Nhấn nút <strong>[Sao chép] (Copy)</strong>.</div></div>
+<div class="ordered-step"><span class="step-badge">5</span><div class="step-text"><strong>Bước 5:</strong> Gửi mã này cho đội ngũ kỹ thuật SIMPLY IT qua Zalo hoặc Email để nhận file bản quyền <code class="inline-code">.lic</code>.</div></div>
+<hr class="divider">
+<h3 class="title-h3">👉 PHƯƠNG PHÁP 2: LẤY QUA DÒNG LỆNH CURL API (NHANH & CHÍNH XÁC NHẤT KHI DÙNG TERMINAL)</h3>
+<p class="paragraph">Nếu bạn đang SSH vào máy chủ Linux hoặc quản lý Docker container, đây là cách nhanh nhất chỉ bằng 1 câu lệnh:</p>
+<h4 class="title-h4">1. Chạy trực tiếp từ máy Host Linux / Ubuntu Server:</h4>
+<pre class="code-block"><div class="code-header">BASH</div><code>curl -s http://localhost:3000/api/license | grep -o '"currentMachineId":"[^"]*"'</code></pre>
+<p class="paragraph"><em>(Nếu hệ thống chạy cổng 3001, thay <code class="inline-code">3000</code> bằng <code class="inline-code">3001</code>)</em>.</p>
+<h4 class="title-h4">2. Chạy thông qua Docker Container:</h4>
+<p class="paragraph"><em>(Lưu ý: Tên container mặc định của SIMPLY IT là <strong><code class="inline-code">itsm-web-app</code></strong>)</em>:</p>
+<pre class="code-block"><div class="code-header">BASH</div><code>docker exec -it itsm-web-app curl -s http://localhost:3000/api/license</code></pre>
+<hr class="divider">
+<h3 class="title-h3">👉 PHƯƠNG PHÁP 3: CHẠY TRỰC TIẾP QUA LỆNH NODE.JS / POWERSHELL (KHI CHƯA KHỞI ĐỘNG WEB)</h3>
+<p class="paragraph">Áp dụng khi máy chủ chưa khởi động container hoặc chưa có dịch vụ web:</p>
+<h4 class="title-h4">1. Trên hệ điều hành Linux (Ubuntu, Debian, CentOS, RHEL):</h4>
+<p class="paragraph">Sao chép và dán toàn bộ đoạn mã sau vào Terminal SSH:</p>
+<pre class="code-block"><div class="code-header">BASH</div><code>node -e "
+const crypto = require('crypto');
+const fs = require('fs');
+let uuid = '';
+try { uuid = fs.readFileSync('/sys/class/dmi/id/product_uuid', 'utf8').trim(); } catch {}
+if (!uuid) { try { uuid = fs.readFileSync('/etc/machine-id', 'utf8').trim(); } catch {} }
+if (!uuid) { try { uuid = fs.readFileSync('/var/lib/dbus/machine-id', 'utf8').trim(); } catch {} }
+let cpu = '';
+try {
+  const info = fs.readFileSync('/proc/cpuinfo', 'utf8');
+  const m = info.match(/model name\s*:\s*(.+)/) || info.match(/Hardware\s*:\s*(.+)/);
+  if (m) cpu = m[1].trim();
+} catch {}
+const raw = (uuid || 'LINUX_SERVER') + '::' + (cpu || 'LINUX_CPU');
+const hash = crypto.createHash('sha256').update(raw).digest('hex').toUpperCase();
+console.log('MÃ MACHINE ID: SIMPLY-HW-' + [hash.slice(0,4), hash.slice(4,8), hash.slice(8,12), hash.slice(12,16)].join('-'));
+"</code></pre>
+<h4 class="title-h4">2. Trên hệ điều hành Windows (PowerShell):</h4>
+<p class="paragraph">Mở PowerShell và thực thi lệnh sau:</p>
+<pre class="code-block"><div class="code-header">POWERSHELL</div><code>powershell -Command "$u=(Get-CimInstance Win32_ComputerSystemProduct).UUID; $c=((Get-CimInstance Win32_Processor)|Select-Object -First 1).ProcessorId; $raw=$u+'::'+$c; $hash=[BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($raw))).Replace('-',''); Write-Output ('MÃ MACHINE ID: SIMPLY-HW-'+$hash.Substring(0,4)+'-'+$hash.Substring(4,4)+'-'+$hash.Substring(8,4)+'-'+$hash.Substring(12,4))"</code></pre>
+<hr class="divider">
+<h3 class="title-h3">⚠️ LƯU Ý CÁC LỖI THƯỜNG GẶP KHI CHẠY LỆNH TERMINAL</h3>
+<p class="paragraph">| Lỗi gặp phải | Nguyên nhân | Cách khắc phục |</p>
+<p class="paragraph">| :--- | :--- | :--- |</p>
+<p class="paragraph">| <strong><code class="inline-code">SyntaxError: Unexpected token ':'</code></strong> | Lệnh <code class="inline-code">node -e</code> gọi trực tiếp file TypeScript (<code class="inline-code">.ts</code>). Node.js mặc định không chạy được file TypeScript thuần. | Dùng <strong>Phương pháp 1</strong> (Xem trên web), <strong>Phương pháp 2</strong> (qua curl API), hoặc dùng đoạn script JS chuẩn ở <strong>Phương pháp 3</strong>. |</p>
+<p class="paragraph">| <strong><code class="inline-code">No such container: simply-it-app</code></strong> | Tên container gõ sai. Trong file docker-compose, container dịch vụ chính có tên là <strong><code class="inline-code">itsm-web-app</code></strong>. | Đổi tên container thành <code class="inline-code">itsm-web-app</code>: <br><code class="inline-code">docker exec -it itsm-web-app ...</code> |</p>
+<p class="paragraph">| <strong><code class="inline-code">Connection refused</code> khi curl</strong> | Web app chưa khởi động xong hoặc chạy cổng khác. | Kiểm tra <code class="inline-code">docker ps</code> để xem container đang chạy và kiểm tra cổng port (3000 hoặc 3001). |</p>
+<hr class="divider">
+<h2 class="title-h2">III. HƯỚNG DẪN KÍCH HOẠT BẢN QUYỀN SAU KHI NHẬN FILE .LIC</h2>
+<p class="paragraph">Sau khi gửi Machine ID, bạn sẽ nhận được tập tin bản quyền định dạng chứng thư số:</p>
+<ul class="bullet-list">
+<li>Tên tập tin: <code class="inline-code">simply_it_license_<TenDonVi>.lic</code></li>
+<li>Nội dung chứa chứng thư số RSA 2048-bit và khối khóa bản quyền <code class="inline-code">-----BEGIN SIMPLY IT ENTERPRISE LICENSE KEY-----</code>.</li>
+</ul>
+<h3 class="title-h3">🌟 Cách 1: Kéo & Thả Tập Tin .lic (Kích hoạt 1-Click — Khuyên dùng)</h3>
+<div class="ordered-step"><span class="step-badge">1</span><div class="step-text">Đăng nhập vào SIMPLY IT với quyền Quản trị viên (Admin).</div></div>
+<div class="ordered-step"><span class="step-badge">2</span><div class="step-text">Vào mục <strong>Cài Đặt</strong> ➔ Chọn tab <strong>Bản Quyền & Phiên Bản</strong>.</div></div>
+<div class="ordered-step"><span class="step-badge">3</span><div class="step-text">Tại khung <strong>"Kéo & thả tập tin bản quyền (.lic) vào đây"</strong>, bạn chỉ cần:</div></div>
+<ul class="bullet-list">
+<li><strong>Kéo thả trực tiếp file <code class="inline-code">.lic</code></strong> từ máy tính vào khung.</li>
+<li>Hoặc bấm vào khung và chọn file <code class="inline-code">.lic</code> từ máy tính của bạn.</li>
+</ul>
+<div class="ordered-step"><span class="step-badge">4</span><div class="step-text">Hệ thống sẽ <strong>tự động thẩm định chữ ký số và kích hoạt ngay tức thì trong 1 giây</strong>.</div></div>
+<h3 class="title-h3">🌟 Cách 2: Dán Khối Chứng Thư Hoặc Mã Bản Quyền Thủ Công</h3>
+<div class="ordered-step"><span class="step-badge">1</span><div class="step-text">Mở file <code class="inline-code">.lic</code> bằng Notepad hoặc Text Editor.</div></div>
+<div class="ordered-step"><span class="step-badge">2</span><div class="step-text">Sao chép toàn bộ khối mã bản quyền hoặc khối chứng thư <code class="inline-code">-----BEGIN SIMPLY IT ENTERPRISE LICENSE KEY-----</code>.</div></div>
+<div class="ordered-step"><span class="step-badge">3</span><div class="step-text">Dán vào ô <strong>Mã Bản Quyền (License Key)</strong> tại trang Cài đặt.</div></div>
+<div class="ordered-step"><span class="step-badge">4</span><div class="step-text">Nhấn nút <strong>Kích Hoạt Bản Quyền (Activate Enterprise Edition)</strong>.</div></div>
+<h3 class="title-h3">Kết quả sau khi kích hoạt thành công:</h3>
+<ul class="bullet-list">
+<li>Thông báo thành công: <strong>"Kích hoạt bản quyền Enterprise thành công!"</strong>.</li>
+<li>Badge trạng thái chuyển sang: <strong>👑 ENTERPRISE EDITION</strong>.</li>
+<li>Trạng thái khóa máy chủ: <strong>🔒 Đã khóa theo máy chủ này</strong> (Khớp chính xác với Machine ID của server).</li>
+<li>Thời hạn bản quyền hiển thị: <strong>Vĩnh viễn</strong> <em>(hoặc số ngày tương ứng theo hợp đồng)</em>.</li>
+<li>Toàn bộ 9 phân hệ doanh nghiệp nâng cao (SSO M365, Active Directory, Webhooks, Phân tuyến SLA, Gemini AI & OCR, Quét hạn Telegram, Kiểm kê Tài sản, Scan Thiết bị & Mạng, Sơ đồ Mặt bằng 2D) sẽ được mở khóa 100%.</li>
+</ul>
+<hr class="divider">
+<h2 class="title-h2">IV. QUY TRÌNH HỖ TRỢ ĐỔI MÁY CHỦ KHI GẶP SỰ CỐ PHẦN CỨNG</h2>
+<p class="paragraph">Khách hàng mua bản quyền SIMPLY IT hoàn toàn yên tâm khi vận hành dài hạn:</p>
+<div class="ordered-step"><span class="step-badge">1</span><div class="step-text"><strong>Khi nào cần cấp đổi Machine ID?</strong></div></div>
+<ul class="bullet-list">
+<li>Máy chủ vật lý bị hỏng Bo Mạch Chủ (Mainboard) hoặc thay thế chip CPU chính.</li>
+<li>Đơn vị nâng cấp, chuyển đổi toàn bộ hệ thống sang máy chủ vật lý mới hoặc cụm máy ảo mới.</li>
+</ul>
+<div class="ordered-step"><span class="step-badge">2</span><div class="step-text"><strong>Quy trình thực hiện:</strong></div></div>
+<ul class="bullet-list">
+<li><strong>Bước 1:</strong> Cài đặt SIMPLY IT lên máy chủ mới theo tài liệu hướng dẫn triển khai.</li>
+<li><strong>Bước 2:</strong> Lấy mã <strong>Machine ID mới</strong> của máy chủ đó theo Phần II ở trên.</li>
+<li><strong>Bước 3:</strong> Gửi mã Machine ID mới cho Bộ phận Chăm sóc Khách hàng SIMPLY IT.</li>
+<li><strong>Bước 4:</strong> Quản trị viên SIMPLY IT sẽ sử dụng công cụ <strong>License Studio</strong> ➔ Chọn tính năng <strong>"✏️ Đổi Máy"</strong> trên bản ghi của quý khách ➔ Dán Machine ID mới và ký lại file <code class="inline-code">.lic</code> mới.</li>
+<li><strong>Bước 5:</strong> Quý khách tải file <code class="inline-code">.lic</code> mới kéo thả vào hệ thống trên máy mới để tiếp tục sử dụng bình thường. Toàn bộ thời hạn và quyền lợi bản quyền được bảo lưu trọn vẹn 100%.</li>
+</ul>
+<hr class="divider">
+<p class="paragraph"><strong>TRUNG TÂM PHÁT TRIỂN & HỖ TRỢ KỸ THUẬT SIMPLY IT</strong>  </p>
+<p class="paragraph"><em>Hotline / Zalo Hỗ Trợ:</em> Liên hệ Quản trị viên phụ trách  </p>
+<p class="paragraph"><em>Email:</em> support@simply-it.vn  </p>
+<p class="paragraph"><em>Phiên bản tài liệu:</em> 2.1 (Cập nhật tháng 09/2026)</p>
+
+</body>
+</html>
