@@ -263,6 +263,57 @@ Nếu bạn muốn sử dụng mô hình GPT-4o hoặc GPT-4o-mini của OpenAI:
 
 ---
 
+## 🔄 HƯỚNG DẪN CẬP NHẬT MÃ NGUỒN (UPDATE CODE MỚI TỪ GITHUB)
+
+Khi có bản cập nhật mới (sửa lỗi, bổ sung song ngữ, thêm tính năng), bạn có thể nâng cấp hệ thống cực kỳ dễ dàng mà **KHÔNG LO MẤT DỮ LIỆU CŨ**:
+* 🔒 **Cơ sở dữ liệu an toàn 100%**: Toàn bộ dữ liệu thiết bị, tài sản, nhân sự, ticket lưu trong PostgreSQL luôn được bảo toàn nguyên vẹn.
+* ⚙️ **Cấu hình độc lập**: File `.env` chứa mật khẩu và API Key được giữ nguyên.
+
+### 🚀 Cách 1: Tự động 1-Click trên Windows (Khuyên Dùng)
+Trong thư mục phần mềm `Simply-it-community`, chỉ cần **click đúp vào file `update.bat`**. 
+Script sẽ tự động:
+1. Tải code mới nhất từ GitHub (`git pull`).
+2. Cập nhật gói thư viện bổ sung nếu có (`npm install`).
+3. Tự động đồng bộ cấu trúc bảng dữ liệu mới (`npx prisma db push`).
+4. Biên dịch lại hệ thống (`npm run build`).
+
+### 🪟 Cách 2: Cập nhật thủ công trên Windows (Chạy dòng lệnh)
+Mở PowerShell tại thư mục `Simply-it-community` (giữ phím `Shift` + Chuột phải > *Open in Terminal*) và chạy lần lượt các lệnh sau:
+```powershell
+git pull origin main
+npm install
+npx prisma db push
+npm run build
+npm start
+```
+*(Nếu trước đây bạn tải bằng file ZIP: Hãy copy file `.env` ra Desktop để sao lưu, sau đó tải ZIP mới về giải nén đè lên, chép lại `.env` vào và chạy 3 lệnh `npm install`, `npx prisma db push`, `npm run build`)*.
+
+### 🐳 Cách 3: Cập nhật trên Windows / Linux qua Docker Desktop
+Chỉ cần mở Terminal tại thư mục phần mềm và chạy đúng 2 lệnh:
+```bash
+git pull origin main
+docker compose up -d --build
+```
+*(Dữ liệu PostgreSQL nằm tại Docker Volume `postgres_data` nên được bảo toàn 100% an toàn)*.
+
+### 🐧 Cách 4: Cập nhật trên Ubuntu / Linux Server (VPS)
+* **Nếu chạy bằng Docker**:
+  ```bash
+  cd /opt/simply-it
+  sudo git pull origin main
+  sudo docker compose up -d --build
+  ```
+* **Nếu chạy Native (PM2)**:
+  ```bash
+  cd /opt/simply-it
+  pm2 stop simply-it
+  git pull origin main
+  npm install && npx prisma db push && npm run build
+  pm2 restart simply-it
+  ```
+
+---
+
 ## ❓ XỬ LÝ SỰ CỐ THƯỜNG GẶP (TROUBLESHOOTING)
 
 ### 1. Báo lỗi: "Port 3000 hoặc 3001 already in use" (Cổng mạng bị trùng)
