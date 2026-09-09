@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Key, ShieldCheck, CheckCircle2, AlertCircle, Loader2, Sparkles, Building2, Calendar, RefreshCw, Server, Copy, Check } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Key, ShieldCheck, CheckCircle2, AlertCircle, Loader2, Sparkles, Building2, Calendar, RefreshCw, Server, Copy, Check, UploadCloud, FileText } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 
 interface LicenseActivationModalProps {
@@ -33,6 +33,9 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [copiedMachineId, setCopiedMachineId] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchLicense = async () => {
     try {
@@ -55,18 +58,18 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
       setErrorMsg('');
       setSuccessMsg('');
       setLicenseKey('');
+      setUploadedFileName('');
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleActivate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const executeActivation = async (keyToActivate: string) => {
     setErrorMsg('');
     setSuccessMsg('');
 
-    if (!licenseKey.trim()) {
-      setErrorMsg(isEn ? 'Please enter a license key' : 'Vui lòng dán mã License Key');
+    if (!keyToActivate.trim()) {
+      setErrorMsg(isEn ? 'Please enter a license key or upload a .lic file' : 'Vui lòng dán mã License Key hoặc tải tập tin .lic');
       return;
     }
 
@@ -75,7 +78,7 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
       const res = await fetch('/api/license', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: licenseKey.trim() }),
+        body: JSON.stringify({ key: keyToActivate.trim() }),
       });
 
       const data = await res.json();
@@ -84,6 +87,7 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
       } else {
         setSuccessMsg(isEn ? 'Enterprise Edition activated successfully!' : 'Kích hoạt bản quyền Enterprise thành công!');
         setLicenseKey('');
+        setUploadedFileName('');
         await fetchLicense();
         if (onSuccess) onSuccess();
         // Dispatch event for other components to reload license state
@@ -94,6 +98,25 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleActivate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await executeActivation(licenseKey);
+  };
+
+  const handleFileUpload = (file: File) => {
+    if (!file) return;
+    setUploadedFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        setLicenseKey(content);
+        executeActivation(content);
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleDeactivate = async () => {
@@ -265,16 +288,73 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
               {/* Activation Form (Only shown if Community or if updating key) */}
               {!license?.isEnterprise && (
                 <form onSubmit={handleActivate} className="space-y-3 pt-1">
+                  {/* File Upload / Drag-and-Drop Area */}
+                  <div>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept=".lic,.txt,.cert"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file);
+                      }}
+                    />
+
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDragging(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        setIsDragging(false);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDragging(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) handleFileUpload(file);
+                      }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-xl p-3.5 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5 ${
+                        isDragging
+                          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40'
+                          : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                      }`}
+                    >
+                      <UploadCloud className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {isEn
+                          ? 'Choose .lic file or drag & drop here'
+                          : 'Chọn tập tin .lic hoặc kéo thả vào đây để kích hoạt ngay'}
+                      </span>
+                      {uploadedFileName && (
+                        <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 text-[11px] font-mono font-bold">
+                          <FileText className="w-3 h-3" />
+                          <span>{uploadedFileName}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="relative flex items-center justify-center">
+                    <div className="border-t border-slate-200 dark:border-slate-800 w-full"></div>
+                    <span className="bg-white dark:bg-slate-900 px-2 text-[10px] font-bold uppercase text-slate-400 shrink-0">
+                      {isEn ? 'OR PASTE KEY' : 'HOẶC DÁN MÃ KEY'}
+                    </span>
+                    <div className="border-t border-slate-200 dark:border-slate-800 w-full"></div>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      {isEn ? 'Enter License Key' : 'Nhập Mã Bản Quyền (License Key)'}
+                      {isEn ? 'License Key / Certificate' : 'Mã Bản Quyền (License Key) Hoặc Khối Chứng Thư'}
                     </label>
                     <textarea
-                      rows={3}
-                      required
+                      rows={2}
                       value={licenseKey}
                       onChange={(e) => setLicenseKey(e.target.value)}
-                      placeholder="SIMPLY-ENT-eyJjdXN0b21lciI6..."
+                      placeholder="SIMPLY-ENT-eyJ... hoặc -----BEGIN SIMPLY IT ENTERPRISE..."
                       className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100"
                     />
                   </div>
@@ -295,7 +375,7 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
 
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-[11px] text-slate-400">
-                      {isEn ? 'Contact administrator if you need a key' : 'Liên hệ quản trị viên nếu cần cấp key'}
+                      {isEn ? '1-click upload or paste key' : 'Tải file .lic hoặc dán key'}
                     </span>
                     <button
                       type="submit"

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ShieldCheck, Key, CheckCircle2, AlertCircle, Loader2, Building2, Calendar, Crown, RefreshCw, Mail, Copy, Check, Sparkles, Server } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ShieldCheck, Key, CheckCircle2, AlertCircle, Loader2, Building2, Calendar, Crown, RefreshCw, Mail, Copy, Check, Sparkles, Server, UploadCloud, FileText } from 'lucide-react';
 import { EnterpriseUpgradeModal } from '@/components/common/EnterpriseUpgradeModal';
 import { useLanguage } from '@/lib/i18n/context';
 
@@ -30,6 +30,9 @@ export function LicenseSettingsTab() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedMachineId, setCopiedMachineId] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchLicense = async () => {
     try {
@@ -50,13 +53,12 @@ export function LicenseSettingsTab() {
     fetchLicense();
   }, []);
 
-  const handleActivate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const executeActivation = async (keyToActivate: string) => {
     setErrorMsg('');
     setSuccessMsg('');
 
-    if (!licenseKey.trim()) {
-      setErrorMsg(isEn ? 'Please enter a license key' : 'Vui lòng dán mã License Key');
+    if (!keyToActivate.trim()) {
+      setErrorMsg(isEn ? 'Please enter a license key or upload a .lic file' : 'Vui lòng dán mã License Key hoặc tải tập tin .lic');
       return;
     }
 
@@ -65,7 +67,7 @@ export function LicenseSettingsTab() {
       const res = await fetch('/api/license', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: licenseKey.trim() }),
+        body: JSON.stringify({ key: keyToActivate.trim() }),
       });
 
       const data = await res.json();
@@ -74,6 +76,7 @@ export function LicenseSettingsTab() {
       } else {
         setSuccessMsg(isEn ? 'Enterprise Edition activated successfully!' : 'Kích hoạt bản quyền Enterprise thành công!');
         setLicenseKey('');
+        setUploadedFileName('');
         await fetchLicense();
         // Notify other components & reload page navigation
         window.dispatchEvent(new CustomEvent('simply:license-updated'));
@@ -83,6 +86,25 @@ export function LicenseSettingsTab() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleActivate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await executeActivation(licenseKey);
+  };
+
+  const handleFileUpload = (file: File) => {
+    if (!file) return;
+    setUploadedFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        setLicenseKey(content);
+        executeActivation(content);
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleDeactivate = async () => {
@@ -297,22 +319,97 @@ export function LicenseSettingsTab() {
             </div>
 
             {/* License Key Activation Form */}
-            <form onSubmit={handleActivate} className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
-              <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
-                <Key className="w-4 h-4 text-blue-600" />
-                <span>{isEn ? 'Activate Enterprise License' : 'Kích Hoạt Giấy Phép Bản Quyền Enterprise'}</span>
+            <form onSubmit={handleActivate} className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
+                  <Key className="w-4 h-4 text-blue-600" />
+                  <span>{isEn ? 'Activate Enterprise License' : 'Kích Hoạt Giấy Phép Bản Quyền Enterprise'}</span>
+                </div>
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-900/60">
+                  {isEn ? 'Supports .lic file & Key string' : 'Hỗ trợ file .lic & Mã chữ ký'}
+                </span>
+              </div>
+
+              {/* 1-Click Upload / Drag-and-Drop Zone */}
+              <div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".lic,.txt,.cert"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(file);
+                  }}
+                />
+
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleFileUpload(file);
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2.5 ${
+                    isDragging
+                      ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 scale-[1.01]'
+                      : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
+                    <UploadCloud className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      {isEn
+                        ? 'Click to browse or Drag & Drop .lic license file here'
+                        : 'Bấm để chọn file hoặc Kéo thả tập tin bản quyền (.lic) vào đây'}
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {isEn
+                        ? 'Instant 1-click activation from your official Enterprise License file'
+                        : 'Kích hoạt tự động ngay tức thì trong 1 click từ file bản quyền được cấp'}
+                    </p>
+                  </div>
+                  {uploadedFileName && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 text-xs font-mono font-bold">
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>{uploadedFileName}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="relative flex items-center justify-center">
+                <div className="border-t border-slate-200 dark:border-slate-800 w-full"></div>
+                <span className="bg-white dark:bg-slate-900 px-3 text-[10px] font-bold tracking-wider uppercase text-slate-400 shrink-0">
+                  {isEn ? 'OR PASTE MANUALLY' : 'HOẶC DÁN MÃ TRỰC TIẾP'}
+                </span>
+                <div className="border-t border-slate-200 dark:border-slate-800 w-full"></div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {isEn ? 'License Key' : 'Mã Bản Quyền (License Key)'}
+                  {isEn ? 'License Key / Certificate Block' : 'Mã Bản Quyền (License Key) Hoặc Khối Chứng Thư'}
                 </label>
                 <textarea
                   rows={3}
-                  required
                   value={licenseKey}
                   onChange={(e) => setLicenseKey(e.target.value)}
-                  placeholder="SIMPLY-ENT-eyJjdXN0b21lciI6IkNvbmcgdHkgTWF5IDEwIiwidGllciI6IkVOVEVSUFJJU0UiLCJleHBpcmVzQXQiOiIyMDI3LTA5LTA2VDEwOjAwOjAwWiJ9..."
+                  placeholder={
+                    isEn
+                      ? 'Paste SIMPLY-ENT-... or -----BEGIN SIMPLY IT ENTERPRISE LICENSE KEY-----'
+                      : 'Dán chuỗi SIMPLY-ENT-... hoặc khối chứng thư -----BEGIN SIMPLY IT ENTERPRISE LICENSE KEY-----'
+                  }
                   className="w-full p-3 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">

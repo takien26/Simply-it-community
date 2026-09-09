@@ -42,9 +42,17 @@ export function verifyLicenseKey(keyString: string): { valid: boolean; payload?:
     return { valid: false, error: 'Khóa bản quyền không được để trống' };
   }
 
-  const cleanKey = keyString.trim();
+  let cleanKey = keyString.trim();
+
+  // Support certificate wrapper format (e.g. -----BEGIN SIMPLY IT ENTERPRISE LICENSE KEY-----)
+  // or .lic files with metadata headers / comments
+  const tokenMatch = cleanKey.match(/SIMPLY-(?:ENT|PRO)-[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+  if (tokenMatch) {
+    cleanKey = tokenMatch[0];
+  }
+
   if (!cleanKey.startsWith('SIMPLY-ENT-') && !cleanKey.startsWith('SIMPLY-PRO-')) {
-    return { valid: false, error: 'Định dạng mã bản quyền không hợp lệ (Phải bắt đầu bằng SIMPLY-ENT-)' };
+    return { valid: false, error: 'Định dạng mã bản quyền không hợp lệ (Phải bắt đầu bằng SIMPLY-ENT- hoặc tập tin .lic hợp lệ)' };
   }
 
   const raw = cleanKey.replace(/^SIMPLY-(ENT|PRO)-/, '');
@@ -163,15 +171,21 @@ export async function activateLicense(keyString: string) {
     return { success: false, error: result.error || 'Khóa bản quyền không hợp lệ' };
   }
 
+  let cleanKey = keyString.trim();
+  const tokenMatch = cleanKey.match(/SIMPLY-(?:ENT|PRO)-[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+  if (tokenMatch) {
+    cleanKey = tokenMatch[0];
+  }
+
   await prisma.systemSetting.upsert({
     where: { key: 'system.license_key' },
     update: {
-      value: keyString.trim(),
+      value: cleanKey,
       updatedAt: new Date(),
     },
     create: {
       key: 'system.license_key',
-      value: keyString.trim(),
+      value: cleanKey,
       label: 'Mã Giấy Phép Bản Quyền Hệ Thống',
       group: 'license',
       description: `Bản quyền cấp cho: ${result.payload.customer}`,
