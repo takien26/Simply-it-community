@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from '@/lib/db';
+import { getMachineId, verifyMachineId } from '@/lib/machine-id';
 
 export const LICENSE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0AiUHdsvcZeRS2RBh7q0
@@ -18,6 +19,8 @@ export interface LicensePayload {
   maxAssets?: number;
   issuedAt: string;
   expiresAt: string;
+  isLifetime?: boolean;
+  machineId?: string;
 }
 
 export interface LicenseStatus {
@@ -29,6 +32,9 @@ export interface LicenseStatus {
   isLifetime?: boolean;
   maxAssets?: number;
   modules: string[];
+  machineId?: string;
+  currentMachineId: string;
+  isHardwareLocked?: boolean;
 }
 
 export function verifyLicenseKey(keyString: string): { valid: boolean; payload?: LicensePayload; error?: string } {
@@ -70,6 +76,17 @@ export function verifyLicenseKey(keyString: string): { valid: boolean; payload?:
       return { valid: false, error: `Bản quyền đã hết hạn vào ngày ${expiresDate.toLocaleDateString('vi-VN')}` };
     }
 
+    // Check hardware binding (Machine ID) if specified in license
+    if (payload.machineId && payload.machineId.trim() !== '' && payload.machineId.trim() !== '*') {
+      const hwCheck = verifyMachineId(payload.machineId);
+      if (!hwCheck.matches) {
+        return {
+          valid: false,
+          error: `Khóa bản quyền này chỉ hợp lệ cho máy chủ [${payload.machineId.trim().toUpperCase()}]. Máy chủ hiện tại có Machine ID: [${hwCheck.currentMachineId}]. Vui lòng cập nhật mã máy chủ trong License Studio.`,
+        };
+      }
+    }
+
     return { valid: true, payload };
   } catch (err: any) {
     return { valid: false, error: err.message || 'Lỗi kiểm tra tính hợp lệ của mã bản quyền' };
@@ -77,6 +94,8 @@ export function verifyLicenseKey(keyString: string): { valid: boolean; payload?:
 }
 
 export async function getActiveLicense(): Promise<LicenseStatus> {
+  const currentMachineId = getMachineId();
+
   try {
     const setting = await prisma.systemSetting.findUnique({
       where: { key: 'system.license_key' },
@@ -88,6 +107,8 @@ export async function getActiveLicense(): Promise<LicenseStatus> {
         tier: 'COMMUNITY',
         customer: 'Cộng đồng (Miễn phí vĩnh viễn)',
         modules: [],
+        currentMachineId,
+        isHardwareLocked: false,
       };
     }
 
@@ -98,6 +119,8 @@ export async function getActiveLicense(): Promise<LicenseStatus> {
         tier: 'COMMUNITY',
         customer: 'Cộng đồng (Miễn phí vĩnh viễn)',
         modules: [],
+        currentMachineId,
+        isHardwareLocked: false,
       };
     }
 
@@ -106,6 +129,7 @@ export async function getActiveLicense(): Promise<LicenseStatus> {
     const msRemaining = expiresDate.getTime() - Date.now();
     const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
     const isLifetime = Boolean((payload as any).isLifetime) || daysRemaining > 3650;
+    const isHardwareLocked = Boolean(payload.machineId && payload.machineId.trim() !== '' && payload.machineId.trim() !== '*');
 
     return {
       isEnterprise: true,
@@ -116,6 +140,9 @@ export async function getActiveLicense(): Promise<LicenseStatus> {
       isLifetime,
       maxAssets: payload.maxAssets,
       modules: payload.modules || [],
+      machineId: payload.machineId,
+      currentMachineId,
+      isHardwareLocked,
     };
   } catch (err) {
     console.error('Error reading active license:', err);
@@ -124,6 +151,8 @@ export async function getActiveLicense(): Promise<LicenseStatus> {
       tier: 'COMMUNITY',
       customer: 'Cộng đồng (Miễn phí vĩnh viễn)',
       modules: [],
+      currentMachineId,
+      isHardwareLocked: false,
     };
   }
 }

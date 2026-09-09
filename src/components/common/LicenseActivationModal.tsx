@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Key, ShieldCheck, CheckCircle2, AlertCircle, Loader2, Sparkles, Building2, Calendar, RefreshCw } from 'lucide-react';
+import { X, Key, ShieldCheck, CheckCircle2, AlertCircle, Loader2, Sparkles, Building2, Calendar, RefreshCw, Server, Copy, Check } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 
 interface LicenseActivationModalProps {
@@ -22,6 +22,9 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
     daysRemaining?: number;
     isLifetime?: boolean;
     modules: string[];
+    machineId?: string;
+    currentMachineId?: string;
+    isHardwareLocked?: boolean;
   } | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -29,6 +32,7 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
   const [licenseKey, setLicenseKey] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [copiedMachineId, setCopiedMachineId] = useState(false);
 
   const fetchLicense = async () => {
     try {
@@ -223,6 +227,39 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
                       : 'Phiên bản miễn phí vĩnh viễn cho quản lý tài sản IT tiêu chuẩn. Nếu doanh nghiệp có mã License Enterprise, nhập mã bên dưới để mở khóa.'}
                   </p>
                 )}
+              </div>
+
+              {/* Server Hardware Machine ID Box */}
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 flex items-center justify-center shrink-0">
+                    <Server className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      {isEn ? 'Server Machine ID' : 'Mã Máy Chủ (Machine ID)'}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-slate-900 dark:text-white select-all truncate block">
+                      {license?.currentMachineId || 'SIMPLY-HW-...'}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (license?.currentMachineId) {
+                      navigator.clipboard.writeText(license.currentMachineId);
+                      setCopiedMachineId(true);
+                      setTimeout(() => setCopiedMachineId(false), 2000);
+                    }
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
+                  title={isEn ? 'Copy Machine ID' : 'Sao chép mã máy'}
+                >
+                  {copiedMachineId ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                  <span>{copiedMachineId ? (isEn ? 'Copied' : 'Đã chép') : (isEn ? 'Copy' : 'Sao chép')}</span>
+                </button>
               </div>
 
               {/* Activation Form (Only shown if Community or if updating key) */}

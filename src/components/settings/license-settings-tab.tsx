@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Key, CheckCircle2, AlertCircle, Loader2, Building2, Calendar, Crown, RefreshCw, Mail, Copy, Check, Sparkles } from 'lucide-react';
+import { ShieldCheck, Key, CheckCircle2, AlertCircle, Loader2, Building2, Calendar, Crown, RefreshCw, Mail, Copy, Check, Sparkles, Server } from 'lucide-react';
 import { EnterpriseUpgradeModal } from '@/components/common/EnterpriseUpgradeModal';
 import { useLanguage } from '@/lib/i18n/context';
 
@@ -17,6 +17,9 @@ export function LicenseSettingsTab() {
     daysRemaining?: number;
     isLifetime?: boolean;
     modules: string[];
+    machineId?: string;
+    currentMachineId?: string;
+    isHardwareLocked?: boolean;
   } | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -26,6 +29,7 @@ export function LicenseSettingsTab() {
   const [successMsg, setSuccessMsg] = useState('');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [copiedMachineId, setCopiedMachineId] = useState(false);
 
   const fetchLicense = async () => {
     try {
@@ -137,6 +141,50 @@ export function LicenseSettingsTab() {
           >
             {license?.isEnterprise ? '👑 ENTERPRISE EDITION' : 'COMMUNITY EDITION'}
           </span>
+        </div>
+
+        {/* Server Hardware Machine ID Box */}
+        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 flex items-center justify-center shrink-0 shadow-2xs">
+              <Server className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {isEn ? 'Server Machine ID (Hardware Fingerprint)' : 'Mã Định Danh Máy Chủ (Machine ID)'}
+                </span>
+                {license?.isHardwareLocked ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                    🔒 {isEn ? 'Locked to this server' : 'Đã khóa theo máy chủ này'}
+                  </span>
+                ) : license?.isEnterprise ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    🌐 {isEn ? 'Universal License' : 'Giấy phép mở (Mọi máy)'}
+                  </span>
+                ) : null}
+              </div>
+              <p className="text-[11px] text-slate-500 font-mono font-bold mt-0.5 select-all truncate">
+                {license?.currentMachineId || 'SIMPLY-HW-...'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (license?.currentMachineId) {
+                navigator.clipboard.writeText(license.currentMachineId);
+                setCopiedMachineId(true);
+                setTimeout(() => setCopiedMachineId(false), 2000);
+              }
+            }}
+            className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0 cursor-pointer shadow-2xs"
+            title={isEn ? 'Copy Machine ID to send to developer' : 'Sao chép Machine ID để gửi cấp/đổi bản quyền'}
+          >
+            {copiedMachineId ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+            <span>{copiedMachineId ? (isEn ? 'Copied!' : 'Đã sao chép!') : (isEn ? 'Copy Machine ID' : 'Sao chép Mã Máy')}</span>
+          </button>
         </div>
 
         {license?.isEnterprise ? (
