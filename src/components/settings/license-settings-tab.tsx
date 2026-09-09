@@ -15,6 +15,7 @@ export function LicenseSettingsTab() {
     customer?: string;
     expiresAt?: string;
     daysRemaining?: number;
+    isLifetime?: boolean;
     modules: string[];
   } | null>(null);
 
@@ -160,10 +161,18 @@ export function LicenseSettingsTab() {
                   <span className="text-[11px] text-slate-500 block mb-0.5">{isEn ? 'Expiration Date' : 'Thời hạn bản quyền'}</span>
                   <strong className="text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
                     <Calendar className="w-4 h-4 text-amber-600" />
-                    <span>{new Date(license.expiresAt || '').toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}</span>
-                    <span className="text-amber-700 dark:text-amber-400 font-normal text-xs">
-                      ({license.daysRemaining} {isEn ? 'days left' : 'ngày còn lại'})
-                    </span>
+                    {license.isLifetime || (license.daysRemaining && license.daysRemaining > 3650) ? (
+                      <span className="text-amber-700 dark:text-amber-400 font-bold">
+                        {isEn ? 'Lifetime (Perpetual)' : 'Vĩnh viễn'}
+                      </span>
+                    ) : (
+                      <>
+                        <span>{new Date(license.expiresAt || '').toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}</span>
+                        <span className="text-amber-700 dark:text-amber-400 font-normal text-xs">
+                          ({license.daysRemaining} {isEn ? 'days left' : 'ngày còn lại'})
+                        </span>
+                      </>
+                    )}
                   </strong>
                 </div>
               </div>

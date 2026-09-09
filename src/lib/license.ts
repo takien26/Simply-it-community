@@ -26,6 +26,7 @@ export interface LicenseStatus {
   customer?: string;
   expiresAt?: string;
   daysRemaining?: number;
+  isLifetime?: boolean;
   maxAssets?: number;
   modules: string[];
 }
@@ -104,6 +105,7 @@ export async function getActiveLicense(): Promise<LicenseStatus> {
     const expiresDate = new Date(payload.expiresAt);
     const msRemaining = expiresDate.getTime() - Date.now();
     const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+    const isLifetime = Boolean((payload as any).isLifetime) || daysRemaining > 3650;
 
     return {
       isEnterprise: true,
@@ -111,6 +113,7 @@ export async function getActiveLicense(): Promise<LicenseStatus> {
       customer: payload.customer,
       expiresAt: payload.expiresAt,
       daysRemaining,
+      isLifetime,
       maxAssets: payload.maxAssets,
       modules: payload.modules || [],
     };

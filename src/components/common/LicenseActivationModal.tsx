@@ -20,6 +20,7 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
     customer?: string;
     expiresAt?: string;
     daysRemaining?: number;
+    isLifetime?: boolean;
     modules: string[];
   } | null>(null);
 
@@ -187,8 +188,16 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
                       <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                       <span>
                         {isEn ? 'Expires in:' : 'Hạn dùng:'}{' '}
-                        <strong>{new Date(license.expiresAt || '').toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}</strong>{' '}
-                        <span className="text-amber-700 dark:text-amber-400 font-semibold">({license.daysRemaining} {isEn ? 'days left' : 'ngày còn lại'})</span>
+                        {license.isLifetime || (license.daysRemaining && license.daysRemaining > 3650) ? (
+                          <strong className="text-amber-700 dark:text-amber-400">
+                            {isEn ? 'Lifetime (Perpetual)' : 'Vĩnh viễn'}
+                          </strong>
+                        ) : (
+                          <>
+                            <strong>{new Date(license.expiresAt || '').toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}</strong>{' '}
+                            <span className="text-amber-700 dark:text-amber-400 font-semibold">({license.daysRemaining} {isEn ? 'days left' : 'ngày còn lại'})</span>
+                          </>
+                        )}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 pt-1 font-semibold">
