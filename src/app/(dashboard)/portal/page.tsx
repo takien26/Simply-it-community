@@ -28,6 +28,7 @@ import { formatDate } from '@/lib/utils';
 import AssetHandoverModal from '@/components/assets/asset-handover-modal';
 import { useLanguage } from '@/lib/i18n/context';
 import CreateTicketModal from '@/components/tickets/CreateTicketModal';
+import { PWAInstallPrompt } from '@/components/common/PWAInstallPrompt';
 
 export default function EmployeePortalPage() {
   const { t: tr, language } = useLanguage();
@@ -590,6 +591,9 @@ export default function EmployeePortalPage() {
           </div>
         )}
       </div>
+
+      {/* 5. Mobile App / PWA Installation Section */}
+      <PWAInstallPrompt className="mt-8" />
 
       {/* Shared Unified Ticket Creation Modal */}
       <CreateTicketModal

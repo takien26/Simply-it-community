@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
-import { PWAInstallPrompt } from '@/components/common/PWAInstallPrompt';
 import { QuickViewDrawer } from '@/components/common/QuickViewDrawer';
 
 // Lazy load heavy global modals so they do not block route navigation
@@ -82,9 +81,6 @@ export default function DashboardLayout({
 
       {/* Mobile-Only Bottom Navigation Bar */}
       <MobileBottomNav />
-
-      {/* PWA "Add to Home Screen" Mobile Prompt */}
-      <PWAInstallPrompt />
     </div>
   );
 }
