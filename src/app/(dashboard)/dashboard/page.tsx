@@ -240,64 +240,158 @@ export default function DashboardPage() {
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [stats.categoryBreakdown, assets]);
 
-  // Dynamic Chart Timeline Data
+  // Dynamic Chart Timeline Data calculated from real filtered tickets
   const dynamicTimelineChartData = useMemo(() => {
-    if (timeFilter === 'MONTH') {
-      // 4 Weeks in Month
-      return [
-        {
-        name: language === 'en' ? 'Week 1' : 'Tuần 1',
-        created: 8,
-        resolved: 7,
-        overdue: 0,
-      },
-      {
-        name: language === 'en' ? 'Week 2' : 'Tuần 2',
-        created: 14,
-        resolved: 12,
-        overdue: 1,
-      },
-      {
-        name: language === 'en' ? 'Week 3' : 'Tuần 3',
-        created: 18,
-        resolved: 17,
-        overdue: 0,
-      },
-      {
-        name: language === 'en' ? 'Week 4' : 'Tuần 4',
-        created: 11,
-        resolved: 10,
-        overdue: 1,
-      },
+    // Helper to evaluate overdue status matching ticketPerformance logic
+    const checkIsOverdue = (t: any) => {
+      const isDone = t.status === 'RESOLVED' || t.status === 'CLOSED';
+      const isPaused = t.status === 'WAITING' || !!t.slaPausedAt;
+      if (isDone || isPaused) return false;
+      const deadline = t.slaDeadline
+        ? new Date(t.slaDeadline)
+        : new Date(new Date(t.createdAt).getTime() + (t.priority === 'URGENT' ? 4 : t.priority === 'HIGH' ? 24 : 48) * 3600000);
+      return deadline.getTime() < Date.now() || !!t.slaBreached;
+    };
+
+    if (timeFilter === 'TODAY') {
+      const slots = [
+        { label: isEn ? '00:00 - 04:00' : '00h - 04h', start: 0, end: 4 },
+        { label: isEn ? '04:00 - 08:00' : '04h - 08h', start: 4, end: 8 },
+        { label: isEn ? '08:00 - 12:00' : '08h - 12h', start: 8, end: 12 },
+        { label: isEn ? '12:00 - 16:00' : '12h - 16h', start: 12, end: 16 },
+        { label: isEn ? '16:00 - 20:00' : '16h - 20h', start: 16, end: 20 },
+        { label: isEn ? '20:00 - 24:00' : '20h - 24h', start: 20, end: 24 },
       ];
+      return slots.map((slot) => {
+        const inSlot = filteredTickets.filter((t) => {
+          const h = new Date(t.createdAt).getHours();
+          return h >= slot.start && h < slot.end;
+        });
+        return {
+          name: slot.label,
+          created: inSlot.length,
+          resolved: inSlot.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length,
+          overdue: inSlot.filter(checkIsOverdue).length,
+        };
+      });
     }
+
+    if (timeFilter === 'WEEK') {
+      const days = [
+        { label: isEn ? 'Mon' : 'Thứ 2', dayIdx: 1 },
+        { label: isEn ? 'Tue' : 'Thứ 3', dayIdx: 2 },
+        { label: isEn ? 'Wed' : 'Thứ 4', dayIdx: 3 },
+        { label: isEn ? 'Thu' : 'Thứ 5', dayIdx: 4 },
+        { label: isEn ? 'Fri' : 'Thứ 6', dayIdx: 5 },
+        { label: isEn ? 'Sat' : 'Thứ 7', dayIdx: 6 },
+        { label: isEn ? 'Sun' : 'Chủ nhật', dayIdx: 0 },
+      ];
+      return days.map((d) => {
+        const inDay = filteredTickets.filter((t) => new Date(t.createdAt).getDay() === d.dayIdx);
+        return {
+          name: d.label,
+          created: inDay.length,
+          resolved: inDay.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length,
+          overdue: inDay.filter(checkIsOverdue).length,
+        };
+      });
+    }
+
+    if (timeFilter === 'MONTH') {
+      const weeks = [
+        { label: isEn ? 'Week 1' : 'Tuần 1', startDay: 1, endDay: 7 },
+        { label: isEn ? 'Week 2' : 'Tuần 2', startDay: 8, endDay: 14 },
+        { label: isEn ? 'Week 3' : 'Tuần 3', startDay: 15, endDay: 21 },
+        { label: isEn ? 'Week 4' : 'Tuần 4', startDay: 22, endDay: 31 },
+      ];
+      return weeks.map((w) => {
+        const inWeek = filteredTickets.filter((t) => {
+          const day = new Date(t.createdAt).getDate();
+          return day >= w.startDay && day <= w.endDay;
+        });
+        return {
+          name: w.label,
+          created: inWeek.length,
+          resolved: inWeek.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length,
+          overdue: inWeek.filter(checkIsOverdue).length,
+        };
+      });
+    }
+
     if (timeFilter === 'YEAR' || timeFilter === 'ALL') {
-      return (stats.tickets?.monthlyTrend || []).map((m: any) => ({
-        name: m.month,
-        created: m.count,
-        resolved: Math.max(0, m.count - 2),
-        overdue: m.count > 20 ? 1 : 0,
-      }));
+      const months = isEn
+        ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        : ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
+      return months.map((mLabel, mIdx) => {
+        const inMonth = filteredTickets.filter((t) => new Date(t.createdAt).getMonth() === mIdx);
+        return {
+          name: mLabel,
+          created: inMonth.length,
+          resolved: inMonth.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length,
+          overdue: inMonth.filter(checkIsOverdue).length,
+        };
+      });
     }
-    // Days
-    return [
-      { name: 'T2', created: 3, resolved: 3, overdue: 0 },
-      { name: 'T3', created: 5, resolved: 4, overdue: 0 },
-      { name: 'T4', created: 7, resolved: 6, overdue: 1 },
-      { name: 'T5', created: 4, resolved: 4, overdue: 0 },
-      { name: 'T6', created: 6, resolved: 6, overdue: 0 },
-      { name: 'T7', created: 2, resolved: 2, overdue: 0 },
-      { name: 'CN', created: 1, resolved: 1, overdue: 0 },
-    ];
-  }, [timeFilter, stats.tickets]);
+
+    if (timeFilter === 'CUSTOM') {
+      if (customStartDate && customEndDate) {
+        const start = new Date(customStartDate);
+        const end = new Date(customEndDate);
+        const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1;
+
+        if (diffDays > 0 && diffDays <= 14) {
+          const result = [];
+          const cur = new Date(start);
+          while (cur <= end) {
+            const curYear = cur.getFullYear();
+            const curMonth = cur.getMonth();
+            const curDate = cur.getDate();
+            const label = `${String(curDate).padStart(2, '0')}/${String(curMonth + 1).padStart(2, '0')}`;
+            const inDay = filteredTickets.filter((t) => {
+              const dt = new Date(t.createdAt);
+              return dt.getFullYear() === curYear && dt.getMonth() === curMonth && dt.getDate() === curDate;
+            });
+            result.push({
+              name: label,
+              created: inDay.length,
+              resolved: inDay.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length,
+              overdue: inDay.filter(checkIsOverdue).length,
+            });
+            cur.setDate(cur.getDate() + 1);
+          }
+          return result;
+        }
+      }
+      const weeks = [
+        { label: isEn ? 'Week 1' : 'Tuần 1', startDay: 1, endDay: 7 },
+        { label: isEn ? 'Week 2' : 'Tuần 2', startDay: 8, endDay: 14 },
+        { label: isEn ? 'Week 3' : 'Tuần 3', startDay: 15, endDay: 21 },
+        { label: isEn ? 'Week 4' : 'Tuần 4', startDay: 22, endDay: 31 },
+      ];
+      return weeks.map((w) => {
+        const inWeek = filteredTickets.filter((t) => {
+          const day = new Date(t.createdAt).getDate();
+          return day >= w.startDay && day <= w.endDay;
+        });
+        return {
+          name: w.label,
+          created: inWeek.length,
+          resolved: inWeek.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length,
+          overdue: inWeek.filter(checkIsOverdue).length,
+        };
+      });
+    }
+
+    return [];
+  }, [timeFilter, filteredTickets, isEn, customStartDate, customEndDate]);
 
   // License Usage Data for Bar Chart
   const licenseUsageData = useMemo(() => {
     return licenses.slice(0, 5).map((l) => ({
       name: l.name.length > 15 ? l.name.slice(0, 15) + '...' : l.name,
-      used: l.usedSeats || 1,
-      total: l.totalSeats || 1,
-      available: Math.max(0, (l.totalSeats || 1) - (l.usedSeats || 0)),
+      used: l.usedSeats ?? 0,
+      total: l.totalSeats || 0,
+      available: Math.max(0, (l.totalSeats || 0) - (l.usedSeats || 0)),
     }));
   }, [licenses]);
 
