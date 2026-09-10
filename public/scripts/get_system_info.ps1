@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # SIMPLY IT - Enterprise Hardware, Software & License Compliance Agent (.ps1)
 # Collects: Hardware, OS/Office License, Installed Software & Crack Detection
 # ==============================================================================
@@ -13,8 +13,8 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference = 'SilentlyContinue'
 
-# Auto-detect local port if not explicitly configured or port unreachable
-if (-not $ServerUrl -or $ServerUrl -match "localhost|127.0.0.1") {
+# Auto-detect local port only if ServerUrl was not explicitly provided (still has default value)
+if ($ServerUrl -eq "http://localhost:3001") {
     $candidatePorts = @(3001, 3000, 3444)
     foreach ($p in $candidatePorts) {
         try {
@@ -45,7 +45,7 @@ try {
     $bios = Get-CimInstance Win32_Bios
     if (-not $bios) { $bios = Get-WmiObject Win32_Bios }
     $serialNumber = $bios.SerialNumber
-    if (-not $serialNumber -or $serialNumber -match "To be filled|Default|None|0123456789") {
+    if (-not $serialNumber -or $serialNumber -match 'To be filled|Default|None|0123456789') {
         $csProduct = Get-CimInstance Win32_ComputerSystemProduct
         if (-not $csProduct) { $csProduct = Get-WmiObject Win32_ComputerSystemProduct }
         $serialNumber = $csProduct.IdentifyingNumber
