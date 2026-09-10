@@ -48,9 +48,14 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              if ('serviceWorker' in navigator && window.location.protocol === 'https:' || window.location.hostname === 'localhost') {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function() {});
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(regs) {
+                  for (var r of regs) { r.unregister(); }
+                });
+              }
+              if ('caches' in window) {
+                caches.keys().then(function(keys) {
+                  for (var k of keys) { caches.delete(k); }
                 });
               }
             `,

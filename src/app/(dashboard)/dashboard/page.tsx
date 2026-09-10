@@ -89,12 +89,13 @@ export default function DashboardPage() {
 
   const loadAllData = () => {
     setLoading(true);
+    const ts = Date.now();
     Promise.all([
-      fetch('/api/dashboard/stats').then((r) => r.json()).catch(() => ({ success: false })),
-      fetch('/api/assets?pageSize=1000').then((r) => r.json()).catch(() => ({ success: false })),
-      fetch('/api/licenses').then((r) => r.json()).catch(() => ({ success: false })),
-      fetch('/api/services').then((r) => r.json()).catch(() => ({ success: false })),
-      fetch('/api/tickets').then((r) => r.json()).catch(() => ({ tickets: [] })),
+      fetch(`/api/dashboard/stats?_t=${ts}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ success: false })),
+      fetch(`/api/assets?pageSize=1000&_t=${ts}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ success: false })),
+      fetch(`/api/licenses?_t=${ts}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ success: false })),
+      fetch(`/api/services?_t=${ts}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ success: false })),
+      fetch(`/api/tickets?_t=${ts}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ tickets: [] })),
     ]).then(([dashboard, assetData, licenseData, serviceData, ticketData]) => {
       if (dashboard?.success) setStats(dashboard.data);
       if (assetData?.success) setAssets(assetData.data || []);
@@ -1027,12 +1028,20 @@ export default function DashboardPage() {
         </div>
 
         {/* Dynamic Chart on Filtered Range */}
-        <div className="h-64 w-full pt-2">
+        <div className="h-64 w-full pt-2 relative">
+          {ticketPerformance.total === 0 && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/40 dark:bg-slate-900/40 backdrop-blur-[1px] z-10 rounded-xl pointer-events-none">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-semibold shadow-xs border border-slate-200 dark:border-slate-700">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>{language === 'en' ? 'No tickets recorded in this time period' : 'Chưa có ticket nào phát sinh trong khoảng thời gian này'}</span>
+              </div>
+            </div>
+          )}
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={dynamicTimelineChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#64748B' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#64748B' }} allowDecimals={false} domain={[0, 'auto']} />
               <Tooltip
                 contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', fontSize: '12px', fontWeight: 'bold' }}
               />

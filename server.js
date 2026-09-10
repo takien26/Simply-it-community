@@ -112,7 +112,11 @@ async function initServer() {
   await app.prepare();
 
   function setupNoCache(req, res) {
-    if (req.headers.accept && req.headers.accept.includes('text/html')) {
+    const isHtml = req.headers.accept && req.headers.accept.includes('text/html');
+    const isApi = req.url && req.url.startsWith('/api/');
+    const isRsc = req.headers['rsc'] || (req.headers.accept && req.headers.accept.includes('text/x-component'));
+
+    if (isHtml || isApi || isRsc) {
       const origSetHeader = res.setHeader.bind(res);
       res.setHeader = function (name, value) {
         if (name.toLowerCase() === 'cache-control') {
@@ -127,16 +131,12 @@ async function initServer() {
   }
 
   const HTTP_PORT = parseInt(process.env.PORT || '3001', 10);
-  const HTTPS_PORT = parseInt(process.env.HTTPS_PORT || '3443', 10);
+  const HTTPS_PORT = parseInt(process.env.HTTPS_PORT || '3444', 10);
 
   // 1. HTTP Server
   const httpServer = http.createServer((req, res) => {
     if (serveUploadsDirect(req, res)) return;
     setupNoCache(req, res);
-    if (req.headers.accept && req.headers.accept.includes('text/html')) {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-      res.setHeader('Pragma', 'no-cache');
-    }
     handle(req, res);
   });
 
@@ -148,10 +148,7 @@ async function initServer() {
   // 2. HTTPS Server
   const httpsServer = https.createServer(httpsOptions, (req, res) => {
     if (serveUploadsDirect(req, res)) return;
-    if (req.headers.accept && req.headers.accept.includes('text/html')) {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-      res.setHeader('Pragma', 'no-cache');
-    }
+    setupNoCache(req, res);
     handle(req, res);
   });
 
