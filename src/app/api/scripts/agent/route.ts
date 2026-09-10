@@ -40,12 +40,12 @@ export async function GET(request: NextRequest) {
     // Dynamically replace default ServerUrl
     scriptContent = scriptContent.replace(
       /\[string\]\$ServerUrl\s*=\s*"[^"]*"/i,
-      `[string]\$ServerUrl = "${serverUrl}"`
+      `[string]$ServerUrl = "${serverUrl}"`
     );
   } else {
     // Fallback minimal safe script
     scriptContent = `# SIMPLY IT Auto-Scan Agent
-param([string]\$ServerUrl = "${serverUrl}")
+param([string]$ServerUrl = "${serverUrl}")
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 \$OutputEncoding = [System.Text.Encoding]::UTF8
 try {

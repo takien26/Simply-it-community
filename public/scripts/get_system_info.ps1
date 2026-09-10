@@ -4,7 +4,7 @@
 # ==============================================================================
 
 param(
-    [string]$ServerUrl = "http://localhost:3001"
+    [string]$ServerUrl = "__AUTO__"
 )
 
 # Set UTF-8 Output Encoding for console compatibility
@@ -14,7 +14,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference = 'SilentlyContinue'
 
 # Auto-detect local port only if ServerUrl was not explicitly provided (still has default value)
-if ($ServerUrl -eq "http://localhost:3001") {
+if ($ServerUrl -eq "__AUTO__") {
     $candidatePorts = @(3001, 3000, 3444)
     foreach ($p in $candidatePorts) {
         try {
