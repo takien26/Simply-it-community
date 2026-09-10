@@ -215,17 +215,22 @@ try {
     }
 
     if ($response) {
+        $assetTag  = if ($response.assetTag)  { $response.assetTag }  else { "N/A" }
+        $devName   = if ($response.deviceName) { $response.deviceName } else { $hostname }
+        $matchCount = if ($response.licenseMatchAlertCount) { [int]$response.licenseMatchAlertCount } else { 0 }
         Write-Host "==========================================================" -ForegroundColor Green
-        Write-Host "   [SIMPLY IT] THANH CONG: $($response.message)" -ForegroundColor Green
-        Write-Host "   Ma Thiet Bi: $($response.assetTag)" -ForegroundColor White
-        if ($response.licenseMatchAlertCount -gt 0) {
-            Write-Host "   Phat hien trung khop: $($response.licenseMatchAlertCount) phan mem trung voi License trong kho (Cho duyet)!" -ForegroundColor Yellow
+        Write-Host "   [SIMPLY IT] GUI DU LIEU THANH CONG!" -ForegroundColor Green
+        Write-Host "   May tinh  : $devName" -ForegroundColor White
+        Write-Host "   Ma thiet bi: $assetTag" -ForegroundColor White
+        Write-Host "   Server URL : $ServerUrl" -ForegroundColor Gray
+        if ($matchCount -gt 0) {
+            Write-Host "   Canh bao   : Phat hien $matchCount phan mem trung voi License trong kho (cho duyet)!" -ForegroundColor Yellow
         }
         Write-Host "==========================================================" -ForegroundColor Green
     } else {
         Write-Host "==========================================================" -ForegroundColor Red
-        Write-Host "   [SIMPLY IT] LOI GUI DU LIEU: Khong the ket noi toi $ServerUrl" -ForegroundColor Red
-        Write-Host "   Vui long kiem tra dia chi ServerUrl hoac firewall." -ForegroundColor Yellow
+        Write-Host "   [SIMPLY IT] LOI: Khong the ket noi toi $ServerUrl" -ForegroundColor Red
+        Write-Host "   Kiem tra lai ServerUrl hoac ket noi mang/firewall." -ForegroundColor Yellow
         Write-Host "==========================================================" -ForegroundColor Red
     }
 } catch {
