@@ -7060,6 +7060,9 @@ export default function AssetsPage() {
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                           Đã nhúng sẵn Endpoint: <code className="text-indigo-700 dark:text-indigo-300 font-bold">{cleanServerUrl}/api/auto-scan/collect</code>
                         </p>
+                        <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-semibold">
+                          ⚠️ Không double-click! Mở PowerShell và chạy: <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">powershell -ExecutionPolicy Bypass -File get_system_info.ps1</code>
+                        </p>
                       </div>
 
                       <a
