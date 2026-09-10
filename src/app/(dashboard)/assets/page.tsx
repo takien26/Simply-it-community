@@ -7005,7 +7005,8 @@ export default function AssetsPage() {
               {/* 1-liner Quick Copy with Dynamic Server URL */}
               {(() => {
                 const cleanServerUrl = (agentServerUrl || 'http://localhost:3000').replace(/\/+$/, '');
-                const oneLiner = `powershell -ExecutionPolicy Bypass -Command "iex (irm '${cleanServerUrl}/api/scripts/agent')"` ;
+                const fetchBase = typeof window !== 'undefined' ? window.location.origin : cleanServerUrl;
+                const oneLiner = `powershell -ExecutionPolicy Bypass -Command "iex (irm '${fetchBase}/api/scripts/agent?serverUrl=${encodeURIComponent(cleanServerUrl)}')"` ;
                 return (
                   <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
                     <div className="flex items-center justify-between">
@@ -7036,8 +7037,9 @@ export default function AssetsPage() {
               {/* Script Download Section with Embedded Custom IP */}
               {(() => {
                 const cleanServerUrl = (agentServerUrl || 'http://localhost:3000').replace(/\/+$/, '');
+                const fetchBase = typeof window !== 'undefined' ? window.location.origin : cleanServerUrl;
                 const handleDownloadDynamicBat = () => {
-                  const batContent = `@echo off\r\n:: SIMPLY IT Auto-Scan Runner\r\n:: Server: ${cleanServerUrl}\r\npowershell -ExecutionPolicy Bypass -WindowStyle Hidden -Command "iex (irm '${cleanServerUrl}/api/scripts/agent')"\r\n`;
+                  const batContent = `@echo off\r\n:: SIMPLY IT Auto-Scan Runner\r\n:: Server: ${cleanServerUrl}\r\npowershell -ExecutionPolicy Bypass -WindowStyle Hidden -Command "iex (irm '${fetchBase}/api/scripts/agent?serverUrl=${encodeURIComponent(cleanServerUrl)}')"\r\n`;
                   const blob = new Blob([batContent], { type: 'application/x-bat' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
