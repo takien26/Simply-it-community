@@ -549,29 +549,24 @@ export default function AssetsPage() {
   const [isInventoryAuditOpen, setIsInventoryAuditOpen] = useState(false);
   const [isAuditCampaignCreateOpen, setIsAuditCampaignCreateOpen] = useState(false);
   const [isScriptModalOpen, setIsScriptModalOpen] = useState(false);
-  const [agentServerUrl, setAgentServerUrl] = useState<string>('http://localhost:3000');
+  const [agentServerUrl, setAgentServerUrl] = useState<string>('');
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [activeDropdownAssetId, setActiveDropdownAssetId] = useState<string | null>(null);
   const [copiedScript, setCopiedScript] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('simply_agent_server_url');
-      if (saved) {
-        setAgentServerUrl(saved);
-      } else {
-        setAgentServerUrl(window.location.origin);
-      }
-    }
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => {
+        const url = data?.data?.find((s: any) => s.key === 'app.server_url')?.value;
+        setAgentServerUrl(url || (typeof window !== 'undefined' ? window.location.origin : ''));
+      })
+      .catch(() => {
+        if (typeof window !== 'undefined') setAgentServerUrl(window.location.origin);
+      });
   }, []);
 
-  const handleServerUrlChange = (newUrl: string) => {
-    setAgentServerUrl(newUrl);
-    try {
-      localStorage.setItem('simply_agent_server_url', newUrl);
-    } catch {}
-  };
   const [transferUserSearch, setTransferUserSearch] = useState('');
   const [isTransferUserDropdownOpen, setIsTransferUserDropdownOpen] = useState(false);
   const [isQuickAddUserOpen, setIsQuickAddUserOpen] = useState(false);
@@ -6934,72 +6929,11 @@ export default function AssetsPage() {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-4 text-xs">
-              {/* 0. SERVER IP / DOMAIN CONFIGURATION */}
-              <div className="p-4 bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-slate-50 dark:bg-slate-800/80 border border-blue-200/90 dark:border-blue-800 rounded-2xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    <span className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wide">
-                      Địa Chỉ Máy Chủ / Server URL Nhận Dữ Liệu
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-blue-700 dark:text-blue-300 font-bold bg-blue-100 dark:bg-blue-900/60 px-2.5 py-0.5 rounded-full shadow-2xs">
-                    ⚡ Tự động nhúng vào Script
-                  </span>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={agentServerUrl}
-                      onChange={(e) => handleServerUrlChange(e.target.value)}
-                      placeholder="Ví dụ: http://192.168.1.100:3000 hoặc https://it.company.com"
-                      className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-xs font-bold text-blue-900 dark:text-blue-300 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-inner"
-                    />
-                  </div>
-
-                  {/* Quick Preset Buttons */}
-                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                    <span className="text-[10.5px] text-slate-500 font-medium">Gợi ý chọn nhanh:</span>
-                    <button
-                      type="button"
-                      onClick={() => handleServerUrlChange('http://localhost:3000')}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                        agentServerUrl === 'http://localhost:3000'
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      💻 Localhost (127.0.0.1:3000)
-                    </button>
-
-                    {typeof window !== 'undefined' && window.location.origin !== 'http://localhost:3000' && (
-                      <button
-                        type="button"
-                        onClick={() => handleServerUrlChange(window.location.origin)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                          agentServerUrl === window.location.origin
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                        }`}
-                      >
-                        🌐 IP Máy Chủ Đang Truy Cập ({window.location.host})
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const host = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.hostname : '192.168.1.100';
-                        handleServerUrlChange(`http://${host}:3000`);
-                      }}
-                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 cursor-pointer"
-                    >
-                      📶 Mạng Nội Bộ (LAN IP:3000)
-                    </button>
-                  </div>
-                </div>
+              {/* Server URL from Settings */}
+              <div className="p-3 bg-blue-50/80 dark:bg-slate-800/80 border border-blue-200/80 dark:border-blue-800 rounded-2xl flex items-center gap-2">
+                <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="text-[11px] text-slate-600 dark:text-slate-400">Server URL (từ Cài đặt):</span>
+                <code className="text-[11px] font-bold text-blue-900 dark:text-blue-300 font-mono">{agentServerUrl || '...'}</code>
               </div>
 
               {/* 1-liner Quick Copy with Dynamic Server URL */}
