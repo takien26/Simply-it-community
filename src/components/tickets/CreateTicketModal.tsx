@@ -66,6 +66,7 @@ export default function CreateTicketModal({
   const [uploadingFile, setUploadingFile] = useState(false);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
   const [aiDiagnostic, setAiDiagnostic] = useState<any>(null);
+  const [kbSuggestions, setKbSuggestions] = useState<any[]>([]);
 
   // Users and Assets lists
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -202,6 +203,21 @@ export default function CreateTicketModal({
   const handleTitleChange = (val: string) => {
     setTitle(val);
     if (aiDebounceTimerRef.current) clearTimeout(aiDebounceTimerRef.current);
+
+    // Ticket Deflection: Auto-suggest KB articles
+    if (val.trim().length >= 3) {
+      fetch(`/api/kb?search=${encodeURIComponent(val.trim())}`)
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && Array.isArray(res.data)) {
+            setKbSuggestions(res.data.slice(0, 3));
+          }
+        })
+        .catch(() => {});
+    } else {
+      setKbSuggestions([]);
+    }
+
     if (val.trim().length >= 6) {
       aiDebounceTimerRef.current = setTimeout(() => {
         triggerAiAnalysis(val, description, true);
@@ -578,6 +594,43 @@ export default function CreateTicketModal({
             <p className="text-[10px] text-slate-400 mt-1">
               🤖 <em>{language === 'en' ? 'AI will automatically detect issue category and priority once you finish typing.' : 'AI sẽ tự động nhận diện loại sự cố ngay khi bạn nhập xong tiêu đề.'}</em>
             </p>
+
+            {/* Ticket Deflection: KB Suggestions Box */}
+            {kbSuggestions.length > 0 && (
+              <div className="mt-2 p-3 bg-amber-50/90 border border-amber-200 rounded-xl space-y-1.5 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>{language === 'en' ? 'Suggested Solutions from Knowledge Base:' : '💡 Gợi ý giải pháp tự khắc phục từ Thư viện (KB):'}</span>
+                  </span>
+                  <span className="text-[10px] text-amber-700 font-bold px-1.5 py-0.2 bg-amber-100 rounded-md">
+                    {kbSuggestions.length} {language === 'en' ? 'articles' : 'bài viết'}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {kbSuggestions.map((item) => (
+                    <a
+                      key={item.id}
+                      href={`/kb?search=${encodeURIComponent(item.title)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-between p-2 bg-white hover:bg-amber-100/60 rounded-lg border border-amber-100 text-xs font-semibold text-slate-800 transition-colors group"
+                    >
+                      <span className="truncate pr-2">📖 {item.title}</span>
+                      <span className="text-[10px] text-blue-600 group-hover:underline shrink-0 flex items-center gap-0.5">
+                        <span>{language === 'en' ? 'Read Guide' : 'Xem ngay'}</span>
+                        <span>➔</span>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+                <p className="text-[10px] text-amber-700 italic">
+                  {language === 'en'
+                    ? 'If any of these guides resolve your problem, you can skip submitting this ticket.'
+                    : 'Nếu bài viết trên đã giải quyết được sự cố, bạn có thể không cần gửi Ticket nữa để tiết kiệm thời gian.'}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* 3. Category & Priority */}

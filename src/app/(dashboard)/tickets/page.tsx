@@ -40,6 +40,9 @@ import {
   BrainCircuit,
   Wrench,
   BarChart3,
+  Zap,
+  Star,
+  BookOpen,
 } from 'lucide-react';
 
 interface Ticket {
@@ -58,6 +61,9 @@ interface Ticket {
   resolvedAt?: string | null;
   resolutionNotes?: string | null;
   attachmentUrls?: Array<{ url: string; name: string; size?: number; type?: string }> | null;
+  rating?: number | null;
+  ratingComment?: string | null;
+  ratedAt?: string | null;
   teamId?: string | null;
   queueId?: string | null;
   incidentId?: string | null;
@@ -535,7 +541,16 @@ export default function TicketsPage() {
   const isEn = language === 'en';
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [stats, setStats] = useState({ total: 0, open: 0, inProgress: 0, waiting: 0, resolved: 0, urgent: 0 });
+  const [stats, setStats] = useState<{
+    total: number;
+    open: number;
+    inProgress: number;
+    waiting: number;
+    resolved: number;
+    urgent: number;
+    csatAverage?: string;
+    csatCount?: number;
+  }>({ total: 0, open: 0, inProgress: 0, waiting: 0, resolved: 0, urgent: 0, csatAverage: '5.0', csatCount: 0 });
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<any[]>([]);
   const [assets, setAssets] = useState<any[]>([]);
@@ -600,6 +615,27 @@ export default function TicketsPage() {
   const [commentText, setCommentText] = useState('');
   const [isInternalComment, setIsInternalComment] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
+
+  // Canned Responses (⚡ Quick Reply) State
+  const [cannedResponses, setCannedResponses] = useState<any[]>([]);
+  const [isCannedMenuOpen, setIsCannedMenuOpen] = useState(false);
+  const [loadingCanned, setLoadingCanned] = useState(false);
+
+  // Convert to KB Article Modal State
+  const [isConvertToKbOpen, setIsConvertToKbOpen] = useState(false);
+  const [convertingToKb, setConvertingToKb] = useState(false);
+  const [kbArticleTitle, setKbArticleTitle] = useState('');
+  const [kbArticleContent, setKbArticleContent] = useState('');
+  const [kbTeamScope, setKbTeamScope] = useState('PUBLIC');
+
+  // CSAT Rating State
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [ratingHover, setRatingHover] = useState(0);
+  const [selectedRating, setSelectedRating] = useState(5);
+  const [ratingFeedback, setRatingFeedback] = useState('');
+
+  // Inline Create Modal KB Suggestions State
+  const [inlineKbSuggestions, setInlineKbSuggestions] = useState<any[]>([]);
 
   // SLA Setup State
   const [isSlaModalOpen, setIsSlaModalOpen] = useState(false);
@@ -1176,10 +1212,124 @@ export default function TicketsPage() {
   const handleTitleChange = (val: string) => {
     setNewTitle(val);
     if (aiDebounceTimerRef.current) clearTimeout(aiDebounceTimerRef.current);
+
+    // Ticket Deflection: Auto-suggest KB articles
+    if (val.trim().length >= 3) {
+      fetch(`/api/kb?search=${encodeURIComponent(val.trim())}`)
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && Array.isArray(res.data)) {
+            setInlineKbSuggestions(res.data.slice(0, 3));
+          }
+        })
+        .catch(() => {});
+    } else {
+      setInlineKbSuggestions([]);
+    }
+
     if (val.trim().length >= 6) {
       aiDebounceTimerRef.current = setTimeout(() => {
         triggerAiAnalysis(val, newDesc, true);
       }, 700);
+    }
+  };
+
+  const fetchCannedResponses = async () => {
+    if (cannedResponses.length > 0) return;
+    try {
+      setLoadingCanned(true);
+      const res = await fetch('/api/canned-responses');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setCannedResponses(data.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingCanned(false);
+    }
+  };
+
+  const handleSelectCannedResponse = (cr: any) => {
+    setCommentText((prev) => (prev.trim() ? `${prev}\n\n${cr.content}` : cr.content));
+    setIsCannedMenuOpen(false);
+  };
+
+  const handleRateTicket = async (ticketId: string, ratingStars: number, feedbackText: string) => {
+    try {
+      setSubmittingRating(true);
+      const res = await fetch(`/api/tickets/${ticketId}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: ratingStars, comment: feedbackText }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (selectedTicket && selectedTicket.id === ticketId) {
+          setSelectedTicket((prev: any) => ({
+            ...prev,
+            rating: ratingStars,
+            ratingComment: feedbackText,
+            ratedAt: new Date().toISOString(),
+          }));
+        }
+        setTickets((prev: any[]) =>
+          prev.map((t) =>
+            t.id === ticketId
+              ? { ...t, rating: ratingStars, ratingComment: feedbackText, ratedAt: new Date().toISOString() }
+              : t
+          )
+        );
+        alert(isEn ? 'Thank you for your rating!' : 'Cảm ơn bạn đã gửi đánh giá chất lượng phục vụ!');
+      } else {
+        alert(data.error || 'Lỗi gửi đánh giá');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi gửi đánh giá');
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
+  const handleOpenConvertToKb = () => {
+    if (!selectedTicket) return;
+    setKbArticleTitle(`[Hướng dẫn xử lý] ${selectedTicket.title}`);
+    const solution = selectedTicket.resolutionNotes || (
+      selectedTicket.comments?.length > 0
+        ? selectedTicket.comments.map((c: any) => c.content).join('\n\n')
+        : 'Sự cố đã được kiểm tra và xử lý thành công theo quy trình kỹ thuật.'
+    );
+    setKbArticleContent(`## 1. Hiện tượng & Vấn đề sự cố\n${selectedTicket.description}\n\n## 2. Các bước xử lý / Khắc phục\n${solution}`);
+    setKbTeamScope('PUBLIC');
+    setIsConvertToKbOpen(true);
+  };
+
+  const handleSubmitConvertToKb = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTicket || !kbArticleTitle.trim()) return;
+
+    try {
+      setConvertingToKb(true);
+      const res = await fetch(`/api/tickets/${selectedTicket.id}/convert-to-kb`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customTitle: kbArticleTitle.trim(),
+          customContent: kbArticleContent,
+          teamScope: kbTeamScope,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(isEn ? 'Published to Knowledge Base successfully!' : 'Đã đóng góp giải pháp vào Thư viện Tri thức (KB) thành công!');
+        setIsConvertToKbOpen(false);
+      } else {
+        alert(data.error || 'Lỗi xuất bản bài viết');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi xuất bản bài viết');
+    } finally {
+      setConvertingToKb(false);
     }
   };
 
@@ -1627,6 +1777,14 @@ export default function TicketsPage() {
             {stats.resolved}
           </span>
         </button>
+
+        {/* CSAT Metric Pill */}
+        <div className="ml-auto hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50/90 border border-amber-200/90 text-amber-900 font-bold text-xs shrink-0 shadow-2xs" title={isEn ? `Average CSAT score from ${stats.csatCount || 0} reviews` : `Điểm hài lòng trung bình từ ${stats.csatCount || 0} lượt đánh giá`}>
+          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+          <span>CSAT:</span>
+          <span className="font-black text-amber-700">{stats.csatAverage || '5.0'} / 5</span>
+          <span className="text-[10.5px] font-normal text-amber-800/80">({stats.csatCount || 0} {isEn ? 'ratings' : 'đánh giá'})</span>
+        </div>
       </div>
 
       {/* Searchable Multi-Filter Toolbar */}
@@ -1810,6 +1968,15 @@ export default function TicketsPage() {
                               <MessageSquare className="w-2.5 h-2.5 text-slate-400" />
                               <span>{t.comments?.length || 0}</span>
                             </span>
+                            {t.rating ? (
+                              <span
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/90 font-bold text-[10px] shrink-0"
+                                title={`Đánh giá CSAT: ${t.rating}/5 sao - ${t.ratingComment || 'Không có nhận xét'}`}
+                              >
+                                <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
+                                <span>{t.rating}/5</span>
+                              </span>
+                            ) : null}
                           </div>
 
                           {/* Dòng 2: Tiêu Đề Sự Cố (Cho phép ngắt 2 dòng đọc rõ ràng) */}
@@ -1960,14 +2127,26 @@ export default function TicketsPage() {
                   {selectedTicket.title}
                 </h2>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsDetailModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
-                title={isEn ? 'Close modal' : 'Đóng modal'}
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleOpenConvertToKb}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 transition-colors cursor-pointer"
+                  title={isEn ? 'Convert Ticket to Knowledge Base Article' : 'Chuyển thành bài viết Thư viện Hướng dẫn (KB)'}
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+                  <span className="hidden sm:inline">{isEn ? 'Save to KB' : 'Lưu vào KB'}</span>
+                  <span className="text-[10px] bg-indigo-200/80 text-indigo-900 px-1 py-0.2 rounded font-black">👑</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDetailModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
+                  title={isEn ? 'Close modal' : 'Đóng modal'}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body (Scrollable with 2-Column Wide Layout) */}
@@ -2187,6 +2366,108 @@ export default function TicketsPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* ⭐ ĐÁNH GIÁ CHẤT LƯỢNG CSAT (1-Click CSAT Feedback - 👑 Enterprise) */}
+                  {(selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED') && (
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-slate-50 border border-amber-200/90 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xs font-black shadow-xs">
+                            ⭐
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-slate-900 text-xs">
+                              {isEn ? 'Customer Satisfaction Survey (CSAT)' : 'Đánh Giá Chất Lượng Dịch Vụ (CSAT)'}
+                            </h5>
+                            <p className="text-[10px] text-slate-500">
+                              {isEn ? 'How satisfied are you with the resolution?' : 'Bạn có hài lòng với kết quả xử lý của IT không?'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] bg-amber-200/80 text-amber-900 font-extrabold px-2 py-0.5 rounded-md border border-amber-300">
+                          👑 Enterprise
+                        </span>
+                      </div>
+
+                      {selectedTicket.rating ? (
+                        <div className="p-3 bg-white/90 rounded-xl border border-amber-200 space-y-1.5 text-xs">
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-4 h-4 ${
+                                    star <= (selectedTicket.rating || 0)
+                                      ? 'text-amber-500 fill-amber-500'
+                                      : 'text-slate-200'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="font-extrabold text-amber-900">{selectedTicket.rating}/5 sao</span>
+                            {selectedTicket.ratedAt && (
+                              <span className="text-[10px] text-slate-400">
+                                • {new Date(selectedTicket.ratedAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                          {selectedTicket.ratingComment && (
+                            <p className="text-slate-700 italic bg-amber-50/50 p-2 rounded-lg border border-amber-100/70 text-[11px]">
+                              "{selectedTicket.ratingComment}"
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-white/90 rounded-xl border border-amber-200 space-y-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-700">{isEn ? 'Rating:' : 'Chấm điểm:'}</span>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  onMouseEnter={() => setRatingHover(star)}
+                                  onMouseLeave={() => setRatingHover(0)}
+                                  onClick={() => setSelectedRating(star)}
+                                  className="p-1 hover:scale-125 transition-transform cursor-pointer"
+                                >
+                                  <Star
+                                    className={`w-5 h-5 ${
+                                      star <= (ratingHover || selectedRating)
+                                        ? 'text-amber-500 fill-amber-500'
+                                        : 'text-slate-300'
+                                    }`}
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                            <span className="font-bold text-xs text-amber-800">
+                              {ratingHover || selectedRating} / 5 {isEn ? 'Stars' : 'Sao'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={ratingFeedback}
+                              onChange={(e) => setRatingFeedback(e.target.value)}
+                              placeholder={isEn ? 'Optional feedback for technician...' : 'Nhận xét thêm về sự hỗ trợ (tùy chọn)...'}
+                              className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:bg-white focus:ring-1 focus:ring-amber-500 font-medium"
+                            />
+                            <button
+                              type="button"
+                              disabled={submittingRating}
+                              onClick={() => handleRateTicket(selectedTicket.id, selectedRating, ratingFeedback)}
+                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 flex items-center gap-1"
+                            >
+                              {submittingRating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Star className="w-3.5 h-3.5 fill-white" />}
+                              <span>{isEn ? 'Submit' : 'Gửi'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Right Column (5/12 cols) */}
@@ -2391,8 +2672,62 @@ export default function TicketsPage() {
                                   onChange={(e) => setIsInternalComment(e.target.checked)}
                                   className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
                                 />
-                                <span>{isEn ? '🔒 Internal Note' : '🔒 Ghi chú nội bộ'}</span>
+                                <span>{isEn ? '🔒 Internal' : '🔒 Ghi chú nội bộ'}</span>
                               </label>
+                            )}
+
+                            {/* ⚡ Quick Reply / Canned Responses (👑 Enterprise) */}
+                            {isITStaffOrAdmin && (
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsCannedMenuOpen(!isCannedMenuOpen);
+                                    fetchCannedResponses();
+                                  }}
+                                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-[10.5px] font-bold transition-colors cursor-pointer"
+                                  title={isEn ? 'Canned Templates (Quick Reply)' : 'Mẫu câu trả lời nhanh (Canned Response)'}
+                                >
+                                  <Zap className="w-3 h-3 text-amber-600 fill-amber-500" />
+                                  <span>{isEn ? 'Quick Reply' : 'Mẫu câu'}</span>
+                                  <span className="text-[9px] bg-amber-200 text-amber-900 px-1 rounded font-black">👑</span>
+                                </button>
+
+                                {isCannedMenuOpen && (
+                                  <div className="absolute left-0 bottom-full mb-2 w-72 max-h-60 overflow-y-auto bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-50 space-y-1">
+                                    <div className="px-2 py-1 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-700">
+                                      <span>⚡ {isEn ? 'Canned Templates' : 'Mẫu trả lời nhanh'}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsCannedMenuOpen(false)}
+                                        className="text-slate-400 hover:text-slate-600 font-bold"
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                    {loadingCanned ? (
+                                      <div className="p-3 text-center text-slate-400 text-xs">Đang tải...</div>
+                                    ) : cannedResponses.length === 0 ? (
+                                      <div className="p-3 text-center text-slate-400 text-xs">Chưa có mẫu câu nào</div>
+                                    ) : (
+                                      cannedResponses.map((cr) => (
+                                        <button
+                                          key={cr.id}
+                                          type="button"
+                                          onClick={() => handleSelectCannedResponse(cr)}
+                                          className="w-full text-left p-2 rounded-lg hover:bg-slate-50 transition-colors text-xs group cursor-pointer block"
+                                        >
+                                          <div className="font-bold text-slate-800 group-hover:text-blue-600 flex items-center justify-between">
+                                            <span>{cr.title}</span>
+                                            {cr.shortcut && <span className="text-[9.5px] font-mono text-slate-400 bg-slate-100 px-1 rounded">{cr.shortcut}</span>}
+                                          </div>
+                                          <div className="text-[10.5px] text-slate-500 line-clamp-1 mt-0.5">{cr.content}</div>
+                                        </button>
+                                      ))
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
 
@@ -2707,6 +3042,41 @@ export default function TicketsPage() {
                 <p className="text-[10px] text-slate-400 mt-0.5">
                   🤖 <em>{isEn ? 'AI will automatically detect the issue type as soon as you enter the title.' : 'AI sẽ tự động nhận diện loại sự cố ngay khi bạn nhập xong tiêu đề.'}</em>
                 </p>
+
+                {/* 💡 Gợi ý giải pháp tự sửa từ Thư viện KB (Ticket Deflection - 👑 Enterprise) */}
+                {inlineKbSuggestions.length > 0 && (
+                  <div className="p-3 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-white rounded-xl border border-blue-200/80 space-y-2 mt-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold text-blue-900 text-xs">
+                        <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+                        <span>{isEn ? '💡 Suggested self-help solutions from Knowledge Base:' : '💡 Bài viết hướng dẫn có thể giúp bạn tự xử lý ngay:'}</span>
+                      </div>
+                      <span className="text-[9.5px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded">
+                        Deflection ⚡
+                      </span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {inlineKbSuggestions.map((kb: any) => (
+                        <div
+                          key={kb.id}
+                          className="p-2 bg-white/95 rounded-lg border border-blue-100 hover:border-blue-300 transition-colors shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-800 text-[11.5px] line-clamp-1">{kb.title}</span>
+                            <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-semibold shrink-0">
+                              {kb.category || 'KB'}
+                            </span>
+                          </div>
+                          {kb.notes && (
+                            <p className="text-[10.5px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">
+                              {kb.notes}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 3. Phân loại & Mức độ ưu tiên (AI tự động chọn) */}
@@ -3074,6 +3444,97 @@ export default function TicketsPage() {
           </div>
         </div>
       )}
-</div>
+
+      {/* CONVERT TICKET TO KNOWLEDGE BASE MODAL (👑 Enterprise) */}
+      {isConvertToKbOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-5 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-indigo-50 text-indigo-700">
+                  <BookOpen className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+                    <span>{isEn ? 'Convert Ticket to Knowledge Base Article' : 'Đóng Góp Giải Pháp Vào Thư Viện Hướng Dẫn (KB)'}</span>
+                    <span className="text-[10px] bg-indigo-100 text-indigo-800 font-black px-1.5 py-0.5 rounded">👑 Enterprise</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {isEn ? 'Save this resolution as a reusable guide for the IT team & users' : 'Lưu giải pháp xử lý sự cố này thành cẩm nang tra cứu cho toàn công ty'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsConvertToKbOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitConvertToKb} className="space-y-3.5 flex-1 overflow-y-auto pr-1 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  {isEn ? 'Article Title (*)' : 'Tiêu đề bài viết (*)'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={kbArticleTitle}
+                  onChange={(e) => setKbArticleTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  {isEn ? 'Audience / Scope' : 'Phạm vi hiển thị'}
+                </label>
+                <select
+                  value={kbTeamScope}
+                  onChange={(e) => setKbTeamScope(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer"
+                >
+                  <option value="PUBLIC">{isEn ? '🌐 Public (All users & employees)' : '🌐 Công khai (Toàn bộ nhân viên & người dùng)'}</option>
+                  <option value="INTERNAL_IT">{isEn ? '🔒 Internal IT Only' : '🔒 Nội bộ kỹ thuật IT'}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  {isEn ? 'Solution Content (Markdown formatted)' : 'Nội dung hướng dẫn xử lý (Định dạng Markdown)'}
+                </label>
+                <textarea
+                  rows={8}
+                  required
+                  value={kbArticleContent}
+                  onChange={(e) => setKbArticleContent(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsConvertToKbOpen(false)}
+                  className="px-3.5 py-1.5 border border-slate-200 text-slate-600 rounded-xl font-semibold hover:bg-slate-50 cursor-pointer"
+                >
+                  {isEn ? 'Cancel' : 'Hủy'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={convertingToKb || !kbArticleTitle.trim()}
+                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  {convertingToKb ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BookOpen className="w-3.5 h-3.5" />}
+                  <span>{isEn ? 'Publish Article' : 'Xuất Bản Vào Thư Viện'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

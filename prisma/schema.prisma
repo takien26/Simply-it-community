@@ -727,6 +727,10 @@ model Ticket {
   isSlaExtended   Boolean        @default(false) @map("is_sla_extended")
   slaExtensionReason String?     @map("sla_extension_reason")
   slaExtensionHistory Json?      @map("sla_extension_history")
+  // CSAT Rating
+  rating          Int?           @map("rating")
+  ratingComment   String?        @map("rating_comment")
+  ratedAt         DateTime?      @map("rated_at")
   aiAnalysis      Json?          @map("ai_analysis")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
@@ -769,6 +773,18 @@ model TicketComment {
   @@index([userId])
   @@index([createdAt])
   @@map("ticket_comments")
+}
+
+model CannedResponse {
+  id        String   @id @default(uuid()) @db.Uuid
+  title     String
+  content   String
+  shortcut  String?
+  category  String?  @default("GENERAL")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("canned_responses")
 }
 
 // ==================== IT ORGANIZATION (TEAM / QUEUE) ====================

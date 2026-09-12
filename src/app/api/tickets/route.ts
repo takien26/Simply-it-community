@@ -104,8 +104,13 @@ export async function GET(request: NextRequest) {
     const sourceList = Object.keys(where).length === 0
       ? tickets
       : await prisma.ticket.findMany({
-          select: { status: true, priority: true, teamId: true, isAutoRouted: true },
+          select: { status: true, priority: true, teamId: true, isAutoRouted: true, rating: true },
         });
+
+    const ratedList = sourceList.filter((t: any) => t.rating && t.rating > 0);
+    const csatAverage = ratedList.length > 0
+      ? Number((ratedList.reduce((acc: number, t: any) => acc + t.rating, 0) / ratedList.length).toFixed(1))
+      : 5.0;
 
     const stats = {
       total: sourceList.length,
@@ -118,6 +123,8 @@ export async function GET(request: NextRequest) {
       ).length,
       autoRouted: sourceList.filter((t) => t.isAutoRouted).length,
       unassigned: sourceList.filter((t) => !t.teamId).length,
+      csatAverage,
+      csatCount: ratedList.length,
     };
 
     return NextResponse.json({ tickets, stats });
