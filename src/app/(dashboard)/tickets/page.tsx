@@ -2105,7 +2105,7 @@ export default function TicketsPage() {
       {/* MODAL 1: CHI TIẾT TICKET & TRAO ĐỔI (INTERACTIVE THREAD - WIDE & SPACIOUS) */}
       {isDetailModalOpen && selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full flex flex-col max-h-[92vh] border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-7xl w-[96vw] flex flex-col max-h-[94vh] border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-slate-100 flex items-start justify-between gap-3 bg-gradient-to-r from-slate-50 via-blue-50/30 to-indigo-50/20">
               <div className="space-y-1.5 min-w-0 flex-1">
@@ -2261,9 +2261,9 @@ export default function TicketsPage() {
                 </div>
               )}
 
-              {/* 2-COLUMN WORKSPACE: LEFT CONTENT (60%) & RIGHT INTERACTIVE CHAT/ESCALATION (40%) */}
+              {/* ROW 1: TICKET CONTEXT & TECHNICAL DIAGNOSTICS (2-COLUMN BALANCED WORKSPACE) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                {/* Left Column (7/12 cols) */}
+                {/* Left Column (7/12 cols): Issue Description & Attachments & Routing */}
                 <div className="lg:col-span-7 space-y-4">
                   {/* Description Card */}
                   <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
@@ -2366,111 +2366,9 @@ export default function TicketsPage() {
                       </div>
                     )}
                   </div>
-
-                  {/* ⭐ ĐÁNH GIÁ CHẤT LƯỢNG CSAT (1-Click CSAT Feedback - 👑 Enterprise) */}
-                  {(selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED') && (
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-slate-50 border border-amber-200/90 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xs font-black shadow-xs">
-                            ⭐
-                          </div>
-                          <div>
-                            <h5 className="font-bold text-slate-900 text-xs">
-                              {isEn ? 'Customer Satisfaction Survey (CSAT)' : 'Đánh Giá Chất Lượng Dịch Vụ (CSAT)'}
-                            </h5>
-                            <p className="text-[10px] text-slate-500">
-                              {isEn ? 'How satisfied are you with the resolution?' : 'Bạn có hài lòng với kết quả xử lý của IT không?'}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] bg-amber-200/80 text-amber-900 font-extrabold px-2 py-0.5 rounded-md border border-amber-300">
-                          👑 Enterprise
-                        </span>
-                      </div>
-
-                      {selectedTicket.rating ? (
-                        <div className="p-3 bg-white/90 rounded-xl border border-amber-200 space-y-1.5 text-xs">
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
-                                  className={`w-4 h-4 ${
-                                    star <= (selectedTicket.rating || 0)
-                                      ? 'text-amber-500 fill-amber-500'
-                                      : 'text-slate-200'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                            <span className="font-extrabold text-amber-900">{selectedTicket.rating}/5 sao</span>
-                            {selectedTicket.ratedAt && (
-                              <span className="text-[10px] text-slate-400">
-                                • {new Date(selectedTicket.ratedAt).toLocaleDateString()}
-                              </span>
-                            )}
-                          </div>
-                          {selectedTicket.ratingComment && (
-                            <p className="text-slate-700 italic bg-amber-50/50 p-2 rounded-lg border border-amber-100/70 text-[11px]">
-                              "{selectedTicket.ratingComment}"
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="p-3 bg-white/90 rounded-xl border border-amber-200 space-y-2.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-700">{isEn ? 'Rating:' : 'Chấm điểm:'}</span>
-                            <div className="flex items-center gap-1">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <button
-                                  key={star}
-                                  type="button"
-                                  onMouseEnter={() => setRatingHover(star)}
-                                  onMouseLeave={() => setRatingHover(0)}
-                                  onClick={() => setSelectedRating(star)}
-                                  className="p-1 hover:scale-125 transition-transform cursor-pointer"
-                                >
-                                  <Star
-                                    className={`w-5 h-5 ${
-                                      star <= (ratingHover || selectedRating)
-                                        ? 'text-amber-500 fill-amber-500'
-                                        : 'text-slate-300'
-                                    }`}
-                                  />
-                                </button>
-                              ))}
-                            </div>
-                            <span className="font-bold text-xs text-amber-800">
-                              {ratingHover || selectedRating} / 5 {isEn ? 'Stars' : 'Sao'}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={ratingFeedback}
-                              onChange={(e) => setRatingFeedback(e.target.value)}
-                              placeholder={isEn ? 'Optional feedback for technician...' : 'Nhận xét thêm về sự hỗ trợ (tùy chọn)...'}
-                              className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:bg-white focus:ring-1 focus:ring-amber-500 font-medium"
-                            />
-                            <button
-                              type="button"
-                              disabled={submittingRating}
-                              onClick={() => handleRateTicket(selectedTicket.id, selectedRating, ratingFeedback)}
-                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 flex items-center gap-1"
-                            >
-                              {submittingRating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Star className="w-3.5 h-3.5 fill-white" />}
-                              <span>{isEn ? 'Submit' : 'Gửi'}</span>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
-                {/* Right Column (5/12 cols) */}
+                {/* Right Column (5/12 cols): AI Diagnostic & IT Assistance */}
                 <div className="lg:col-span-5 space-y-4">
                   {/* AI Diagnostic Summary Box for Technician if available */}
                   {(selectedTicket as any).aiAnalysis && (
@@ -2560,190 +2458,359 @@ export default function TicketsPage() {
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
 
-                  {/* Comment & Chat Thread */}
-                  <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2.5">
-                    <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
-                        <span>{isEn ? 'Discussion & Comments' : 'Trao đổi & Bình luận'}</span>
-                      </span>
-                    </h4>
+              {/* ⭐ ĐÁNH GIÁ CHẤT LƯỢNG CSAT (1-Click CSAT Feedback - 👑 Enterprise - FULL WIDTH) */}
+              {(selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED') && (
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-slate-50 border border-amber-200/90 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xs font-black shadow-xs">
+                        ⭐
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-slate-900 text-xs">
+                          {isEn ? 'Customer Satisfaction Survey (CSAT)' : 'Đánh Giá Chất Lượng Dịch Vụ (CSAT)'}
+                        </h5>
+                        <p className="text-[10px] text-slate-500">
+                          {isEn ? 'How satisfied are you with the resolution?' : 'Bạn có hài lòng với kết quả xử lý của IT không?'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] bg-amber-200/80 text-amber-900 font-extrabold px-2 py-0.5 rounded-md border border-amber-300">
+                      👑 Enterprise
+                    </span>
+                  </div>
 
-                    {/* Messages Container (Filtered by role: Users do not see internal notes) */}
-                    <div className="space-y-2 max-h-64 overflow-y-auto p-2 bg-slate-50/80 rounded-xl border border-slate-100">
-                      {(() => {
-                        const visibleComments = selectedTicket.comments?.filter((c) => isITStaffOrAdmin || !c.isInternal) || [];
-                        return visibleComments.length === 0 ? (
-                          <p className="text-center text-slate-400 italic py-4 text-xs">{isEn ? 'No comments yet.' : 'Chưa có bình luận nào.'}</p>
-                        ) : (
-                          visibleComments.map((c) => (
-                            <div
-                              key={c.id}
-                              className={`p-2.5 rounded-xl text-xs space-y-1 ${
-                                c.isInternal
-                                  ? 'bg-amber-50/80 border border-amber-200 text-amber-900'
-                                  : 'bg-white border border-slate-200 shadow-2xs text-slate-800'
+                  {selectedTicket.rating ? (
+                    <div className="p-3 bg-white/90 rounded-xl border border-amber-200 space-y-1.5 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-4 h-4 ${
+                                star <= (selectedTicket.rating || 0)
+                                  ? 'text-amber-500 fill-amber-500'
+                                  : 'text-slate-200'
                               }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="font-extrabold text-amber-900">{selectedTicket.rating}/5 sao</span>
+                        {selectedTicket.ratedAt && (
+                          <span className="text-[10px] text-slate-400">
+                            • {new Date(selectedTicket.ratedAt).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      {selectedTicket.ratingComment && (
+                        <p className="text-slate-700 italic bg-amber-50/50 p-2 rounded-lg border border-amber-100/70 text-[11px]">
+                          "{selectedTicket.ratingComment}"
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-white/90 rounded-xl border border-amber-200 space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-700">{isEn ? 'Rating:' : 'Chấm điểm:'}</span>
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onMouseEnter={() => setRatingHover(star)}
+                              onMouseLeave={() => setRatingHover(0)}
+                              onClick={() => setSelectedRating(star)}
+                              className="p-1 hover:scale-125 transition-transform cursor-pointer"
                             >
-                              <div className="flex items-center justify-between text-[10px]">
-                                <span className="font-bold text-blue-700 flex items-center gap-1">
-                                  {c.user?.fullName}
-                                  {c.isInternal && (
-                                    <span className="px-1.5 py-0.2 bg-amber-200 text-amber-800 rounded font-bold text-[9px]">
-                                      {isEn ? '🔒 IT Internal' : '🔒 Nội bộ IT'}
+                              <Star
+                                className={`w-5 h-5 ${
+                                  star <= (ratingHover || selectedRating)
+                                    ? 'text-amber-500 fill-amber-500'
+                                    : 'text-slate-300'
+                                }`}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                        <span className="font-bold text-xs text-amber-800">
+                          {ratingHover || selectedRating} / 5 {isEn ? 'Stars' : 'Sao'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={ratingFeedback}
+                          onChange={(e) => setRatingFeedback(e.target.value)}
+                          placeholder={isEn ? 'Optional feedback for technician...' : 'Nhận xét thêm về sự hỗ trợ (tùy chọn)...'}
+                          className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:bg-white focus:ring-1 focus:ring-amber-500 font-medium"
+                        />
+                        <button
+                          type="button"
+                          disabled={submittingRating}
+                          onClick={() => handleRateTicket(selectedTicket.id, selectedRating, ratingFeedback)}
+                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 flex items-center gap-1"
+                        >
+                          {submittingRating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Star className="w-3.5 h-3.5 fill-white" />}
+                          <span>{isEn ? 'Submit' : 'Gửi'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 💬 KHU VỰC TRAO ĐỔI & BÌNH LUẬN FULL-WIDTH (SPACIOUS & EXPANSIVE) */}
+              <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-slate-200/90 shadow-2xs space-y-3.5">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                      <MessageSquare className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <h4 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                        <span>{isEn ? 'Discussion & Activity History' : 'Trao Đổi & Lịch Sử Xử Lý'}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs font-extrabold">
+                          {selectedTicket.comments?.filter((c) => isITStaffOrAdmin || !c.isInternal).length || 0}
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        {isEn ? 'Full-width collaborative workspace between IT and Requester' : 'Không gian làm việc & trao đổi trực tiếp giữa Người dùng và Đội ngũ Kỹ thuật'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {isITStaffOrAdmin && (
+                    <span className="text-[10.5px] font-semibold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/80 flex items-center gap-1">
+                      <span>🔒</span>
+                      <span className="hidden sm:inline">{isEn ? 'Supports internal notes' : 'Hỗ trợ ghi chú nội bộ IT'}</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Messages Container (Full-Width, Spacious Feed) */}
+                <div className="space-y-3 min-h-[220px] max-h-[380px] overflow-y-auto p-3 sm:p-4 bg-slate-50/70 rounded-2xl border border-slate-100/90">
+                  {(() => {
+                    const visibleComments = selectedTicket.comments?.filter((c) => isITStaffOrAdmin || !c.isInternal) || [];
+                    return visibleComments.length === 0 ? (
+                      <div className="py-10 text-center space-y-2">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-500 mx-auto flex items-center justify-center text-xl shadow-2xs">
+                          💬
+                        </div>
+                        <p className="text-slate-500 font-bold text-xs sm:text-sm">
+                          {isEn ? 'No comments or updates yet.' : 'Chưa có bình luận hay trao đổi nào.'}
+                        </p>
+                        <p className="text-slate-400 text-xs max-w-md mx-auto">
+                          {isEn ? 'Send a response below to start communicating with the requester or IT technician.' : 'Gửi tin nhắn hoặc phản hồi bên dưới để bắt đầu trao đổi với người yêu cầu hoặc kỹ thuật viên.'}
+                        </p>
+                      </div>
+                    ) : (
+                      visibleComments.map((c) => {
+                        const isRequesterMsg = c.user?.id === selectedTicket.createdById;
+                        return (
+                          <div
+                            key={c.id}
+                            className={`p-3.5 sm:p-4 rounded-2xl text-xs space-y-2 transition-all ${
+                              c.isInternal
+                                ? 'bg-amber-50/90 border-2 border-amber-300 text-amber-950 shadow-2xs'
+                                : isRequesterMsg
+                                ? 'bg-white border border-blue-200/80 shadow-2xs'
+                                : 'bg-white border border-slate-200 shadow-2xs text-slate-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 shadow-2xs ${
+                                  c.isInternal
+                                    ? 'bg-amber-500 text-white'
+                                    : isRequesterMsg
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-indigo-600 text-white'
+                                }`}>
+                                  {c.isInternal ? '🔒' : isRequesterMsg ? '👤' : '👨‍💻'}
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-extrabold text-slate-900 text-xs sm:text-[13px]">
+                                    {c.user?.fullName || c.user?.email || (isEn ? 'User' : 'Người dùng')}
+                                  </span>
+                                  {isRequesterMsg && (
+                                    <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold text-[10px] border border-blue-200">
+                                      {isEn ? 'Requester' : 'Người gửi'}
                                     </span>
                                   )}
-                                </span>
-                                <span className="text-slate-400">{new Date(c.createdAt).toLocaleTimeString('vi-VN')} {new Date(c.createdAt).toLocaleDateString('vi-VN')}</span>
-                              </div>
-                              <p className="whitespace-pre-wrap leading-relaxed text-[11px]">{c.content}</p>
-
-                              {/* Comment Attachments */}
-                              {Array.isArray((c as any).attachmentUrls) && ((c as any).attachmentUrls as any[]).length > 0 && (
-                                <div className="pt-1.5 flex items-center gap-1.5 flex-wrap">
-                                  {((c as any).attachmentUrls as any[]).map((att: any, caIdx: number) => {
-                                    const isImg = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(att.url) || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(att.name || '');
-                                    return isImg ? (
-                                      <img
-                                        key={caIdx}
-                                        src={att.url}
-                                        alt={att.name || (isEn ? 'Image' : 'Hình ảnh')}
-                                        onClick={() => setPreviewImageModal(att.url)}
-                                        className="w-14 h-14 object-cover rounded-lg border border-slate-200 shadow-2xs cursor-pointer hover:scale-105 transition-transform"
-                                      />
-                                    ) : (
-                                      <a
-                                        key={caIdx}
-                                        href={att.url}
-                                        download={att.name || 'file'}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-lg text-[9.5px] font-semibold inline-flex items-center gap-1 transition-colors"
-                                      >
-                                        <FileText className="w-3 h-3 text-blue-600" />
-                                        <span className="max-w-[100px] truncate">{att.name || 'File'}</span>
-                                      </a>
-                                    );
-                                  })}
+                                  {!isRequesterMsg && !c.isInternal && (
+                                    <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-[10px] border border-indigo-200">
+                                      {isEn ? 'IT Support' : 'Kỹ thuật IT'}
+                                    </span>
+                                  )}
+                                  {c.isInternal && (
+                                    <span className="px-2 py-0.5 bg-amber-200 text-amber-900 rounded-md font-black text-[10px] border border-amber-300 inline-flex items-center gap-1">
+                                      <span>🔒</span>
+                                      <span>{isEn ? 'IT Internal Only' : 'Nội bộ IT (Chỉ IT thấy)'}</span>
+                                    </span>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          ))
-                        );
-                      })()}
-                    </div>
-
-                    {/* New Comment Input Box */}
-                    <form onSubmit={handleAddComment} className="space-y-2 pt-1 border-t border-slate-100">
-                      <div className="space-y-1.5">
-                        <textarea
-                          rows={2}
-                          value={commentText}
-                          onChange={(e) => setCommentText(e.target.value)}
-                          onPaste={(e) => handlePasteImage(e, 'comment')}
-                          placeholder={isEn ? "Write a response or paste screenshot (Ctrl + V)..." : "Viết phản hồi hoặc dán ảnh chụp (Ctrl + V)..."}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 resize-none font-medium"
-                        />
-
-                        {/* Comment Attachments Preview */}
-                        {commentAttachments.length > 0 && (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {commentAttachments.map((att, attIdx) => (
-                              <span key={attIdx} className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[10px] font-semibold flex items-center gap-1">
-                                <span className="max-w-[100px] truncate">{att.name}</span>
-                                <button type="button" onClick={() => setCommentAttachments(prev => prev.filter((_, i) => i !== attIdx))} className="text-rose-500">×</button>
+                              </div>
+                              <span className="text-[11px] text-slate-400 font-medium shrink-0">
+                                {new Date(c.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} • {new Date(c.createdAt).toLocaleDateString('vi-VN')}
                               </span>
-                            ))}
+                            </div>
+
+                            <p className="whitespace-pre-wrap leading-relaxed text-slate-800 font-medium text-xs sm:text-[13px] pl-9">
+                              {c.content}
+                            </p>
+
+                            {/* Comment Attachments */}
+                            {Array.isArray((c as any).attachmentUrls) && ((c as any).attachmentUrls as any[]).length > 0 && (
+                              <div className="pt-2 pl-9 flex items-center gap-2.5 flex-wrap">
+                                {((c as any).attachmentUrls as any[]).map((att: any, caIdx: number) => {
+                                  const isImg = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(att.url) || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(att.name || '');
+                                  return isImg ? (
+                                    <img
+                                      key={caIdx}
+                                      src={att.url}
+                                      alt={att.name || (isEn ? 'Image' : 'Hình ảnh')}
+                                      onClick={() => setPreviewImageModal(att.url)}
+                                      className="w-20 h-20 sm:w-28 sm:h-28 object-cover rounded-xl border border-slate-200 shadow-2xs cursor-pointer hover:scale-105 transition-transform"
+                                    />
+                                  ) : (
+                                    <a
+                                      key={caIdx}
+                                      href={att.url}
+                                      download={att.name || 'file'}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+                                    >
+                                      <FileText className="w-4 h-4 text-blue-600" />
+                                      <span className="max-w-[150px] truncate">{att.name || 'File'}</span>
+                                      <Download className="w-3.5 h-3.5 text-slate-500" />
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
+                        );
+                      })
+                    );
+                  })()}
+                </div>
+
+                {/* New Comment Input Box (Full-Width, Spacious & Rich) */}
+                <form onSubmit={handleAddComment} className="space-y-2.5 pt-2 border-t border-slate-100">
+                  <div className="space-y-2">
+                    <textarea
+                      rows={3}
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      onPaste={(e) => handlePasteImage(e, 'comment')}
+                      placeholder={isEn ? "Write a response, resolution update, or paste screenshot directly (Ctrl + V)..." : "Nhập câu trả lời, tiến độ xử lý hoặc dán ảnh chụp màn hình trực tiếp (Ctrl + V)..."}
+                      className="w-full px-4 py-3 bg-slate-50/80 border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 resize-y font-medium leading-relaxed"
+                    />
+
+                    {/* Comment Attachments Preview */}
+                    {commentAttachments.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap p-2 bg-blue-50/50 rounded-xl border border-blue-100">
+                        {commentAttachments.map((att, attIdx) => (
+                          <span key={attIdx} className="px-2.5 py-1 bg-white text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs">
+                            <FileText className="w-3.5 h-3.5" />
+                            <span className="max-w-[150px] truncate">{att.name}</span>
+                            <button type="button" onClick={() => setCommentAttachments(prev => prev.filter((_, i) => i !== attIdx))} className="text-rose-500 hover:text-rose-700 font-bold ml-1">×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                        <label className="cursor-pointer px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-200" title={isEn ? 'Attach file/image' : 'Đính kèm file/ảnh'}>
+                          <Paperclip className="w-4 h-4 text-blue-600" />
+                          <span>{isEn ? 'Attach files' : 'Đính kèm tệp / ảnh'}</span>
+                          <input type="file" multiple onChange={handleUploadCommentFiles} className="hidden" />
+                        </label>
+
+                        {isITStaffOrAdmin && (
+                          <label className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100/80 border border-amber-200 rounded-xl text-xs font-bold text-amber-900 cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={isInternalComment}
+                              onChange={(e) => setIsInternalComment(e.target.checked)}
+                              className="rounded border-amber-300 text-amber-600 focus:ring-amber-500 w-3.5 h-3.5 cursor-pointer"
+                            />
+                            <span>{isEn ? '🔒 Internal Note (IT only)' : '🔒 Ghi chú nội bộ (Chỉ IT thấy)'}</span>
+                          </label>
                         )}
 
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <label className="cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-700 transition-colors" title={isEn ? 'Attach file/image' : 'Đính kèm file/ảnh'}>
-                              <Paperclip className="w-4 h-4" />
-                              <input type="file" multiple onChange={handleUploadCommentFiles} className="hidden" />
-                            </label>
-                            {isITStaffOrAdmin && (
-                              <label className="flex items-center gap-1 text-[10.5px] font-semibold text-amber-800 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={isInternalComment}
-                                  onChange={(e) => setIsInternalComment(e.target.checked)}
-                                  className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                                />
-                                <span>{isEn ? '🔒 Internal' : '🔒 Ghi chú nội bộ'}</span>
-                              </label>
-                            )}
+                        {/* ⚡ Quick Reply / Canned Responses (👑 Enterprise) */}
+                        {isITStaffOrAdmin && (
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCannedMenuOpen(!isCannedMenuOpen);
+                                fetchCannedResponses();
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-colors cursor-pointer"
+                              title={isEn ? 'Canned Templates (Quick Reply)' : 'Mẫu câu trả lời nhanh (Canned Response)'}
+                            >
+                              <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+                              <span>{isEn ? 'Quick Reply' : 'Mẫu câu trả lời'}</span>
+                              <span className="text-[9.5px] bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-black">👑</span>
+                            </button>
 
-                            {/* ⚡ Quick Reply / Canned Responses (👑 Enterprise) */}
-                            {isITStaffOrAdmin && (
-                              <div className="relative">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setIsCannedMenuOpen(!isCannedMenuOpen);
-                                    fetchCannedResponses();
-                                  }}
-                                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-[10.5px] font-bold transition-colors cursor-pointer"
-                                  title={isEn ? 'Canned Templates (Quick Reply)' : 'Mẫu câu trả lời nhanh (Canned Response)'}
-                                >
-                                  <Zap className="w-3 h-3 text-amber-600 fill-amber-500" />
-                                  <span>{isEn ? 'Quick Reply' : 'Mẫu câu'}</span>
-                                  <span className="text-[9px] bg-amber-200 text-amber-900 px-1 rounded font-black">👑</span>
-                                </button>
-
-                                {isCannedMenuOpen && (
-                                  <div className="absolute left-0 bottom-full mb-2 w-72 max-h-60 overflow-y-auto bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-50 space-y-1">
-                                    <div className="px-2 py-1 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-700">
-                                      <span>⚡ {isEn ? 'Canned Templates' : 'Mẫu trả lời nhanh'}</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => setIsCannedMenuOpen(false)}
-                                        className="text-slate-400 hover:text-slate-600 font-bold"
-                                      >
-                                        ×
-                                      </button>
-                                    </div>
-                                    {loadingCanned ? (
-                                      <div className="p-3 text-center text-slate-400 text-xs">Đang tải...</div>
-                                    ) : cannedResponses.length === 0 ? (
-                                      <div className="p-3 text-center text-slate-400 text-xs">Chưa có mẫu câu nào</div>
-                                    ) : (
-                                      cannedResponses.map((cr) => (
-                                        <button
-                                          key={cr.id}
-                                          type="button"
-                                          onClick={() => handleSelectCannedResponse(cr)}
-                                          className="w-full text-left p-2 rounded-lg hover:bg-slate-50 transition-colors text-xs group cursor-pointer block"
-                                        >
-                                          <div className="font-bold text-slate-800 group-hover:text-blue-600 flex items-center justify-between">
-                                            <span>{cr.title}</span>
-                                            {cr.shortcut && <span className="text-[9.5px] font-mono text-slate-400 bg-slate-100 px-1 rounded">{cr.shortcut}</span>}
-                                          </div>
-                                          <div className="text-[10.5px] text-slate-500 line-clamp-1 mt-0.5">{cr.content}</div>
-                                        </button>
-                                      ))
-                                    )}
-                                  </div>
+                            {isCannedMenuOpen && (
+                              <div className="absolute left-0 bottom-full mb-2 w-80 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 space-y-1.5 animate-in fade-in">
+                                <div className="px-2.5 py-1.5 border-b border-slate-100 flex items-center justify-between text-xs font-black text-slate-800">
+                                  <span>⚡ {isEn ? 'Canned Quick Replies' : 'Mẫu câu trả lời nhanh'}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsCannedMenuOpen(false)}
+                                    className="text-slate-400 hover:text-slate-600 font-bold p-1"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                                {loadingCanned ? (
+                                  <div className="p-4 text-center text-slate-400 text-xs">Đang tải danh sách mẫu câu...</div>
+                                ) : cannedResponses.length === 0 ? (
+                                  <div className="p-4 text-center text-slate-400 text-xs">Chưa có mẫu câu nào</div>
+                                ) : (
+                                  cannedResponses.map((cr) => (
+                                    <button
+                                      key={cr.id}
+                                      type="button"
+                                      onClick={() => handleSelectCannedResponse(cr)}
+                                      className="w-full text-left p-2.5 rounded-xl hover:bg-blue-50 transition-colors text-xs group cursor-pointer block border border-transparent hover:border-blue-100"
+                                    >
+                                      <div className="font-bold text-slate-800 group-hover:text-blue-600 flex items-center justify-between">
+                                        <span>{cr.title}</span>
+                                        {cr.shortcut && <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{cr.shortcut}</span>}
+                                      </div>
+                                      <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{cr.content}</div>
+                                    </button>
+                                  ))
                                 )}
                               </div>
                             )}
                           </div>
-
-                          <button
-                            type="submit"
-                            disabled={sendingComment || (!commentText.trim() && commentAttachments.length === 0)}
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
-                          >
-                            {sendingComment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                            <span>{isEn ? 'Send' : 'Gửi'}</span>
-                          </button>
-                        </div>
+                        )}
                       </div>
-                    </form>
+
+                      <button
+                        type="submit"
+                        disabled={sendingComment || (!commentText.trim() && commentAttachments.length === 0)}
+                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0 ml-auto"
+                      >
+                        {sendingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        <span>{isEn ? 'Send Response' : 'Gửi phản hồi'}</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </form>
               </div>
             </div>
 
