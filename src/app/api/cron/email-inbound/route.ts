@@ -1,11 +1,21 @@
 // src/app/api/cron/email-inbound/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { processInboundEmails, getImapConfig } from '@/lib/email-inbound';
+import { getActiveLicense } from '@/lib/license';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const shouldRun = searchParams.get('run') === 'true';
+
+    // Inbound Email-to-Ticket is an Enterprise feature
+    const license = await getActiveLicense();
+    if (!license.isEnterprise) {
+      return NextResponse.json({
+        success: false,
+        message: 'Inbound Email-to-Ticket requires an active Enterprise license',
+      });
+    }
 
     const config = await getImapConfig();
     if (!config.enabled) {

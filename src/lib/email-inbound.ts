@@ -13,6 +13,7 @@ import { routeTicket } from './routing-engine';
 import { sendEmail } from './email';
 import { broadcastRealtimeEvent } from './realtime';
 import { TicketCategory, TicketPriority } from '@prisma/client';
+import { getActiveLicense } from './license';
 
 export interface ImapConfig {
   host: string;
@@ -435,6 +436,14 @@ export async function processInboundEmails(customConfig?: Partial<ImapConfig>): 
 
   if (isPollingInProgress) {
     result.errors.push('Tác vụ quét hộp thư đang chạy trong nền, vui lòng đợi kết thúc.');
+    result.success = false;
+    return result;
+  }
+
+  // Check Enterprise Edition license
+  const license = await getActiveLicense();
+  if (!license.isEnterprise) {
+    result.errors.push('Tính năng Tiếp nhận Ticket qua Email (Inbound IMAP) là tính năng thuộc phiên bản trả phí (Enterprise Edition). Vui lòng kích hoạt bản quyền để sử dụng.');
     result.success = false;
     return result;
   }

@@ -104,7 +104,22 @@ Simply-it-community/
 
 ---
 
-## ⚡ 4. Hướng Dẫn Bắt Đầu Nhanh Khi Chuyển Sang Máy Tính Mới
+## 👑 4. Quy Tắc Phân Chia Tính Năng Free (Community) vs Trả Phí (Enterprise / Pro)
+
+> **QUY TẮC BẮT BUỘC DÀNH CHO AI TRONG MỌI PHIÊN LÀM VIỆC**:
+> 1. **Gửi email thông báo tự động (Outbound SMTP)**: Luôn là tính năng **Miễn phí (Community Edition)**.
+> 2. **TẤT CẢ CÁC TÍNH NĂNG MỚI THÊM VÀO HỆ THỐNG MẶC ĐỊNH TỰ ĐỘNG THUỘC BẢN TRẢ PHÍ (ENTERPRISE / PRO)**, trừ khi User có yêu cầu rõ ràng cụ thể là đưa tính năng đó vào bản Free/Community.
+> 3. **Tính năng Tiếp nhận Ticket qua Email (Inbound Email-to-Ticket qua IMAP & Auto-routing)**: Thuộc **bản Trả phí (Enterprise)**.
+>    - Bắt buộc kiểm tra `getActiveLicense().isEnterprise` ở API backend (`/api/cron/email-inbound`, `/api/email/inbound/sync`, `processInboundEmails()`).
+>    - Trên giao diện `email-settings-tab.tsx`, sub-tab IMAP có huy hiệu `👑 Enterprise` và hiển thị Banner nhắc nhở nâng cấp bản quyền khi đang ở bản Community.
+> 4. Khi phát triển bất kỳ tính năng mở rộng/nâng cao mới nào tiếp theo, AI phải tự động:
+>    - Gắn license check `isEnterprise`.
+>    - Đặt huy hiệu / lock view trên frontend cho người dùng Community.
+>    - Hướng dẫn người dùng nâng cấp qua tab Bản quyền (`/settings?tab=license`).
+
+---
+
+## ⚡ 5. Hướng Dẫn Bắt Đầu Nhanh Khi Chuyển Sang Máy Tính Mới
 
 Khi bạn mở dự án trên máy tính mới hoặc mở một cửa sổ chat AI mới, bạn chỉ cần gửi câu lệnh ngắn gọn:
 
@@ -114,4 +129,5 @@ AI sẽ ngay lập tức:
 1. Đọc toàn bộ kiến trúc và các tính năng vừa thực hiện.
 2. Nắm rõ quy tắc kiểm tra `npm run build` trước khi hoàn tất.
 3. Luôn đồng bộ mã nguồn sang cả 2 repository (`Simply-it-community` và `Simply IT`).
-4. Tuân theo nguyên tắc phát triển tối giản, hiệu quả (Lazy Senior Dev / Ponytail rule).
+4. Tuân thủ nghiêm ngặt **Quy tắc phân chia bản Free vs Trả phí** (mọi tính năng mới tự động thuộc bản Enterprise trừ khi được yêu cầu ngược lại).
+5. Tuân theo nguyên tắc phát triển tối giản, hiệu quả (Lazy Senior Dev / Ponytail rule).

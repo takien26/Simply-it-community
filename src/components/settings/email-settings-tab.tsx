@@ -166,6 +166,7 @@ export function EmailSettingsTab() {
   const [imapSyncing, setImapSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [lastSyncResult, setLastSyncResult] = useState<any>(null);
+  const [isEnterprise, setIsEnterprise] = useState(false);
 
   const [testEmail, setTestEmail] = useState('');
   const [templates, setTemplates] = useState<any[]>([]);
@@ -243,6 +244,17 @@ export function EmailSettingsTab() {
         if (dataTemplates.templates.length > 0) {
           setSelectedTemplate(dataTemplates.templates[0]);
         }
+      }
+
+      // 4. Check Enterprise License
+      try {
+        const resLic = await fetch('/api/license');
+        const dataLic = await resLic.json();
+        if (dataLic?.isEnterprise) {
+          setIsEnterprise(true);
+        }
+      } catch (licErr) {
+        console.error('Failed to load license status:', licErr);
       }
     } catch (e: any) {
       console.error(e);
@@ -408,6 +420,14 @@ export function EmailSettingsTab() {
   };
 
   const handleSyncImap = async () => {
+    if (!isEnterprise) {
+      setToast({
+        type: 'error',
+        message: 'Tính năng Quét hộp thư nhận Ticket qua Email chỉ khả dụng trên phiên bản Simply IT Enterprise Edition. Vui lòng kích hoạt bản quyền để sử dụng.',
+      });
+      return;
+    }
+
     setImapSyncing(true);
     setToast(null);
 
@@ -683,6 +703,9 @@ export function EmailSettingsTab() {
         >
           <Server className="w-4 h-4" />
           <span>{isEn ? 'Outbound SMTP' : 'Gửi Thư Tự Động (SMTP)'}</span>
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-200 uppercase tracking-wider">
+            {isEn ? 'Free' : 'Miễn phí'}
+          </span>
         </button>
 
         <button
@@ -696,7 +719,10 @@ export function EmailSettingsTab() {
         >
           <Inbox className="w-4 h-4" />
           <span>{isEn ? 'Email-to-Ticket (IMAP)' : 'Tiếp Nhận Ticket Qua Email (IMAP)'}</span>
-          {imapConfig.enabled && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-2xs uppercase tracking-wider flex items-center gap-0.5">
+            👑 Enterprise
+          </span>
+          {imapConfig.enabled && isEnterprise && (
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           )}
         </button>
@@ -914,6 +940,37 @@ export function EmailSettingsTab() {
       {/* Inbound IMAP Settings (Email-to-Ticket) */}
       {activeSubTab === 'INBOUND' && (
         <div className="space-y-6">
+          {/* Enterprise License Banner if Community Edition */}
+          {!isEnterprise && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-lg shadow-md shrink-0">
+                  👑
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    {isEn ? 'Enterprise Feature (Paid Edition)' : 'Tính Năng Thuộc Phiên Bản Trả Phí (Enterprise Edition)'}
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white uppercase">
+                      Pro / Enterprise
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {isEn
+                      ? 'Inbound Email-to-Ticket via IMAP, auto-routing, and threading are exclusively available in Simply IT Enterprise Edition. Please activate your license to enable automated email processing.'
+                      : 'Tự động quét hộp thư (IMAP), bóc tách nội dung, phân luồng IT tự động và chuỗi hội thoại (Conversation Threading) là tính năng thuộc phiên bản Simply IT Enterprise. Bạn có thể cấu hình và kiểm tra kết nối, nhưng cần mã bản quyền để hệ thống tự động tiếp nhận.'}
+                  </p>
+                </div>
+              </div>
+              <a
+                href="/settings?tab=license"
+                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl text-xs font-bold transition-all shrink-0 shadow-md shadow-orange-500/20 flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{isEn ? 'Activate Enterprise' : 'Kích Hoạt Bản Quyền'}</span>
+              </a>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* IMAP Config Form (2 cols) */}
             <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
