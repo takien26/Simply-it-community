@@ -192,6 +192,23 @@ async function initServer() {
   // Initial check 30s after startup, then check every 2 minutes
   setTimeout(triggerEmailInboundPolling, 30000);
   setInterval(triggerEmailInboundPolling, 2 * 60 * 1000);
+
+  // 5. Automated Ticket Auto-Close Engine (👑 Enterprise - Runs every 6 hours)
+  function triggerTicketAutoClose() {
+    try {
+      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/ticket-auto-close?run=true`, (res) => {
+        if (res.statusCode === 200) {
+          console.log(`⏱️ [Auto-Close Engine] Ticket auto-close check executed successfully.`);
+        }
+      });
+      req.on('error', () => {});
+      req.end();
+    } catch (e) {}
+  }
+
+  // Initial check 60s after startup, then check every 6 hours
+  setTimeout(triggerTicketAutoClose, 60000);
+  setInterval(triggerTicketAutoClose, 6 * 60 * 60 * 1000);
 }
 
 initServer().catch((err) => {

@@ -735,6 +735,11 @@ model Ticket {
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
+  // === Ticket Merging Fields ===
+  mergedIntoTicketId String?        @map("merged_into_ticket_id") @db.Uuid
+  mergedIntoTicket   Ticket?        @relation("MergedTickets", fields: [mergedIntoTicketId], references: [id])
+  mergedTickets      Ticket[]       @relation("MergedTickets")
+
   createdBy       User           @relation("TicketCreatedByUser", fields: [createdById], references: [id])
   assignedTo      User?          @relation("TicketAssignedToUser", fields: [assignedToId], references: [id])
   asset           Asset?         @relation(fields: [assetId], references: [id])
@@ -752,6 +757,7 @@ model Ticket {
   @@index([teamId])
   @@index([queueId])
   @@index([incidentId])
+  @@index([mergedIntoTicketId])
   @@index([companyName])
   @@index([createdAt])
   @@map("tickets")

@@ -88,6 +88,8 @@ export async function GET(request: NextRequest) {
         team: { select: { id: true, name: true, code: true } },
         queue: { select: { id: true, name: true, code: true } },
         incident: { select: { id: true, incidentNumber: true, title: true, severity: true, status: true } },
+        mergedIntoTicket: { select: { id: true, ticketNumber: true, title: true, status: true } },
+        mergedTickets: { select: { id: true, ticketNumber: true, title: true, status: true, createdAt: true, createdBy: { select: { id: true, fullName: true } } } },
         asset: {
           select: { id: true, assetTag: true, name: true, status: true },
         },

@@ -41,6 +41,22 @@ export async function GET(
         asset: {
           select: { id: true, assetTag: true, name: true, status: true, brand: true, model: true },
         },
+        incident: {
+          select: { id: true, incidentNumber: true, title: true, severity: true, status: true },
+        },
+        mergedIntoTicket: {
+          select: { id: true, ticketNumber: true, title: true, status: true },
+        },
+        mergedTickets: {
+          select: {
+            id: true,
+            ticketNumber: true,
+            title: true,
+            status: true,
+            createdAt: true,
+            createdBy: { select: { id: true, fullName: true } },
+          },
+        },
         comments: {
           orderBy: { createdAt: 'asc' },
           include: {
@@ -73,7 +89,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { status, priority, category, assignedToId, teamId, queueId, dueDate, resolutionNotes } = body;
+    const { status, priority, category, assignedToId, teamId, queueId, dueDate, resolutionNotes, incidentId } = body;
 
     const currentTicket = await prisma.ticket.findUnique({
       where: { id },
@@ -88,6 +104,17 @@ export async function PATCH(
 
     const data: any = {};
     const historyLogs: string[] = [];
+
+    // Handle Incident Link
+    if (incidentId !== undefined && incidentId !== currentTicket.incidentId) {
+      data.incidentId = incidentId || null;
+      if (incidentId) {
+        const inc = await prisma.incident.findUnique({ where: { id: incidentId }, select: { incidentNumber: true, title: true } });
+        historyLogs.push(`🚨 Đã liên kết ticket vào Sự cố: [${inc?.incidentNumber || 'INC'}] ${inc?.title || ''}.`);
+      } else {
+        historyLogs.push(`🚨 Đã gỡ bỏ liên kết ticket khỏi Sự cố.`);
+      }
+    }
 
     // Handle SLA Pause / Resume & Resolution Date when status changes
     if (status !== undefined && status !== currentTicket.status) {
@@ -192,6 +219,22 @@ export async function PATCH(
         asset: {
           select: { id: true, assetTag: true, name: true, status: true },
         },
+        incident: {
+          select: { id: true, incidentNumber: true, title: true, severity: true, status: true },
+        },
+        mergedIntoTicket: {
+          select: { id: true, ticketNumber: true, title: true, status: true },
+        },
+        mergedTickets: {
+          select: {
+            id: true,
+            ticketNumber: true,
+            title: true,
+            status: true,
+            createdAt: true,
+            createdBy: { select: { id: true, fullName: true } },
+          },
+        },
         comments: {
           orderBy: { createdAt: 'asc' },
           include: {
@@ -200,6 +243,39 @@ export async function PATCH(
         },
       },
     });
+
+    // 👑 Enterprise Feature: Automatically resolve/close all merged child tickets
+    if (
+      (status === 'RESOLVED' || status === 'CLOSED') &&
+      currentTicket.status !== 'RESOLVED' &&
+      currentTicket.status !== 'CLOSED'
+    ) {
+      try {
+        const childTickets = await prisma.ticket.findMany({
+          where: { mergedIntoTicketId: id, status: { notIn: ['RESOLVED', 'CLOSED'] } },
+        });
+        for (const child of childTickets) {
+          await prisma.ticket.update({
+            where: { id: child.id },
+            data: {
+              status: status,
+              resolvedAt: new Date(),
+              resolutionNotes: `Giải quyết tự động theo Ticket gốc #${currentTicket.ticketNumber}${resolutionNotes ? ': ' + resolutionNotes : ''}`,
+            },
+          });
+          await prisma.ticketComment.create({
+            data: {
+              ticketId: child.id,
+              userId: currentUser.userId,
+              content: `✅ [Ticket gốc #${currentTicket.ticketNumber}] đã được giải quyết ("${resolutionNotes || 'Đã hoàn tất xử lý'}").\n\nTicket con #${child.ticketNumber} này đã được tự động cập nhật trạng thái ${status === 'RESOLVED' ? 'Đã giải quyết' : 'Đã đóng'}.`,
+              isInternal: false,
+            },
+          });
+        }
+      } catch (childErr) {
+        console.warn('Auto resolving child tickets error:', childErr);
+      }
+    }
 
     // If ticket was just resolved/closed, notify creator
     if (

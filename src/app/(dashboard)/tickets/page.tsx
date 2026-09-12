@@ -43,6 +43,9 @@ import {
   Zap,
   Star,
   BookOpen,
+  GitMerge,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 
 interface Ticket {
@@ -67,6 +70,9 @@ interface Ticket {
   teamId?: string | null;
   queueId?: string | null;
   incidentId?: string | null;
+  mergedIntoTicketId?: string | null;
+  mergedIntoTicket?: { id: string; ticketNumber: string; title: string; status: string } | null;
+  mergedTickets?: Array<{ id: string; ticketNumber: string; title: string; status: string; createdAt: string; createdBy?: { id: string; fullName: string } }> | null;
   companyName?: string | null;
   overrideReason?: string | null;
   reassignmentCount?: number | null;
@@ -656,6 +662,24 @@ export default function TicketsPage() {
   const [previewImageModal, setPreviewImageModal] = useState<string | null>(null);
   const isPastingRef = useRef(false);
 
+  // 🔀 Ticket Merge & Broadcast State (👑 Enterprise)
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const [mergeTargetTicketId, setMergeTargetTicketId] = useState('');
+  const [mergeSearchTerm, setMergeSearchTerm] = useState('');
+  const [mergeReason, setMergeReason] = useState('Trùng lặp nội dung yêu cầu');
+  const [mergingTicket, setMergingTicket] = useState(false);
+  const [mergeSuccessMsg, setMergeSuccessMsg] = useState('');
+  const [broadcastToMerged, setBroadcastToMerged] = useState(true);
+
+  // 🚨 Incident Linking State (👑 Enterprise)
+  const [incidentsList, setIncidentsList] = useState<any[]>([]);
+  const [isIncidentMenuOpen, setIsIncidentMenuOpen] = useState(false);
+  const [linkingIncident, setLinkingIncident] = useState(false);
+
+  // 📋 Bulk Actions State (👑 Enterprise)
+  const [selectedTicketIds, setSelectedTicketIds] = useState<string[]>([]);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+
   const isAdmin = useMemo(() => {
     if (!currentUser) return false;
     const roleName = currentUser.role?.name || currentUser.roleName || '';
@@ -843,13 +867,21 @@ export default function TicketsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [ticketsRes, usersRes, assetsRes, meRes, settingsRes] = await Promise.all([
+      const [ticketsRes, usersRes, assetsRes, meRes, settingsRes, incidentsRes] = await Promise.all([
         fetch('/api/tickets'),
         fetch('/api/users'),
         fetch('/api/assets?pageSize=1000'),
         fetch('/api/auth/me'),
         fetch('/api/settings'),
+        fetch('/api/incidents').catch(() => ({ ok: false, json: async () => [] } as any)),
       ]);
+
+      if (incidentsRes && incidentsRes.ok) {
+        try {
+          const incData = await incidentsRes.json();
+          setIncidentsList(Array.isArray(incData) ? incData : (incData.incidents || []));
+        } catch {}
+      }
 
       if (settingsRes.ok) {
         const sData = await settingsRes.json();
@@ -1551,6 +1583,7 @@ export default function TicketsPage() {
           content: commentText.trim(),
           isInternal: isInternalComment,
           attachmentUrls: commentAttachments.length > 0 ? commentAttachments : null,
+          broadcastToMerged: isInternalComment ? false : broadcastToMerged,
         }),
       });
 
@@ -1577,6 +1610,124 @@ export default function TicketsPage() {
       alert('Lỗi kết nối khi gửi bình luận');
     } finally {
       setSendingComment(false);
+    }
+  };
+
+  // 🔀 Merge Ticket Action (👑 Enterprise)
+  const handleMergeTicket = async () => {
+    if (!selectedTicket || !mergeTargetTicketId) {
+      alert(isEn ? 'Please select target ticket to merge into' : 'Vui lòng chọn ticket đích cần gộp vào');
+      return;
+    }
+    if (selectedTicket.id === mergeTargetTicketId) {
+      alert(isEn ? 'Cannot merge a ticket into itself' : 'Không thể gộp ticket vào chính nó');
+      return;
+    }
+
+    try {
+      setMergingTicket(true);
+      const res = await fetch(`/api/tickets/${selectedTicket.id}/merge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetTicketId: mergeTargetTicketId,
+          reason: mergeReason.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setMergeSuccessMsg(data.message);
+        setTimeout(() => {
+          setMergeSuccessMsg('');
+          setIsMergeModalOpen(false);
+          setMergeTargetTicketId('');
+          setMergeSearchTerm('');
+        }, 1500);
+
+        loadData();
+        setSelectedTicket((prev: any) => ({
+          ...prev,
+          status: 'CLOSED',
+          mergedIntoTicketId: mergeTargetTicketId,
+        }));
+      } else {
+        alert(data.error || 'Lỗi khi gộp ticket');
+      }
+    } catch {
+      alert('Lỗi kết nối khi gộp ticket');
+    } finally {
+      setMergingTicket(false);
+    }
+  };
+
+  // 🚨 Link / Unlink Incident Action (👑 Enterprise)
+  const handleLinkIncident = async (incidentId: string | null) => {
+    if (!selectedTicket) return;
+    try {
+      setLinkingIncident(true);
+      const res = await fetch(`/api/tickets/${selectedTicket.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ incidentId }),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setSelectedTicket((prev: any) => ({ ...prev, incident: updated.incident, incidentId: updated.incidentId }));
+        setTickets((prev) => prev.map((t) => t.id === selectedTicket.id ? { ...t, incident: updated.incident, incidentId: updated.incidentId } : t));
+        setIsIncidentMenuOpen(false);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Lỗi liên kết sự cố');
+      }
+    } catch {
+      alert('Lỗi kết nối khi liên kết sự cố');
+    } finally {
+      setLinkingIncident(false);
+    }
+  };
+
+  // 📋 Bulk Selection & Actions
+  const handleToggleSelectTicket = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedTicketIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllTickets = () => {
+    if (selectedTicketIds.length === filteredTickets.length) {
+      setSelectedTicketIds([]);
+    } else {
+      setSelectedTicketIds(filteredTickets.map((t) => t.id));
+    }
+  };
+
+  const handleBulkClose = async () => {
+    if (selectedTicketIds.length === 0) return;
+    const confirmMsg = isEn
+      ? `Are you sure you want to close ${selectedTicketIds.length} selected tickets?`
+      : `Bạn có chắc chắn muốn đóng ${selectedTicketIds.length} ticket đã chọn?`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      setBulkActionLoading(true);
+      await Promise.all(
+        selectedTicketIds.map((id) =>
+          fetch(`/api/tickets/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'CLOSED', resolutionNotes: 'Đóng hàng loạt bởi kỹ thuật viên IT' }),
+          })
+        )
+      );
+      setSelectedTicketIds([]);
+      await loadData();
+    } catch {
+      alert('Lỗi khi đóng hàng loạt ticket');
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -1947,6 +2098,14 @@ export default function TicketsPage() {
           <table className="table-fixed w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="py-3 px-2.5 w-[36px] text-center">
+                  <input
+                    type="checkbox"
+                    checked={filteredTickets.length > 0 && selectedTicketIds.length === filteredTickets.length}
+                    onChange={handleSelectAllTickets}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 cursor-pointer"
+                  />
+                </th>
                 <th className="py-3 px-3.5 w-[24%]">{isEn ? 'TICKET & TITLE' : 'Mã & Tiêu Đề Sự Cố'}</th>
                 <th className="py-3 px-3 w-[13%]">{isEn ? 'CATEGORY' : 'Phân Loại'}</th>
                 <th className="py-3 px-2.5 w-[10%]">{isEn ? 'PRIORITY' : 'Mức Độ'}</th>
@@ -1959,14 +2118,14 @@ export default function TicketsPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-slate-400">
+                  <td colSpan={8} className="py-16 text-center text-slate-400">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
                     <span className="font-semibold text-xs text-slate-500">{isEn ? 'Loading tickets...' : 'Đang tải danh sách ticket...'}</span>
                   </td>
                 </tr>
               ) : filteredTickets.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-slate-400 space-y-2">
+                  <td colSpan={8} className="py-16 text-center text-slate-400 space-y-2">
                     <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto text-xl font-bold">
                       🎫
                     </div>
@@ -1995,20 +2154,42 @@ export default function TicketsPage() {
                   return (
                     <tr
                       key={t.id}
-                      className="hover:bg-blue-50/40 transition-colors group cursor-pointer"
+                      className={`transition-colors group cursor-pointer ${
+                        selectedTicketIds.includes(t.id) ? 'bg-blue-50/70' : 'hover:bg-blue-50/40'
+                      }`}
                       onClick={() => {
                         setSelectedTicket(t);
                         setIsDetailModalOpen(true);
                       }}
                     >
+                      {/* Checkbox chọn hàng */}
+                      <td className="py-3 px-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedTicketIds.includes(t.id)}
+                          onChange={(e) => handleToggleSelectTicket(t.id, e as any)}
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 cursor-pointer"
+                        />
+                      </td>
+
                       {/* Mã & Tiêu Đề Sự Cố (2 DÒNG RÕ RÀNG) */}
                       <td className="py-3 px-3.5">
                         <div className="space-y-1.5">
-                          {/* Dòng 1: Mã Ticket + Sự cố + Team + Thiết bị + Số bình luận */}
+                          {/* Dòng 1: Mã Ticket + Sự cố + Gộp + Team + Thiết bị + Số bình luận */}
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-mono font-bold text-[10.5px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200/80 shrink-0">
                               {t.ticketNumber}
                             </span>
+                            {t.mergedIntoTicketId && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-300 font-bold text-[10px] shrink-0" title={isEn ? 'Merged ticket' : 'Đã gộp vào ticket khác'}>
+                                <span>🔀 Đã gộp</span>
+                              </span>
+                            )}
+                            {t.mergedTickets && t.mergedTickets.length > 0 && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-300 font-bold text-[10px] shrink-0" title={isEn ? `${t.mergedTickets.length} child tickets merged into this` : `Đã gộp ${t.mergedTickets.length} ticket con`}>
+                                <span>🔗 +{t.mergedTickets.length} gộp</span>
+                              </span>
+                            )}
                             {t.incident && (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/80 font-bold text-[10px] shrink-0" title={isEn ? `Belongs to Incident: ${t.incident.incidentNumber} - ${t.incident.title}` : `Thuộc Sự cố: ${t.incident.incidentNumber} - ${t.incident.title}`}>
                                 <span>🚨 {t.incident.incidentNumber}</span>
@@ -2192,7 +2373,100 @@ export default function TicketsPage() {
                   {selectedTicket.title}
                 </h2>
               </div>
+
               <div className="flex items-center gap-2 shrink-0">
+                {/* 🔀 Merge Ticket Button (👑 Enterprise) */}
+                {isITStaffOrAdmin && !selectedTicket.mergedIntoTicketId && selectedTicket.status !== 'CLOSED' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMergeTargetTicketId('');
+                      setMergeSearchTerm('');
+                      setMergeReason('Trùng lặp nội dung yêu cầu');
+                      setIsMergeModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs border border-amber-300 transition-colors cursor-pointer"
+                    title={isEn ? 'Merge this duplicate ticket into a main ticket' : 'Gộp ticket trùng lặp này vào ticket chính'}
+                  >
+                    <GitMerge className="w-3.5 h-3.5 text-amber-600" />
+                    <span className="hidden sm:inline">{isEn ? 'Merge' : 'Gộp Ticket'}</span>
+                    <span className="text-[10px] bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-black">👑</span>
+                  </button>
+                )}
+
+                {/* 🚨 Link Major Incident Button (👑 Enterprise) */}
+                {isITStaffOrAdmin && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsIncidentMenuOpen(!isIncidentMenuOpen)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl font-bold text-xs border transition-colors cursor-pointer ${
+                        selectedTicket.incidentId
+                          ? 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                      title={isEn ? 'Link to Major Incident' : 'Liên kết với Sự cố lớn'}
+                    >
+                      <span className="text-xs">🚨</span>
+                      <span className="hidden sm:inline">
+                        {selectedTicket.incident
+                          ? selectedTicket.incident.incidentNumber
+                          : isEn
+                          ? 'Link Incident'
+                          : 'Sự cố'}
+                      </span>
+                      <span className="text-[10px] bg-rose-200 text-rose-900 px-1 py-0.2 rounded font-black">👑</span>
+                    </button>
+
+                    {isIncidentMenuOpen && (
+                      <div className="absolute right-0 mt-1.5 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 space-y-1">
+                        <div className="px-2 py-1 font-bold text-slate-800 text-xs border-b border-slate-100 flex items-center justify-between">
+                          <span>{isEn ? 'Link to Major Incident' : 'Liên kết với Sự cố'}</span>
+                          <span className="text-[10px] text-slate-400">👑 Enterprise</span>
+                        </div>
+                        {selectedTicket.incidentId && (
+                          <button
+                            type="button"
+                            onClick={() => handleLinkIncident(null)}
+                            disabled={linkingIncident}
+                            className="w-full text-left px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg font-semibold flex items-center gap-2 cursor-pointer"
+                          >
+                            <span>❌</span>
+                            <span>{isEn ? 'Unlink current incident' : 'Gỡ liên kết sự cố hiện tại'}</span>
+                          </button>
+                        )}
+                        <div className="max-h-48 overflow-y-auto space-y-1 pt-1">
+                          {incidentsList.length === 0 ? (
+                            <p className="text-slate-400 text-center py-3 text-xs italic">
+                              {isEn ? 'No active incidents found.' : 'Không có sự cố nào đang mở.'}
+                            </p>
+                          ) : (
+                            incidentsList.map((inc) => (
+                              <button
+                                key={inc.id}
+                                type="button"
+                                onClick={() => handleLinkIncident(inc.id)}
+                                disabled={linkingIncident}
+                                className={`w-full text-left p-2 rounded-xl text-xs transition-colors cursor-pointer flex flex-col gap-0.5 ${
+                                  selectedTicket.incidentId === inc.id
+                                    ? 'bg-rose-50 border border-rose-200 text-rose-800 font-bold'
+                                    : 'hover:bg-slate-50 text-slate-700'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-mono font-bold text-rose-600">[{inc.incidentNumber}]</span>
+                                  <span className="text-[10px] font-bold px-1.5 rounded bg-slate-100 text-slate-600">{inc.severity}</span>
+                                </div>
+                                <span className="truncate text-slate-800 font-medium">{inc.title}</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={handleOpenConvertToKb}
@@ -2216,6 +2490,89 @@ export default function TicketsPage() {
 
             {/* Modal Body (Scrollable with 2-Column Wide Layout) */}
             <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1 text-xs">
+              {/* Alert Banner: Merged Into Ticket */}
+              {selectedTicket.mergedIntoTicket && (
+                <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl flex items-center justify-between gap-3 text-amber-950 animate-in fade-in">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <GitMerge className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span className="font-bold text-xs truncate">
+                      {isEn ? 'This ticket was merged into main ticket:' : 'Ticket này đã được gộp vào ticket chính:'}{' '}
+                      <span className="font-mono text-blue-700 underline cursor-pointer" onClick={() => {
+                        const target = tickets.find((t) => t.id === selectedTicket.mergedIntoTicket?.id);
+                        if (target) setSelectedTicket(target);
+                      }}>
+                        #{selectedTicket.mergedIntoTicket.ticketNumber} - {selectedTicket.mergedIntoTicket.title}
+                      </span>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = tickets.find((t) => t.id === selectedTicket.mergedIntoTicket?.id);
+                      if (target) setSelectedTicket(target);
+                    }}
+                    className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold rounded-lg text-xs transition-colors shrink-0 cursor-pointer"
+                  >
+                    {isEn ? 'View root ticket ↗' : 'Xem ticket gốc ↗'}
+                  </button>
+                </div>
+              )}
+
+              {/* Info Banner: Merged Child Tickets */}
+              {selectedTicket.mergedTickets && selectedTicket.mergedTickets.length > 0 && (
+                <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl space-y-1.5 text-indigo-950 animate-in fade-in">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 font-bold text-xs">
+                      <GitMerge className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <span>{isEn ? `🔗 Merged child tickets (${selectedTicket.mergedTickets.length}):` : `🔗 Đã gộp ${selectedTicket.mergedTickets.length} ticket con liên quan:`}</span>
+                    </div>
+                    <span className="text-[10px] bg-indigo-200/80 text-indigo-900 px-1.5 py-0.5 rounded font-black">👑 Enterprise Broadcast</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                    {selectedTicket.mergedTickets.map((child) => (
+                      <button
+                        key={child.id}
+                        type="button"
+                        onClick={() => {
+                          const target = tickets.find((t) => t.id === child.id);
+                          if (target) setSelectedTicket(target);
+                        }}
+                        className="px-2.5 py-1 bg-white border border-indigo-200 hover:border-indigo-400 rounded-xl text-xs font-semibold text-indigo-800 shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        title={child.title}
+                      >
+                        <span className="font-mono font-black text-indigo-600">#{child.ticketNumber}</span>
+                        <span className="truncate max-w-[140px] text-slate-700">{child.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Info Banner: Linked Incident */}
+              {selectedTicket.incident && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between gap-3 text-rose-950 animate-in fade-in">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-base shrink-0">🚨</span>
+                    <div className="text-xs truncate">
+                      <span className="font-bold text-rose-800">{isEn ? 'Major Incident:' : 'Sự cố trọng yếu:'}</span>{' '}
+                      <span className="font-mono font-black text-rose-700">[{selectedTicket.incident.incidentNumber}]</span>{' '}
+                      <span className="font-semibold text-slate-800">{selectedTicket.incident.title}</span>
+                    </div>
+                  </div>
+                  {isITStaffOrAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => handleLinkIncident(null)}
+                      disabled={linkingIncident}
+                      className="px-2.5 py-1 text-rose-700 hover:text-rose-900 bg-rose-100 hover:bg-rose-200 rounded-lg font-bold text-xs transition-colors shrink-0 cursor-pointer"
+                      title={isEn ? 'Unlink from incident' : 'Gỡ khỏi sự cố'}
+                    >
+                      {isEn ? 'Unlink' : 'Gỡ liên kết'}
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Meta Grid Banner */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 text-[11.5px]">
                 <div className="space-y-0.5">
@@ -2807,6 +3164,19 @@ export default function TicketsPage() {
                               className="rounded border-amber-300 text-amber-600 focus:ring-amber-500 w-3.5 h-3.5 cursor-pointer"
                             />
                             <span>{isEn ? '🔒 Internal Note (IT only)' : '🔒 Ghi chú nội bộ (Chỉ IT thấy)'}</span>
+                          </label>
+                        )}
+
+                        {/* 📢 Broadcast to Merged Tickets (👑 Enterprise) */}
+                        {isITStaffOrAdmin && selectedTicket.mergedTickets && selectedTicket.mergedTickets.length > 0 && !isInternalComment && (
+                          <label className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100/80 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-900 cursor-pointer transition-colors" title={isEn ? "Broadcast this response to all merged child tickets" : "Đồng bộ phản hồi này đến toàn bộ ticket con đã gộp"}>
+                            <input
+                              type="checkbox"
+                              checked={broadcastToMerged}
+                              onChange={(e) => setBroadcastToMerged(e.target.checked)}
+                              className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
+                            />
+                            <span>📢 {isEn ? `Broadcast (${selectedTicket.mergedTickets.length})` : `Đồng bộ tới ${selectedTicket.mergedTickets.length} ticket đã gộp`}</span>
                           </label>
                         )}
 
@@ -3771,6 +4141,187 @@ export default function TicketsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MERGE TICKET MODAL (👑 Enterprise) */}
+      {isMergeModalOpen && selectedTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-5 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-amber-50 text-amber-700">
+                  <GitMerge className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+                    <span>{isEn ? 'Merge Duplicate Ticket' : 'Gộp Ticket Trùng Lặp'}</span>
+                    <span className="text-[10px] bg-amber-100 text-amber-800 font-black px-1.5 py-0.5 rounded">👑 Enterprise</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {isEn ? `Merge #${selectedTicket.ticketNumber} into a primary root ticket` : `Gộp ticket #${selectedTicket.ticketNumber} vào một ticket gốc để tập trung xử lý`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMergeModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {mergeSuccessMsg ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 font-bold text-center space-y-1">
+                <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-600" />
+                <p>{mergeSuccessMsg}</p>
+              </div>
+            ) : (
+              <div className="space-y-3.5 flex-1 overflow-y-auto pr-1 text-xs">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-slate-500 font-semibold">{isEn ? 'Source ticket (Will be closed & linked):' : 'Ticket nguồn (Sẽ được đóng & trỏ về ticket chính):'}</span>
+                  <div className="font-bold text-slate-900">
+                    <span className="font-mono text-blue-600">#{selectedTicket.ticketNumber}</span> - {selectedTicket.title}
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    {isEn ? 'Requester:' : 'Người yêu cầu:'} {selectedTicket.createdBy?.fullName}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {isEn ? 'Select Primary Target Ticket (*):' : 'Chọn Ticket Gốc Nhận Gộp (*):'}
+                  </label>
+                  <div className="relative mb-2">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={mergeSearchTerm}
+                      onChange={(e) => setMergeSearchTerm(e.target.value)}
+                      placeholder={isEn ? 'Search by ticket # or title...' : 'Tìm theo mã #TK-... hoặc tiêu đề ticket...'}
+                      className="w-full pl-8.5 pr-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 border border-slate-200 rounded-xl p-2 bg-slate-50/50">
+                    {(() => {
+                      const candidateTickets = tickets.filter(
+                        (t) =>
+                          t.id !== selectedTicket.id &&
+                          !t.mergedIntoTicketId &&
+                          t.status !== 'CLOSED' &&
+                          (mergeSearchTerm.trim() === '' ||
+                            t.ticketNumber.toLowerCase().includes(mergeSearchTerm.toLowerCase()) ||
+                            t.title.toLowerCase().includes(mergeSearchTerm.toLowerCase()))
+                      );
+
+                      if (candidateTickets.length === 0) {
+                        return (
+                          <p className="text-slate-400 text-center py-4 italic">
+                            {isEn ? 'No eligible open tickets found.' : 'Không tìm thấy ticket nào khả dụng để gộp vào.'}
+                          </p>
+                        );
+                      }
+
+                      return candidateTickets.map((cand) => (
+                        <label
+                          key={cand.id}
+                          className={`p-2.5 rounded-xl border transition-all flex items-start gap-2.5 cursor-pointer ${
+                            mergeTargetTicketId === cand.id
+                              ? 'bg-amber-50/90 border-amber-400 text-amber-950 font-bold shadow-2xs'
+                              : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="mergeTarget"
+                            value={cand.id}
+                            checked={mergeTargetTicketId === cand.id}
+                            onChange={() => setMergeTargetTicketId(cand.id)}
+                            className="mt-0.5 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                          />
+                          <div className="space-y-0.5 min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-mono text-blue-700 font-extrabold text-[11px]">#{cand.ticketNumber}</span>
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-semibold">{cand.status}</span>
+                            </div>
+                            <p className="truncate text-xs font-semibold text-slate-800">{cand.title}</p>
+                            <span className="text-[10px] text-slate-400 block">{cand.createdBy?.fullName} • {new Date(cand.createdAt).toLocaleDateString('vi-VN')}</span>
+                          </div>
+                        </label>
+                      ));
+                    })()}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    {isEn ? 'Reason for merging:' : 'Lý do gộp ticket:'}
+                  </label>
+                  <input
+                    type="text"
+                    value={mergeReason}
+                    onChange={(e) => setMergeReason(e.target.value)}
+                    placeholder={isEn ? 'e.g. Duplicate issue reported by user' : 'Ví dụ: Trùng lặp sự cố mạng tầng 3'}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsMergeModalOpen(false)}
+                    className="px-3.5 py-1.5 border border-slate-200 text-slate-600 rounded-xl font-semibold hover:bg-slate-50 cursor-pointer"
+                  >
+                    {isEn ? 'Cancel' : 'Hủy'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleMergeTicket}
+                    disabled={mergingTicket || !mergeTargetTicketId}
+                    className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    {mergingTicket ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GitMerge className="w-3.5 h-3.5" />}
+                    <span>{isEn ? 'Confirm & Merge' : 'Xác Nhận Gộp'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING BULK ACTIONS BAR (👑 Enterprise) */}
+      {selectedTicketIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 animate-in slide-in-from-bottom-5">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-black">
+              {selectedTicketIds.length}
+            </span>
+            <span className="text-xs font-bold text-slate-200">
+              {isEn ? 'tickets selected' : 'ticket đã chọn'}
+            </span>
+          </div>
+          <div className="h-4 w-px bg-slate-700" />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleBulkClose}
+              disabled={bulkActionLoading}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              {bulkActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              <span>{isEn ? 'Bulk Close' : 'Đóng hàng loạt'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTicketIds([])}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+            >
+              {isEn ? 'Deselect All' : 'Bỏ chọn'}
+            </button>
           </div>
         </div>
       )}
