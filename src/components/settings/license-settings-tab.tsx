@@ -309,7 +309,7 @@ export function LicenseSettingsTab() {
             <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2">
               <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span>SIMPLY IT Community Edition</span>
-                <span className="text-xs px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-semibold">v1.0.0</span>
+                <span className="text-xs px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-semibold">v1.0.1</span>
               </h4>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                 {isEn

@@ -202,7 +202,7 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
 
                 <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <span>SIMPLY IT {license?.isEnterprise ? 'Enterprise Edition' : 'Community Edition'}</span>
-                  <span className="text-xs font-normal text-slate-400 font-mono">v1.0.0</span>
+                  <span className="text-xs font-normal text-slate-400 font-mono">v1.0.1</span>
                 </div>
 
                 {license?.isEnterprise ? (

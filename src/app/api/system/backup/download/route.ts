@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
 
     const manifest = {
       appName: 'SIMPLY IT - Quản Trị Tài Sản & Dịch Vụ IT',
-      version: '1.0.0',
+      version: '1.0.1',
       backupTime: new Date().toISOString(),
       performedBy: {
         name: user?.fullName || currentUser.email,

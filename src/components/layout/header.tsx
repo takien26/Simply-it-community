@@ -870,7 +870,7 @@ export function Header({
                               {language === 'en' ? 'Edition & License Status' : 'Phiên Bản Đang Dùng & Bản Quyền'}
                             </h4>
                             <p className="text-[10px] text-slate-500">
-                              SIMPLY IT v1.0.0
+                              SIMPLY IT v1.0.1
                             </p>
                           </div>
                         </div>
@@ -1015,7 +1015,7 @@ export function Header({
                               {language === 'en' ? 'System License & Edition' : 'Thông Tin Giấy Phép & Bản Quyền'}
                             </h4>
                             <p className="text-[10px] text-slate-400">
-                              SIMPLY IT ITSM Platform v1.0.0
+                              SIMPLY IT ITSM Platform v1.0.1
                             </p>
                           </div>
                         </div>
