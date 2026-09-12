@@ -1,4 +1,4 @@
-﻿# 📋 NHẬT KÝ CẬP NHẬT PHIÊN BẢN (CHANGELOG)
+# 📋 NHẬT KÝ CẬP NHẬT PHIÊN BẢN (CHANGELOG)
 
 ## [v1.0.1] - 12/09/2026
 
@@ -50,6 +50,18 @@ Bản cập nhật **v1.0.1** tập trung nâng cấp trải nghiệm người d
 - **Tự động điền ngày mua**: Form thêm tài sản tự động điền ngày mua mặc định là ngày hiện tại (`hôm nay`).
 - **Chọn nhanh thời hạn bảo hành**: Bổ sung 4 nút chọn nhanh bảo hành: `1 năm (12T)`, `2 năm (24T)`, `3 năm (36T)`, `5 năm (60T)`. Tự động tính toán ngày hết hạn bảo hành dựa trên ngày mua.
 - **Bổ sung trường ngày mua / ngày nhập hàng**: Hiển thị rõ ràng trường ngày mua trên form nhập liệu và bảng danh sách.
+
+#### F. Tự Động Nhận Diện & Cập Nhật Đúng Danh Mục Thiết Bị (Laptop / PC / Server)
+- **Vấn đề trước đây**: Khi thu thập thông tin tự động (`auto-scan/collect`), hệ thống chọn danh mục đầu tiên tìm thấy (thường rơi vào `🏢 Thiết bị văn phòng`) và khi cập nhật thiết bị đã có thì không cập nhật lại danh mục.
+- **Giải pháp toàn diện**:
+  - **Phía Agent thu thập (`get_system_info.ps1`, `simply-it-collector.ps1`)**:
+    - Quét trực tiếp cảm biến pin (`Win32_Battery`) và khung vỏ máy (`Win32_SystemEnclosure.ChassisTypes`).
+    - Nhận diện chính xác loại máy: `Laptop` (nếu có pin hoặc chassis loại 8..14, 30..32), `Server` (nếu chassis 17, 23, 28, 29 hoặc Windows Server), hoặc `Desktop`.
+    - Gửi kèm cờ `deviceType`, `hasBattery`, `chassisTypes` về hệ thống.
+  - **Phía Máy chủ & API (`/api/v1/auto-scan/collect` & `/api/auto-scan/collect`)**:
+    - Module nhận diện thông minh đa tầng (`src/lib/device-detection.ts`): nhận diện theo tín hiệu phần cứng, model series (Lenovo type `21S6...`, `20XF...`, ThinkPad, Latitude, EliteBook...), từ khóa dòng sản phẩm.
+    - Tìm và gán chính xác danh mục `Laptop` (hoặc `PC / Máy tính để bàn`, `Máy chủ`).
+    - **Cập nhật cả thiết bị cũ**: Khi máy quét lại, nếu danh mục hiện tại là chung chung (`Thiết bị văn phòng`, `Khác`, hoặc trống), hệ thống tự động hiệu chỉnh sang đúng danh mục thực tế (`Laptop`) và ghi nhận vào lịch sử thay đổi.
 
 ---
 

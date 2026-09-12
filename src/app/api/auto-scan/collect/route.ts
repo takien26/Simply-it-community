@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { reconcileSoftwareLicenses } from '@/lib/license-reconciliation';
+import { detectDeviceType, resolveCategoryForDevice } from '@/lib/device-detection';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,7 @@ export async function POST(request: NextRequest) {
       serialNumber,
       brand,
       model,
+      deviceType,
       specs,
       scannedAt,
       installedSoftware = [],
@@ -89,11 +91,45 @@ export async function POST(request: NextRequest) {
         hardwareChangeAlert: hasHardwareChange ? changeLogs.join('; ') : currentSpecs.hardwareChangeAlert,
       };
 
+      // Detect device type and resolve category
+      const detectedType = detectDeviceType({
+        deviceType,
+        brand: brand || existingAsset.brand,
+        model: model || existingAsset.model,
+        hostname: cleanHostname,
+        specs: { ...mergedSpecs, ...newSpecs },
+      });
+      const targetCategory = await resolveCategoryForDevice(detectedType);
+
+      let targetCategoryId = existingAsset.categoryId;
+      if (targetCategory && targetCategory.id !== existingAsset.categoryId) {
+        const currentCatName = existingAsset.category?.name || '';
+        const isGenericCat =
+          !existingAsset.categoryId ||
+          currentCatName === 'Thiết bị văn phòng' ||
+          currentCatName === 'Khác' ||
+          currentCatName === 'Other' ||
+          currentCatName === 'Chưa phân loại';
+
+        if (
+          isGenericCat ||
+          (detectedType === 'Laptop' && (currentCatName.includes('để bàn') || currentCatName.includes('PC'))) ||
+          (detectedType === 'Desktop' && currentCatName.toLowerCase().includes('laptop')) ||
+          (detectedType === 'Server' && !currentCatName.toLowerCase().includes('server') && !currentCatName.includes('chủ'))
+        ) {
+          targetCategoryId = targetCategory.id;
+          changeLogs.push(`Tự động cập nhật danh mục: "${currentCatName || 'Trống'}" ➔ "${targetCategory.name}"`);
+        }
+      }
+
+      mergedSpecs.deviceType = detectedType;
+
       const updated = await prisma.asset.update({
         where: { id: existingAsset.id },
         data: {
           brand: brand || existingAsset.brand,
           model: model || existingAsset.model,
+          categoryId: targetCategoryId,
           specs: mergedSpecs,
           updatedAt: new Date(),
         },
@@ -121,12 +157,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Asset NOT found -> Register into Database
-    let category = await prisma.assetCategory.findFirst({
-      where: { name: { in: ['Laptop', 'Máy tính', 'Thiết bị văn phòng'] } },
+    const detectedType = detectDeviceType({
+      deviceType,
+      brand,
+      model,
+      hostname: cleanHostname,
+      specs: newSpecs,
     });
-    if (!category) {
-      category = await prisma.assetCategory.findFirst();
-    }
+    const category = await resolveCategoryForDevice(detectedType);
 
     // Generate tag
     const tagCount = await prisma.asset.count();
@@ -137,6 +175,7 @@ export async function POST(request: NextRequest) {
 
     const newSpecsData = {
       ...newSpecs,
+      deviceType: detectedType,
       installedSoftware: targetSoftware,
       osLicense: osLicense || null,
       officeLicense: officeLicense || null,
@@ -148,12 +187,13 @@ export async function POST(request: NextRequest) {
       autoDiscovered: true,
     };
 
+    const deviceTypeLabel = detectedType === 'Laptop' ? 'Laptop' : detectedType === 'Server' ? 'Máy chủ' : 'Máy tính';
     const newAsset = await prisma.asset.create({
       data: {
         assetTag: generatedTag,
-        name: cleanHostname ? `Máy tính ${cleanHostname}` : `Thiết bị ${model || 'Mới'}`,
+        name: cleanHostname ? `${deviceTypeLabel} ${cleanHostname}` : `${deviceTypeLabel} ${model || 'Mới'}`,
         brand: brand || 'Generic',
-        model: model || 'PC/Laptop',
+        model: model || (detectedType === 'Laptop' ? 'Laptop' : 'PC'),
         serialNumber: cleanSerial || generatedTag,
         categoryId: category?.id || '',
         status: 'PENDING',

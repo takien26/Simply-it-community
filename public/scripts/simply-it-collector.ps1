@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # SIMPLY IT - Enterprise Asset Agent v4
 # Windows 10/11 + PowerShell 5.1 + GPO/SYSTEM compatible
 #
@@ -390,6 +390,8 @@ try {
     $disks      = @(Get-CimCompat "Win32_DiskDrive")
     $gpus       = @(Get-CimCompat "Win32_VideoController")
     $osObj      = Get-CimCompat "Win32_OperatingSystem"
+    $enclosure  = Get-CimCompat "Win32_SystemEnclosure"
+    $batteries  = @(Get-CimCompat "Win32_Battery")
 
     $serialNumber = [string]$bios.SerialNumber
     if ([string]::IsNullOrWhiteSpace($serialNumber) -or
@@ -437,7 +439,25 @@ try {
     $ipAddress  = [string]$network.IP
     $macAddress = [string]$network.MAC
 
-    Log "Hardware collected: Host=$hostname Serial=$serialNumber Model=$model IP=$ipAddress"
+    # Detect Device Type (Laptop / Desktop / Server)
+    $hasBattery = ($batteries.Count -gt 0)
+    $chassisList = @()
+    if ($enclosure -and $enclosure.ChassisTypes) {
+        $chassisList = @($enclosure.ChassisTypes)
+    }
+
+    $laptopChassis = @(8, 9, 10, 11, 12, 14, 30, 31, 32)
+    $serverChassis = @(17, 23, 28, 29)
+
+    $deviceType = "Desktop"
+    if ($hasBattery -or ($chassisList | Where-Object { $laptopChassis -contains $_ })) {
+        $deviceType = "Laptop"
+    } elseif ($chassisList | Where-Object { $serverChassis -contains $_ } -or ($os -match "Server")) {
+        $deviceType = "Server"
+    }
+
+    Write-Host "-> Nhan dien thiet bi: $deviceType (Pin: $hasBattery, Chassis: $($chassisList -join ','))" -ForegroundColor Cyan
+    Log "Hardware collected: Host=$hostname Serial=$serialNumber Model=$model Type=$deviceType IP=$ipAddress"
 
     # --------------------------------------------------------------------------
     # 2. Software
@@ -474,15 +494,19 @@ try {
         serialNumber      = $serialNumber
         brand             = $brand
         model             = $model
+        deviceType        = $deviceType
         specs             = @{
-            cpu        = $cpu
-            ram        = $ramInfo
-            storage    = $storageInfo
-            gpu        = $gpusText
-            os         = $os
-            ipAddress  = $ipAddress
-            macAddress = $macAddress
-            loggedUser = $loggedUser
+            deviceType   = $deviceType
+            hasBattery   = $hasBattery
+            chassisTypes = ($chassisList -join ',')
+            cpu          = $cpu
+            ram          = $ramInfo
+            storage      = $storageInfo
+            gpu          = $gpusText
+            os           = $os
+            ipAddress    = $ipAddress
+            macAddress   = $macAddress
+            loggedUser   = $loggedUser
         }
         installedSoftware = $InstalledApps
         osLicense         = $WindowsLicense
