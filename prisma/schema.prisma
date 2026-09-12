@@ -732,6 +732,8 @@ model Ticket {
   ratingComment   String?        @map("rating_comment")
   ratedAt         DateTime?      @map("rated_at")
   aiAnalysis      Json?          @map("ai_analysis")
+  // Time Tracking (👑 Enterprise)
+  actualSpentMinutes Int         @default(0) @map("actual_spent_minutes")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
@@ -770,6 +772,7 @@ model TicketComment {
   content        String
   attachmentUrls Json?     @map("attachment_urls")
   isInternal     Boolean   @default(false) @map("is_internal")
+  spentMinutes   Int?      @map("spent_minutes")
   createdAt      DateTime  @default(now()) @map("created_at")
 
   ticket         Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)

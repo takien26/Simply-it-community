@@ -16,11 +16,15 @@ export async function POST(
 
     const { id: ticketId } = await params;
     const body = await request.json();
-    const { content, isInternal, attachmentUrls, broadcastToMerged = true } = body;
+    const { content, isInternal, attachmentUrls, broadcastToMerged = true, spentMinutes } = body;
 
     if (!content || !content.trim()) {
       return NextResponse.json({ error: 'Nội dung bình luận không được để trống' }, { status: 400 });
     }
+
+    const validSpent = spentMinutes && !isNaN(Number(spentMinutes)) && Number(spentMinutes) > 0
+      ? Math.max(1, Math.round(Number(spentMinutes)))
+      : null;
 
     const comment = await prisma.ticketComment.create({
       data: {
@@ -28,6 +32,7 @@ export async function POST(
         userId: currentUser.userId,
         content: content.trim(),
         isInternal: Boolean(isInternal),
+        spentMinutes: validSpent,
         attachmentUrls: attachmentUrls || null,
       },
       include: {
@@ -36,6 +41,20 @@ export async function POST(
         },
       },
     });
+
+    // Accumulate spent minutes on ticket if provided
+    if (validSpent) {
+      try {
+        await prisma.ticket.update({
+          where: { id: ticketId },
+          data: {
+            actualSpentMinutes: { increment: validSpent },
+          },
+        });
+      } catch (spentErr) {
+        console.warn('Failed to increment ticket actualSpentMinutes:', spentErr);
+      }
+    }
 
     // 👑 Enterprise Feature: Broadcast public comments to all merged child tickets
     if (!isInternal && broadcastToMerged) {

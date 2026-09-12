@@ -89,7 +89,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { status, priority, category, assignedToId, teamId, queueId, dueDate, resolutionNotes, incidentId } = body;
+    const { status, priority, category, assignedToId, teamId, queueId, dueDate, resolutionNotes, incidentId, spentMinutes } = body;
 
     const currentTicket = await prisma.ticket.findUnique({
       where: { id },
@@ -104,6 +104,13 @@ export async function PATCH(
 
     const data: any = {};
     const historyLogs: string[] = [];
+
+    // Handle Time Tracking increment
+    if (spentMinutes && !isNaN(Number(spentMinutes)) && Number(spentMinutes) > 0) {
+      const validMinutes = Math.max(1, Math.round(Number(spentMinutes)));
+      data.actualSpentMinutes = { increment: validMinutes };
+      historyLogs.push(`⏱️ Đã ghi nhận thời gian xử lý: +${validMinutes} phút.`);
+    }
 
     // Handle Incident Link
     if (incidentId !== undefined && incidentId !== currentTicket.incidentId) {

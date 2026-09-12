@@ -209,6 +209,23 @@ async function initServer() {
   // Initial check 60s after startup, then check every 6 hours
   setTimeout(triggerTicketAutoClose, 60000);
   setInterval(triggerTicketAutoClose, 6 * 60 * 60 * 1000);
+
+  // 6. Automated Recurring Maintenance Tickets Engine (👑 Enterprise - Runs every 12 hours)
+  function triggerMaintenanceCron() {
+    try {
+      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/maintenance`, (res) => {
+        if (res.statusCode === 200) {
+          console.log(`📅 [Recurring Engine] Maintenance schedules checked successfully.`);
+        }
+      });
+      req.on('error', () => {});
+      req.end();
+    } catch (e) {}
+  }
+
+  // Initial check 75s after startup, then check every 12 hours
+  setTimeout(triggerMaintenanceCron, 75000);
+  setInterval(triggerMaintenanceCron, 12 * 60 * 60 * 1000);
 }
 
 initServer().catch((err) => {
