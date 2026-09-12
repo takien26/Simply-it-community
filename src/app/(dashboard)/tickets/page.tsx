@@ -620,6 +620,11 @@ export default function TicketsPage() {
   const [cannedResponses, setCannedResponses] = useState<any[]>([]);
   const [isCannedMenuOpen, setIsCannedMenuOpen] = useState(false);
   const [loadingCanned, setLoadingCanned] = useState(false);
+  const [isCreatingCanned, setIsCreatingCanned] = useState(false);
+  const [newCannedTitle, setNewCannedTitle] = useState('');
+  const [newCannedShortcut, setNewCannedShortcut] = useState('');
+  const [newCannedContent, setNewCannedContent] = useState('');
+  const [savingCanned, setSavingCanned] = useState(false);
 
   // Convert to KB Article Modal State
   const [isConvertToKbOpen, setIsConvertToKbOpen] = useState(false);
@@ -627,6 +632,7 @@ export default function TicketsPage() {
   const [kbArticleTitle, setKbArticleTitle] = useState('');
   const [kbArticleContent, setKbArticleContent] = useState('');
   const [kbTeamScope, setKbTeamScope] = useState('PUBLIC');
+  const [availableSupportTeams, setAvailableSupportTeams] = useState<any[]>([]);
 
   // CSAT Rating State
   const [submittingRating, setSubmittingRating] = useState(false);
@@ -1255,6 +1261,54 @@ export default function TicketsPage() {
     setIsCannedMenuOpen(false);
   };
 
+  const handleCreateCannedResponse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCannedTitle.trim() || !newCannedContent.trim()) return;
+    try {
+      setSavingCanned(true);
+      const res = await fetch('/api/canned-responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newCannedTitle.trim(),
+          shortcut: newCannedShortcut.trim() ? (newCannedShortcut.startsWith('/') ? newCannedShortcut.trim() : `/${newCannedShortcut.trim()}`) : null,
+          content: newCannedContent.trim(),
+          category: 'SUPPORT',
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setCannedResponses((prev) => [...prev, data.data]);
+        setNewCannedTitle('');
+        setNewCannedShortcut('');
+        setNewCannedContent('');
+        setIsCreatingCanned(false);
+      } else {
+        alert(data.error || 'Lỗi thêm mẫu trả lời');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi thêm mẫu trả lời');
+    } finally {
+      setSavingCanned(false);
+    }
+  };
+
+  const handleDeleteCannedResponse = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm(isEn ? 'Delete this canned reply template?' : 'Bạn có chắc chắn muốn xóa mẫu câu này không?')) return;
+    try {
+      const res = await fetch(`/api/canned-responses?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setCannedResponses((prev) => prev.filter((item) => item.id !== id));
+      } else {
+        alert(data.error || 'Lỗi xóa mẫu câu');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi xóa mẫu câu');
+    }
+  };
+
   const handleRateTicket = async (ticketId: string, ratingStars: number, feedbackText: string) => {
     try {
       setSubmittingRating(true);
@@ -1302,6 +1356,17 @@ export default function TicketsPage() {
     setKbArticleContent(`## 1. Hiện tượng & Vấn đề sự cố\n${selectedTicket.description}\n\n## 2. Các bước xử lý / Khắc phục\n${solution}`);
     setKbTeamScope('PUBLIC');
     setIsConvertToKbOpen(true);
+
+    if (availableSupportTeams.length === 0) {
+      fetch('/api/support-teams')
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && Array.isArray(res.data)) {
+            setAvailableSupportTeams(res.data);
+          }
+        })
+        .catch(() => {});
+    }
   };
 
   const handleSubmitConvertToKb = async (e: React.FormEvent) => {
@@ -2763,37 +2828,126 @@ export default function TicketsPage() {
                             </button>
 
                             {isCannedMenuOpen && (
-                              <div className="absolute left-0 bottom-full mb-2 w-80 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 space-y-1.5 animate-in fade-in">
-                                <div className="px-2.5 py-1.5 border-b border-slate-100 flex items-center justify-between text-xs font-black text-slate-800">
-                                  <span>⚡ {isEn ? 'Canned Quick Replies' : 'Mẫu câu trả lời nhanh'}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => setIsCannedMenuOpen(false)}
-                                    className="text-slate-400 hover:text-slate-600 font-bold p-1"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                                {loadingCanned ? (
-                                  <div className="p-4 text-center text-slate-400 text-xs">Đang tải danh sách mẫu câu...</div>
-                                ) : cannedResponses.length === 0 ? (
-                                  <div className="p-4 text-center text-slate-400 text-xs">Chưa có mẫu câu nào</div>
-                                ) : (
-                                  cannedResponses.map((cr) => (
+                              <div className="absolute left-0 bottom-full mb-2 w-96 max-h-[32rem] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-slate-200 p-3 z-50 space-y-2.5 animate-in fade-in">
+                                <div className="pb-2 border-b border-slate-100 flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="p-1 rounded-lg bg-amber-100 text-amber-800 font-bold text-xs">⚡</span>
+                                    <span className="font-extrabold text-slate-800 text-xs">{isEn ? 'Canned Quick Replies' : 'Mẫu câu trả lời nhanh'}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
                                     <button
-                                      key={cr.id}
                                       type="button"
-                                      onClick={() => handleSelectCannedResponse(cr)}
-                                      className="w-full text-left p-2.5 rounded-xl hover:bg-blue-50 transition-colors text-xs group cursor-pointer block border border-transparent hover:border-blue-100"
+                                      onClick={() => setIsCreatingCanned(!isCreatingCanned)}
+                                      className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10.5px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                                      title={isEn ? 'Create new canned response' : 'Tạo thêm mẫu mới'}
                                     >
-                                      <div className="font-bold text-slate-800 group-hover:text-blue-600 flex items-center justify-between">
-                                        <span>{cr.title}</span>
-                                        {cr.shortcut && <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{cr.shortcut}</span>}
-                                      </div>
-                                      <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{cr.content}</div>
+                                      <span>{isCreatingCanned ? '−' : '+'}</span>
+                                      <span>{isCreatingCanned ? (isEn ? 'Close' : 'Đóng') : (isEn ? 'New' : 'Thêm mẫu')}</span>
                                     </button>
-                                  ))
-                                )}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setIsCannedMenuOpen(false);
+                                        setIsCreatingCanned(false);
+                                      }}
+                                      className="text-slate-400 hover:text-slate-600 font-bold p-1 text-sm leading-none cursor-pointer"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Form tạo thêm mẫu mới */}
+                                {isCreatingCanned ? (
+                                  <form onSubmit={handleCreateCannedResponse} className="p-2.5 bg-amber-50/60 rounded-xl border border-amber-200/80 space-y-2 text-xs">
+                                    <div className="font-bold text-amber-900 text-[11px] flex items-center gap-1">
+                                      <span>✍️</span>
+                                      <span>{isEn ? 'Create New Quick Reply Template' : 'Tạo thêm mẫu trả lời nhanh'}</span>
+                                    </div>
+                                    <div>
+                                      <input
+                                        type="text"
+                                        required
+                                        value={newCannedTitle}
+                                        onChange={(e) => setNewCannedTitle(e.target.value)}
+                                        placeholder={isEn ? 'Template title (e.g. Ask for remote access)' : 'Tiêu đề mẫu (VD: Yêu cầu mở UltraViewer)'}
+                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:ring-1 focus:ring-amber-500"
+                                      />
+                                    </div>
+                                    <div>
+                                      <input
+                                        type="text"
+                                        value={newCannedShortcut}
+                                        onChange={(e) => setNewCannedShortcut(e.target.value)}
+                                        placeholder={isEn ? 'Shortcut (e.g. /ultra)' : 'Phím tắt (VD: /ultra)'}
+                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-800 outline-none focus:ring-1 focus:ring-amber-500"
+                                      />
+                                    </div>
+                                    <div>
+                                      <textarea
+                                        rows={3}
+                                        required
+                                        value={newCannedContent}
+                                        onChange={(e) => setNewCannedContent(e.target.value)}
+                                        placeholder={isEn ? 'Template content to insert into comment...' : 'Nội dung phản hồi soạn sẵn để chèn vào bình luận...'}
+                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 outline-none focus:ring-1 focus:ring-amber-500 leading-relaxed resize-none"
+                                      />
+                                    </div>
+                                    <div className="flex items-center justify-end gap-1.5 pt-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsCreatingCanned(false)}
+                                        className="px-2.5 py-1 text-slate-500 hover:text-slate-700 text-xs font-medium cursor-pointer"
+                                      >
+                                        {isEn ? 'Cancel' : 'Hủy'}
+                                      </button>
+                                      <button
+                                        type="submit"
+                                        disabled={savingCanned || !newCannedTitle.trim() || !newCannedContent.trim()}
+                                        className="px-3 py-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+                                      >
+                                        {savingCanned ? <Loader2 className="w-3 h-3 animate-spin" /> : <span>✓</span>}
+                                        <span>{isEn ? 'Save Template' : 'Lưu mẫu'}</span>
+                                      </button>
+                                    </div>
+                                  </form>
+                                ) : null}
+
+                                {/* Danh sách mẫu câu */}
+                                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-0.5">
+                                  {loadingCanned ? (
+                                    <div className="p-4 text-center text-slate-400 text-xs">Đang tải danh sách mẫu câu...</div>
+                                  ) : cannedResponses.length === 0 ? (
+                                    <div className="p-4 text-center text-slate-400 text-xs">Chưa có mẫu câu nào. Hãy bấm "+ Thêm mẫu" để tạo.</div>
+                                  ) : (
+                                    cannedResponses.map((cr) => (
+                                      <div
+                                        key={cr.id}
+                                        className="group relative flex items-start justify-between gap-1 p-2 rounded-xl hover:bg-amber-50/70 border border-slate-100 hover:border-amber-200 transition-colors"
+                                      >
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSelectCannedResponse(cr)}
+                                          className="flex-1 text-left cursor-pointer min-w-0"
+                                        >
+                                          <div className="font-bold text-slate-800 group-hover:text-amber-900 flex items-center justify-between gap-1">
+                                            <span className="truncate">{cr.title}</span>
+                                            {cr.shortcut && <span className="text-[9.5px] font-mono text-slate-500 bg-slate-100 group-hover:bg-amber-100 px-1.5 py-0.2 rounded shrink-0">{cr.shortcut}</span>}
+                                          </div>
+                                          <div className="text-[10.5px] text-slate-500 group-hover:text-slate-700 line-clamp-2 mt-0.5 leading-relaxed">{cr.content}</div>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleDeleteCannedResponse(e, cr.id)}
+                                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all shrink-0 cursor-pointer"
+                                          title={isEn ? 'Delete template' : 'Xóa mẫu này'}
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -3556,16 +3710,34 @@ export default function TicketsPage() {
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  {isEn ? 'Audience / Scope' : 'Phạm vi hiển thị'}
+                  {isEn ? 'Audience & IT Team Scope (*)' : 'Phạm vi hiển thị & Phân quyền riêng cho Team IT (*)'}
                 </label>
                 <select
                   value={kbTeamScope}
                   onChange={(e) => setKbTeamScope(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer"
                 >
-                  <option value="PUBLIC">{isEn ? '🌐 Public (All users & employees)' : '🌐 Công khai (Toàn bộ nhân viên & người dùng)'}</option>
-                  <option value="INTERNAL_IT">{isEn ? '🔒 Internal IT Only' : '🔒 Nội bộ kỹ thuật IT'}</option>
+                  <option value="PUBLIC">{isEn ? '🌐 Public (All employees & users across enterprise)' : '🌐 Công khai (Toàn bộ nhân viên & người dùng)'}</option>
+                  <option value="INTERNAL_IT">{isEn ? '🔒 All IT Teams (General IT internal only)' : '🔒 Toàn bộ đội ngũ IT (Nội bộ kỹ thuật chung)'}</option>
+                  
+                  <optgroup label={isEn ? "── Specific IT Teams ──" : "── Phân quyền riêng cho từng Team IT ──"}>
+                    <option value="IT-HELPDESK">🔒 Team Helpdesk / Hỗ trợ người dùng (IT-HELPDESK)</option>
+                    <option value="IT-NET">🔒 Team Hạ tầng mạng & Máy chủ (IT-NET)</option>
+                    <option value="IT-APP">🔒 Team Phần mềm & Ứng dụng ERP (IT-APP)</option>
+                    <option value="IT-SEC">🔒 Team An toàn thông tin & Bảo mật (IT-SEC)</option>
+                    {availableSupportTeams && availableSupportTeams.length > 0 && availableSupportTeams.map((t: any) => {
+                      if (['IT-HELPDESK', 'IT-NET', 'IT-APP', 'IT-SEC'].includes(t.code)) return null;
+                      return (
+                        <option key={t.id} value={t.code || t.id}>
+                          🔒 {t.name} ({t.code})
+                        </option>
+                      );
+                    })}
+                  </optgroup>
                 </select>
+                <p className="text-[10px] text-slate-400 mt-1 italic">
+                  💡 {isEn ? 'Selecting a specific IT team will restrict visibility to members of that technical team.' : 'Chọn riêng một team IT sẽ giới hạn bài viết chỉ dành cho các kỹ thuật viên thuộc team đó tra cứu.'}
+                </p>
               </div>
 
               <div>

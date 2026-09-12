@@ -49,10 +49,15 @@ export async function GET(request: NextRequest) {
     const dbArticles = dbDocs.map((doc) => {
       let docTeam = 'PUBLIC';
       let isInternal = false;
-      if (doc.title.includes('[IT-NET]')) { docTeam = 'IT-NET'; isInternal = true; }
-      else if (doc.title.includes('[IT-APP]')) { docTeam = 'IT-APP'; isInternal = true; }
-      else if (doc.title.includes('[IT-HELPDESK]')) { docTeam = 'IT-HELPDESK'; isInternal = true; }
-      else if (doc.title.includes('[IT-SEC]')) { docTeam = 'IT-SEC'; isInternal = true; }
+      const tagMatch = doc.title.match(/^\[([a-zA-Z0-9_-]+)\]/);
+      if (tagMatch && tagMatch[1] !== 'Hướng dẫn xử lý') {
+        docTeam = tagMatch[1];
+        isInternal = docTeam !== 'PUBLIC';
+      } else if (doc.title.includes('[INTERNAL_IT]') || doc.title.includes('[IT-')) {
+        const anyItMatch = doc.title.match(/\[(IT-[a-zA-Z0-9_-]+|INTERNAL_IT)\]/);
+        docTeam = anyItMatch ? anyItMatch[1] : 'INTERNAL_IT';
+        isInternal = true;
+      }
 
       return {
         id: doc.id,

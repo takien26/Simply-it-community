@@ -1,4 +1,4 @@
-﻿// src/app/api/canned-responses/route.ts
+// src/app/api/canned-responses/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -105,6 +105,36 @@ export async function POST(request: NextRequest) {
     console.error('Create canned response error:', error);
     return NextResponse.json(
       { error: error.message || 'Lỗi tạo mẫu trả lời' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
+    }
+
+    await prisma.cannedResponse.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Đã xóa mẫu trả lời nhanh!',
+    });
+  } catch (error: any) {
+    console.error('Delete canned response error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Lỗi xóa mẫu trả lời' },
       { status: 500 }
     );
   }
