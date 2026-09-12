@@ -2562,7 +2562,7 @@ export default function AssetsPage() {
                     <th className="py-2 px-1.5 min-w-[115px]">{isEn ? 'COMPANY & LOCATION' : 'CÔNG TY & VỊ TRÍ'}</th>
                     <th className="py-2 px-1.5 min-w-[95px]">{isEn ? 'CATEGORY' : 'DANH MỤC'}</th>
                     <th className="py-2 px-1.5 min-w-[90px]">{isEn ? 'COST' : 'NGUYÊN GIÁ'} ({selectedCurrency})</th>
-                    <th className="py-2 px-1.5 min-w-[80px]">{isEn ? 'WARRANTY' : 'BẢO HÀNH'}</th>
+                    <th className="py-2 px-1.5 min-w-[95px]">{isEn ? 'WARRANTY & DATE' : 'BẢO HÀNH & NGÀY MUA'}</th>
                     <th className="py-2 px-1.5 min-w-[75px]">{isEn ? 'STATUS' : 'TRẠNG THÁI'}</th>
                     <th className="py-2 px-1.5 min-w-[90px]">{isEn ? 'ASSIGNED TO' : 'NGƯỜI GIỮ'}</th>
                     {/* Sticky Right Column: Actions */}
@@ -2719,22 +2719,27 @@ export default function AssetsPage() {
                             )}
                           </td>
 
-                          {/* BẢO HÀNH */}
+                          {/* BẢO HÀNH & NGÀY MUA */}
                           <td className="py-2 px-1.5">
-                            {asset.warrantyExpiry ? (
-                              <div className="space-y-0.5">
-                                {warrantyInfo && (
-                                  <span className={`inline-block font-bold px-1.5 py-0.2 rounded text-[8.5px] leading-tight ${warrantyInfo.badgeClass}`}>
-                                    {warrantyInfo.text}
-                                  </span>
-                                )}
-                                <div className="text-slate-400 text-[9px] font-mono leading-tight">
-                                  {formatDate(asset.warrantyExpiry)}
-                                </div>
+                            <div className="space-y-0.5">
+                              {asset.warrantyExpiry ? (
+                                <>
+                                  {warrantyInfo && (
+                                    <span className={`inline-block font-bold px-1.5 py-0.2 rounded text-[8.5px] leading-tight ${warrantyInfo.badgeClass}`}>
+                                      {warrantyInfo.text}
+                                    </span>
+                                  )}
+                                  <div className="text-slate-400 text-[9px] font-mono leading-tight">
+                                    Hạn: {formatDate(asset.warrantyExpiry)}
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="text-slate-400 italic text-[9px]">Không có BH</span>
+                              )}
+                              <div className="text-[9px] text-blue-600 dark:text-blue-400 font-semibold font-mono leading-tight pt-0.5">
+                                📅 Mua: {formatDate(asset.purchaseDate || asset.createdAt)}
                               </div>
-                            ) : (
-                              <span className="text-slate-400 italic text-[9px]">Không có BH</span>
-                            )}
+                            </div>
                           </td>
 
                           {/* TRẠNG THÁI */}
@@ -4178,8 +4183,8 @@ export default function AssetsPage() {
 
               {/* Scrollable Body */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* 4 Overview KPI Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* 5 Overview KPI Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                   {/* Trạng thái */}
                   <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{isEn ? 'Status' : 'Trạng thái'}</span>
@@ -4231,7 +4236,7 @@ export default function AssetsPage() {
                     )}
                   </div>
 
-                  {/* Công ty & Vị trí (Không dùng truncate, hiển thị trọn vẹn tên công ty) */}
+                  {/* Công ty & Vị trí */}
                   <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1.5 flex flex-col justify-between">
                     <div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
@@ -4247,7 +4252,7 @@ export default function AssetsPage() {
                     </p>
                   </div>
 
-                  {/* Giá mua & Bảo hành (Dual-Currency tự động theo Tiền tệ ưu tiên) */}
+                  {/* Chi phí mua sắm */}
                   {(() => {
                     const rawPrice = Number(selectedDetailAsset.purchasePrice) || 0;
                     const rawCurr = (selectedDetailAsset.purchaseCurrency || 'VND').toUpperCase();
@@ -4258,7 +4263,7 @@ export default function AssetsPage() {
                       <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl space-y-1 flex flex-col justify-between">
                         <div>
                           <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider block mb-0.5">
-                            Chi phí mua sắm
+                            {isEn ? 'Purchase Cost' : 'Chi phí mua sắm'}
                           </span>
                           {rawPrice > 0 ? (
                             <div className="space-y-0.5">
@@ -4275,21 +4280,58 @@ export default function AssetsPage() {
                             <p className="text-xs font-bold text-slate-400 italic">0 đ / Miễn phí</p>
                           )}
                         </div>
-                        <div className="pt-1 border-t border-blue-200/60 space-y-0.5">
-                          {warrantyInfo ? (
-                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block ${warrantyInfo.badgeClass}`}>
-                              {warrantyInfo.text}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-400">Không có hạn BH</span>
+                        <div className="pt-1 border-t border-blue-200/60 space-y-0.5 text-[9.5px] text-slate-500 dark:text-slate-400">
+                          {selectedDetailAsset.contractNumber && (
+                            <span className="block truncate">HĐ: {selectedDetailAsset.contractNumber}</span>
                           )}
-                          <span className="text-[9.5px] text-slate-400 block font-mono">
-                            (Tỷ giá quy đổi ngày 25/08/2026)
-                          </span>
+                          {selectedDetailAsset.invoiceNumber && (
+                            <span className="block truncate">HĐơn: {selectedDetailAsset.invoiceNumber}</span>
+                          )}
+                          {!selectedDetailAsset.contractNumber && !selectedDetailAsset.invoiceNumber && (
+                            <span className="block italic text-slate-400">Không có số HĐ/HĐơn</span>
+                          )}
                         </div>
                       </div>
                     );
                   })()}
+
+                  {/* Card 5: Ngày Mua & Hạn Bảo Hành */}
+                  <div className="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-2xl space-y-1.5 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider block mb-1 flex items-center justify-between">
+                        <span>{isEn ? 'Purchase & Warranty' : 'Ngày Mua & Bảo Hành'}</span>
+                        <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      </span>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 dark:text-slate-400 text-[10.5px]">Ngày mua:</span>
+                          <span className="font-bold text-indigo-950 dark:text-indigo-200 font-mono">
+                            {selectedDetailAsset.purchaseDate ? formatDate(selectedDetailAsset.purchaseDate) : (selectedDetailAsset.createdAt ? formatDate(selectedDetailAsset.createdAt) : '—')}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 dark:text-slate-400 text-[10.5px]">Bảo hành:</span>
+                          {warrantyInfo ? (
+                            <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-full ${warrantyInfo.badgeClass}`}>
+                              {warrantyInfo.text}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 italic">Không có BH</span>
+                          )}
+                        </div>
+                        {selectedDetailAsset.warrantyExpiry && (
+                          <div className="text-[9.5px] text-slate-500 dark:text-slate-400 text-right font-mono">
+                            Hạn: {formatDate(selectedDetailAsset.warrantyExpiry)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-1 border-t border-indigo-200/60 text-[9.5px] text-slate-400 flex items-center justify-between">
+                      <span>{isEn ? 'Added on' : 'Ngày thêm'}:</span>
+                      <span className="font-mono">{selectedDetailAsset.createdAt ? formatDate(selectedDetailAsset.createdAt) : '—'}</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Thông số kỹ thuật & Cấu hình chi tiết (Đồng bộ nhãn với Form Thêm/Sửa) */}
