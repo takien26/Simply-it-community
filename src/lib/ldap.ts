@@ -148,7 +148,12 @@ export async function testLdapConnection(config: LdapConfig): Promise<{ success:
 export async function authenticateWithLdap(
   usernameOrEmail: string,
   password: string
-): Promise<{ success: boolean; user?: { email: string; fullName: string; department?: string; username: string }; error?: string }> {
+): Promise<{
+  success: boolean;
+  user?: { email: string; fullName: string; department?: string; username: string };
+  error?: string;
+  isAccountDisabled?: boolean;
+}> {
   const config = await getLdapConfig();
   if (!config.enabled) {
     return { success: false, error: 'Xác thực LDAP hiện đang bị tắt trong hệ thống' };

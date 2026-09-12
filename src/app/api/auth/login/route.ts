@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth';
-import { PRIMARY_COOKIE_NAME, ALL_COOKIE_NAMES } from '@/lib/jwt';
+import { PRIMARY_COOKIE_NAME } from '@/lib/jwt';
 import { createAuditLog } from '@/lib/audit';
 
 export async function POST(request: Request) {
@@ -17,6 +17,20 @@ export async function POST(request: Request) {
     const result = await authenticate(email, password);
 
     if (!result) {
+      return NextResponse.json(
+        { error: 'Email hoặc mật khẩu không đúng' },
+        { status: 401 }
+      );
+    }
+
+    if (result.isInactive) {
+      return NextResponse.json(
+        { error: result.error || 'Tài khoản của bạn đã nghỉ việc hoặc bị khóa. Không thể đăng nhập vào hệ thống.' },
+        { status: 403 }
+      );
+    }
+
+    if (!result.user || !result.token) {
       return NextResponse.json(
         { error: 'Email hoặc mật khẩu không đúng' },
         { status: 401 }

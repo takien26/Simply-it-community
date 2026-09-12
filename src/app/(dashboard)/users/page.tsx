@@ -238,6 +238,23 @@ export default function UsersPage() {
   const [selectedLicenseId, setSelectedLicenseId] = useState('');
   const [assignLicenseNotes, setAssignLicenseNotes] = useState('');
 
+  // Offboard (Nghỉ việc) State
+  const [offboardModal, setOffboardModal] = useState<{
+    isOpen: boolean;
+    user: any | null;
+    revokeAll: boolean;
+    loading: boolean;
+  }>({
+    isOpen: false,
+    user: null,
+    revokeAll: true,
+    loading: false,
+  });
+
+  // Directory Sync State
+  const [isSyncingDirectory, setIsSyncingDirectory] = useState(false);
+  const [syncReport, setSyncReport] = useState<any | null>(null);
+
   // Global ESC Key Listener
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -248,11 +265,13 @@ export default function UsersPage() {
         if (isAssignAssetModalOpen) setIsAssignAssetModalOpen(false);
         if (isAssignLicenseModalOpen) setIsAssignLicenseModalOpen(false);
         if (isUserDetailModalOpen) setIsUserDetailModalOpen(false);
+        if (offboardModal.isOpen) setOffboardModal({ isOpen: false, user: null, revokeAll: true, loading: false });
+        if (syncReport) setSyncReport(null);
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isAddLocationModalOpen, isAddUserModalOpen, isEditUserModalOpen, isAssignAssetModalOpen, isAssignLicenseModalOpen]);
+  }, [isAddLocationModalOpen, isAddUserModalOpen, isEditUserModalOpen, isAssignAssetModalOpen, isAssignLicenseModalOpen, isUserDetailModalOpen, offboardModal.isOpen, syncReport]);
 
   
   // Auto-open Detail Modal if URL contains ?id=... or ?userId=...
@@ -515,6 +534,7 @@ export default function UsersPage() {
       managerId: user.managerId || user.manager?.id || '',
       locationId: user.locationId || user.location?.id || '',
       password: '',
+      isActive: user.isActive !== false,
     });
     setIsEditUserModalOpen(true);
   };
@@ -535,6 +555,7 @@ export default function UsersPage() {
         companyName: editUserFormData.companyName,
         phone: editUserFormData.phone,
         roleId: editUserFormData.roleId,
+        isActive: editUserFormData.isActive !== false,
       };
       if (editUserFormData.password) {
         payload.password = editUserFormData.password;
@@ -555,6 +576,73 @@ export default function UsersPage() {
       }
     } catch {
       alert('Lỗi kết nối');
+    }
+  };
+
+  const handleOpenOffboardModal = (user: any) => {
+    setOffboardModal({
+      isOpen: true,
+      user,
+      revokeAll: true,
+      loading: false,
+    });
+  };
+
+  const handleConfirmOffboard = async () => {
+    if (!offboardModal.user) return;
+    setOffboardModal((prev) => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch(`/api/users/${offboardModal.user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isActive: false,
+          revokeAllAssignments: offboardModal.revokeAll,
+        }),
+      });
+      if (res.ok) {
+        setOffboardModal({ isOpen: false, user: null, revokeAll: true, loading: false });
+        loadData();
+      } else {
+        alert('Chuyển trạng thái nghỉ việc thất bại');
+        setOffboardModal((prev) => ({ ...prev, loading: false }));
+      }
+    } catch {
+      alert('Lỗi kết nối');
+      setOffboardModal((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleReactivateUser = async (user: any) => {
+    if (!confirm(`Bạn có chắc chắn muốn khôi phục công tác cho "${user.fullName}"? Tài khoản sẽ được mở khóa để đăng nhập lại bình thường.`)) return;
+    try {
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: true }),
+      });
+      if (res.ok) {
+        loadData();
+      } else {
+        alert('Khôi phục công tác thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối');
+    }
+  };
+
+  const handleSyncDirectory = async () => {
+    setIsSyncingDirectory(true);
+    setSyncReport(null);
+    try {
+      const res = await fetch('/api/users/sync-directory', { method: 'POST' });
+      const data = await res.json();
+      setSyncReport(data);
+      loadData();
+    } catch (e: any) {
+      setSyncReport({ success: false, message: e.message || 'Lỗi khi gọi API đồng bộ' });
+    } finally {
+      setIsSyncingDirectory(false);
     }
   };
 
@@ -688,8 +776,29 @@ export default function UsersPage() {
     }
   };
 
+  // Active vs Resigned separation
+  const activeUsers = users.filter((u) => u.isActive !== false);
+  const resignedUsers = users.filter((u) => u.isActive === false);
+
+  const activeCount = activeUsers.length;
+  const resignedCount = resignedUsers.length;
+  const withAssetsCount = activeUsers.filter((u) => u.assetAssignments?.length > 0).length;
+  const withLicCount = activeUsers.filter((u) => u.licenseAssignments?.length > 0).length;
+  const noAssignmentsCount = activeUsers.filter(
+    (u) => (!u.assetAssignments || u.assetAssignments.length === 0) && (!u.licenseAssignments || u.licenseAssignments.length === 0)
+  ).length;
+  const adminCount = activeUsers.filter((u) => u.role?.name === 'Admin').length;
+
   // Smart Tree Filtering
   const filteredUsers = users.filter((u) => {
+    // If RESIGNED tab is active, only show resigned users
+    if (selectedFilter === 'RESIGNED') {
+      if (u.isActive !== false) return false;
+    } else {
+      // In all other tabs, show active users
+      if (u.isActive === false) return false;
+    }
+
     if (selectedDeptFilter) {
       if (selectedDeptFilter.startsWith('PARENT:')) {
         const parentName = selectedDeptFilter.replace('PARENT:', '');
@@ -715,13 +824,6 @@ export default function UsersPage() {
     return true;
   });
 
-  const withAssetsCount = users.filter((u) => u.assetAssignments?.length > 0).length;
-  const withLicCount = users.filter((u) => u.licenseAssignments?.length > 0).length;
-  const noAssignmentsCount = users.filter(
-    (u) => (!u.assetAssignments || u.assetAssignments.length === 0) && (!u.licenseAssignments || u.licenseAssignments.length === 0)
-  ).length;
-  const adminCount = users.filter((u) => u.role?.name === 'Admin').length;
-
   // Selected parent node in Modal to render its sub-departments
   const activeModalParentNode = deptTree.find((d) => d.name === formParentDept);
 
@@ -735,15 +837,31 @@ export default function UsersPage() {
               {language === 'en' ? 'Employees & IT Asset Directory' : 'Danh Sách Nhân Sự & Cấp Phát Tài Sản'}
             </h1>
             <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-bold">
-              {users.length} {language === 'en' ? 'employees' : 'nhân sự'}
+              {activeCount} {language === 'en' ? 'active' : 'đang làm việc'}
             </span>
+            {resignedCount > 0 && (
+              <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 text-xs font-bold border border-rose-200">
+                🛑 {resignedCount} {language === 'en' ? 'resigned' : 'nghỉ việc'}
+              </span>
+            )}
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            {language === 'en' ? 'Manage department hierarchy, subsidiaries, hardware assets, and software licenses' : 'Quản lý cơ cấu phòng ban đa cấp (Cha - Con), công ty thành viên, tài sản thiết bị và license phần mềm'}
+            {language === 'en' ? 'Manage department hierarchy, subsidiaries, hardware assets, software licenses, and offboarding' : 'Quản lý cơ cấu phòng ban, công ty thành viên, cấp phát tài sản và thủ tục nghỉ việc'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={isSyncingDirectory}
+            onClick={handleSyncDirectory}
+            title={language === 'en' ? 'Sync accounts from Microsoft 365 & Active Directory / LDAP' : 'Đồng bộ tài khoản từ Microsoft 365 & Active Directory / LDAP'}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
+          >
+            <RotateCcw className={`w-3.5 h-3.5 ${isSyncingDirectory ? 'animate-spin text-purple-600' : ''}`} />
+            <span>{isSyncingDirectory ? (language === 'en' ? 'Syncing...' : 'Đang đồng bộ...') : (language === 'en' ? 'Sync Directory' : 'Đồng Bộ Thư Mục')}</span>
+          </button>
+
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
             <button
               onClick={() => setViewMode('table')}
@@ -786,7 +904,7 @@ export default function UsersPage() {
               : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
           }`}
         >
-          {language === 'en' ? '👥 All' : '👥 Tất cả'} ({users.length})
+          {language === 'en' ? '👥 Active' : '👥 Đang làm việc'} ({activeCount})
         </button>
         <button
           type="button"
@@ -831,6 +949,17 @@ export default function UsersPage() {
           }`}
         >
           🛡️ Admin ({adminCount})
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedFilter(selectedFilter === 'RESIGNED' ? 'ALL' : 'RESIGNED')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+            selectedFilter === 'RESIGNED'
+              ? 'bg-rose-700 border-rose-700 text-white shadow-2xs'
+              : 'bg-rose-50 border-rose-200 text-rose-800 hover:bg-rose-100'
+          }`}
+        >
+          🛑 {language === 'en' ? 'Resigned' : 'Nghỉ việc'} ({resignedCount})
         </button>
       </div>
 
@@ -940,10 +1069,17 @@ export default function UsersPage() {
                               {u.fullName.charAt(0)}
                             </div>
                             <div className="min-w-0 space-y-0.5">
-                              <div className="flex items-center gap-1">
-                                <span className="font-bold text-slate-900 dark:text-white group-hover:text-purple-700 text-xs truncate transition-colors">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`font-bold text-xs truncate transition-colors ${
+                                  u.isActive === false ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white group-hover:text-purple-700'
+                                }`}>
                                   {u.fullName}
                                 </span>
+                                {u.isActive === false && (
+                                  <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-[10px] font-bold border border-rose-200 shrink-0">
+                                    🛑 {isEn ? 'Resigned' : 'Nghỉ việc'}
+                                  </span>
+                                )}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1124,7 +1260,28 @@ export default function UsersPage() {
 
                         {/* Cột 6: Thao Tác */}
                         <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                            {u.isActive === false ? (
+                              <button
+                                type="button"
+                                onClick={() => handleReactivateUser(u)}
+                                title={isEn ? 'Reactivate employee (restore login access)' : 'Khôi phục công tác (Mở khóa đăng nhập)'}
+                                className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                              >
+                                <RotateCcw className="w-3 h-3 text-emerald-600" />
+                                <span>{isEn ? 'Reactivate' : 'Khôi phục'}</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenOffboardModal(u)}
+                                title={isEn ? 'Mark employee as resigned / offboarded' : 'Chuyển sang trạng thái Nghỉ việc & Khóa tài khoản'}
+                                className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                              >
+                                <span>🛑</span>
+                                <span>{isEn ? 'Resign' : 'Nghỉ việc'}</span>
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleResetSecondaryPassword(u)}
@@ -1175,12 +1332,40 @@ export default function UsersPage() {
                       {u.fullName.charAt(0)}
                     </div>
                     <div>
-                      <h4 className="font-bold text-sm text-slate-900 dark:text-white">{u.fullName}</h4>
-                      <span className="text-xs text-purple-700 font-semibold">{u.position || 'Nhân viên'}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h4 className={`font-bold text-sm ${u.isActive === false ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white'}`}>
+                          {u.fullName}
+                        </h4>
+                        {u.isActive === false && (
+                          <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-[10px] font-bold border border-rose-200">
+                            🛑 {isEn ? 'Resigned' : 'Nghỉ việc'}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-purple-700 font-semibold">{u.position || (isEn ? 'Staff' : 'Nhân viên')}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    {u.isActive === false ? (
+                      <button
+                        type="button"
+                        onClick={() => handleReactivateUser(u)}
+                        title={isEn ? 'Reactivate employee' : 'Khôi phục công tác'}
+                        className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenOffboardModal(u)}
+                        title={isEn ? 'Mark as resigned' : 'Chuyển sang Nghỉ việc'}
+                        className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                      >
+                        <span className="text-xs">🛑</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleOpenEditUser(u)}
                       className="p-1 text-slate-400 hover:text-blue-600 cursor-pointer"
@@ -1262,6 +1447,39 @@ export default function UsersPage() {
                     onChange={(e) => setEditUserFormData({ ...editUserFormData, email: e.target.value })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl font-medium outline-none focus:ring-2 focus:ring-purple-500"
                   />
+                </div>
+              </div>
+
+              {/* Trạng thái công tác: Đang làm việc vs Đã nghỉ việc */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl">
+                <label className="block font-bold text-slate-700 dark:text-slate-200 mb-2">
+                  {isEn ? 'Employment & Login Status' : 'Trạng Thái Công Tác & Đăng Nhập'}
+                </label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editUserStatus"
+                      checked={editUserFormData.isActive !== false}
+                      onChange={() => setEditUserFormData((prev: any) => ({ ...prev, isActive: true }))}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">
+                      🟢 {isEn ? 'Active (Working / Allowed to login)' : 'Đang làm việc (Mở khóa đăng nhập)'}
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editUserStatus"
+                      checked={editUserFormData.isActive === false}
+                      onChange={() => setEditUserFormData((prev: any) => ({ ...prev, isActive: false }))}
+                      className="text-rose-600 focus:ring-rose-500"
+                    />
+                    <span className="font-bold text-rose-700 dark:text-rose-400 text-xs">
+                      🛑 {isEn ? 'Resigned (Login Blocked)' : 'Đã nghỉ việc (Khóa đăng nhập)'}
+                    </span>
+                  </label>
                 </div>
               </div>
 
@@ -1965,9 +2183,15 @@ export default function UsersPage() {
                     <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 text-[10.5px] font-bold border border-blue-200 dark:border-blue-800">
                       🛡️ {viewingUserDetail.role?.name || 'Staff'}
                     </span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                      ● Đang hoạt động
-                    </span>
+                    {viewingUserDetail.isActive !== false ? (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                        ● {isEn ? 'Active' : 'Đang làm việc'}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold border border-rose-200">
+                        🛑 {isEn ? 'Resigned (Login Blocked)' : 'Đã nghỉ việc (Khóa đăng nhập)'}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     {viewingUserDetail.position || 'Nhân viên'} · 🏢 {viewingUserDetail.companyName || 'Công ty chung'} · 📁 {viewingUserDetail.department || 'Chưa phân phòng'}
@@ -2267,6 +2491,161 @@ export default function UsersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Xác Nhận Nghỉ Việc (Offboard) */}
+      {offboardModal.isOpen && offboardModal.user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full border border-slate-200 dark:border-slate-800 p-6 space-y-4 animate-in zoom-in-95">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 flex items-center justify-center text-xl shrink-0">
+                🛑
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                  {isEn ? 'Confirm Employee Resignation' : 'Xác Nhận Chuyển Nghỉ Việc'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  {isEn
+                    ? `Are you sure you want to mark "${offboardModal.user.fullName}" as resigned?`
+                    : `Bạn có chắc chắn muốn chuyển nhân viên "${offboardModal.user.fullName}" sang trạng thái Nghỉ việc?`}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-xl space-y-1.5 text-xs text-rose-900 dark:text-rose-200">
+              <div className="font-bold flex items-center gap-1.5">
+                <span>🔒</span>
+                <span>{isEn ? 'Login will be blocked immediately.' : 'Tài khoản sẽ bị KHÓA ĐĂNG NHẬP ngay lập tức.'}</span>
+              </div>
+              <p className="text-[11px] text-rose-700 dark:text-rose-300">
+                {isEn
+                  ? 'Employee will not be able to log in with password, SSO (Microsoft 365), or LDAP.'
+                  : 'Nhân sự sẽ không thể đăng nhập vào hệ thống bằng mật khẩu, SSO Microsoft 365 hoặc LDAP.'}
+              </p>
+            </div>
+
+            {(offboardModal.user.assetAssignments?.length > 0 || offboardModal.user.licenseAssignments?.length > 0) && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl space-y-2 text-xs">
+                <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                  <span>⚠️</span>
+                  <span>{isEn ? 'Assets & Licenses currently held:' : 'Thiết bị & Bản quyền đang nắm giữ:'}</span>
+                </div>
+                <div className="text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
+                  <div>💻 {isEn ? 'Devices:' : 'Thiết bị:'} <strong>{offboardModal.user.assetAssignments?.length || 0}</strong> {isEn ? 'devices' : 'máy'}</div>
+                  <div>🔑 {isEn ? 'Licenses:' : 'Bản quyền:'} <strong>{offboardModal.user.licenseAssignments?.length || 0}</strong> license</div>
+                </div>
+
+                <label className="flex items-center gap-2 pt-2 border-t border-amber-200 dark:border-amber-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={offboardModal.revokeAll}
+                    onChange={(e) => setOffboardModal((prev) => ({ ...prev, revokeAll: e.target.checked }))}
+                    className="rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+                  />
+                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                    {isEn ? 'Automatically revoke all devices & licenses back to inventory' : 'Tự động thu hồi toàn bộ thiết bị & license về kho'}
+                  </span>
+                </label>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={offboardModal.loading}
+                onClick={() => setOffboardModal({ isOpen: false, user: null, revokeAll: true, loading: false })}
+                className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                {isEn ? 'Cancel' : 'Hủy'}
+              </button>
+              <button
+                type="button"
+                disabled={offboardModal.loading}
+                onClick={handleConfirmOffboard}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {offboardModal.loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>🛑</span>}
+                <span>{offboardModal.loading ? (isEn ? 'Processing...' : 'Đang xử lý...') : (isEn ? 'Confirm Resigned' : 'Xác Nhận Nghỉ Việc')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Báo Cáo Đồng Bộ Thư Mục SSO / LDAP */}
+      {syncReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full border border-slate-200 dark:border-slate-800 p-6 space-y-4 animate-in zoom-in-95">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl shrink-0 ${
+                  syncReport.success ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                }`}>
+                  {syncReport.success ? '🔄' : '⚠️'}
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    {isEn ? 'Directory Sync Report (SSO & LDAP)' : 'Kết Quả Đồng Bộ Thư Mục (SSO & LDAP)'}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {syncReport.message}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSyncReport(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {syncReport.success && (
+              <div className="space-y-3 text-xs">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <span className="text-[11px] text-slate-500 block">{isEn ? 'Accounts Scanned' : 'Số tài khoản đã quét'}</span>
+                    <span className="text-lg font-bold text-slate-900 dark:text-white">{syncReport.scannedCount || 0}</span>
+                  </div>
+                  <div className="p-3 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-900">
+                    <span className="text-[11px] text-rose-600 dark:text-rose-300 block">{isEn ? 'Offboarded / Resigned' : 'Chuyển sang Nghỉ việc'}</span>
+                    <span className="text-lg font-bold text-rose-700 dark:text-rose-400">{syncReport.offboardedCount || 0}</span>
+                  </div>
+                </div>
+
+                {syncReport.offboardedUsers?.length > 0 && (
+                  <div className="space-y-1.5">
+                    <h4 className="font-bold text-slate-700 dark:text-slate-200 text-xs">
+                      {isEn ? 'Deactivated Accounts List:' : 'Danh sách tài khoản đã chuyển sang Nghỉ việc:'}
+                    </h4>
+                    <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                      {syncReport.offboardedUsers.map((u: any) => (
+                        <div key={u.id} className="p-2 rounded-lg bg-rose-50/70 border border-rose-200 text-[11px] flex items-center justify-between gap-2">
+                          <div className="truncate">
+                            <span className="font-bold text-rose-900">{u.fullName}</span>
+                            <span className="text-slate-500 font-mono ml-1.5">({u.email})</span>
+                          </div>
+                          <span className="text-[10px] text-rose-600 italic shrink-0">{u.reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSyncReport(null)}
+                className="px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer hover:bg-slate-800"
+              >
+                {isEn ? 'Close' : 'Đóng'}
+              </button>
+            </div>
           </div>
         </div>
       )}

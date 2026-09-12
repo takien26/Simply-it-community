@@ -44,8 +44,8 @@ function LoginForm() {
       } else if (errParam === 'user_disabled') {
         setError(
           language === 'en'
-            ? 'Your account has been deactivated.'
-            : 'Tài khoản của bạn đã bị vô hiệu hóa.'
+            ? 'Your account has been deactivated / marked as resigned. Access denied.'
+            : 'Tài khoản của bạn đã nghỉ việc hoặc bị vô hiệu hóa. Không thể đăng nhập vào hệ thống.'
         );
       } else {
         setError(

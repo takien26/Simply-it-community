@@ -6,10 +6,18 @@ import { prisma } from './db';
 import bcrypt from 'bcryptjs';
 import { authenticateWithLdap, getLdapConfig } from './ldap';
 
+export type AuthResult = {
+  token?: string;
+  user?: JWTPayload;
+  isLdap?: boolean;
+  isInactive?: boolean;
+  error?: string;
+} | null;
+
 export async function authenticate(
   usernameOrEmail: string,
   password: string
-): Promise<{ token: string; user: JWTPayload; isLdap?: boolean } | null> {
+): Promise<AuthResult> {
   const cleanInput = usernameOrEmail.trim();
 
   // 1. Check local database user by exact email OR case-insensitive
@@ -19,12 +27,18 @@ export async function authenticate(
         { email: cleanInput },
         { email: { equals: cleanInput, mode: 'insensitive' } },
       ],
-      isActive: true,
     },
     include: { role: true },
   });
 
   if (localUser) {
+    if (!localUser.isActive) {
+      return {
+        isInactive: true,
+        error: 'Tài khoản của bạn đã nghỉ việc hoặc bị khóa. Không thể đăng nhập vào hệ thống.',
+      };
+    }
+
     const isLocalPasswordValid = await bcrypt.compare(password, localUser.passwordHash);
     if (isLocalPasswordValid) {
       const payload: JWTPayload = {
@@ -43,8 +57,28 @@ export async function authenticate(
   if (ldapConfig.enabled) {
     try {
       const ldapRes = await authenticateWithLdap(cleanInput, password);
+      if (ldapRes.isAccountDisabled) {
+        if (localUser) {
+          await prisma.user.update({
+            where: { id: localUser.id },
+            data: { isActive: false },
+          });
+        }
+        return {
+          isInactive: true,
+          error: ldapRes.error || 'Tài khoản trên Active Directory / LDAP đã bị vô hiệu hóa hoặc bị khóa.',
+        };
+      }
+
       if (ldapRes.success && ldapRes.user) {
         let userInDb = localUser;
+
+        if (userInDb && !userInDb.isActive) {
+          return {
+            isInactive: true,
+            error: 'Tài khoản của bạn đã nghỉ việc hoặc bị khóa trên hệ thống.',
+          };
+        }
 
         // If user not in DB, auto-provision user if enabled
         if (!userInDb && ldapConfig.autoCreateUser) {
@@ -87,6 +121,11 @@ export async function authenticate(
           };
           const token = await signToken(payload);
           return { token, user: payload, isLdap: true };
+        } else if (userInDb && !userInDb.isActive) {
+          return {
+            isInactive: true,
+            error: 'Tài khoản của bạn đã nghỉ việc hoặc bị khóa trên hệ thống.',
+          };
         }
       }
     } catch (ldapErr) {

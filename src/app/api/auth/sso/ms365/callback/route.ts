@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. Get user info from Microsoft Graph
-    const graphRes = await fetch('https://graph.microsoft.com/v1.0/me', {
+    const graphRes = await fetch('https://graph.microsoft.com/v1.0/me?$select=id,displayName,mail,userPrincipalName,department,jobTitle,accountEnabled', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
 
@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
     const fullName = graphUser.displayName || email.split('@')[0];
     const department = graphUser.department || null;
     const position = graphUser.jobTitle || null;
+    const isAccountEnabled = graphUser.accountEnabled !== false;
 
     if (!email) {
       return NextResponse.redirect(new URL('/login?error=email_not_found', request.url));
@@ -88,13 +89,20 @@ export async function GET(request: NextRequest) {
           roleId: defaultRole.id,
           department,
           position,
-          isActive: true,
+          isActive: isAccountEnabled,
         },
         include: { role: true },
       });
+    } else if (!isAccountEnabled && user.isActive) {
+      // Automatically switch to resigned/inactive if disabled on M365
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { isActive: false },
+      });
+      user.isActive = false;
     }
 
-    if (!user.isActive) {
+    if (!user.isActive || !isAccountEnabled) {
       return NextResponse.redirect(new URL('/login?error=user_disabled', request.url));
     }
 

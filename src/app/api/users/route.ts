@@ -15,8 +15,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search')?.trim() || '';
     const department = searchParams.get('department');
+    const status = searchParams.get('status'); // 'all' | 'active' | 'resigned'
 
-    const where: Record<string, unknown> = { isActive: true };
+    const where: Record<string, unknown> = {};
+    if (status === 'active') {
+      where.isActive = true;
+    } else if (status === 'resigned' || status === 'inactive') {
+      where.isActive = false;
+    }
 
     if (search) {
       where.OR = [
@@ -34,6 +40,7 @@ export async function GET(request: NextRequest) {
         id: true,
         fullName: true,
         email: true,
+        isActive: true,
         department: true,
         position: true,
         companyName: true,

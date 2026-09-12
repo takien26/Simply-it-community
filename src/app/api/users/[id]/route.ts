@@ -54,7 +54,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { fullName, email, department, position, companyName, phone, roleId, password, isActive, managerId, locationId } = body;
+    const { fullName, email, department, position, companyName, phone, roleId, password, isActive, managerId, locationId, revokeAllAssignments } = body;
 
     const data: Record<string, unknown> = {};
     if (fullName) data.fullName = fullName;
@@ -78,6 +78,31 @@ export async function PUT(
     if (isActive !== undefined) data.isActive = isActive;
     if (password) {
       data.passwordHash = await bcrypt.hash(password, 10);
+    }
+
+    // If user is being marked as resigned/inactive and admin requested to revoke all assignments
+    if (isActive === false && revokeAllAssignments) {
+      const activeAssetAssignments = await prisma.assetAssignment.findMany({
+        where: { userId: id, returnedAt: null },
+      });
+
+      if (activeAssetAssignments.length > 0) {
+        await prisma.assetAssignment.updateMany({
+          where: { userId: id, returnedAt: null },
+          data: { returnedAt: new Date(), notes: 'Tự động thu hồi do nhân sự nghỉ việc' },
+        });
+
+        const assetIds = activeAssetAssignments.map((a) => a.assetId);
+        await prisma.asset.updateMany({
+          where: { id: { in: assetIds } },
+          data: { status: 'AVAILABLE' },
+        });
+      }
+
+      await prisma.licenseAssignment.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
     }
 
     const updatedUser = await prisma.user.update({
