@@ -119,9 +119,6 @@ export async function POST(request: NextRequest) {
     if (!name || !categoryId) {
       return NextResponse.json({ error: 'Tên thiết bị và danh mục là bắt buộc' }, { status: 400 });
     }
-    if (!purchaseDate) {
-      return NextResponse.json({ error: 'Ngày mua hàng là bắt buộc' }, { status: 400 });
-    }
 
     // Auto-generate asset tag if not provided
     let assetTag = customAssetTag?.trim();
@@ -158,7 +155,7 @@ export async function POST(request: NextRequest) {
       if (!isNaN(num)) parsedPrice = num;
     }
 
-    let parsedPurchaseDate: Date | null = null;
+    let parsedPurchaseDate: Date = new Date();
     if (purchaseDate) {
       const d = new Date(purchaseDate);
       if (!isNaN(d.getTime())) parsedPurchaseDate = d;

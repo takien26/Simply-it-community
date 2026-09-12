@@ -702,7 +702,7 @@ export default function AssetsPage() {
     serialNumber: '',
     status: 'AVAILABLE',
     condition: 'NEW',
-    purchaseDate: '',
+    purchaseDate: new Date().toISOString().split('T')[0],
     purchasePrice: '',
     purchaseCurrency: 'VND',
     exchangeRate: 1,
@@ -1319,6 +1319,7 @@ export default function AssetsPage() {
     try {
       const payload = {
         ...formData,
+        purchaseDate: formData.purchaseDate || new Date().toISOString().split('T')[0],
         assignedLicenseIds: selectedLicenseIds,
         purchaseCurrency: formData.purchaseCurrency || 'VND',
         exchangeRate: formData.exchangeRate || exchangeRatesMap[formData.purchaseCurrency || 'VND'] || 1,
@@ -1346,7 +1347,7 @@ export default function AssetsPage() {
           serialNumber: '',
           status: 'AVAILABLE',
           condition: 'NEW',
-          purchaseDate: '',
+          purchaseDate: new Date().toISOString().split('T')[0],
           purchasePrice: '',
           purchaseCurrency: 'VND',
           exchangeRate: 1,
@@ -1362,10 +1363,10 @@ export default function AssetsPage() {
         });
         loadData();
       } else {
-        console.error(data.error || 'Tạo tài sản thất bại');
+        alert(`❌ ${data.error || 'Tạo tài sản thất bại'}`);
       }
-    } catch {
-      console.error('Lỗi kết nối');
+    } catch (err: any) {
+      alert(`❌ Lỗi kết nối khi tạo tài sản: ${err?.message || err}`);
     }
   };
 
@@ -1691,10 +1692,10 @@ export default function AssetsPage() {
         loadData();
       } else {
         const errorData = await res.json().catch(() => ({}));
-        console.error(errorData.error || 'Cập nhật tài sản thất bại');
+        alert(`❌ ${errorData.error || 'Cập nhật tài sản thất bại'}`);
       }
-    } catch {
-      console.error('Lỗi kết nối');
+    } catch (err: any) {
+      alert(`❌ Lỗi kết nối khi cập nhật tài sản: ${err?.message || err}`);
     }
   };
 
@@ -2182,7 +2183,7 @@ export default function AssetsPage() {
                 serialNumber: '',
                 status: 'AVAILABLE',
                 condition: 'NEW',
-                purchaseDate: '',
+                purchaseDate: new Date().toISOString().split('T')[0],
                 purchasePrice: '',
                 purchaseCurrency: 'VND',
                 exchangeRate: 1,
@@ -3574,25 +3575,80 @@ export default function AssetsPage() {
                   {/* Ngày mua, Hạn bảo hành, Số tháng khấu hao */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Ngày mua hàng
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Ngày mua hàng
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setEditFormData((prev: any) => ({ ...prev, purchaseDate: new Date().toISOString().split('T')[0] }))}
+                          className="text-[10.5px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        >
+                          Hôm nay
+                        </button>
+                      </div>
                       <input
                         type="date"
                         value={editFormData.purchaseDate}
                         onChange={(e) => setEditFormData({ ...editFormData, purchaseDate: e.target.value })}
-                        className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none"
+                        className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{isEn ? 'Warranty Expiration' : 'Hạn bảo hành'}</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">{isEn ? 'Warranty Expiration' : 'Hạn bảo hành'}</label>
+                        {editFormData.warrantyExpiry && (
+                          <button
+                            type="button"
+                            onClick={() => setEditFormData((prev: any) => ({ ...prev, warrantyExpiry: '' }))}
+                            className="text-[10.5px] text-red-500 hover:underline cursor-pointer"
+                          >
+                            Xóa hạn
+                          </button>
+                        )}
+                      </div>
                       <input
                         type="date"
                         value={editFormData.warrantyExpiry}
                         onChange={(e) => setEditFormData({ ...editFormData, warrantyExpiry: e.target.value })}
-                        className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none"
+                        className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
                       />
+                      {/* Chọn nhanh thời hạn bảo hành */}
+                      <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                        <span className="text-[10px] text-slate-400 font-medium">Chọn nhanh:</span>
+                        {[1, 2, 3, 5].map((yrs) => (
+                          <button
+                            key={yrs}
+                            type="button"
+                            onClick={() => {
+                              const base = editFormData.purchaseDate ? new Date(editFormData.purchaseDate) : new Date();
+                              base.setFullYear(base.getFullYear() + yrs);
+                              setEditFormData((prev: any) => ({
+                                ...prev,
+                                warrantyExpiry: base.toISOString().split('T')[0],
+                              }));
+                            }}
+                            className="px-2 py-0.5 text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-950 dark:hover:text-blue-300 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer transition-colors"
+                          >
+                            +{yrs} năm
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const base = editFormData.purchaseDate ? new Date(editFormData.purchaseDate) : new Date();
+                            base.setFullYear(base.getFullYear() + 10);
+                            setEditFormData((prev: any) => ({
+                              ...prev,
+                              warrantyExpiry: base.toISOString().split('T')[0],
+                            }));
+                          }}
+                          className="px-2 py-0.5 text-[10.5px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 rounded-lg border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
+                        >
+                          Trọn đời
+                        </button>
+                      </div>
                     </div>
 
                     <div>
@@ -6388,25 +6444,82 @@ export default function AssetsPage() {
                   {/* Ngày mua, Hạn bảo hành, Số tháng khấu hao */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Ngày mua hàng
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Ngày mua hàng (*)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev: any) => ({ ...prev, purchaseDate: new Date().toISOString().split('T')[0] }))}
+                          className="text-[10.5px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        >
+                          Hôm nay
+                        </button>
+                      </div>
                       <input
                         type="date"
                         value={formData.purchaseDate}
                         onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                        className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none"
+                        className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{isEn ? 'Warranty Expiration' : 'Hạn bảo hành'}</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                          {isEn ? 'Warranty Expiration' : 'Hạn bảo hành'}
+                        </label>
+                        {formData.warrantyExpiry && (
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev: any) => ({ ...prev, warrantyExpiry: '' }))}
+                            className="text-[10.5px] text-red-500 hover:underline cursor-pointer"
+                          >
+                            Xóa hạn
+                          </button>
+                        )}
+                      </div>
                       <input
                         type="date"
                         value={formData.warrantyExpiry}
                         onChange={(e) => setFormData({ ...formData, warrantyExpiry: e.target.value })}
-                        className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none"
+                        className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
                       />
+                      {/* Chọn nhanh thời hạn bảo hành */}
+                      <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                        <span className="text-[10px] text-slate-400 font-medium">Chọn nhanh:</span>
+                        {[1, 2, 3, 5].map((yrs) => (
+                          <button
+                            key={yrs}
+                            type="button"
+                            onClick={() => {
+                              const base = formData.purchaseDate ? new Date(formData.purchaseDate) : new Date();
+                              base.setFullYear(base.getFullYear() + yrs);
+                              setFormData((prev: any) => ({
+                                ...prev,
+                                warrantyExpiry: base.toISOString().split('T')[0],
+                              }));
+                            }}
+                            className="px-2 py-0.5 text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-950 dark:hover:text-blue-300 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer transition-colors"
+                          >
+                            +{yrs} năm
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const base = formData.purchaseDate ? new Date(formData.purchaseDate) : new Date();
+                            base.setFullYear(base.getFullYear() + 10);
+                            setFormData((prev: any) => ({
+                              ...prev,
+                              warrantyExpiry: base.toISOString().split('T')[0],
+                            }));
+                          }}
+                          className="px-2 py-0.5 text-[10.5px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 rounded-lg border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
+                        >
+                          Trọn đời
+                        </button>
+                      </div>
                     </div>
 
                     <div>
