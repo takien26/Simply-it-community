@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 
 const FREQUENCY_MAP: Record<string, string> = {
+  DAILY: 'Hàng ngày (Mỗi ngày/lần)',
+  WEEKLY: 'Hàng tuần (7 ngày/lần)',
   MONTHLY: 'Hàng tháng (1 tháng/lần)',
   QUARTERLY: 'Hàng quý (3 tháng/lần)',
   SEMI_ANNUAL: 'Định kỳ 6 tháng/lần',
@@ -382,6 +384,83 @@ export function MaintenanceSchedulesTab() {
             </div>
 
             <form onSubmit={handleSave} className="space-y-4 text-xs">
+              {/* Quick Template Presets */}
+              <div className="p-3 bg-indigo-50/70 border border-indigo-200/80 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-indigo-900 flex items-center gap-1.5">
+                    <span>⚡ Mẫu Tác Vụ Thường Xuyên Nhanh:</span>
+                  </span>
+                  <span className="text-[10px] text-indigo-600 font-semibold">1 chạm điền mẫu</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormName('Kiểm tra sao lưu & Backup Server');
+                      setFormFreq('DAILY');
+                      setFormType('INSPECTION');
+                      setFormPriority('HIGH');
+                      setFormDesc('Rà soát trạng thái bản ghi sao lưu tự động hàng ngày, đảm bảo dung lượng lưu trữ an toàn.');
+                    }}
+                    className="px-2.5 py-1 bg-white hover:bg-indigo-100 text-indigo-800 rounded-lg text-[11px] font-semibold border border-indigo-200 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    💾 Backup hàng ngày
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormName('Kiểm tra nhiệt độ & phòng máy chủ (Server Room)');
+                      setFormFreq('DAILY');
+                      setFormType('INSPECTION');
+                      setFormPriority('MEDIUM');
+                      setFormDesc('Kiểm tra điều hòa phòng Server, nhiệt độ tủ rack và đèn cảnh báo UPS.');
+                    }}
+                    className="px-2.5 py-1 bg-white hover:bg-blue-100 text-blue-800 rounded-lg text-[11px] font-semibold border border-blue-200 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    🏢 Phòng Server hàng ngày
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormName('Rà soát an toàn thông tin & quét virus hàng tuần');
+                      setFormFreq('WEEKLY');
+                      setFormType('INSPECTION');
+                      setFormPriority('HIGH');
+                      setFormDesc('Quét mã độc máy trạm quan trọng, kiểm tra nhật ký đăng nhập và cập nhật bản vá bảo mật.');
+                    }}
+                    className="px-2.5 py-1 bg-white hover:bg-purple-100 text-purple-800 rounded-lg text-[11px] font-semibold border border-purple-200 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    🛡️ Quét virus hàng tuần
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormName('Kiểm tra mực in & bảo dưỡng máy in văn phòng');
+                      setFormFreq('WEEKLY');
+                      setFormType('INSPECTION');
+                      setFormPriority('MEDIUM');
+                      setFormDesc('Kiểm tra lượng mực tồn, khay giấy và vệ sinh cụm sấy các máy in các tầng.');
+                    }}
+                    className="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 rounded-lg text-[11px] font-semibold border border-emerald-200 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    🖨️ Máy in hàng tuần
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormName('Vệ sinh máy tính & tra keo tản nhiệt định kỳ');
+                      setFormFreq('QUARTERLY');
+                      setFormType('CLEANING');
+                      setFormPriority('MEDIUM');
+                      setFormDesc('Thổi bụi case máy tính, vệ sinh quạt tản nhiệt và tra keo tản nhiệt mới.');
+                    }}
+                    className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-800 rounded-lg text-[11px] font-semibold border border-amber-200 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    🔧 Bảo trì máy tính hàng quý
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
                   Tên lịch bảo trì <span className="text-rose-500">*</span>
@@ -389,7 +468,7 @@ export function MaintenanceSchedulesTab() {
                 <input
                   type="text"
                   required
-                  placeholder="VD: Vệ sinh laptop & tra keo tản nhiệt định kỳ Q3..."
+                  placeholder="VD: Kiểm tra sao lưu dữ liệu hàng ngày / Vệ sinh máy tính định kỳ..."
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-semibold"
@@ -404,6 +483,8 @@ export function MaintenanceSchedulesTab() {
                     onChange={(e) => setFormFreq(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-semibold cursor-pointer"
                   >
+                    <option value="DAILY">Hàng ngày (Mỗi ngày/lần)</option>
+                    <option value="WEEKLY">Hàng tuần (7 ngày/lần)</option>
                     <option value="MONTHLY">Hàng tháng (1 tháng/lần)</option>
                     <option value="QUARTERLY">Hàng quý (3 tháng/lần)</option>
                     <option value="SEMI_ANNUAL">6 tháng/lần</option>
@@ -418,11 +499,12 @@ export function MaintenanceSchedulesTab() {
                     onChange={(e) => setFormType(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-semibold cursor-pointer"
                   >
+                    <option value="INSPECTION">Kiểm tra & Rà soát định kỳ</option>
                     <option value="CLEANING">Vệ sinh & tra keo tản nhiệt</option>
-                    <option value="INSPECTION">Kiểm tra định kỳ</option>
+                    <option value="SOFTWARE_UPDATE">Cập nhật phần mềm & vá lỗi</option>
                     <option value="UPGRADE">Nâng cấp linh kiện</option>
-                    <option value="SOFTWARE_UPDATE">Cập nhật phần mềm</option>
                     <option value="REPAIR">Sửa chữa phần cứng</option>
+                    <option value="REPLACEMENT">Thay thế phụ tùng</option>
                     <option value="OTHER">Khác</option>
                   </select>
                 </div>

@@ -225,6 +225,8 @@ enum ApprovalType {
 // ==================== MAINTENANCE SCHEDULE ====================
 
 enum MaintenanceFrequency {
+  DAILY           // Hàng ngày
+  WEEKLY          // Hàng tuần
   MONTHLY         // Hàng tháng
   QUARTERLY       // Hàng quý
   SEMI_ANNUAL     // 6 tháng

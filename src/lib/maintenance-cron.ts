@@ -5,6 +5,12 @@ import { sendEmail } from './email';
 export function calculateNextRunDate(fromDate: Date, frequency: MaintenanceFrequency): Date {
   const next = new Date(fromDate);
   switch (frequency) {
+    case 'DAILY':
+      next.setDate(next.getDate() + 1);
+      break;
+    case 'WEEKLY':
+      next.setDate(next.getDate() + 7);
+      break;
     case 'MONTHLY':
       next.setMonth(next.getMonth() + 1);
       break;
