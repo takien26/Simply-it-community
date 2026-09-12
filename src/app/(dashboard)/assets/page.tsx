@@ -555,6 +555,39 @@ export default function AssetsPage() {
   const [copiedScript, setCopiedScript] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
 
+  // Right-Click Context Menu State
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    asset: any | null;
+  }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    asset: null,
+  });
+
+  // Auto dismiss context menu on click outside, scroll, or escape key
+  useEffect(() => {
+    if (!contextMenu.isOpen) return;
+    const handleClick = () => setContextMenu((prev) => ({ ...prev, isOpen: false }));
+    const handleScroll = () => setContextMenu((prev) => ({ ...prev, isOpen: false }));
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContextMenu((prev) => ({ ...prev, isOpen: false }));
+    };
+
+    window.addEventListener('click', handleClick);
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('click', handleClick);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [contextMenu.isOpen]);
+
   useEffect(() => {
     fetch('/api/settings')
       .then(r => r.json())
@@ -2651,8 +2684,22 @@ export default function AssetsPage() {
                         <tr
                           key={asset.id}
                           onClick={() => handleOpenDetail(asset)}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const menuWidth = 230;
+                            const menuHeight = 360;
+                            const x = Math.min(e.clientX, window.innerWidth - menuWidth - 12);
+                            const y = Math.min(e.clientY, window.innerHeight - menuHeight - 12);
+                            setContextMenu({
+                              isOpen: true,
+                              x: Math.max(12, x),
+                              y: Math.max(12, y),
+                              asset,
+                            });
+                          }}
                           className="hover:bg-blue-50/50 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer"
-                          title="Nhấp đúp hoặc nhấp vào hàng để xem đầy đủ chi tiết thiết bị"
+                          title="Nhấp vào để xem chi tiết • Nhấp chuột phải để mở menu thao tác nhanh"
                         >
                           {/* STICKY COLUMN: MÃ TÀI SẢN (2 DÒNG GỌN GÀNG) */}
                           <td className="py-2 px-2 sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-blue-50/90 dark:group-hover:bg-slate-800/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors">
@@ -7454,6 +7501,150 @@ export default function AssetsPage() {
                 <span>Lưu Đồng Tiền</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* RIGHT-CLICK CONTEXT MENU */}
+      {contextMenu.isOpen && contextMenu.asset && (
+        <div
+          style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
+          className="fixed z-50 w-60 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 py-1.5 text-xs text-slate-700 dark:text-slate-200 animate-in fade-in zoom-in-95 duration-150 select-none overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          {/* Header with Asset Tag & Name */}
+          <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <span className="font-mono font-black text-blue-600 dark:text-blue-400 text-[11px] block truncate">
+                {contextMenu.asset.assetTag}
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate" title={contextMenu.asset.name}>
+                {contextMenu.asset.name}
+              </span>
+            </div>
+            <span className="shrink-0 text-[9.5px] px-1.5 py-0.5 rounded-full font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+              Thao tác
+            </span>
+          </div>
+
+          <div className="p-1.5 space-y-0.5">
+            {/* 1. Xem chi tiết */}
+            <button
+              type="button"
+              onClick={() => {
+                const a = contextMenu.asset;
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                handleOpenDetail(a);
+              }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left cursor-pointer group"
+            >
+              <Search className="w-3.5 h-3.5 text-blue-500 group-hover:scale-110 transition-transform shrink-0" />
+              <span className="font-medium">Xem chi tiết thiết bị</span>
+            </button>
+
+            {/* 2. Sửa */}
+            <button
+              type="button"
+              onClick={() => {
+                const a = contextMenu.asset;
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                handleOpenEdit(a);
+              }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left cursor-pointer group"
+            >
+              <Edit className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform shrink-0" />
+              <span className="font-medium">Chỉnh sửa thông số</span>
+            </button>
+
+            {/* 3. Cấp phát & điều chuyển */}
+            <button
+              type="button"
+              onClick={() => {
+                const a = contextMenu.asset;
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                openTransferModal(a);
+              }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left cursor-pointer group"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform shrink-0" />
+              <span className="font-medium">Cấp phát & điều chuyển</span>
+            </button>
+
+            <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+            {/* 4. In biên bản bàn giao PDF */}
+            <button
+              type="button"
+              onClick={() => {
+                const a = contextMenu.asset;
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                setSelectedHandoverAsset(a);
+              }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-left cursor-pointer group"
+            >
+              <FileText className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-110 transition-transform shrink-0" />
+              <span className="font-medium">In biên bản bàn giao (PDF)</span>
+            </button>
+
+            {/* 5. In tem nhãn QR Code */}
+            <button
+              type="button"
+              onClick={() => {
+                const a = contextMenu.asset;
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                setSelectedQrAsset(a);
+              }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-cyan-50 dark:hover:bg-cyan-950/60 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-left cursor-pointer group"
+            >
+              <QrCode className="w-3.5 h-3.5 text-cyan-500 group-hover:scale-110 transition-transform shrink-0" />
+              <span className="font-medium">In mã QR & tem nhãn</span>
+            </button>
+
+            {/* 6. Bảo trì / Sửa chữa */}
+            <button
+              type="button"
+              onClick={() => {
+                const a = contextMenu.asset;
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                openMaintenance(a);
+              }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-600 dark:hover:text-amber-400 transition-colors text-left cursor-pointer group"
+            >
+              <Wrench className="w-3.5 h-3.5 text-amber-500 group-hover:scale-110 transition-transform shrink-0" />
+              <span className="font-medium">Bảo trì / Sửa chữa</span>
+            </button>
+
+            <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+            {/* 7. Sao chép Asset Tag */}
+            <button
+              type="button"
+              onClick={() => {
+                if (contextMenu.asset?.assetTag) {
+                  navigator.clipboard.writeText(contextMenu.asset.assetTag);
+                }
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+              }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors text-left cursor-pointer group"
+            >
+              <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:scale-110 transition-transform shrink-0" />
+              <span className="font-medium">Sao chép mã tài sản</span>
+            </button>
+
+            {/* 8. Xóa thiết bị */}
+            <button
+              type="button"
+              onClick={() => {
+                const id = contextMenu.asset.id;
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                handleDeleteAsset(id);
+              }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/60 text-rose-600 dark:text-rose-400 transition-colors text-left cursor-pointer group"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-500 group-hover:scale-110 transition-transform shrink-0" />
+              <span className="font-medium">Xóa thiết bị này</span>
+            </button>
           </div>
         </div>
       )}

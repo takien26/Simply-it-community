@@ -67,6 +67,153 @@ export function ChatWidget() {
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [isEnterprise, setIsEnterprise] = useState<boolean>(false);
 
+  // Floating & Draggable Chat State
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number } | null>(null);
+  const justDraggedRef = useRef(false);
+  const widgetRef = useRef<HTMLDivElement>(null);
+
+  // Restore saved position on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('simply:chat-pos');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+          const x = Math.max(10, Math.min(parsed.x, window.innerWidth - 65));
+          const y = Math.max(10, Math.min(parsed.y, window.innerHeight - 65));
+          setPosition({ x, y });
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Clamp position when resizing window
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition((prev) => {
+        if (!prev) return null;
+        const w = isOpen ? 410 : 65;
+        const h = isOpen ? 560 : 65;
+        const x = Math.max(10, Math.min(prev.x, window.innerWidth - w - 10));
+        const y = Math.max(10, Math.min(prev.y, window.innerHeight - h - 10));
+        return { x, y };
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isOpen]);
+
+  // When opening dialog, keep within screen bounds
+  useEffect(() => {
+    if (isOpen) {
+      setPosition((prev) => {
+        if (!prev) return null;
+        const dialogW = Math.min(410, window.innerWidth - 20);
+        const dialogH = Math.min(560, window.innerHeight - 20);
+        const x = Math.max(10, Math.min(prev.x, window.innerWidth - dialogW - 10));
+        const y = Math.max(10, Math.min(prev.y, window.innerHeight - dialogH - 10));
+        if (x !== prev.x || y !== prev.y) {
+          return { x, y };
+        }
+        return prev;
+      });
+    }
+  }, [isOpen]);
+
+  // Drag handlers for both button and dialog header
+  const handleStartDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    if ('button' in e && e.button !== 0) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    let initX = 0;
+    let initY = 0;
+
+    if (position) {
+      initX = position.x;
+      initY = position.y;
+    } else if (widgetRef.current) {
+      const rect = widgetRef.current.getBoundingClientRect();
+      initX = rect.left;
+      initY = rect.top;
+    } else {
+      initX = window.innerWidth - (isOpen ? 420 : 75);
+      initY = window.innerHeight - (isOpen ? 570 : 75);
+    }
+
+    dragStartRef.current = { startX: clientX, startY: clientY, initX, initY };
+    isDraggingRef.current = false;
+
+    const handleMouseMove = (moveEvent: MouseEvent | TouchEvent) => {
+      if (!dragStartRef.current) return;
+      const curX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const curY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      const dx = curX - dragStartRef.current.startX;
+      const dy = curY - dragStartRef.current.startY;
+
+      if (!isDraggingRef.current && Math.hypot(dx, dy) > 4) {
+        isDraggingRef.current = true;
+      }
+
+      if (isDraggingRef.current) {
+        const w = isOpen ? Math.min(410, window.innerWidth - 20) : 65;
+        const h = isOpen ? Math.min(560, window.innerHeight - 20) : 65;
+        const rawX = dragStartRef.current.initX + dx;
+        const rawY = dragStartRef.current.initY + dy;
+        const clampedX = Math.max(10, Math.min(rawX, window.innerWidth - w - 10));
+        const clampedY = Math.max(10, Math.min(rawY, window.innerHeight - h - 10));
+
+        setPosition({ x: clampedX, y: clampedY });
+      }
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleMouseMove);
+      window.removeEventListener('touchend', handleMouseUp);
+
+      if (isDraggingRef.current) {
+        justDraggedRef.current = true;
+        setTimeout(() => {
+          justDraggedRef.current = false;
+        }, 150);
+
+        setPosition((finalPos) => {
+          if (finalPos) {
+            try {
+              localStorage.setItem('simply:chat-pos', JSON.stringify(finalPos));
+            } catch {}
+          }
+          return finalPos;
+        });
+      }
+
+      dragStartRef.current = null;
+      isDraggingRef.current = false;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleMouseMove, { passive: false });
+    window.addEventListener('touchend', handleMouseUp);
+  };
+
+  const handleButtonClick = () => {
+    if (justDraggedRef.current) return;
+    setIsOpen(true);
+  };
+
+  const handleResetPosition = () => {
+    setPosition(null);
+    try {
+      localStorage.removeItem('simply:chat-pos');
+    } catch {}
+  };
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -261,17 +408,38 @@ export function ChatWidget() {
   if (!isEnterprise) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-50">
+    <div
+      ref={widgetRef}
+      style={
+        position
+          ? {
+              position: 'fixed',
+              left: `${position.x}px`,
+              top: `${position.y}px`,
+              bottom: 'auto',
+              right: 'auto',
+              zIndex: 50,
+            }
+          : {
+              position: 'fixed',
+              bottom: '20px',
+              right: '20px',
+              zIndex: 50,
+            }
+      }
+    >
       {/* Floating Toggle Button */}
       {!isOpen && (
         <button
           type="button"
-          onClick={() => setIsOpen(true)}
-          className="relative p-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center group"
-          title="Trợ lý IT ảo AI"
+          onMouseDown={handleStartDrag}
+          onTouchStart={handleStartDrag}
+          onClick={handleButtonClick}
+          className="relative p-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full shadow-2xl transition-shadow duration-300 hover:scale-105 active:scale-95 cursor-grab active:cursor-grabbing flex items-center justify-center group select-none touch-none"
+          title="Trợ lý IT ảo AI (Nhấp để mở • Giữ chuột để di chuyển)"
         >
-          <Bot className="w-6 h-6 animate-bounce duration-1000" />
-          <span className="absolute -top-1 -right-1 flex h-4 w-4">
+          <Bot className="w-6 h-6 animate-bounce duration-1000 pointer-events-none" />
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 pointer-events-none">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-[9px] font-bold text-white items-center justify-center">
               {isAdmin ? '👑' : 'AI'}
@@ -283,9 +451,14 @@ export function ChatWidget() {
       {/* Expandable Chat Dialog */}
       {isOpen && (
         <div className="w-[360px] sm:w-[410px] h-[550px] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-          {/* Chat Header */}
-          <div className="p-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white flex items-center justify-between shadow-md shrink-0">
-            <div className="flex items-center gap-2.5">
+          {/* Chat Header (Draggable) */}
+          <div
+            onMouseDown={handleStartDrag}
+            onTouchStart={handleStartDrag}
+            className="p-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white flex items-center justify-between shadow-md shrink-0 cursor-grab active:cursor-grabbing select-none"
+            title="Giữ và kéo để di chuyển khung chat bất kỳ đâu"
+          >
+            <div className="flex items-center gap-2.5 pointer-events-none">
               <div className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
                 <Bot className="w-5 h-5" />
               </div>
@@ -307,21 +480,41 @@ export function ChatWidget() {
                     </span>
                   )}
                 </h3>
-                <p className="text-[11px] text-blue-100">
-                  {isAdmin
-                    ? 'Toàn quyền tra cứu & Tóm tắt chỉ số hệ thống'
-                    : 'Hỗ trợ kỹ thuật 24/7 & Hướng dẫn tự phục vụ'}
+                <p className="text-[11px] text-blue-100 flex items-center gap-1">
+                  <span className="opacity-90">⠿ Kéo để di chuyển</span>
+                  <span>•</span>
+                  <span>{isAdmin ? 'Tra cứu hệ thống' : 'Hỗ trợ 24/7'}</span>
                 </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              {position && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleResetPosition();
+                  }}
+                  className="px-2 py-0.5 rounded-lg text-white/75 hover:text-white hover:bg-white/10 transition-colors text-[10.5px] cursor-pointer"
+                  title="Đặt lại vị trí góc phải mặc định"
+                >
+                  Gốc
+                </button>
+              )}
+              <button
+                type="button"
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onClick={() => setIsOpen(false)}
+                className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                title="Đóng chat"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Messages Body */}
