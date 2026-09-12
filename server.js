@@ -177,6 +177,21 @@ async function initServer() {
   // Initial check 45s after startup, then check every hour
   setTimeout(triggerDailyAlertScan, 45000);
   setInterval(triggerDailyAlertScan, 60 * 60 * 1000);
+
+  // 4. Automated Inbound Email-to-Ticket Poller (Runs in background every 2 minutes)
+  function triggerEmailInboundPolling() {
+    try {
+      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/email-inbound?run=true`, (res) => {
+        // Background polling silent response
+      });
+      req.on('error', () => {});
+      req.end();
+    } catch (e) {}
+  }
+
+  // Initial check 30s after startup, then check every 2 minutes
+  setTimeout(triggerEmailInboundPolling, 30000);
+  setInterval(triggerEmailInboundPolling, 2 * 60 * 1000);
 }
 
 initServer().catch((err) => {

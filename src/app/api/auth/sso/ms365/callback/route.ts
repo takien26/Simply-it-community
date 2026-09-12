@@ -115,13 +115,15 @@ export async function GET(request: NextRequest) {
     });
 
     const cookieStore = await cookies();
-    cookieStore.set('auth-token', token, {
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       path: '/',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-    });
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+    };
+    cookieStore.set(PRIMARY_COOKIE_NAME, token, cookieOptions);
+    cookieStore.set('auth-token', token, cookieOptions);
 
     return NextResponse.redirect(new URL('/dashboard', request.url));
   } catch (error) {

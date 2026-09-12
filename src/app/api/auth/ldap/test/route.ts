@@ -6,13 +6,22 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
+      return NextResponse.json({ success: false, message: 'Bạn cần đăng nhập với quyền quản trị để kiểm tra kết nối LDAP' }, { status: 401 });
     }
 
     const body = await req.json();
+    const rawServerUrl = (body.serverUrl || body['ldap.server_url'] || '').trim();
+
+    if (!rawServerUrl) {
+      return NextResponse.json({
+        success: false,
+        message: 'Vui lòng nhập địa chỉ máy chủ LDAP Server URL (Ví dụ: ldap://192.168.1.10:389 hoặc ldaps://dc.company.com:636)',
+      });
+    }
+
     const config: LdapConfig = {
       enabled: body.enabled ?? true,
-      serverUrl: body.serverUrl || body['ldap.server_url'] || 'ldap://127.0.0.1:389',
+      serverUrl: rawServerUrl,
       baseDn: body.baseDn || body['ldap.base_dn'] || 'dc=company,dc=com',
       bindDn: body.bindDn || body['ldap.bind_dn'] || '',
       bindPassword: body.bindPassword || body['ldap.bind_password'] || '',

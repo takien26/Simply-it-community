@@ -69,7 +69,8 @@ export function Sidebar({
   onOpenAIModal?: () => void;
   onOpenExcelModal?: () => void;
 }) {
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const pathname = rawPathname || '';
   const router = useRouter();
   const { language, t } = useLanguage();
   const [user, setUser] = useState<{

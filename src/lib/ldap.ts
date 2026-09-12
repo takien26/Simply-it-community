@@ -16,7 +16,12 @@ export interface LdapConfig {
 
 export async function getLdapConfig(): Promise<LdapConfig> {
   const settings = await prisma.systemSetting.findMany({
-    where: { group: 'ldap' },
+    where: {
+      OR: [
+        { group: 'ldap' },
+        { key: { startsWith: 'ldap.' } },
+      ],
+    },
   });
 
   const map: Record<string, string> = {};

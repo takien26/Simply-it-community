@@ -2740,7 +2740,7 @@ export default function SettingsPage() {
                 ) : (
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 )}
-                <span>{ldapTestResult.message}</span>
+                <span>{ldapTestResult.message || (ldapTestResult as any).error}</span>
               </div>
             )}
 

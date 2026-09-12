@@ -27,7 +27,7 @@ function LoginForm() {
       .catch(() => {});
 
     // Check error params from SSO callback
-    const errParam = searchParams.get('error');
+    const errParam = searchParams?.get('error');
     if (errParam) {
       if (errParam === 'sso_disabled') {
         setError(
