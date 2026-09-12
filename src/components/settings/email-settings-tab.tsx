@@ -158,17 +158,24 @@ export function EmailSettingsTab() {
       const resSettings = await fetch('/api/settings');
       const dataSettings = await resSettings.json();
 
-      if (dataSettings.success && Array.isArray(dataSettings.settings)) {
-        const map = new Map(dataSettings.settings.map((s: any) => [s.key, s.value]));
+      const settingsList = Array.isArray(dataSettings.data)
+        ? dataSettings.data
+        : Array.isArray(dataSettings.settings)
+        ? dataSettings.settings
+        : [];
+
+      if (settingsList.length > 0) {
+        const map = new Map(settingsList.map((s: any) => [s.key, s.value]));
+        const rawEnabled = map.get('email.enabled') ?? map.get('email.smtp_enabled');
         setSmtpConfig({
           host: (map.get('email.smtp_host') as string) || '',
           port: (map.get('email.smtp_port') as string) || '587',
           secure: map.get('email.smtp_secure') === 'true',
           user: (map.get('email.smtp_user') as string) || '',
           password: (map.get('email.smtp_password') as string) || '',
-          fromName: (map.get('email.from_name') as string) || 'SIMPLY IT Support',
-          fromEmail: (map.get('email.from_email') as string) || '',
-          enabled: map.get('email.enabled') !== 'false',
+          fromName: (map.get('email.from_name') as string) || (map.get('email.smtp_from_name') as string) || 'SIMPLY IT Support',
+          fromEmail: (map.get('email.from_email') as string) || (map.get('email.smtp_from_email') as string) || '',
+          enabled: rawEnabled !== undefined ? rawEnabled === 'true' : true,
         });
       }
 
@@ -196,14 +203,17 @@ export function EmailSettingsTab() {
 
     try {
       const payload = [
-        { key: 'email.smtp_host', value: smtpConfig.host },
-        { key: 'email.smtp_port', value: smtpConfig.port },
+        { key: 'email.smtp_host', value: smtpConfig.host.trim() },
+        { key: 'email.smtp_port', value: smtpConfig.port.trim() },
         { key: 'email.smtp_secure', value: String(smtpConfig.secure) },
-        { key: 'email.smtp_user', value: smtpConfig.user },
+        { key: 'email.smtp_user', value: smtpConfig.user.trim() },
         { key: 'email.smtp_password', value: smtpConfig.password },
-        { key: 'email.from_name', value: smtpConfig.fromName },
-        { key: 'email.from_email', value: smtpConfig.fromEmail },
+        { key: 'email.from_name', value: smtpConfig.fromName.trim() },
+        { key: 'email.smtp_from_name', value: smtpConfig.fromName.trim() },
+        { key: 'email.from_email', value: smtpConfig.fromEmail.trim() },
+        { key: 'email.smtp_from_email', value: smtpConfig.fromEmail.trim() },
         { key: 'email.enabled', value: String(smtpConfig.enabled) },
+        { key: 'email.smtp_enabled', value: String(smtpConfig.enabled) },
       ];
 
       const res = await fetch('/api/settings', {
@@ -231,6 +241,11 @@ export function EmailSettingsTab() {
       return;
     }
 
+    if (!smtpConfig.host || !smtpConfig.host.trim()) {
+      setToast({ type: 'error', message: 'Vui lòng nhập Máy chủ SMTP (Host) trước khi kiểm tra gửi thư' });
+      return;
+    }
+
     setTesting(true);
     setToast(null);
 
@@ -238,7 +253,17 @@ export function EmailSettingsTab() {
       const res = await fetch('/api/email/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ testEmail }),
+        body: JSON.stringify({
+          testEmail: testEmail.trim(),
+          testRecipient: testEmail.trim(),
+          host: smtpConfig.host.trim(),
+          port: Number(smtpConfig.port) || 587,
+          secure: smtpConfig.secure,
+          user: smtpConfig.user.trim(),
+          pass: smtpConfig.password,
+          fromName: smtpConfig.fromName.trim(),
+          fromEmail: smtpConfig.fromEmail.trim(),
+        }),
       });
 
       const data = await res.json();

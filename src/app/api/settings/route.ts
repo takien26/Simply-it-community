@@ -15,7 +15,7 @@ export async function GET() {
     const settings = await prisma.systemSetting.findMany({
       orderBy: { key: 'asc' },
     });
-    const payload = { success: true, data: settings };
+    const payload = { success: true, data: settings, settings };
     settingsCache = { timestamp: Date.now(), data: payload };
     return NextResponse.json(payload);
   } catch (error) {

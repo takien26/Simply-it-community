@@ -22,8 +22,11 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
           'email.smtp_user',
           'email.smtp_password',
           'email.smtp_from_name',
+          'email.from_name',
           'email.smtp_from_email',
+          'email.from_email',
           'email.smtp_enabled',
+          'email.enabled',
           'email.smtp_secure',
         ],
       },
@@ -36,9 +39,11 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
   const port = parseInt(settingMap.get('email.smtp_port') || process.env.SMTP_PORT || '587');
   const user = settingMap.get('email.smtp_user') || process.env.SMTP_USER || '';
   const pass = settingMap.get('email.smtp_password') || process.env.SMTP_PASS || '';
-  const fromName = settingMap.get('email.smtp_from_name') || 'SIMPLY IT';
-  const fromEmail = settingMap.get('email.smtp_from_email') || user || 'noreply@company.com';
-  const enabled = settingMap.get('email.smtp_enabled') === 'true';
+  const fromName = settingMap.get('email.from_name') || settingMap.get('email.smtp_from_name') || 'SIMPLY IT';
+  const fromEmail = settingMap.get('email.from_email') || settingMap.get('email.smtp_from_email') || user || 'noreply@company.com';
+
+  const rawEnabled = settingMap.get('email.enabled') ?? settingMap.get('email.smtp_enabled');
+  const enabled = rawEnabled !== undefined ? rawEnabled === 'true' : Boolean(host && user);
   const secure = settingMap.get('email.smtp_secure') === 'true' || port === 465;
 
   return { host, port, secure, user, pass, fromName, fromEmail, enabled };
@@ -77,17 +82,20 @@ export async function sendEmail({
   data = {},
   subject,
   html,
+  customConfig,
 }: {
   to: string;
   templateCode?: string;
   data?: Record<string, any>;
   subject?: string;
   html?: string;
+  customConfig?: Partial<SmtpConfig>;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const config = await getSmtpConfig();
+    const baseConfig = await getSmtpConfig();
+    const config = customConfig ? { ...baseConfig, ...customConfig } : baseConfig;
 
-    if (!config.enabled && !process.env.FORCE_EMAIL) {
+    if (!config.enabled && !process.env.FORCE_EMAIL && !customConfig) {
       console.log(`[Email] SMTP is disabled. Skipped sending email to ${to}`);
       return { success: false, error: 'SMTP is disabled' };
     }
@@ -190,20 +198,37 @@ export async function sendEmail({
 
 export async function testSmtpConnection(config: SmtpConfig): Promise<{ success: boolean; message: string }> {
   try {
+    if (!config.host || !config.host.trim()) {
+      return {
+        success: false,
+        message: 'Máy chủ SMTP (Host) không được để trống. Vui lòng nhập địa chỉ máy chủ (vd: smtp.office365.com, smtp.gmail.com).',
+      };
+    }
+
     const transporter = nodemailer.createTransport({
-      host: config.host,
+      host: config.host.trim(),
       port: config.port,
       secure: config.secure,
-      auth: {
-        user: config.user,
-        pass: config.pass,
-      },
-      connectionTimeout: 7000,
+      auth: config.user
+        ? {
+            user: config.user.trim(),
+            pass: config.pass,
+          }
+        : undefined,
+      connectionTimeout: 10000,
     });
 
     await transporter.verify();
     return { success: true, message: 'Kết nối SMTP thành công!' };
   } catch (error: any) {
-    return { success: false, message: error.message || 'Không thể kết nối đến máy chủ SMTP' };
+    let msg = error.message || 'Không thể kết nối đến máy chủ SMTP';
+    if (error.code === 'ECONNREFUSED') {
+      msg = `Không thể kết nối tới máy chủ SMTP (${config.host}:${config.port}). Máy chủ từ chối kết nối (ECONNREFUSED). Vui lòng kiểm tra lại địa chỉ Host và Cổng (Port).`;
+    } else if (error.code === 'ETIMEDOUT') {
+      msg = `Kết nối đến máy chủ SMTP (${config.host}:${config.port}) bị quá hạn (ETIMEDOUT). Vui lòng kiểm tra tường lửa mạng hoặc kiểm tra lại cổng SMTP.`;
+    } else if (error.responseCode === 535 || error.message?.toLowerCase().includes('authentication')) {
+      msg = 'Đăng nhập SMTP thất bại (535 Authentication failed). Vui lòng kiểm tra lại tên tài khoản hoặc Mật khẩu ứng dụng (App Password).';
+    }
+    return { success: false, message: msg };
   }
 }
