@@ -34,6 +34,22 @@ export async function GET(
           },
           orderBy: { performedAt: 'desc' },
         },
+        tickets: {
+          select: {
+            id: true,
+            ticketNumber: true,
+            title: true,
+            priority: true,
+            status: true,
+            createdAt: true,
+            resolvedAt: true,
+            assignedTo: {
+              select: { id: true, fullName: true, email: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 6,
+        },
       },
     });
 

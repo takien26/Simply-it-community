@@ -175,6 +175,10 @@ export async function GET(req: NextRequest) {
     let totalResolutionMinutes = 0;
     let resolvedTicketsCount = 0;
     let aiAutoRoutedCount = 0;
+    let totalActualSpentMinutes = 0;
+    let sumCsatScore = 0;
+    let totalRatedTickets = 0;
+    let satisfiedCount = 0;
 
     const categoryMap: Record<string, { count: number; resolvedCount: number; totalMinutes: number }> = {};
     const priorityMap: Record<string, number> = { URGENT: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
@@ -208,6 +212,21 @@ export async function GET(req: NextRequest) {
       onTimeSla: number;
       breachedSla: number;
       totalMinutes: number;
+      actualSpentMinutes: number;
+      sumRating: number;
+      ratedCount: number;
+    }> = {};
+
+    const faultyAssetMap: Record<string, {
+      id: string;
+      assetTag: string;
+      name: string;
+      brand?: string | null;
+      model?: string | null;
+      ticketCount: number;
+      openCount: number;
+      latestTicketTitle?: string;
+      companyName?: string | null;
     }> = {};
 
     const trendDateMap: Record<string, { date: string; created: number; resolved: number; breached: number }> = {};
@@ -254,6 +273,38 @@ export async function GET(req: NextRequest) {
         resolutionMinutes = Math.max(1, Math.round((resolved - created) / (1000 * 60)));
         totalResolutionMinutes += resolutionMinutes;
         resolvedTicketsCount++;
+      }
+
+      // Time Tracking & CSAT
+      const actualMinutes = (t as any).actualSpentMinutes || 0;
+      totalActualSpentMinutes += actualMinutes;
+
+      if (t.rating != null && t.rating > 0) {
+        sumCsatScore += t.rating;
+        totalRatedTickets++;
+        if (t.rating >= 4) satisfiedCount++;
+      }
+
+      // Chronic Faulty Assets
+      if (t.asset) {
+        const aId = t.asset.id;
+        if (!faultyAssetMap[aId]) {
+          faultyAssetMap[aId] = {
+            id: aId,
+            assetTag: t.asset.assetTag,
+            name: t.asset.name,
+            brand: t.asset.brand,
+            model: t.asset.model,
+            ticketCount: 0,
+            openCount: 0,
+            latestTicketTitle: t.title,
+            companyName: t.companyName || null,
+          };
+        }
+        faultyAssetMap[aId].ticketCount++;
+        if (t.status !== 'RESOLVED' && t.status !== 'CLOSED') {
+          faultyAssetMap[aId].openCount++;
+        }
       }
 
       // Category Map
@@ -332,9 +383,17 @@ export async function GET(req: NextRequest) {
             onTimeSla: 0,
             breachedSla: 0,
             totalMinutes: 0,
+            actualSpentMinutes: 0,
+            sumRating: 0,
+            ratedCount: 0,
           };
         }
         technicianMap[techId].total++;
+        technicianMap[techId].actualSpentMinutes += actualMinutes;
+        if (t.rating != null && t.rating > 0) {
+          technicianMap[techId].sumRating += t.rating;
+          technicianMap[techId].ratedCount++;
+        }
         if (t.status === 'RESOLVED' || t.status === 'CLOSED') technicianMap[techId].resolved++;
         if (isBreached) technicianMap[techId].breachedSla++;
         else if (t.resolvedAt) technicianMap[techId].onTimeSla++;
@@ -374,6 +433,15 @@ export async function GET(req: NextRequest) {
     const slaComplianceRate = totalEvaluatedSla > 0
       ? Math.round((onTimeSlaCount / totalEvaluatedSla) * 100)
       : 100;
+
+    const topFaultyAssets = Object.values(faultyAssetMap)
+      .sort((a, b) => b.ticketCount - a.ticketCount)
+      .slice(0, 8);
+
+    const chronicAssetsCount = Object.values(faultyAssetMap).filter((a) => a.ticketCount >= 2).length;
+    const totalActualSpentHours = Number((totalActualSpentMinutes / 60).toFixed(1));
+    const avgCsatRating = totalRatedTickets > 0 ? Number((sumCsatScore / totalRatedTickets).toFixed(1)) : 5.0;
+    const csatSatisfactionRate = totalRatedTickets > 0 ? Math.round((satisfiedCount / totalRatedTickets) * 100) : 100;
 
     const categoryStats = Object.keys(categoryMap).map((k) => ({
       category: k,
@@ -415,6 +483,10 @@ export async function GET(req: NextRequest) {
       breachedSla: tech.breachedSla,
       slaRate: (tech.onTimeSla + tech.breachedSla) > 0 ? Math.round((tech.onTimeSla / (tech.onTimeSla + tech.breachedSla)) * 100) : 100,
       avgHours: tech.resolved > 0 ? Number((tech.totalMinutes / tech.resolved / 60).toFixed(1)) : 0,
+      actualSpentMinutes: tech.actualSpentMinutes,
+      actualSpentHours: Number((tech.actualSpentMinutes / 60).toFixed(1)),
+      avgRating: tech.ratedCount > 0 ? Number((tech.sumRating / tech.ratedCount).toFixed(1)) : null,
+      ratedCount: tech.ratedCount,
     })).sort((a, b) => b.total - a.total);
 
     const trendStats = Object.values(trendDateMap).sort((a, b) => a.date.localeCompare(b.date));
@@ -442,6 +514,12 @@ export async function GET(req: NextRequest) {
           slaComplianceRate,
           avgResolutionHours,
           aiAutoRoutedCount,
+          totalActualSpentMinutes,
+          totalActualSpentHours,
+          avgCsatRating,
+          csatSatisfactionRate,
+          totalRatedTickets,
+          chronicAssetsCount,
         },
         incidentsSummary: {
           totalIncidents: allIncidents.length,
@@ -455,6 +533,7 @@ export async function GET(req: NextRequest) {
         teamStats,
         technicianStats,
         trendStats,
+        topFaultyAssets,
         filterOptions: {
           companies: uniqueCompanies,
           teams: allTeams,

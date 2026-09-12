@@ -51,6 +51,12 @@ interface ReportData {
     slaComplianceRate: number;
     avgResolutionHours: number;
     aiAutoRoutedCount: number;
+    totalActualSpentMinutes?: number;
+    totalActualSpentHours?: number;
+    avgCsatRating?: number;
+    csatSatisfactionRate?: number;
+    totalRatedTickets?: number;
+    chronicAssetsCount?: number;
   };
   incidentsSummary: {
     totalIncidents: number;
@@ -117,6 +123,21 @@ interface ReportData {
     breachedSla: number;
     slaRate: number;
     avgHours: number;
+    actualSpentMinutes?: number;
+    actualSpentHours?: number;
+    avgRating?: number | null;
+    ratedCount?: number;
+  }>;
+  topFaultyAssets?: Array<{
+    id: string;
+    assetTag: string;
+    name: string;
+    brand?: string | null;
+    model?: string | null;
+    ticketCount: number;
+    openCount: number;
+    latestTicketTitle?: string;
+    companyName?: string | null;
   }>;
   trendStats: Array<{
     date: string;
@@ -237,7 +258,7 @@ export default function TicketReportsPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'company' | 'team' | 'incidents' | 'tickets'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'executive' | 'company' | 'team' | 'incidents' | 'tickets'>('executive');
 
   // Filter States
   const [timeRange, setTimeRange] = useState<string>('this_month');
@@ -767,108 +788,133 @@ export default function TicketReportsPage() {
         </div>
       </div>
 
-      {/* ==================== 3. EXECUTIVE KPI METRICS (6 TILES) ==================== */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      {/* ==================== 3. EXECUTIVE KPI METRICS (8 TILES) ==================== */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         {/* Tile 1: Tổng Tickets */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+        <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase">{isEn ? 'Total Tickets' : 'Tổng Ticket'}</span>
-            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600">
-              <LifeBuoy className="w-4 h-4" />
+            <span className="text-[10px] font-bold text-slate-500 uppercase">{isEn ? 'Total' : 'Tổng Vé'}</span>
+            <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600">
+              <LifeBuoy className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+          <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
             {data?.summary.totalTickets || 0}
           </div>
-          <div className="text-[10px] text-slate-400 font-medium">{isEn ? 'In selected period' : 'Trong kỳ lọc đã chọn'}</div>
+          <div className="text-[9px] text-slate-400 font-medium">{isEn ? 'Tickets' : 'Trong kỳ'}</div>
         </div>
 
         {/* Tile 2: Đang Xử Lý & Chờ */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+        <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase">{isEn ? 'In Progress' : 'Đang Xử Lý'}</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center text-amber-600">
-              <Clock className="w-4 h-4" />
+            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">{isEn ? 'Active' : 'Đang Làm'}</span>
+            <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center text-amber-600">
+              <Clock className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">
+          <div className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono">
             {(data?.summary.openTickets || 0) + (data?.summary.inProgressTickets || 0) + (data?.summary.waitingTickets || 0)}
           </div>
-          <div className="text-[10px] text-slate-400 font-medium">
-            {isEn
-              ? `${data?.summary.openTickets || 0} Open • ${data?.summary.inProgressTickets || 0} Active`
-              : `${data?.summary.openTickets || 0} Mới • ${data?.summary.inProgressTickets || 0} Đang làm`}
+          <div className="text-[9px] text-slate-400 font-medium">
+            {data?.summary.openTickets || 0} Mới • {data?.summary.inProgressTickets || 0} Làm
           </div>
         </div>
 
         {/* Tile 3: Đã Hoàn Tất */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+        <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">{isEn ? 'Resolved' : 'Đã Giải Quyết'}</span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center text-emerald-600">
-              <CheckCircle2 className="w-4 h-4" />
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">{isEn ? 'Resolved' : 'Đã Xử Lý'}</span>
+            <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center text-emerald-600">
+              <CheckCircle2 className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
             {(data?.summary.resolvedTickets || 0) + (data?.summary.closedTickets || 0)}
           </div>
-          <div className="text-[10px] text-slate-400 font-medium">
-            {isEn ? 'Rate: ' : 'Tỷ lệ: '}
-            {data?.summary.totalTickets
+          <div className="text-[9px] text-slate-400 font-medium">
+            Tỷ lệ: {data?.summary.totalTickets
               ? Math.round((((data.summary.resolvedTickets + data.summary.closedTickets) / data.summary.totalTickets) * 100))
-              : 0}
-            %
+              : 0}%
           </div>
         </div>
 
         {/* Tile 4: Tỷ Lệ Đạt SLA */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+        <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase">{isEn ? 'SLA Compliance' : 'Đạt Chuẩn SLA'}</span>
-            <div className="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-950 flex items-center justify-center text-purple-600">
-              <TrendingUp className="w-4 h-4" />
+            <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase">SLA</span>
+            <div className="w-6 h-6 rounded-lg bg-purple-50 dark:bg-purple-950 flex items-center justify-center text-purple-600">
+              <TrendingUp className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="text-2xl font-black text-purple-600 dark:text-purple-400 font-mono">
+          <div className="text-xl font-black text-purple-600 dark:text-purple-400 font-mono">
             {data?.summary.slaComplianceRate || 100}%
           </div>
-          <div className="text-[10px] text-rose-500 font-bold">
-            {isEn ? `${data?.summary.breachedSlaCount || 0} overdue` : `${data?.summary.breachedSlaCount || 0} ticket trễ hạn`}
+          <div className="text-[9px] text-rose-500 font-bold">
+            {data?.summary.breachedSlaCount || 0} trễ hạn
           </div>
         </div>
 
         {/* Tile 5: MTTR (Thời gian xử lý TB) */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+        <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 uppercase">{isEn ? 'MTTR (Avg Time)' : 'MTTR (Xử Lý TB)'}</span>
-            <div className="w-7 h-7 rounded-lg bg-cyan-50 dark:bg-cyan-950 flex items-center justify-center text-cyan-600">
-              <Clock className="w-4 h-4" />
+            <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 uppercase">MTTR</span>
+            <div className="w-6 h-6 rounded-lg bg-cyan-50 dark:bg-cyan-950 flex items-center justify-center text-cyan-600">
+              <Clock className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="text-2xl font-black text-cyan-600 dark:text-cyan-400 font-mono">
+          <div className="text-xl font-black text-cyan-600 dark:text-cyan-400 font-mono">
             {data?.summary.avgResolutionHours || 0}h
           </div>
-          <div className="text-[10px] text-slate-400 font-medium">{isEn ? 'Hours per ticket' : 'Giờ trên mỗi ticket'}</div>
+          <div className="text-[9px] text-slate-400 font-medium">Giờ/ticket</div>
         </div>
 
-        {/* Tile 6: AI Auto-Routed */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+        {/* Tile 6: Giờ Công Thực Tế (Time Tracking) */}
+        <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">{isEn ? 'AI Routed' : 'AI Phân Luồng'}</span>
-            <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center text-indigo-600">
-              <Sparkles className="w-4 h-4" />
+            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">Giờ Công</span>
+            <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center text-amber-600">
+              <Clock className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
+          <div className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono">
+            {data?.summary.totalActualSpentHours || 0}h
+          </div>
+          <div className="text-[9px] text-slate-400 font-medium">{data?.summary.totalActualSpentMinutes || 0} phút ghi nhận</div>
+        </div>
+
+        {/* Tile 7: Đánh Giá CSAT */}
+        <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-yellow-600 dark:text-yellow-400 uppercase">CSAT</span>
+            <div className="w-6 h-6 rounded-lg bg-yellow-50 dark:bg-yellow-950 flex items-center justify-center text-yellow-600">
+              <Sparkles className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-xl font-black text-yellow-600 dark:text-yellow-400 font-mono">
+            {data?.summary.avgCsatRating || 5.0}★
+          </div>
+          <div className="text-[9px] text-slate-400 font-medium">{data?.summary.csatSatisfactionRate || 100}% hài lòng</div>
+        </div>
+
+        {/* Tile 8: AI Auto-Routed */}
+        <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">AI Định Tuyến</span>
+            <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center text-indigo-600">
+              <Sparkles className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
             {data?.summary.aiAutoRoutedCount || 0}
           </div>
-          <div className="text-[10px] text-indigo-500 font-semibold">{isEn ? 'Auto dispatched' : 'Tự động định tuyến'}</div>
+          <div className="text-[9px] text-indigo-500 font-semibold">Tự động hóa</div>
         </div>
       </div>
 
       {/* ==================== 4. NAVIGATION TABS ==================== */}
       <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2 overflow-x-auto pb-1">
         {[
+          { id: 'executive', labelVi: '👑 Báo Cáo & KPI Lãnh Đạo', labelEn: '👑 Executive Briefing & KPI', icon: Sparkles },
           { id: 'overview', labelVi: '📊 Tổng Quan & Phân Loại', labelEn: '📊 Overview & Breakdown', icon: BarChart3 },
           { id: 'company', labelVi: '🏢 Báo Cáo Theo Công Ty & Nhân Sự', labelEn: '🏢 By Company & Staff', icon: Building, badge: data?.companyStats.length },
           { id: 'team', labelVi: '👥 Báo Cáo Theo Team IT & Nhân Viên', labelEn: '👥 By IT Team & Tech', icon: Users, badge: data?.teamStats.length },
@@ -899,6 +945,222 @@ export default function TicketReportsPage() {
           </button>
         ))}
       </div>
+
+      {/* ==================== TAB 0: EXECUTIVE BRIEFING (👑 Enterprise) ==================== */}
+      {activeTab === 'executive' && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          {/* Executive Summary Card */}
+          <div className="bg-linear-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-7 rounded-3xl border border-indigo-500/30 shadow-xl space-y-5">
+            <div className="flex items-center justify-between flex-wrap gap-4 border-b border-indigo-800/40 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="p-2 rounded-xl bg-amber-500 text-white font-black text-sm">👑</span>
+                  <h2 className="text-xl font-black tracking-tight">
+                    {isEn ? 'Executive IT Operations & SLA Briefing' : 'Báo Cáo Tóm Tắt Vận Hành IT & Đánh Giá KPI'}
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-extrabold">
+                    Enterprise
+                  </span>
+                </div>
+                <p className="text-xs text-indigo-200/80">
+                  {isEn
+                    ? 'Synthesized performance score, SLA compliance benchmark, chronic asset defects, and resource time tracking.'
+                    : 'Báo cáo tổng hợp hiệu suất, mức độ đạt SLA cam kết, thiết bị hỏng kinh niên và thời lượng làm việc thực tế.'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>{isEn ? 'Print Executive Report' : 'In Báo Cáo Giao Ban'}</span>
+              </button>
+            </div>
+
+            {/* 4 Main Executive Focus Blocks */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* SLA Benchmark */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                <div className="text-[11px] font-bold text-indigo-300 flex items-center justify-between">
+                  <span>TỶ LỆ ĐẠT SLA CAM KẾT</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/30 text-indigo-200">Mục tiêu ≥95%</span>
+                </div>
+                <div className="text-3xl font-black font-mono text-emerald-400">
+                  {data?.summary.slaComplianceRate || 100}%
+                </div>
+                <div className="text-[11px] text-slate-300">
+                  {data?.summary.onTimeSlaCount || 0} vé đúng hạn • <span className="text-rose-400 font-bold">{data?.summary.breachedSlaCount || 0} vé trễ hạn</span>
+                </div>
+              </div>
+
+              {/* MTTR */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                <div className="text-[11px] font-bold text-cyan-300 flex items-center justify-between">
+                  <span>MTTR (THỜI GIAN XỬ LÝ TB)</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/30 text-cyan-200">Chuẩn &lt;4h</span>
+                </div>
+                <div className="text-3xl font-black font-mono text-cyan-400">
+                  {data?.summary.avgResolutionHours || 0}h
+                </div>
+                <div className="text-[11px] text-slate-300">
+                  {(data?.summary.avgResolutionHours || 0) <= 4 ? '✅ Đạt chuẩn phản ứng nhanh' : '⚠️ Cần rút ngắn thời gian xử lý'}
+                </div>
+              </div>
+
+              {/* Time Spent */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                <div className="text-[11px] font-bold text-amber-300 flex items-center justify-between">
+                  <span>TỔNG GIỜ CÔNG IT (LOG WORK)</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/30 text-amber-200">Time Tracking</span>
+                </div>
+                <div className="text-3xl font-black font-mono text-amber-400">
+                  {data?.summary.totalActualSpentHours || 0}h
+                </div>
+                <div className="text-[11px] text-slate-300">
+                  Tổng {data?.summary.totalActualSpentMinutes || 0} phút kỹ thuật viên ghi nhận
+                </div>
+              </div>
+
+              {/* CSAT Rating */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                <div className="text-[11px] font-bold text-rose-300 flex items-center justify-between">
+                  <span>ĐÁNH GIÁ HÀI LÒNG (CSAT)</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-500/30 text-rose-200">Khách hàng</span>
+                </div>
+                <div className="text-3xl font-black font-mono text-yellow-400">
+                  {data?.summary.avgCsatRating || 5.0} <span className="text-base text-slate-300">/ 5.0 ⭐</span>
+                </div>
+                <div className="text-[11px] text-slate-300">
+                  {data?.summary.csatSatisfactionRate || 100}% hài lòng ({data?.summary.totalRatedTickets || 0} lượt bầu)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Chronic Faulty Assets & Top Tech Performers */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Box 1: Chronic Faulty Assets (Top Thiết Bị Hay Hỏng Vặt Nhất) */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600" />
+                  <span>{isEn ? 'Top Chronic Faulty Assets' : 'Top Thiết Bị Hay Phát Sinh Sự Cố Nhất'}</span>
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 text-xs font-bold border border-rose-200 dark:border-rose-800">
+                  {data?.topFaultyAssets?.length || 0} thiết bị
+                </span>
+              </div>
+
+              {data?.topFaultyAssets && data.topFaultyAssets.length > 0 ? (
+                <div className="space-y-2.5">
+                  {data.topFaultyAssets.map((asset, idx) => (
+                    <div
+                      key={asset.id}
+                      className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/60 flex items-start justify-between gap-3 text-xs"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="w-5 h-5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-extrabold text-[10px] flex items-center justify-center">
+                            #{idx + 1}
+                          </span>
+                          <span className="font-mono font-extrabold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-2 py-0.2 rounded-md border border-blue-200 dark:border-blue-800">
+                            {asset.assetTag}
+                          </span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{asset.name}</span>
+                          {asset.companyName && (
+                            <span className="text-[10px] text-slate-500">🏢 {asset.companyName}</span>
+                          )}
+                        </div>
+                        {asset.latestTicketTitle && (
+                          <p className="text-[11px] text-slate-500 line-clamp-1 italic">
+                            Sự cố gần nhất: &quot;{asset.latestTicketTitle}&quot;
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="px-2 py-0.5 rounded-lg bg-rose-600 text-white font-extrabold text-xs">
+                          {asset.ticketCount} {isEn ? 'tickets' : 'lần lỗi'}
+                        </span>
+                        {asset.openCount > 0 && (
+                          <div className="text-[10px] text-amber-600 font-bold pt-1">
+                            {asset.openCount} {isEn ? 'still open' : 'đang sửa'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-slate-400 text-xs italic">
+                  Chưa phát hiện thiết bị nào bị lỗi lặp lại trong kỳ này.
+                </div>
+              )}
+            </div>
+
+            {/* Box 2: Top Technician Performers (Xếp Hạng Kỹ Thuật Viên IT) */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <Users className="w-4 h-4 text-emerald-600" />
+                  <span>{isEn ? 'Top IT Technicians Performance' : 'Xếp Hạng Hiệu Suất Kỹ Thuật Viên IT'}</span>
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800">
+                  {data?.technicianStats.length || 0} nhân sự
+                </span>
+              </div>
+
+              <div className="space-y-2.5">
+                {data?.technicianStats.slice(0, 6).map((tech, idx) => (
+                  <div
+                    key={tech.userId}
+                    className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold text-[10px] flex items-center justify-center">
+                        #{idx + 1}
+                      </span>
+                      <div>
+                        <div className="font-bold text-slate-900 dark:text-white">{tech.fullName}</div>
+                        <div className="text-[10px] text-slate-500">
+                          {tech.department || 'IT Support'} • {tech.email}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-right">
+                      <div>
+                        <div className="font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                          {tech.resolved}/{tech.total}
+                        </div>
+                        <div className="text-[10px] text-slate-400">{isEn ? 'Resolved' : 'Đã xử lý'}</div>
+                      </div>
+
+                      <div>
+                        <div className="font-extrabold text-purple-600 dark:text-purple-400 font-mono">
+                          {tech.slaRate}%
+                        </div>
+                        <div className="text-[10px] text-slate-400">SLA</div>
+                      </div>
+
+                      {tech.actualSpentHours !== undefined && tech.actualSpentHours > 0 && (
+                        <div>
+                          <div className="font-extrabold text-amber-600 dark:text-amber-400 font-mono">
+                            {tech.actualSpentHours}h
+                          </div>
+                          <div className="text-[10px] text-slate-400">{isEn ? 'Work log' : 'Giờ công'}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ==================== TAB 1: OVERVIEW & BREAKDOWNS ==================== */}
       {activeTab === 'overview' && (
