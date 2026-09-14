@@ -150,7 +150,7 @@ export async function getActiveLicense(): Promise<LicenseStatus> {
       expiresAt: isLifetime ? undefined : payload.expiresAt,
       daysRemaining: isLifetime ? undefined : daysRemaining,
       isLifetime,
-      maxAssets: (payload.maxAssets && payload.maxAssets >= 99999) ? undefined : payload.maxAssets,
+      maxAssets: (!payload.maxAssets || payload.maxAssets === 0 || payload.maxAssets >= 99999) ? undefined : payload.maxAssets,
       modules: payload.modules || [],
       machineId: payload.machineId,
       currentMachineId,

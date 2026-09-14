@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, Key, CheckCircle2, AlertCircle, Loader2, Building2, Calendar, Crown, RefreshCw, Mail, Copy, Check, Sparkles, Server, UploadCloud, FileText } from 'lucide-react';
+import { ShieldCheck, Key, CheckCircle2, AlertCircle, Loader2, Building2, Calendar, Crown, RefreshCw, Mail, Copy, Check, Sparkles, Server, UploadCloud, FileText, Laptop } from 'lucide-react';
 import { EnterpriseUpgradeModal } from '@/components/common/EnterpriseUpgradeModal';
 import { useLanguage } from '@/lib/i18n/context';
 
@@ -16,6 +16,7 @@ export function LicenseSettingsTab() {
     expiresAt?: string;
     daysRemaining?: number;
     isLifetime?: boolean;
+    maxAssets?: number;
     modules: string[];
     machineId?: string;
     currentMachineId?: string;
@@ -218,7 +219,7 @@ export function LicenseSettingsTab() {
                 <span>{isEn ? 'SIMPLY IT Enterprise Edition is Active' : 'Hệ thống đang hoạt động với Bản Quyền Enterprise'}</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                 <div className="p-3 bg-white/70 dark:bg-slate-800/70 rounded-xl border border-amber-200/80 dark:border-amber-900/50">
                   <span className="text-[11px] text-slate-500 block mb-0.5">{isEn ? 'Licensed To' : 'Cấp phép cho đơn vị'}</span>
                   <strong className="text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
@@ -243,6 +244,18 @@ export function LicenseSettingsTab() {
                         </span>
                       </>
                     )}
+                  </strong>
+                </div>
+
+                <div className="p-3 bg-white/70 dark:bg-slate-800/70 rounded-xl border border-amber-200/80 dark:border-amber-900/50">
+                  <span className="text-[11px] text-slate-500 block mb-0.5">{isEn ? 'Device Scale' : 'Giới hạn thiết bị'}</span>
+                  <strong className="text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+                    <Laptop className="w-4 h-4 text-amber-600" />
+                    <span className="text-amber-700 dark:text-amber-400 font-bold">
+                      {license.maxAssets && license.maxAssets < 99999
+                        ? `${license.maxAssets.toLocaleString('vi-VN')} ${isEn ? 'devices' : 'thiết bị'}`
+                        : (isEn ? 'Unlimited' : 'Không giới hạn')}
+                    </span>
                   </strong>
                 </div>
               </div>

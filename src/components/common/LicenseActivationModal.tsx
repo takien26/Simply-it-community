@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Key, ShieldCheck, CheckCircle2, AlertCircle, Loader2, Sparkles, Building2, Calendar, RefreshCw, Server, Copy, Check, UploadCloud, FileText } from 'lucide-react';
+import { X, Key, ShieldCheck, CheckCircle2, AlertCircle, Loader2, Sparkles, Building2, Calendar, RefreshCw, Server, Copy, Check, UploadCloud, FileText, Laptop } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 
 interface LicenseActivationModalProps {
@@ -33,6 +33,7 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
     expiresAt?: string;
     daysRemaining?: number;
     isLifetime?: boolean;
+    maxAssets?: number;
     modules: string[];
     machineId?: string;
     currentMachineId?: string;
@@ -237,6 +238,17 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
                             <span className="text-amber-700 dark:text-amber-400 font-semibold">({license.daysRemaining} {isEn ? 'days left' : 'ngày còn lại'})</span>
                           </>
                         )}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Laptop className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>
+                        {isEn ? 'Device scale:' : 'Quy mô thiết bị:'}{' '}
+                        <strong className="text-amber-700 dark:text-amber-400">
+                          {license.maxAssets && license.maxAssets < 99999
+                            ? `${license.maxAssets.toLocaleString('vi-VN')} ${isEn ? 'devices' : 'thiết bị'}`
+                            : (isEn ? 'Unlimited' : 'Không giới hạn')}
+                        </strong>
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 pt-1 font-semibold">
