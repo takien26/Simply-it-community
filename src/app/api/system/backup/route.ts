@@ -779,42 +779,83 @@ export async function POST(req: NextRequest) {
     // 15. IT Services
     if (Array.isArray(backupData.itServices)) {
       for (const srv of backupData.itServices) {
-        const targetOwnerId = srv.ownerId ? (userIdMap.get(srv.ownerId) || srv.ownerId) : null;
-        const uExists = targetOwnerId ? await prisma.user.findUnique({ where: { id: targetOwnerId } }) : null;
+        try {
+          const targetVendorId = srv.vendorId ? (vendorIdMap.get(srv.vendorId) || srv.vendorId) : null;
+          const vExists = targetVendorId ? await prisma.vendor.findUnique({ where: { id: targetVendorId } }) : null;
 
-        const existingSrv = await prisma.iTService.findFirst({
-          where: { OR: [{ id: srv.id }, ...(srv.serviceCode ? [{ serviceCode: srv.serviceCode }] : [])] },
-        });
+          const targetLocId = srv.locationId ? (locationIdMap.get(srv.locationId) || srv.locationId) : null;
+          const locExists = targetLocId ? await prisma.location.findUnique({ where: { id: targetLocId } }) : null;
 
-        const payload = {
-          serviceCode: srv.serviceCode,
-          name: srv.name,
-          serviceType: srv.serviceType,
-          status: srv.status,
-          criticality: srv.criticality,
-          description: srv.description,
-          slaHours: srv.slaHours,
-          ownerId: uExists ? targetOwnerId : null,
-          companyName: srv.companyName,
-          contractNumber: srv.contractNumber,
-          invoiceNumber: srv.invoiceNumber,
-          monthlyCost: srv.monthlyCost,
-          annualCost: srv.annualCost,
-          currency: srv.currency || 'VND',
-          billingCycle: srv.billingCycle,
-          startDate: srv.startDate ? new Date(srv.startDate) : null,
-          renewalDate: srv.renewalDate ? new Date(srv.renewalDate) : null,
-          notes: srv.notes,
-        };
+          const targetCreatorId = srv.createdById
+            ? (userIdMap.get(srv.createdById) || srv.createdById)
+            : (srv.ownerId ? (userIdMap.get(srv.ownerId) || srv.ownerId) : currentUser.userId);
+          const uExists = targetCreatorId ? await prisma.user.findUnique({ where: { id: targetCreatorId } }) : null;
 
-        if (existingSrv) {
-          serviceIdMap.set(srv.id, existingSrv.id);
-          await prisma.iTService.update({ where: { id: existingSrv.id }, data: payload });
-        } else {
-          const created = await prisma.iTService.create({ data: { id: srv.id, ...payload } });
-          serviceIdMap.set(srv.id, created.id);
+          const existingSrv = await prisma.iTService.findFirst({
+            where: { OR: [{ id: srv.id }, ...(srv.serviceCode ? [{ serviceCode: srv.serviceCode }] : [])] },
+          });
+
+          // Determine cost from available fields (cost, monthlyCost, annualCost)
+          let finalCost = null;
+          if (srv.cost !== undefined && srv.cost !== null) {
+            finalCost = srv.cost;
+          } else if (srv.monthlyCost !== undefined && srv.monthlyCost !== null) {
+            finalCost = srv.monthlyCost;
+          } else if (srv.annualCost !== undefined && srv.annualCost !== null) {
+            finalCost = srv.annualCost;
+          }
+
+          // Safe enum validation
+          const validServiceTypes = ['INTERNET', 'CLOUD_HOSTING', 'DOMAIN_SSL', 'EMAIL_COMMUNICATION', 'MAINTENANCE_SLA', 'TELECOM_VOIP', 'SOFTWARE_SAAS', 'OTHER'];
+          const serviceType = validServiceTypes.includes(srv.serviceType) ? srv.serviceType : 'INTERNET';
+
+          const validStatuses = ['ACTIVE', 'PENDING_RENEWAL', 'SUSPENDED', 'TERMINATED', 'EXPIRED'];
+          const status = validStatuses.includes(srv.status) ? srv.status : 'ACTIVE';
+
+          const validBillingCycles = ['MONTHLY', 'QUARTERLY', 'SEMI_ANNUAL', 'ANNUAL', 'BIENNIAL', 'TRIENNIAL', 'ONE_TIME'];
+          const billingCycle = validBillingCycles.includes(srv.billingCycle) ? srv.billingCycle : 'MONTHLY';
+
+          const payload = {
+            serviceCode: srv.serviceCode || `SVC-${Date.now().toString(36).toUpperCase()}`,
+            name: srv.name,
+            serviceType: serviceType as any,
+            status: status as any,
+            billingCycle: billingCycle as any,
+            cost: finalCost,
+            currency: srv.currency || 'VND',
+            startDate: srv.startDate ? new Date(srv.startDate) : null,
+            renewalDate: srv.renewalDate ? new Date(srv.renewalDate) : null,
+            expiryDate: srv.expiryDate ? new Date(srv.expiryDate) : null,
+            accountNumber: srv.accountNumber || null,
+            contractNumber: srv.contractNumber || null,
+            invoiceNumber: srv.invoiceNumber || null,
+            vendorId: vExists ? targetVendorId : null,
+            companyName: srv.companyName || null,
+            locationId: locExists ? targetLocId : null,
+            contactSupport: srv.contactSupport || null,
+            specs: srv.specs || (srv.description ? { description: srv.description } : null),
+            contractUrl: srv.contractUrl || null,
+            notes: srv.notes || srv.description || null,
+            createdById: uExists ? targetCreatorId : null,
+          };
+
+          if (existingSrv) {
+            serviceIdMap.set(srv.id, existingSrv.id);
+            await prisma.iTService.update({ where: { id: existingSrv.id }, data: payload });
+          } else {
+            const created = await prisma.iTService.create({ data: { id: srv.id, ...payload } });
+            serviceIdMap.set(srv.id, created.id);
+          }
+          restoredCounts.services++;
+        } catch (srvErr: any) {
+          console.warn(`[Backup Restore] Service ${srv.name} (${srv.id}) notice:`, srvErr?.message);
+          const fallback = await prisma.iTService.findFirst({
+            where: { OR: [{ id: srv.id }, ...(srv.serviceCode ? [{ serviceCode: srv.serviceCode }] : [])] },
+          });
+          if (fallback) {
+            serviceIdMap.set(srv.id, fallback.id);
+          }
         }
-        restoredCounts.services++;
       }
     }
 
@@ -861,18 +902,26 @@ export async function POST(req: NextRequest) {
           notes: a.notes,
         };
 
-        const existingAsset = await prisma.asset.findFirst({
-          where: { OR: [{ id: a.id }, { assetTag: a.assetTag }] },
-        });
+        try {
+          const existingAsset = await prisma.asset.findFirst({
+            where: { OR: [{ id: a.id }, { assetTag: a.assetTag }] },
+          });
 
-        if (existingAsset) {
-          assetIdMap.set(a.id, existingAsset.id);
-          await prisma.asset.update({ where: { id: existingAsset.id }, data: payload });
-        } else {
-          const created = await prisma.asset.create({ data: { id: a.id, ...payload } });
-          assetIdMap.set(a.id, created.id);
+          if (existingAsset) {
+            assetIdMap.set(a.id, existingAsset.id);
+            await prisma.asset.update({ where: { id: existingAsset.id }, data: payload });
+          } else {
+            const created = await prisma.asset.create({ data: { id: a.id, ...payload } });
+            assetIdMap.set(a.id, created.id);
+          }
+          restoredCounts.assets++;
+        } catch (aErr: any) {
+          console.warn(`[Backup Restore] Asset ${a.assetTag} notice:`, aErr?.message);
+          const fallback = await prisma.asset.findFirst({
+            where: { OR: [{ id: a.id }, { assetTag: a.assetTag }] },
+          });
+          if (fallback) assetIdMap.set(a.id, fallback.id);
         }
-        restoredCounts.assets++;
       }
     }
 
@@ -1255,18 +1304,26 @@ export async function POST(req: NextRequest) {
           actualSpentMinutes: ticketPayload.actualSpentMinutes || 0,
         };
 
-        const existingTicket = await prisma.ticket.findFirst({
-          where: { OR: [{ id: t.id }, { ticketNumber: t.ticketNumber }] },
-        });
+        try {
+          const existingTicket = await prisma.ticket.findFirst({
+            where: { OR: [{ id: t.id }, { ticketNumber: t.ticketNumber }] },
+          });
 
-        if (existingTicket) {
-          ticketIdMap.set(t.id, existingTicket.id);
-          await prisma.ticket.update({ where: { id: existingTicket.id }, data: payload });
-        } else {
-          const created = await prisma.ticket.create({ data: { id: t.id, ...payload } });
-          ticketIdMap.set(t.id, created.id);
+          if (existingTicket) {
+            ticketIdMap.set(t.id, existingTicket.id);
+            await prisma.ticket.update({ where: { id: existingTicket.id }, data: payload });
+          } else {
+            const created = await prisma.ticket.create({ data: { id: t.id, ...payload } });
+            ticketIdMap.set(t.id, created.id);
+          }
+          restoredCounts.tickets++;
+        } catch (tErr: any) {
+          console.warn(`[Backup Restore] Ticket ${t.ticketNumber} notice:`, tErr?.message);
+          const fallback = await prisma.ticket.findFirst({
+            where: { OR: [{ id: t.id }, { ticketNumber: t.ticketNumber }] },
+          });
+          if (fallback) ticketIdMap.set(t.id, fallback.id);
         }
-        restoredCounts.tickets++;
       }
     }
 
