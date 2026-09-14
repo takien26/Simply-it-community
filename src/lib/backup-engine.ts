@@ -860,10 +860,9 @@ export async function restoreDatabaseFromJson(backupData: any, currentUser: any)
         const targetUserId = a.assignedToId ? (userIdMap.get(a.assignedToId) || a.assignedToId) : null;
         const uExists = targetUserId ? await prisma.user.findUnique({ where: { id: targetUserId } }) : null;
 
-        const payload = {
+        const baseFields = {
           assetTag: a.assetTag,
           name: a.name,
-          categoryId: catExists.id,
           brand: a.brand,
           model: a.model,
           serialNumber: a.serialNumber,
@@ -872,9 +871,6 @@ export async function restoreDatabaseFromJson(backupData: any, currentUser: any)
           purchasePrice: a.purchasePrice,
           purchaseCurrency: a.purchaseCurrency || 'VND',
           warrantyExpiry: a.warrantyExpiry ? new Date(a.warrantyExpiry) : null,
-          vendorId: vExists ? targetVendorId : null,
-          locationId: locExists ? targetLocId : null,
-          assignedToId: uExists ? targetUserId : null,
           companyName: a.companyName,
           contractNumber: a.contractNumber,
           invoiceNumber: a.invoiceNumber,
@@ -891,9 +887,22 @@ export async function restoreDatabaseFromJson(backupData: any, currentUser: any)
 
           if (existingAsset) {
             assetIdMap.set(a.id, existingAsset.id);
-            await prisma.asset.update({ where: { id: existingAsset.id }, data: payload });
+            const updatePayload: any = {
+              ...baseFields,
+              category: { connect: { id: catExists.id } },
+              vendor: vExists ? { connect: { id: targetVendorId } } : (existingAsset.vendorId ? { disconnect: true } : undefined),
+              location: locExists ? { connect: { id: targetLocId } } : (existingAsset.locationId ? { disconnect: true } : undefined),
+            };
+            await prisma.asset.update({ where: { id: existingAsset.id }, data: updatePayload });
           } else {
-            const created = await prisma.asset.create({ data: { id: a.id, ...payload } });
+            const createPayload: any = {
+              id: a.id,
+              ...baseFields,
+              category: { connect: { id: catExists.id } },
+              ...(vExists ? { vendor: { connect: { id: targetVendorId } } } : {}),
+              ...(locExists ? { location: { connect: { id: targetLocId } } } : {}),
+            };
+            const created = await prisma.asset.create({ data: createPayload });
             assetIdMap.set(a.id, created.id);
           }
           restoredCounts.assets++;

@@ -64,6 +64,7 @@ export function GeneralSettingsTab({
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isRestoringZip, setIsRestoringZip] = useState(false);
+  const [isRestoringFromDir, setIsRestoringFromDir] = useState(false);
   const [backupToast, setBackupToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [testingPath, setTestingPath] = useState(false);
   const [pathTestResult, setPathTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -265,6 +266,51 @@ export function GeneralSettingsTab({
     } finally {
       setIsBackingUp(false);
       setTimeout(() => setBackupToast(null), 5000);
+    }
+  };
+
+  const handleRestoreFromDir = async () => {
+    const dir = autoBackupConfig.directory || 'C:\\IT_Backups';
+    const confirmed = window.confirm(
+      isEn
+        ? `Are you sure you want to restore all database records and sync photo/contract files directly from server folder (${dir})?`
+        : `Bạn có chắc chắn muốn phục hồi toàn bộ cơ sở dữ liệu (35 bảng) và đồng bộ toàn bộ file ảnh, hợp đồng từ thư mục máy chủ (${dir})?`
+    );
+    if (!confirmed) return;
+
+    setIsRestoringFromDir(true);
+    try {
+      const res = await fetch('/api/system/backup/auto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'RESTORE_FROM_DIR',
+          directory: dir,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setBackupToast({
+          message: data.message || 'Phục hồi toàn bộ CSDL và file thành công 100%!',
+          type: 'success',
+        });
+        setTimeout(() => {
+          window.location.reload();
+        }, 2500);
+      } else {
+        setBackupToast({
+          message: data.error || 'Lỗi phục hồi từ thư mục máy chủ',
+          type: 'error',
+        });
+      }
+    } catch {
+      setBackupToast({
+        message: 'Lỗi kết nối khi gửi yêu cầu phục hồi đến máy chủ',
+        type: 'error',
+      });
+    } finally {
+      setIsRestoringFromDir(false);
+      setTimeout(() => setBackupToast(null), 6000);
     }
   };
 
@@ -1074,11 +1120,22 @@ export function GeneralSettingsTab({
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handleRestoreFromDir}
+                disabled={isRestoringFromDir || isBackingUp}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                title="Tự động đọc file sao lưu mới nhất và đồng bộ toàn bộ file từ thư mục máy chủ"
+              >
+                {isRestoringFromDir ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                <span>{isEn ? '🔄 Restore From Folder' : '🔄 Phục Hồi Từ Thư Mục Này'}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleRunBackupNowToDir}
-                disabled={isBackingUp}
+                disabled={isBackingUp || isRestoringFromDir}
                 className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
                 title="Tạo ngay một bản sao lưu và đồng bộ toàn bộ file vào thư mục lưu trữ"
               >
