@@ -19,6 +19,11 @@ export async function GET(request: NextRequest) {
     const projectName = searchParams.get('projectName') || '';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const licenseId = searchParams.get('licenseId');
+    const assetId = searchParams.get('assetId');
+    const serviceId = searchParams.get('serviceId');
+    const invoiceNumber = searchParams.get('invoiceNumber')?.trim();
+    const contractNumber = searchParams.get('contractNumber')?.trim();
 
     const where: any = {};
 
@@ -33,6 +38,25 @@ export async function GET(request: NextRequest) {
         { notes: { contains: search, mode: 'insensitive' } },
         { fileName: { contains: search, mode: 'insensitive' } },
       ];
+    }
+
+    const entityConditions: any[] = [];
+    if (licenseId) entityConditions.push({ licenseId });
+    if (assetId) entityConditions.push({ assetId });
+    if (serviceId) entityConditions.push({ serviceId });
+    if (invoiceNumber) entityConditions.push({ invoiceNumber: { contains: invoiceNumber, mode: 'insensitive' } });
+    if (contractNumber) entityConditions.push({ contractNumber: { contains: contractNumber, mode: 'insensitive' } });
+
+    if (entityConditions.length > 0) {
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: entityConditions },
+        ];
+        delete where.OR;
+      } else {
+        where.OR = entityConditions;
+      }
     }
 
     if (type && type !== ('ALL' as any)) {

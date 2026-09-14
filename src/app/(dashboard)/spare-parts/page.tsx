@@ -60,6 +60,19 @@ export default function SparePartsPage() {
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  // ESC key listener to close active modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isStockActionOpen) setIsStockActionOpen(false);
+        else if (isHistoryOpen) setIsHistoryOpen(false);
+        else if (isCreateOpen) setIsCreateOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isStockActionOpen, isHistoryOpen, isCreateOpen]);
+
   // Stock action form
   const [actionType, setActionType] = useState<'IN' | 'OUT'>('IN');
   const [actionQty, setActionQty] = useState('1');

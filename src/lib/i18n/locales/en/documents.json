@@ -1,0 +1,23 @@
+{
+  "documents.title": "Invoices, Contracts & IT Document Repository",
+  "documents.subtitle": "Centralized management for electronic VAT invoices, handover minutes, warranty cards, and procurement contracts",
+  "documents.upload_btn": "Upload Document",
+  "documents.search_placeholder": "Search by invoice no., contract no., vendor, asset tag...",
+  "documents.tab_all": "All Documents",
+  "documents.tab_invoices": "VAT Invoices",
+  "documents.tab_contracts": "Procurement Contracts",
+  "documents.tab_warranties": "Warranty Cards",
+  "documents.tab_handovers": "Handover Minutes",
+  "documents.col_file": "DOCUMENT / FILE NAME",
+  "documents.col_type": "DOCUMENT TYPE",
+  "documents.col_ref": "REFERENCE / INVOICE NO.",
+  "documents.col_entity": "LINKED ASSET / SERVICE",
+  "documents.col_date": "ISSUE DATE",
+  "documents.col_size": "FILE SIZE",
+  "documents.col_actions": "ACTIONS",
+  "documents.preview_btn": "Quick View",
+  "documents.download_btn": "Download",
+  "documents.delete_confirm": "Are you sure you want to delete this document from repository?",
+  "documents.quick_view_title": "Quick Document Preview",
+  "documents.link_online": "Open Original Link"
+}

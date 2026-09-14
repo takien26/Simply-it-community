@@ -1,0 +1,9 @@
+{
+  "floor_maps.title": "Visual 2D Floor Maps & Server Rack Management",
+  "floor_maps.subtitle": "Manage device placements on office floor plans and visualize network hardware inside server racks",
+  "floor_maps.add_map_btn": "Upload Floor Map",
+  "floor_maps.add_rack_btn": "Add Server Rack",
+  "floor_maps.select_floor": "Select floor / zone",
+  "floor_maps.rack_view": "Rack Elevation View (U units)",
+  "floor_maps.drag_hint": "Drag and drop devices to place them on the floor plan"
+}

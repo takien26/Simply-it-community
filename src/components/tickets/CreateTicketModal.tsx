@@ -44,6 +44,12 @@ export default function CreateTicketModal({
 }: CreateTicketModalProps) {
   const { language, t } = useLanguage();
 
+  const txt = (vi: string, en: string, ja?: string) => {
+    if (language === 'ja') return ja || en;
+    if (language === 'en') return en;
+    return vi;
+  };
+
   const isITStaffOrAdmin = useMemo(() => {
     const roleName = currentUser?.role?.name || '';
     return roleName === 'Admin' || roleName === 'IT Support' || roleName === 'Asset Manager';
@@ -59,6 +65,10 @@ export default function CreateTicketModal({
   const [assignedToId, setAssignedToId] = useState('');
   const [assetId, setAssetId] = useState(initialAssetId);
   const [customAssetName, setCustomAssetName] = useState('');
+  const [isCustomAsset, setIsCustomAsset] = useState(false);
+  const [isAutoAssigned, setIsAutoAssigned] = useState(false);
+  const [isAssetDropdownOpen, setIsAssetDropdownOpen] = useState(false);
+  const [assetSearchTerm, setAssetSearchTerm] = useState('');
   const [attachments, setAttachments] = useState<Array<{ url: string; name: string; size?: number; type?: string }>>([]);
 
   // UI & loading states
@@ -78,6 +88,8 @@ export default function CreateTicketModal({
   // Refs
   const requesterDropdownRef = useRef<HTMLDivElement>(null);
   const requesterInputRef = useRef<HTMLInputElement>(null);
+  const assetDropdownRef = useRef<HTMLDivElement>(null);
+  const assetInputRef = useRef<HTMLInputElement>(null);
   const aiDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastAnalyzedTextRef = useRef<string>('');
   const isPastingRef = useRef<boolean>(false);
@@ -92,7 +104,11 @@ export default function CreateTicketModal({
       setStatus('OPEN');
       setRequesterId(currentUser?.id || '');
       setAssetId(initialAssetId);
+      setIsAutoAssigned(false);
+      setIsAssetDropdownOpen(false);
+      setAssetSearchTerm('');
       setCustomAssetName('');
+      setIsCustomAsset(false);
       setAttachments([]);
       setAiDiagnostic(null);
       lastAnalyzedTextRef.current = '';
@@ -104,6 +120,24 @@ export default function CreateTicketModal({
       }
     }
   }, [isOpen, initialAssetId, initialTitle, initialCategory, initialPriority, initialDescription, currentUser, isITStaffOrAdmin]);
+
+  // ESC key listener to close dropdowns or modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isAssetDropdownOpen) {
+          setIsAssetDropdownOpen(false);
+        } else if (isRequesterDropdownOpen) {
+          setIsRequesterDropdownOpen(false);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isAssetDropdownOpen, isRequesterDropdownOpen, onClose]);
 
   // Load IT users and all users if IT/Admin
   useEffect(() => {
@@ -139,26 +173,65 @@ export default function CreateTicketModal({
       .then((res) => {
         const list = res.data || res.assets || [];
         setAvailableAssets(list);
+
+        // Smart Auto-detection of primary workstation (Laptop / PC)
+        if (!initialAssetId && list.length > 0) {
+          const primaryDev = list.find((d: any) => {
+            const a = d.asset || d;
+            const text = `${a.name || ''} ${a.model || ''} ${a.type || ''} ${a.category?.name || ''}`.toLowerCase();
+            return (
+              text.includes('laptop') ||
+              text.includes('macbook') ||
+              text.includes('thinkpad') ||
+              text.includes('latitude') ||
+              text.includes('máy tính') ||
+              text.includes('pc') ||
+              text.includes('desktop') ||
+              text.includes('workstation')
+            );
+          }) || (list.length === 1 ? list[0] : null);
+
+          if (primaryDev) {
+            const target = primaryDev.asset || primaryDev;
+            setAssetId(target.id);
+            setIsAutoAssigned(true);
+          }
+        }
       })
       .catch(() => {
         if (userAssets && userAssets.length > 0) {
           setAvailableAssets(userAssets);
+          if (!initialAssetId) {
+            const primaryDev = userAssets.find((d: any) => {
+              const a = d.asset || d;
+              const text = `${a.name || ''} ${a.model || ''} ${a.type || ''} ${a.category?.name || ''}`.toLowerCase();
+              return text.includes('laptop') || text.includes('macbook') || text.includes('máy tính') || text.includes('pc');
+            }) || (userAssets.length === 1 ? userAssets[0] : null);
+            if (primaryDev) {
+              const target = primaryDev.asset || primaryDev;
+              setAssetId(target.id);
+              setIsAutoAssigned(true);
+            }
+          }
         }
       });
   };
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (requesterDropdownRef.current && !requesterDropdownRef.current.contains(e.target as Node)) {
         setIsRequesterDropdownOpen(false);
       }
+      if (assetDropdownRef.current && !assetDropdownRef.current.contains(e.target as Node)) {
+        setIsAssetDropdownOpen(false);
+      }
     };
-    if (isRequesterDropdownOpen) {
+    if (isRequesterDropdownOpen || isAssetDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isRequesterDropdownOpen]);
+  }, [isRequesterDropdownOpen, isAssetDropdownOpen]);
 
   // AI Diagnostic Trigger
   const triggerAiAnalysis = async (titleVal?: string, descVal?: string, isAuto: boolean = false) => {
@@ -362,6 +435,15 @@ export default function CreateTicketModal({
     return allUsers.find((u) => u.id === requesterId) || currentUser;
   }, [requesterId, currentUser, allUsers]);
 
+  const selectedAsset = useMemo(() => {
+    if (!assetId) return null;
+    const found = availableAssets.find((d: any) => {
+      const a = d.asset || d;
+      return a.id === assetId;
+    });
+    return found ? (found.asset || found) : null;
+  }, [assetId, availableAssets]);
+
   const filteredRequesterUsers = useMemo(() => {
     if (!requesterSearchTerm.trim()) return allUsers;
     const q = requesterSearchTerm.toLowerCase();
@@ -373,6 +455,21 @@ export default function CreateTicketModal({
         (u.phone || '').toLowerCase().includes(q)
     );
   }, [allUsers, requesterSearchTerm]);
+
+  const filteredAssets = useMemo(() => {
+    if (!assetSearchTerm.trim()) return availableAssets;
+    const q = assetSearchTerm.toLowerCase();
+    return availableAssets.filter((d: any) => {
+      const a = d.asset || d;
+      return (
+        (a.name || '').toLowerCase().includes(q) ||
+        (a.assetTag || '').toLowerCase().includes(q) ||
+        (a.serialNumber || '').toLowerCase().includes(q) ||
+        (a.model || '').toLowerCase().includes(q) ||
+        (a.category?.name || '').toLowerCase().includes(q)
+      );
+    });
+  }, [availableAssets, assetSearchTerm]);
 
   if (!isOpen) return null;
 
@@ -769,42 +866,291 @@ export default function CreateTicketModal({
                 {aiDiagnostic.diagnosticSummary}
               </p>
               {aiDiagnostic.matchedAssetName && (
-                <div className="text-[11px] text-blue-800 font-bold bg-white/80 p-1.5 rounded-lg border border-purple-200 flex items-center gap-1">
-                  <span>💻</span>
-                  <span>{language === 'en' ? 'Detected Device:' : 'Thiết bị nhận diện liên quan:'} <strong>{aiDiagnostic.matchedAssetName}</strong></span>
+                <div className="text-[11px] text-blue-800 font-bold bg-white/80 p-1.5 rounded-lg border border-purple-200 flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1 truncate">
+                    <span>💻</span>
+                    <span className="truncate">{txt('Thiết bị nhận diện liên quan:', 'Detected Device:', '検出されたデバイス:')} <strong>{aiDiagnostic.matchedAssetName}</strong></span>
+                  </div>
+                  {(!assetId || assetId !== aiDiagnostic.matchedAssetId) && aiDiagnostic.matchedAssetId && (
+                    <button
+                      type="button"
+                      onClick={() => setAssetId(aiDiagnostic.matchedAssetId)}
+                      className="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] font-bold cursor-pointer transition-colors shrink-0"
+                    >
+                      {txt('Chọn máy này', 'Select this device', 'この機器を選択')}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           )}
 
-          {/* 7. Quick Asset Selector for User's Active Devices */}
-          {availableAssets && availableAssets.length > 0 && (
-            <div className="p-2.5 bg-blue-50/60 rounded-2xl border border-blue-200 space-y-1.5">
-              <label className="text-[11px] font-bold text-blue-950 block">
-                💻 {language === 'en' ? 'Requester Devices (Click to select quickly):' : 'Thiết bị của người yêu cầu (Bấm để chọn nhanh):'}
+          {/* 7. Affected Device / Asset Selector (Searchable Combobox & Auto-Assign) */}
+          <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <span>💻</span>
+                <span>{txt('Thiết bị gặp sự cố / liên quan', 'Affected Device / Asset', '対象デバイス・資産')}</span>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  ({txt('Không bắt buộc', 'Optional', '任意')})
+                </span>
               </label>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {availableAssets.map((dev: any) => {
-                  const targetAsset = dev.asset || dev;
-                  const isSelected = assetId === targetAsset.id;
-                  return (
-                    <button
-                      key={targetAsset.id}
-                      type="button"
-                      onClick={() => setAssetId(isSelected ? '' : targetAsset.id)}
-                      className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-2xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-blue-100/60'
-                      }`}
-                    >
-                      [{targetAsset.assetTag || 'AST'}] {targetAsset.name} {targetAsset.serialNumber ? `(${targetAsset.serialNumber})` : ''}
-                    </button>
-                  );
-                })}
-              </div>
+              {(assetId || isCustomAsset || customAssetName) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAssetId('');
+                    setIsAutoAssigned(false);
+                    setIsCustomAsset(false);
+                    setCustomAssetName('');
+                  }}
+                  className="text-[11px] text-rose-600 hover:text-rose-700 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                  <span>{txt('Bỏ chọn thiết bị', 'Clear selection', '選択解除')}</span>
+                </button>
+              )}
             </div>
-          )}
+
+            {/* State A: An Asset is selected -> show clean summary card */}
+            {selectedAsset ? (
+              <div className="p-2.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-slate-50 border border-blue-200 rounded-xl flex items-center justify-between gap-2 shadow-2xs animate-in fade-in">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                    💻
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono text-[10.5px] font-bold text-blue-800 bg-blue-100/90 px-1.5 py-0.5 rounded">
+                        {selectedAsset.assetTag || 'AST'}
+                      </span>
+                      <span className="font-bold text-slate-900 text-xs truncate">
+                        {selectedAsset.name}
+                      </span>
+                      {isAutoAssigned && (
+                        <span className="text-[9.5px] font-bold text-indigo-700 bg-indigo-100/80 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shrink-0 border border-indigo-200/60">
+                          <span>⚡</span>
+                          <span>{txt('Tự động nhận diện thiết bị của bạn', 'Auto-detected your device', '自動検出されたデバイス')}</span>
+                        </span>
+                      )}
+                    </div>
+                    {selectedAsset.serialNumber && (
+                      <p className="text-[10px] text-slate-500 truncate">
+                        S/N: <span className="font-mono font-medium">{selectedAsset.serialNumber}</span>
+                        {selectedAsset.model ? ` • ${selectedAsset.model}` : ''}
+                        {selectedAsset.category?.name ? ` • ${selectedAsset.category.name}` : ''}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAssetDropdownOpen(true);
+                      setAssetSearchTerm('');
+                    }}
+                    className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:text-blue-800 hover:bg-blue-100/70 border border-blue-200 bg-white rounded-lg transition-colors cursor-pointer shrink-0"
+                  >
+                    {txt('Đổi máy khác', 'Change', '変更')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssetId('');
+                      setIsAutoAssigned(false);
+                    }}
+                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                    title={txt('Bỏ chọn thiết bị', 'Clear selection', '選択解除')}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : isCustomAsset ? (
+              /* State B: Custom Asset input */
+              <div className="space-y-1 animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={customAssetName}
+                    onChange={(e) => setCustomAssetName(e.target.value)}
+                    placeholder={txt('Nhập tên thiết bị hoặc số Serial...', 'Enter device name or serial number...', 'デバイス名またはシリアル番号を入力...')}
+                    className="flex-1 px-3 py-1.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium text-slate-900 bg-white"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomAsset(false);
+                      setCustomAssetName('');
+                    }}
+                    className="px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-200 rounded-xl font-medium cursor-pointer shrink-0"
+                  >
+                    {txt('Hủy', 'Cancel', 'キャンセル')}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 italic">
+                  {txt('Dùng khi thiết bị chưa được nhập vào kho tài sản công ty.', 'Used when the device is not yet in the company asset inventory.', '会社の資産台帳に未登録の機器の場合に使用します。')}
+                </p>
+              </div>
+            ) : (
+              /* State C: Searchable Dropdown Combobox + Quick Top-3 Pills */
+              <div className="space-y-2">
+                <div className="relative" ref={assetDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAssetDropdownOpen(!isAssetDropdownOpen);
+                      setAssetSearchTerm('');
+                    }}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white hover:bg-slate-50 font-medium text-slate-800 flex items-center justify-between text-xs transition-all cursor-pointer text-left"
+                  >
+                    <span className="truncate text-slate-500">
+                      -- {txt('Chọn thiết bị từ danh sách (hoặc bấm để tìm kiếm)...', 'Select device or search...', '一覧から選択または検索...')} --
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isAssetDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isAssetDropdownOpen && (
+                    <div className="absolute left-0 top-full mt-1.5 w-full bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 p-2.5 space-y-2 animate-in fade-in zoom-in-95">
+                      {/* Search input with live filter */}
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          ref={assetInputRef}
+                          type="text"
+                          value={assetSearchTerm}
+                          onChange={(e) => setAssetSearchTerm(e.target.value)}
+                          placeholder={txt('🔍 Tìm theo tên máy, mã AST, serial, loại máy...', '🔍 Search by name, AST tag, serial number...', '🔍 機器名、タグ、シリアル番号で検索...')}
+                          className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium text-slate-900"
+                          autoFocus
+                        />
+                        {assetSearchTerm && (
+                          <button
+                            type="button"
+                            onClick={() => setAssetSearchTerm('')}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Device List */}
+                      <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
+                        {filteredAssets.length === 0 ? (
+                          <div className="p-3 text-center text-xs text-slate-400">
+                            {txt('Không tìm thấy thiết bị phù hợp', 'No matching devices found', '該当するデバイスが見つかりません')}
+                          </div>
+                        ) : (
+                          filteredAssets.map((dev: any) => {
+                            const target = dev.asset || dev;
+                            const isSelected = assetId === target.id;
+                            return (
+                              <button
+                                key={target.id}
+                                type="button"
+                                onClick={() => {
+                                  setAssetId(target.id);
+                                  setIsAutoAssigned(false);
+                                  setIsAssetDropdownOpen(false);
+                                  setIsCustomAsset(false);
+                                  setAssetSearchTerm('');
+                                }}
+                                className={`w-full text-left p-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-blue-600 text-white font-bold shadow-xs'
+                                    : 'hover:bg-blue-50/70 text-slate-800 border border-slate-100'
+                                }`}
+                              >
+                                <div className="min-w-0 pr-2">
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                      isSelected ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-800'
+                                    }`}>
+                                      {target.assetTag || 'AST'}
+                                    </span>
+                                    <span className="font-bold truncate">{target.name}</span>
+                                  </div>
+                                  <div className={`text-[10px] truncate mt-0.5 ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                                    {target.serialNumber ? `S/N: ${target.serialNumber}` : ''}
+                                    {target.model ? ` • ${target.model}` : ''}
+                                    {target.category?.name ? ` • ${target.category.name}` : ''}
+                                  </div>
+                                </div>
+                                {isSelected && <Check className="w-4 h-4 shrink-0" />}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Footer: Custom asset & count */}
+                      <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCustomAsset(true);
+                            setAssetId('');
+                            setIsAutoAssigned(false);
+                            setIsAssetDropdownOpen(false);
+                            setAssetSearchTerm('');
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer py-1"
+                        >
+                          <span>➕</span>
+                          <span>{txt('Thiết bị khác (Nhập thủ công...)', 'Other device (Type manually...)', 'その他（手動入力...）')}</span>
+                        </button>
+                        <span className="text-[10px] text-slate-400">
+                          {filteredAssets.length}/{availableAssets.length} {txt('thiết bị', 'devices', '件')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Quick 1-click pills: Only show top 3 devices so UI stays ultra-compact */}
+                {availableAssets && availableAssets.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span className="text-[10px] text-slate-400 font-semibold">
+                      {txt('Gợi ý nhanh:', 'Quick pick:', 'クイック選択:')}
+                    </span>
+                    {availableAssets.slice(0, 3).map((dev: any) => {
+                      const targetAsset = dev.asset || dev;
+                      return (
+                        <button
+                          key={targetAsset.id}
+                          type="button"
+                          onClick={() => {
+                            setAssetId(targetAsset.id);
+                            setIsAutoAssigned(false);
+                            setIsAssetDropdownOpen(false);
+                          }}
+                          className="px-2 py-0.5 rounded-lg text-[10.5px] font-semibold bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-300 transition-all cursor-pointer truncate max-w-[200px]"
+                          title={`${targetAsset.name} (${targetAsset.assetTag || 'AST'})`}
+                        >
+                          💻 {targetAsset.name}
+                        </button>
+                      );
+                    })}
+                    {availableAssets.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAssetDropdownOpen(true);
+                          setAssetSearchTerm('');
+                        }}
+                        className="text-[10px] text-blue-600 hover:underline font-semibold cursor-pointer"
+                      >
+                        +{availableAssets.length - 3} {txt('thiết bị khác (tìm kiếm 🔍)', 'more (search 🔍)', '件（検索 🔍）')}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* 8. Image & File Attachment Box with Paste Hint */}
           <div className="p-3 bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-50 border-2 border-dashed border-blue-200 rounded-xl space-y-2">

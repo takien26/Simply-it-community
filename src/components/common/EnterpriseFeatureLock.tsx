@@ -41,7 +41,7 @@ export function EnterpriseFeatureLock({
       />
 
       {/* Main Showcase Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-indigo-200/80 dark:border-indigo-900/50 bg-linear-to-br from-indigo-950 via-slate-900 to-blue-950 text-white p-6 sm:p-8 shadow-xl">
+      <div className="relative overflow-hidden rounded-3xl border border-indigo-200/80 dark:border-indigo-900/50 bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 text-white p-6 sm:p-8 shadow-xl">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
 
@@ -75,7 +75,7 @@ export function EnterpriseFeatureLock({
             <button
               type="button"
               onClick={() => setShowModal(true)}
-              className="w-full md:w-auto px-6 py-3.5 rounded-2xl bg-linear-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+              className="w-full md:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 cursor-pointer"
             >
               <Crown className="w-4 h-4" />
               <span>{isEn ? 'Unlock Enterprise' : 'Mở Khóa Bản Enterprise'}</span>

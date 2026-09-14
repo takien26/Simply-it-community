@@ -749,6 +749,24 @@ export default function FloorMapsPage() {
     };
   }, []);
 
+  // ESC key listener to close active modals & panels
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isAddDeviceModalOpen) setIsAddDeviceModalOpen(false);
+        else if (isCreateRackModalOpen) setIsCreateRackModalOpen(false);
+        else if (isEditRackModalOpen) setIsEditRackModalOpen(false);
+        else if (isCreateModalOpen) setIsCreateModalOpen(false);
+        else if (viewingRackMarker) setViewingRackMarker(null);
+        else if (selectedMarker) setSelectedMarker(null);
+        else if (isPlacingAsset) setIsPlacingAsset(null);
+        else if (isPlacingRack) setIsPlacingRack(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAddDeviceModalOpen, isCreateRackModalOpen, isEditRackModalOpen, isCreateModalOpen, viewingRackMarker, selectedMarker, isPlacingAsset, isPlacingRack]);
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   const loadData = async () => {

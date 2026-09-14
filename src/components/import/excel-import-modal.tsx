@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState , useEffect} from 'react';
 import { FileSpreadsheet, Download, Upload, CheckCircle, AlertCircle, Loader2, X, Globe, Laptop, Key } from 'lucide-react';
 
 interface ExcelImportModalProps {
@@ -10,6 +10,18 @@ interface ExcelImportModalProps {
 }
 
 export function ExcelImportModal({ isOpen, onClose, onSuccess }: ExcelImportModalProps) {
+  // ESC key listener to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const [importType, setImportType] = useState<'ASSET' | 'LICENSE' | 'SERVICE'>('ASSET');
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);

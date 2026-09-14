@@ -7,5 +7,14 @@
   "services.col_vendor": "VENDOR",
   "services.col_expiry": "EXPIRATION DATE",
   "services.col_cost": "RECURRING COST",
-  "services.col_status": "STATUS"
+  "services.col_status": "STATUS",
+  "services.modal.add_title": "Add IT Service & Subscription",
+  "services.modal.edit_title": "Edit Service",
+  "services.modal.detail_title": "Service Details",
+  "services.modal.payment_title": "Payment History & Invoices",
+  "services.field.name": "Service Name (*)",
+  "services.field.type": "Service Type",
+  "services.field.billing_cycle": "Billing Cycle",
+  "services.field.cost": "Recurring Cost",
+  "services.field.vendor": "Provider / Vendor"
 }

@@ -17,6 +17,9 @@ interface LanguageContextType {
   setLanguage: (lang: Language) => void;
   t: TranslateFn;
   supportedLanguages: LanguageMeta[];
+  isEn: boolean;
+  isVi: boolean;
+  isJa: boolean;
 }
 
 const LanguageContext = createContext<LanguageContextType>({
@@ -28,12 +31,27 @@ const LanguageContext = createContext<LanguageContextType>({
     return key;
   }) as TranslateFn,
   supportedLanguages: SUPPORTED_LANGUAGES,
+  isEn: false,
+  isVi: true,
+  isJa: false,
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('vi');
+  // Synchronous initialization to eliminate language-switch flicker on mount
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const validCodes = SUPPORTED_LANGUAGES.map((l) => l.code);
+        const savedLang = localStorage.getItem('simply_lang') as Language;
+        if (savedLang && validCodes.includes(savedLang)) return savedLang;
+        const match = document.cookie.match(/app_lang=([a-z]{2})/);
+        if (match && validCodes.includes(match[1])) return match[1] as Language;
+      } catch {}
+    }
+    return 'vi';
+  });
 
-  // Load language preference on mount
+  // Load language preference on mount and ensure synchronization
   useEffect(() => {
     try {
       const validCodes = SUPPORTED_LANGUAGES.map((l) => l.code);
@@ -43,6 +61,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       if (savedLang && validCodes.includes(savedLang)) {
         setLanguageState(savedLang);
         document.documentElement.lang = savedLang;
+        document.cookie = `app_lang=${savedLang}; path=/; max-age=31536000; SameSite=Lax`;
         return;
       }
 
@@ -52,6 +71,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         const cookieLang = match[1] as Language;
         setLanguageState(cookieLang);
         document.documentElement.lang = cookieLang;
+        localStorage.setItem('simply_lang', cookieLang);
         return;
       }
 
@@ -66,6 +86,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
             if (langSetting?.value && validCodes.includes(langSetting.value)) {
               setLanguageState(langSetting.value as Language);
               document.documentElement.lang = langSetting.value;
+              localStorage.setItem('simply_lang', langSetting.value);
+              document.cookie = `app_lang=${langSetting.value}; path=/; max-age=31536000; SameSite=Lax`;
             }
           }
         })
@@ -89,11 +111,17 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setLanguageState(newLang);
     try {
       localStorage.setItem('simply_lang', newLang);
-      document.cookie = `app_lang=${newLang}; path=/; max-age=31536000`;
+      document.cookie = `app_lang=${newLang}; path=/; max-age=31536000; SameSite=Lax`;
       document.documentElement.lang = newLang;
       window.dispatchEvent(
         new CustomEvent('app:language-change', { detail: { language: newLang } })
       );
+      // Persist setting to server in background if authorized
+      fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'app.language', value: newLang, group: 'general', label: 'Default Language' }),
+      }).catch(() => {});
     } catch {}
   }, []);
 
@@ -146,8 +174,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     [language]
   );
 
+  const isEn = language === 'en';
+  const isVi = language === 'vi';
+  const isJa = language === 'ja';
+
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, supportedLanguages: SUPPORTED_LANGUAGES }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, supportedLanguages: SUPPORTED_LANGUAGES, isEn, isVi, isJa }}>
       {children}
     </LanguageContext.Provider>
   );

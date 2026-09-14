@@ -27,7 +27,24 @@ export function BatchQrPrintModal({
   onClose,
   companyName: propCompanyName,
 }: BatchQrPrintModalProps) {
+  // ESC key listener to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const { language } = useLanguage();
+  const txt = (vi: string, en: string, ja?: string) => {
+    if (language === 'ja') return ja || en;
+    if (language === 'en') return en;
+    return vi;
+  };
   const isEn = language === 'en';
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [qrMap, setQrMap] = useState<Record<string, string>>({});
@@ -112,13 +129,13 @@ export function BatchQrPrintModal({
   const handlePrintBatch = () => {
     const selectedAssets = assets.filter((a) => selectedAssetIds.includes(a.id));
     if (selectedAssets.length === 0) {
-      alert('Vui lòng chọn ít nhất 1 tài sản để in');
+      alert(txt('Vui lòng chọn ít nhất 1 tài sản để in', 'Please select at least 1 asset to print', '印刷する資産を1つ以上選択してください'));
       return;
     }
 
     const printWindow = window.open('', '_blank', 'width=900,height=800');
     if (!printWindow) {
-      alert('Vui lòng cho phép popup để in tem nhãn');
+      alert(txt('Vui lòng cho phép popup để in tem nhãn', 'Please allow popups to print labels', 'ラベルを印刷するにはポップアップを許可してください'));
       return;
     }
 
@@ -136,7 +153,7 @@ export function BatchQrPrintModal({
                 <div>SN: <strong>${asset.serialNumber || '—'}</strong></div>
               </div>
             </div>
-            <div class="footer">Quét mã QR để kiểm tra & cập nhật thông tin</div>
+            <div class="footer">${txt('Quét mã QR để kiểm tra & cập nhật thông tin', 'Scan QR code to check & update details', 'QRコードをスキャンして情報を確認・更新')}</div>
           </div>
         `;
       })
@@ -146,7 +163,7 @@ export function BatchQrPrintModal({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>In Danh Sách Tem Nhãn Tài Sản (${selectedAssets.length} Tem)</title>
+          <title>${txt('In Danh Sách Tem Nhãn Tài Sản', 'Print Asset Labels List', '資産ラベル一括印刷')} (${selectedAssets.length})</title>
           <style>
             @page {
               size: A4 portrait;
@@ -252,7 +269,7 @@ export function BatchQrPrintModal({
           <div>
             <h3 className="font-bold text-lg text-slate-900 flex items-center space-x-2">
               <Printer className="w-5 h-5 text-blue-600" />
-              <span>In Tem Nhãn QR Hàng Loạt (Khổ A4 / Decal)</span>
+              <span>{txt('In Tem Nhãn QR Hàng Loạt (Khổ A4 / Decal)', 'Batch Print QR Labels (A4 / Sticker Decal)', 'QRラベル一括印刷 (A4 / シール)')}</span>
             </h3>
             <p className="text-xs text-slate-500">
               Chọn danh sách các thiết bị cần in tem barcode/QR để dán quản lý đồng loạt
@@ -269,7 +286,7 @@ export function BatchQrPrintModal({
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Tìm tài sản cần in tem..."
+              placeholder={txt('Tìm tài sản cần in tem...', 'Search assets to print...', '印刷する資産を検索...')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none"
@@ -282,7 +299,7 @@ export function BatchQrPrintModal({
               onClick={() => setSelectedAssetIds(assets.map((a) => a.id))}
               className="text-blue-600 font-semibold hover:underline text-[11px]"
             >
-              Chọn tất cả ({assets.length})
+              {txt('Chọn tất cả', 'Select all', 'すべて選択')} ({assets.length})
             </button>
             <span>•</span>
             <button
@@ -337,7 +354,7 @@ export function BatchQrPrintModal({
         {/* Action Buttons */}
         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
           <div className="text-xs">
-            <span className="text-slate-500">Đã chọn để in: </span>
+            <span className="text-slate-500">{txt('Đã chọn để in: ', 'Selected for printing: ', '印刷対象選択数: ')}</span>
             <strong className="text-blue-700 font-bold">{selectedAssetIds.length}</strong> / {assets.length} tem
           </div>
 
@@ -346,7 +363,7 @@ export function BatchQrPrintModal({
               type="button"
               onClick={onClose}
               className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50"
-            >{isEn ? 'Cancel' : 'Hủy'}</button>
+            >{txt('Hủy', 'Cancel', 'キャンセル')}</button>
             <button
               type="button"
               disabled={selectedAssetIds.length === 0}
@@ -354,7 +371,7 @@ export function BatchQrPrintModal({
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-md flex items-center space-x-1.5"
             >
               <Printer className="w-4 h-4" />
-              <span>In Hàng Loạt ({selectedAssetIds.length} Tem)</span>
+              <span>{txt('In Hàng Loạt', 'Batch Print', '一括印刷')} ({selectedAssetIds.length} {txt('Tem', 'Labels', '枚')})</span>
             </button>
           </div>
         </div>

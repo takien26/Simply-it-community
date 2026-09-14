@@ -240,6 +240,18 @@ function normalizeSpecsObject(rawSpecs: any) {
 }
 
 export function AIQuickInputModal({ isOpen, onClose, onSuccess }: AIQuickInputModalProps) {
+  // ESC key listener to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const { language } = useLanguage();
   const isEn = language === 'en';
   const [inputType, setInputType] = useState<'IMAGE' | 'PDF' | 'TEXT'>('PDF');

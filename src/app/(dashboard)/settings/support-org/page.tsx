@@ -105,6 +105,20 @@ export default function SupportOrgSettingsPage() {
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
 
+  // ESC key listener to close active modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isTeamModalOpen) setIsTeamModalOpen(false);
+        else if (isQueueModalOpen) setIsQueueModalOpen(false);
+        else if (isRuleModalOpen) setIsRuleModalOpen(false);
+        else if (isMemberModalOpen) setIsMemberModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTeamModalOpen, isQueueModalOpen, isRuleModalOpen, isMemberModalOpen]);
+
   // Forms
   const [teamForm, setTeamForm] = useState({
     name: '',

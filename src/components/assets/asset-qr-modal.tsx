@@ -30,7 +30,24 @@ export function AssetQrModal({
   onClose,
   companyName: propCompanyName,
 }: AssetQrModalProps) {
+  // ESC key listener to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const { language } = useLanguage();
+  const txt = (vi: string, en: string, ja?: string) => {
+    if (language === 'ja') return ja || en;
+    if (language === 'en') return en;
+    return vi;
+  };
   const isEn = language === 'en';
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
@@ -104,7 +121,7 @@ export function AssetQrModal({
 
     const printWindow = window.open('', '_blank', 'width=600,height=600');
     if (!printWindow) {
-      alert('Vui lòng cho phép mở popup để in tem nhãn');
+      alert(txt('Vui lòng cho phép mở popup để in tem nhãn', 'Please allow popups to print asset labels', 'ラベルを印刷するにはポップアップを許可してください'));
       return;
     }
 
@@ -112,7 +129,7 @@ export function AssetQrModal({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>In Tem Tài Sản - ${asset.assetTag}</title>
+          <title>${txt('In Tem Tài Sản', 'Print Asset Label', '資産ラベル印刷')} - ${asset.assetTag}</title>
           <style>
             @page {
               size: 70mm 45mm;
@@ -197,7 +214,7 @@ export function AssetQrModal({
                 <div>Serial: <strong>${asset.serialNumber || '—'}</strong></div>
               </div>
             </div>
-            <div class="footer">Quét mã QR để xem cấu hình, hợp đồng & lịch sử bảo trì</div>
+            <div class="footer">${txt('Quét mã QR để xem cấu hình, hợp đồng & lịch sử bảo trì', 'Scan QR code to view specs, contracts & maintenance history', 'QRコードをスキャンして構成・契約・保守履歴を確認')}</div>
           </div>
           <script>
             window.onload = function() {
@@ -233,9 +250,9 @@ export function AssetQrModal({
           <div>
             <h3 className="font-bold text-lg text-slate-900 flex items-center space-x-2">
               <QrCode className="w-5 h-5 text-blue-600" />
-              <span>Tem Nhãn Quản Lý & QR Code</span>
+              <span>{txt('Tem Nhãn Quản Lý & QR Code', 'Asset Label & QR Code', '管理ラベル＆QRコード')}</span>
             </h3>
-            <p className="text-xs text-slate-500">Mã QR định danh tự động để quét nhanh và in tem dán thiết bị</p>
+            <p className="text-xs text-slate-500">{txt('Mã QR định danh tự động để quét nhanh và in tem dán thiết bị', 'Unique QR code for fast identification and label printing', '迅速な識別とラベル印刷のための固有QRコード')}</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
             <X className="w-5 h-5" />
@@ -245,7 +262,7 @@ export function AssetQrModal({
         {/* PRINTABLE STICKER LABEL CARD PREVIEW */}
         <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col items-center justify-center space-y-4">
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            Xem trước tem dán thiết bị (Nhãn in tiêu chuẩn)
+            {txt('Xem trước tem dán thiết bị (Nhãn in tiêu chuẩn)', 'Asset Label Preview (Standard Print)', 'デバイスラベルプレビュー（標準印刷）')}
           </p>
 
           <div
@@ -265,7 +282,7 @@ export function AssetQrModal({
                   <img src={qrDataUrl} alt="QR Code" className="w-28 h-28 object-contain" />
                 ) : (
                   <div className="w-28 h-28 flex items-center justify-center text-xs text-slate-400">
-                    Đang tạo QR...
+                    {txt('Đang tạo QR...', 'Generating QR...', 'QRコード生成中...')}
                   </div>
                 )}
               </div>
@@ -284,7 +301,7 @@ export function AssetQrModal({
 
             {/* Sticker Footer */}
             <div className="text-center pt-2 border-t border-slate-200 text-[10px] text-slate-500 font-medium">
-              Quét QR để xem cấu hình, hợp đồng & lịch sử bảo trì
+              {txt('Quét QR để xem cấu hình, hợp đồng & lịch sử bảo trì', 'Scan QR to view specs, contract & repair history', 'QRをスキャンして構成・契約・修理履歴を確認')}
             </div>
           </div>
         </div>
@@ -292,7 +309,7 @@ export function AssetQrModal({
         {/* Quick Info & Copy Actions */}
         <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex items-center justify-between text-xs">
           <div className="space-y-0.5">
-            <span className="text-slate-500">Mã thiết bị: </span>
+            <span className="text-slate-500">{txt('Mã thiết bị: ', 'Device Tag: ', '資産タグ: ')}</span>
             <strong className="font-mono text-blue-900">{asset.assetTag}</strong>
             {scanUrl && (
               <div className="text-[10px] text-slate-400 font-mono truncate max-w-xs mt-0.5">
@@ -309,7 +326,7 @@ export function AssetQrModal({
                 className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-lg border border-slate-200 flex items-center space-x-1 transition-colors"
               >
                 <ExternalLink className="w-3 h-3 text-blue-600" />
-                <span>Mở link</span>
+                <span>{txt('Mở link', 'Open link', 'リンクを開く')}</span>
               </a>
             )}
             <button
@@ -318,7 +335,7 @@ export function AssetQrModal({
               className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center space-x-1 transition-colors"
             >
               {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Đã chép' : 'Chép mã'}</span>
+              <span>{copied ? txt('Đã chép', 'Copied', 'コピー完了') : txt('Chép mã', 'Copy tag', 'タグをコピー')}</span>
             </button>
           </div>
         </div>
@@ -329,7 +346,7 @@ export function AssetQrModal({
             type="button"
             onClick={onClose}
             className="w-full sm:w-auto px-4 py-2.5 border border-slate-300 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50"
-          >{isEn ? 'Close' : 'Đóng'}</button>
+          >{txt('Đóng', 'Close', '閉じる')}</button>
 
           <button
             type="button"
@@ -337,7 +354,7 @@ export function AssetQrModal({
             className="w-full sm:w-auto px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center justify-center space-x-1.5"
           >
             <Download className="w-4 h-4" />
-            <span>Tải Ảnh QR (.PNG)</span>
+            <span>{txt('Tải Ảnh QR (.PNG)', 'Download QR (.PNG)', 'QR画像保存 (.PNG)')}</span>
           </button>
 
           <button
@@ -346,7 +363,7 @@ export function AssetQrModal({
             className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md flex items-center justify-center space-x-1.5"
           >
             <Printer className="w-4 h-4" />
-            <span>In Tem Dán Thiết Bị</span>
+            <span>{txt('In Tem Dán Thiết Bị', 'Print Device Label', 'デバイスタグ印刷')}</span>
           </button>
         </div>
       </div>

@@ -1,0 +1,19 @@
+{
+  "spare_parts.title": "Kho Linh Kiện, Phụ Tùng & Vật Tư IT",
+  "spare_parts.subtitle": "Theo dõi tồn kho linh kiện thay thế (RAM, SSD, sạc, chuột, bàn phím, cáp mạng) và nhật ký xuất nhập",
+  "spare_parts.add_btn": "Thêm Linh Kiện Mới",
+  "spare_parts.stock_in_btn": "Nhập Kho",
+  "spare_parts.stock_out_btn": "Xuất Kho (Cấp phát)",
+  "spare_parts.search_placeholder": "Tìm linh kiện, mã part number, vị trí kệ...",
+  "spare_parts.col_name": "TÊN LINH KIỆN & PART NUMBER",
+  "spare_parts.col_category": "LOẠI VẬT TƯ",
+  "spare_parts.col_stock": "TỒN KHO HIỆN TẠI",
+  "spare_parts.col_min_stock": "NGƯỠNG TỐI THIỂU",
+  "spare_parts.col_unit_price": "ĐƠN GIÁ BÌNH QUÂN",
+  "spare_parts.col_location": "VỊ TRÍ LƯU KHO",
+  "spare_parts.col_actions": "THAO TÁC",
+  "spare_parts.status_in_stock": "Còn hàng",
+  "spare_parts.status_low_stock": "Sắp hết hàng",
+  "spare_parts.status_out_of_stock": "Đã hết hàng",
+  "spare_parts.transaction_history": "Nhật ký Xuất / Nhập linh kiện"
+}

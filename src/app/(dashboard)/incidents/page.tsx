@@ -157,6 +157,19 @@ export default function IncidentsPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateProblemModalOpen, setIsCreateProblemModalOpen] = useState(false);
 
+  // ESC key listener to close active modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isCreateProblemModalOpen) setIsCreateProblemModalOpen(false);
+        else if (isCreateModalOpen) setIsCreateModalOpen(false);
+        else if (isDetailModalOpen) setIsDetailModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCreateProblemModalOpen, isCreateModalOpen, isDetailModalOpen]);
+
   // Form states for creating incident
   const [createForm, setCreateForm] = useState({
     title: '',

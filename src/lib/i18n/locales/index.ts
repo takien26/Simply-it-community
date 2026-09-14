@@ -29,6 +29,13 @@ import viUsers from './vi/users.json';
 import viSettings from './vi/settings.json';
 import viPortal from './vi/portal.json';
 import viApprovals from './vi/approvals.json';
+import viPasswords from './vi/passwords.json';
+import viDocuments from './vi/documents.json';
+import viCategories from './vi/categories.json';
+import viSpareParts from './vi/spare_parts.json';
+import viFloorMaps from './vi/floor_maps.json';
+import viIncidents from './vi/incidents.json';
+import viKb from './vi/kb.json';
 
 // Import English Modules
 import enCommon from './en/common.json';
@@ -42,13 +49,38 @@ import enUsers from './en/users.json';
 import enSettings from './en/settings.json';
 import enPortal from './en/portal.json';
 import enApprovals from './en/approvals.json';
+import enPasswords from './en/passwords.json';
+import enDocuments from './en/documents.json';
+import enCategories from './en/categories.json';
+import enSpareParts from './en/spare_parts.json';
+import enFloorMaps from './en/floor_maps.json';
+import enIncidents from './en/incidents.json';
+import enKb from './en/kb.json';
 
-// Import Japanese Module (Preview)
+// Import Japanese Modules
 import jaCommon from './ja/common.json';
+import jaAuth from './ja/auth.json';
+import jaAssets from './ja/assets.json';
+import jaLicenses from './ja/licenses.json';
+import jaServices from './ja/services.json';
+import jaTickets from './ja/tickets.json';
+import jaDashboard from './ja/dashboard.json';
+import jaUsers from './ja/users.json';
+import jaSettings from './ja/settings.json';
+import jaPortal from './ja/portal.json';
+import jaApprovals from './ja/approvals.json';
+import jaPasswords from './ja/passwords.json';
+import jaDocuments from './ja/documents.json';
+import jaCategories from './ja/categories.json';
+import jaSpareParts from './ja/spare_parts.json';
+import jaFloorMaps from './ja/floor_maps.json';
+import jaIncidents from './ja/incidents.json';
+import jaKb from './ja/kb.json';
 
 function buildDictionary(...modules: Record<string, any>[]): Record<string, string> {
   const merged: Record<string, string> = {};
   for (const mod of modules) {
+    if (!mod) continue;
     for (const [k, v] of Object.entries(mod)) {
       if (typeof v === 'string') {
         merged[k] = v;
@@ -75,7 +107,14 @@ export const dictionaries: Record<string, Record<string, string>> = {
     viUsers,
     viSettings,
     viPortal,
-    viApprovals
+    viApprovals,
+    viPasswords,
+    viDocuments,
+    viCategories,
+    viSpareParts,
+    viFloorMaps,
+    viIncidents,
+    viKb
   ),
   en: buildDictionary(
     enCommon,
@@ -88,9 +127,33 @@ export const dictionaries: Record<string, Record<string, string>> = {
     enUsers,
     enSettings,
     enPortal,
-    enApprovals
+    enApprovals,
+    enPasswords,
+    enDocuments,
+    enCategories,
+    enSpareParts,
+    enFloorMaps,
+    enIncidents,
+    enKb
   ),
   ja: buildDictionary(
-    jaCommon
+    jaCommon,
+    jaAuth,
+    jaAssets,
+    jaLicenses,
+    jaServices,
+    jaTickets,
+    jaDashboard,
+    jaUsers,
+    jaSettings,
+    jaPortal,
+    jaApprovals,
+    jaPasswords,
+    jaDocuments,
+    jaCategories,
+    jaSpareParts,
+    jaFloorMaps,
+    jaIncidents,
+    jaKb
   ),
 };

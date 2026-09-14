@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState , useEffect} from 'react';
 import { X, Check, Crown, Sparkles, Shield, Building2, Phone, Mail, Send, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 
@@ -11,6 +11,18 @@ interface EnterpriseUpgradeModalProps {
 }
 
 export function EnterpriseUpgradeModal({ isOpen, onClose, featureRequested }: EnterpriseUpgradeModalProps) {
+  // ESC key listener to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const { language } = useLanguage();
   const isEn = language === 'en';
 
@@ -45,7 +57,7 @@ export function EnterpriseUpgradeModal({ isOpen, onClose, featureRequested }: En
         </button>
 
         {/* Header Hero */}
-        <div className="p-8 pb-6 border-b border-slate-100 dark:border-slate-800 bg-linear-to-br from-indigo-900 via-blue-900 to-slate-900 text-white rounded-t-3xl relative overflow-hidden">
+        <div className="p-8 pb-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-br from-indigo-900 via-blue-900 to-slate-900 text-white rounded-t-3xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-bold uppercase tracking-wider mb-3">
@@ -113,7 +125,7 @@ export function EnterpriseUpgradeModal({ isOpen, onClose, featureRequested }: En
 
             {/* Enterprise Card */}
             <div className="p-6 rounded-2xl border-2 border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/20 space-y-4 relative shadow-lg">
-              <div className="absolute -top-3 right-6 px-3 py-0.5 rounded-full bg-linear-to-r from-amber-500 to-indigo-600 text-white text-[11px] font-black uppercase tracking-wider shadow-xs">
+              <div className="absolute -top-3 right-6 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-indigo-600 text-white text-[11px] font-black uppercase tracking-wider shadow-xs">
                 {isEn ? 'Recommended' : 'Khuyên Dùng'}
               </div>
 
@@ -278,7 +290,7 @@ export function EnterpriseUpgradeModal({ isOpen, onClose, featureRequested }: En
 
                   <button
                     type="submit"
-                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>{isEn ? 'Submit Enterprise Request' : 'Gửi Yêu Cầu Tư Vấn Enterprise'}</span>

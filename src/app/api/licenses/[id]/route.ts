@@ -20,6 +20,20 @@ export async function GET(
       where: { id },
       include: {
         vendor: true,
+        documents: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            fileUrl: true,
+            fileName: true,
+            fileSize: true,
+            fileType: true,
+            attachments: true,
+            invoiceNumber: true,
+            contractNumber: true,
+          },
+        },
         assignments: {
           include: {
             user: { select: { id: true, fullName: true, email: true, department: true } },
@@ -105,9 +119,27 @@ export async function PUT(
         companyName: body.companyName !== undefined ? (body.companyName || null) : (existing as any).companyName,
         contractNumber: body.contractNumber !== undefined ? (body.contractNumber || null) : existing.contractNumber,
         invoiceNumber: body.invoiceNumber !== undefined ? (body.invoiceNumber || null) : existing.invoiceNumber,
+        contractUrl: body.contractUrl !== undefined ? (body.contractUrl || null) : existing.contractUrl,
         status: body.status ?? existing.status,
         specs: body.specs !== undefined ? body.specs : (existing as any).specs,
         notes: body.notes !== undefined ? (body.notes || null) : existing.notes,
+      },
+      include: {
+        vendor: true,
+        documents: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            fileUrl: true,
+            fileName: true,
+            fileSize: true,
+            fileType: true,
+            attachments: true,
+            invoiceNumber: true,
+            contractNumber: true,
+          },
+        },
       },
     });
 

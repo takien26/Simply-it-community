@@ -124,8 +124,25 @@ const DEFAULT_TEMPLATE: HandoverTemplateConfig = {
 };
 
 export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode = 'HANDOVER', previousUser }: AssetHandoverModalProps) {
+  // ESC key listener to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const { language } = useLanguage();
   const isEn = language === 'en';
+  const txt = (vi: string, en: string, ja?: string) => {
+    if (language === 'ja') return ja || en;
+    if (language === 'en') return en;
+    return vi;
+  };
   const [docMode, setDocMode] = useState<'HANDOVER' | 'RETURN'>(initialMode);
 
   useEffect(() => {
@@ -276,7 +293,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
       if (content) {
         setCustomWordTemplate(content);
         setTemplate((prev) => ({ ...prev, useCustomTemplate: true, customHtmlTemplate: content }));
-        alert('Đã tải lên mẫu file thành công! Bạn có thể xem trước hoặc bấm "Lưu Mẫu Mặc Định Cho Công Ty".');
+        alert(txt('Đã tải lên mẫu file thành công! Bạn có thể xem trước hoặc bấm "Lưu Mẫu Mặc Định Cho Công Ty".', 'Template file uploaded successfully! You can preview or click "Save as Company Default".', 'テンプレートファイルのアップロードが完了しました！'));
       }
     };
     reader.readAsText(file, 'UTF-8');
@@ -347,10 +364,10 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
         setTimeout(() => setSaveSuccess(false), 3000);
         setIsEditingTemplate(false);
       } else {
-        alert('Lưu mẫu thất bại');
+        alert(txt('Lưu mẫu thất bại', 'Failed to save template', 'テンプレートの保存に失敗しました'));
       }
     } catch {
-      alert('Lỗi kết nối khi lưu mẫu');
+      alert(txt('Lỗi kết nối khi lưu mẫu', 'Connection error while saving template', '接続エラー'));
     } finally {
       setSavingTemplate(false);
     }
@@ -754,7 +771,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                     }}
                     className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${docMode === 'HANDOVER' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-700 hover:text-slate-900'}`}
                   >
-                    📋 Biên Bản Bàn Giao
+                    📋 {txt('Biên Bản Bàn Giao', 'Handover Report', '引渡報告書')}
                   </button>
                   <button
                     type="button"
@@ -764,7 +781,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                     }}
                     className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${docMode === 'RETURN' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-700 hover:text-slate-900'}`}
                   >
-                    📥 Biên Bản Thu Hồi
+                    📥 {txt('Biên Bản Thu Hồi', 'Return Report', '返却報告書')}
                   </button>
                 </div>
                 <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-800 text-xs font-mono font-bold">
@@ -772,17 +789,17 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                 </span>
               </div>
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <span>{docMode === 'RETURN' ? 'Thu hồi thiết bị về kho CNTT' : 'Bàn giao thiết bị cho nhân viên'}</span>
+                <span>{docMode === 'RETURN' ? txt('Thu hồi thiết bị về kho CNTT', 'Return device to IT inventory', 'IT在庫への返却') : txt('Bàn giao thiết bị cho nhân viên', 'Handover device to employee', '従業員への引渡')}</span>
                 <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-mono font-bold">
                   {asset.assetTag}
                 </span>
                 {template.useCustomTemplate && (
                   <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-bold border border-purple-200">
-                    ★ Mẫu Tùy Biến Riêng
+                    ★ {txt('Mẫu Tùy Biến Riêng', 'Custom Template', 'カスタムテンプレート')}
                   </span>
                 )}
               </h2>
-              <p className="text-xs text-slate-500">Hỗ trợ tải lên file Word mẫu riêng, tự động điền dữ liệu và in A4 chuẩn</p>
+              <p className="text-xs text-slate-500">{txt('Hỗ trợ tải lên file Word mẫu riêng, tự động điền dữ liệu và in A4 chuẩn', 'Upload custom Word template, auto-fill data and print standard A4', 'カスタムWordテンプレートのアップロード、データ自動入力、A4印刷に対応')}</p>
             </div>
           </div>
 
@@ -797,17 +814,17 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span>{isEditingTemplate ? 'Đóng Tùy Biến' : '⚙️ Tùy Chỉnh & Tải Mẫu Word'}</span>
+              <span>{isEditingTemplate ? txt('Đóng Tùy Biến', 'Close Customizer', 'カスタマイズを閉じる') : txt('⚙️ Tùy Chỉnh & Tải Mẫu Word', '⚙️ Customize & Upload Word Template', '⚙️ カスタマイズ')}</span>
             </button>
 
             <button
               type="button"
               onClick={handleExportWord}
               className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-              title="Tải về file Microsoft Word (.doc) theo đúng mẫu"
+              title={txt('Tải về file Microsoft Word (.doc) theo đúng mẫu', 'Download Microsoft Word (.doc) file', 'Microsoft Word (.doc) ファイルをダウンロード')}
             >
               <FileDown className="w-4 h-4" />
-              <span>Tải File Word (.doc)</span>
+              <span>{txt('Tải File Word (.doc)', 'Download Word (.doc)', 'Word (.doc) ダウンロード')}</span>
             </button>
 
             <button
@@ -816,7 +833,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>In Ngay / Lưu PDF (A4)</span>
+              <span>{txt('In Ngay / Lưu PDF (A4)', 'Print / Save PDF (A4)', '印刷 / PDF保存 (A4)')}</span>
             </button>
 
             <button
@@ -844,7 +861,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                       : 'text-amber-800 hover:text-amber-950'
                   }`}
                 >
-                  ⚙️ Tùy Biến Mẫu Tiêu Chuẩn
+                  ⚙️ {txt('Tùy Biến Mẫu Tiêu Chuẩn', 'Customize Standard Template', '標準テンプレートのカスタマイズ')}
                 </button>
                 <button
                   type="button"
@@ -856,7 +873,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                   }`}
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  <span>📁 Tải Lên Mẫu File Word Riêng Của Bạn</span>
+                  <span>📁 {txt('Tải Lên Mẫu File Word Riêng Của Bạn', 'Upload Your Custom Word Template', 'カスタムWordテンプレートをアップロード')}</span>
                 </button>
               </div>
 
@@ -872,7 +889,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                   className="px-2.5 py-1 text-slate-600 hover:text-slate-900 bg-white border border-slate-300 rounded-lg font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  <span>Khôi phục mẫu gốc</span>
+                  <span>{txt('Khôi phục mẫu gốc', 'Reset to Default', 'デフォルトに戻す')}</span>
                 </button>
 
                 <button
@@ -882,7 +899,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                   className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>{savingTemplate ? 'Đang lưu...' : '💾 Lưu Mẫu Mặc Định Cho Công Ty'}</span>
+                  <span>{savingTemplate ? txt('Đang lưu...', 'Saving...', '保存中...') : txt('💾 Lưu Mẫu Mặc Định Cho Công Ty', '💾 Save as Company Default', '💾 会社デフォルトとして保存')}</span>
                 </button>
               </div>
             </div>
@@ -890,7 +907,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
             {saveSuccess && (
               <div className="p-2.5 bg-emerald-100 text-emerald-800 rounded-lg font-bold flex items-center gap-1.5 animate-in fade-in">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Mẫu biên bản đã được lưu thành công làm chuẩn mặc định cho toàn công ty!</span>
+                <span>{txt('Mẫu biên bản đã được lưu thành công làm chuẩn mặc định cho toàn công ty!', 'Template saved successfully as company default!', 'テンプレートが会社のデフォルトとして保存されました！')}</span>
               </div>
             )}
 
@@ -899,7 +916,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
               <div className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Tên Đơn Vị / Công Ty (Góc Trái)</label>
+                    <label className="block font-bold text-slate-700 mb-1">{txt('Tên Đơn Vị / Công Ty (Góc Trái)', 'Company / Organization Name (Top Left)', '会社名（左上）')}</label>
                     <input
                       type="text"
                       value={template.companyName}
@@ -909,7 +926,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Phòng Ban / Bộ Phận Quản Lý</label>
+                    <label className="block font-bold text-slate-700 mb-1">{txt('Phòng Ban / Bộ Phận Quản Lý', 'Department / Management Division', '部門 / 管理部門')}</label>
                     <input
                       type="text"
                       value={template.companySubTitle}
@@ -919,7 +936,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Tiêu Đề Biên Bản</label>
+                    <label className="block font-bold text-slate-700 mb-1">{txt('Tiêu Đề Biên Bản', 'Document Title', '文書タイトル')}</label>
                     <input
                       type="text"
                       value={template.docTitle}
@@ -930,7 +947,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Các Điều Khoản Trách Nhiệm Sử Dụng (Mỗi dòng 1 điều khoản):</label>
+                    <label className="block font-bold text-slate-700 mb-1">{txt('Các Điều Khoản Trách Nhiệm Sử Dụng (Mỗi dòng 1 điều khoản):', 'Terms of Use & Responsibilities (one per line):', '利用規約と責任（1行に1条）:')}</label>
                   <textarea
                     rows={3}
                     value={termsList.join('\n')}
@@ -947,10 +964,14 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                 <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-200">
                   <div>
                     <p className="font-bold text-indigo-950 text-xs flex items-center gap-1.5">
-                      <span>📁 Tải Lên Mẫu File Word (.doc / .html) Của Đơn Vị Bạn</span>
+                      <span>📁 {txt('Tải Lên Mẫu File Word (.doc / .html) Của Đơn Vị Bạn', 'Upload Your Unit Word Template (.doc / .html)', 'ユニットWordテンプレート (.doc / .html) をアップロード')}</span>
                     </p>
                     <p className="text-[11px] text-slate-500">
-                      Chèn các mã giữ chỗ như <code className="text-indigo-600 font-bold font-mono">{'{{TEN_THIET_BI}}'}</code>, <code className="text-indigo-600 font-bold font-mono">{'{{SO_SERIAL}}'}</code> vào file Word của bạn để hệ thống tự động điền dữ liệu.
+                      {txt(
+                        'Chèn các mã giữ chỗ như',
+                        'Insert placeholders like',
+                        'プレースホルダーを挿入'
+                      )} <code className="text-indigo-600 font-bold font-mono">{'{{TEN_THIET_BI}}'}</code>, <code className="text-indigo-600 font-bold font-mono">{'{{SO_SERIAL}}'}</code> {txt('vào file Word của bạn để hệ thống tự động điền dữ liệu.', 'into your Word file for automatic data filling.', 'で自動データ入力。')}
                     </p>
                   </div>
 
@@ -961,7 +982,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                       className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-300 rounded-lg font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs"
                     >
                       <Download className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>📥 Tải Mẫu Word Gợi Ý (.doc)</span>
+                      <span>📥 {txt('Tải Mẫu Word Gợi Ý (.doc)', 'Download Sample Word (.doc)', 'サンプルWord (.doc) をダウンロード')}</span>
                     </button>
 
                     <input
@@ -978,7 +999,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                       className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
                       <Upload className="w-3.5 h-3.5" />
-                      <span>⬆️ Tải Lên File Mẫu (.doc / .html)</span>
+                      <span>⬆️ {txt('Tải Lên File Mẫu (.doc / .html)', 'Upload Template File (.doc / .html)', 'テンプレートファイルをアップロード (.doc / .html)')}</span>
                     </button>
                   </div>
                 </div>
@@ -987,11 +1008,11 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
-                      📋 Bảng Danh Sách Các Mã Biến Bắt Buộc / Tùy Chọn (Bấm để sao chép):
+                      📋 {txt('Bảng Danh Sách Các Mã Biến Bắt Buộc / Tùy Chọn (Bấm để sao chép):', 'Merge Tags Reference (Click to copy):', 'マージタグ一覧（クリックでコピー）:')}
                     </span>
                     {copiedTag && (
                       <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold animate-in fade-in">
-                        ✓ Đã sao chép: {copiedTag}
+                        ✓ {txt('Đã sao chép:', 'Copied:', 'コピー済み:')} {copiedTag}
                       </span>
                     )}
                   </div>
@@ -1003,7 +1024,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                         type="button"
                         onClick={() => copyToClipboard(m.tag)}
                         className="p-1.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-lg text-left transition-colors cursor-pointer flex items-center justify-between group"
-                        title={`Bấm để chép mã: ${m.tag} (${m.desc})`}
+                        title={txt(`Bấm để chép mã: ${m.tag} (${m.desc})`, `Click to copy: ${m.tag} (${m.desc})`, `コピー: ${m.tag}`)}
                       >
                         <div className="truncate">
                           <code className="font-bold font-mono text-indigo-700 text-[10.5px] block">{m.tag}</code>
@@ -1019,7 +1040,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="font-bold text-slate-700 text-[11px]">
-                      Nội dung File Mẫu Tùy Biến (HTML / Word format):
+                      {txt('Nội dung File Mẫu Tùy Biến (HTML / Word format):', 'Custom Template Content (HTML / Word format):', 'カスタムテンプレート内容 (HTML / Word形式):')}
                     </label>
                     <div className="flex items-center gap-2">
                       <label className="flex items-center gap-1 cursor-pointer text-indigo-700 font-bold">
@@ -1029,14 +1050,14 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                           onChange={(e) => setTemplate({ ...template, useCustomTemplate: e.target.checked })}
                           className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                         />
-                        <span>Kích hoạt Mẫu Tùy Biến Này Cho Toàn Hệ Thống</span>
+                        <span>{txt('Kích hoạt Mẫu Tùy Biến Này Cho Toàn Hệ Thống', 'Enable this Custom Template System-wide', 'このカスタムテンプレートをシステム全体で有効化')}</span>
                       </label>
                     </div>
                   </div>
 
                   <textarea
                     rows={4}
-                    placeholder="Dán mã HTML/Word mẫu hoặc tải file từ nút phía trên. Các thẻ {{TEN_THIET_BI}}, {{SO_SERIAL}}... sẽ tự động được thay thế bằng dữ liệu thực tế."
+                    placeholder={txt('Dán mã HTML/Word mẫu hoặc tải file từ nút phía trên. Các thẻ {{TEN_THIET_BI}}, {{SO_SERIAL}}... sẽ tự động được thay thế bằng dữ liệu thực tế.', 'Paste HTML/Word template code or upload file above. Tags like {{TEN_THIET_BI}}, {{SO_SERIAL}}... will be automatically replaced with actual data.', 'HTML/Wordテンプレートコードを貼り付けるか、上のボタンからアップロードします。タグは自動的に実データに置換されます。')}
                     value={customWordTemplate}
                     onChange={(e) => {
                       setCustomWordTemplate(e.target.value);
@@ -1157,7 +1178,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                         style={{ fontFamily: '"Times New Roman", Times, serif' }}
                         value={receiverName}
                         onChange={(e) => setReceiverName(e.target.value.normalize('NFC'))}
-                        placeholder="Nhập tên người nhận..."
+                        placeholder={txt('Nhập tên người nhận...', 'Enter receiver name...', '受取人名を入力...')}
                         className="font-bold bg-transparent border-b border-dotted border-slate-500 focus:outline-none print:border-none inline-block w-48 text-black"
                       />
                     </div>
@@ -1168,7 +1189,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                         style={{ fontFamily: '"Times New Roman", Times, serif' }}
                         value={receiverTitle}
                         onChange={(e) => setReceiverTitle(e.target.value.normalize('NFC'))}
-                        placeholder="Chức danh..."
+                        placeholder={txt('Chức danh...', 'Position...', '役職...')}
                         className="font-semibold bg-transparent border-b border-dotted border-slate-500 focus:outline-none print:border-none inline-block w-44 text-black"
                       />
                     </div>
@@ -1179,7 +1200,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                         style={{ fontFamily: '"Times New Roman", Times, serif' }}
                         value={receiverDept}
                         onChange={(e) => setReceiverDept(e.target.value.normalize('NFC'))}
-                        placeholder="Phòng ban..."
+                        placeholder={txt('Phòng ban...', 'Department...', '部署...')}
                         className="font-semibold bg-transparent border-b border-dotted border-slate-500 focus:outline-none print:border-none inline-block w-48 text-black"
                       />
                     </div>
@@ -1285,7 +1306,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                 <div className="flex items-center gap-2 pt-1 print:hidden">
                   <input
                     type="text"
-                    placeholder="+ Thêm phụ kiện khác (VD: Bàn phím rời, Hub Type-C...)"
+                    placeholder={txt('+ Thêm phụ kiện khác (VD: Bàn phím rời, Hub Type-C...)', '+ Add another accessory (e.g. External Keyboard, Type-C Hub...)', '+ その他のアクセサリを追加 (例: キーボード、Type-Cハブ...)')}
                     value={customAccessoryInput}
                     onChange={(e) => setCustomAccessoryInput(e.target.value.normalize('NFC'))}
                     onKeyDown={(e) => {
@@ -1301,7 +1322,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
                     onClick={addCustomAccessory}
                     className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 cursor-pointer"
                   >
-                    + Thêm
+                    + {txt('Thêm', 'Add', '追加')}
                   </button>
                 </div>
               </div>
@@ -1351,7 +1372,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
         {/* FOOTER ACTIONS (HIDDEN ON PRINT) */}
         <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between print:hidden shrink-0 flex-wrap gap-2">
           <span className="text-xs text-slate-500">
-            💡 <strong>Mẹo:</strong> Bấm <em>Tùy Chỉnh & Tải Mẫu Word</em> để nạp mẫu Word riêng của công ty hoặc tải về file mẫu gợi ý.
+            💡 <strong>{txt('Mẹo:', 'Tip:', 'ヒント:')}</strong> {txt('Bấm', 'Click', 'クリック:')} <em>{txt('Tùy Chỉnh & Tải Mẫu Word', 'Customize & Upload Word Template', 'カスタマイズ & Wordテンプレート')}</em> {txt('để nạp mẫu Word riêng của công ty hoặc tải về file mẫu gợi ý.', 'to upload your company Word template or download a sample file.', '会社のWordテンプレートをアップロードするか、サンプルファイルをダウンロードします。')}
           </span>
 
           <div className="flex items-center gap-2">
@@ -1359,16 +1380,16 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
               type="button"
               onClick={onClose}
               className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
-            >{isEn ? 'Close' : 'Đóng'}</button>
+            >{txt('Đóng', 'Close', '閉じる')}</button>
 
             <button
               type="button"
               onClick={handleExportWord}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-              title="Tải về file Microsoft Word (.doc) theo đúng mẫu"
+              title={txt('Tải về file Microsoft Word (.doc) theo đúng mẫu', 'Download Microsoft Word (.doc) file', 'Microsoft Word (.doc) ファイルをダウンロード')}
             >
               <FileDown className="w-4 h-4" />
-              <span>Tải File Word (.doc)</span>
+              <span>{txt('Tải File Word (.doc)', 'Download Word (.doc)', 'Word (.doc) ダウンロード')}</span>
             </button>
 
             <button
@@ -1377,7 +1398,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>In Khổ A4 / Lưu PDF</span>
+              <span>{txt('In Khổ A4 / Lưu PDF', 'Print A4 / Save PDF', 'A4印刷 / PDF保存')}</span>
             </button>
           </div>
         </div>

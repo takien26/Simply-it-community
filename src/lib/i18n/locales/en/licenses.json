@@ -10,5 +10,16 @@
   "licenses.col_status": "STATUS",
   "licenses.status_active": "Active",
   "licenses.status_expired": "Expired",
-  "licenses.status_suspended": "Suspended"
+  "licenses.status_suspended": "Suspended",
+  "licenses.modal.add_title": "Add Software License",
+  "licenses.modal.edit_title": "Edit License",
+  "licenses.modal.detail_title": "License Details",
+  "licenses.modal.assign_title": "Assign License to Device / User",
+  "licenses.field.software_name": "Software Name (*)",
+  "licenses.field.license_key": "License Key",
+  "licenses.field.license_type": "License Type",
+  "licenses.field.total_seats": "Total Seats",
+  "licenses.field.purchase_cost": "Purchase Cost",
+  "licenses.field.renewal_date": "Expiry / Renewal Date",
+  "licenses.field.vendor": "Vendor"
 }

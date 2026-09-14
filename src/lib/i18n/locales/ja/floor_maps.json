@@ -1,0 +1,9 @@
+{
+  "floor_maps.title": "2Dフロアマップ・サーバーストラック管理",
+  "floor_maps.subtitle": "オフィスレイアウト上での機器配置管理およびラック内ネットワーク機器の可視化",
+  "floor_maps.add_map_btn": "フロア図面アップロード",
+  "floor_maps.add_rack_btn": "ラック追加",
+  "floor_maps.select_floor": "フロア・エリア選択",
+  "floor_maps.rack_view": "ラックユニット詳細表示 (U数)",
+  "floor_maps.drag_hint": "機器をドラッグ＆ドロップしてマップ上に配置"
+}

@@ -82,6 +82,17 @@ export default function DashboardPage() {
   const [chartTab, setChartTab] = useState<'TICKETS' | 'ASSETS' | 'LICENSES' | 'SERVICES'>('TICKETS');
   const [loading, setLoading] = useState(true);
 
+  // ESC key listener to close drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && openDrawer) {
+        setOpenDrawer(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [openDrawer]);
+
   // Time Range Filter for Ticket Analysis
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('MONTH');
   const [customStartDate, setCustomStartDate] = useState('');

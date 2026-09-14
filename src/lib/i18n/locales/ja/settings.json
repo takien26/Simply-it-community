@@ -1,0 +1,16 @@
+{
+  "settings.general_title": "一般設定＆ブランディング",
+  "settings.language_label": "システムのデフォルト言語",
+  "settings.language_desc": "ログイン画面や初期ダッシュボードで標準表示される言語",
+  "settings.lang_vi": "🇻🇳 Tiếng Việt (ベトナム語)",
+  "settings.lang_en": "🇬🇧 English (英語)",
+  "settings.backup_title": "ワンクリック フルシステムバックアップ",
+  "settings.backup_desc": "PostgreSQLのクリーンダンプと添付画像フォルダ（public/uploads）をまとめたZIPアーカイブを即座にダウンロード",
+  "settings.backup_download_btn": "完全バックアップをダウンロード (.ZIP)",
+  "settings.backup_downloading": "ZIP圧縮・準備中...",
+  "settings.backup_photos_size": "添付ファイル・画像ストレージ",
+  "settings.backup_db_info": "データベース",
+  "settings.backup_last_time": "最終バックアップ日時",
+  "settings.save_settings": "設定を保存",
+  "settings.saved_success": "システム設定を正常に更新しました！"
+}

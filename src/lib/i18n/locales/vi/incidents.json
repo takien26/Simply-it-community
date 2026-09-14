@@ -1,0 +1,16 @@
+{
+  "incidents.title": "Quản Lý Sự Cố Hạ Tầng IT (Incidents & Problems)",
+  "incidents.subtitle": "Ghi nhận sự cố gián đoạn dịch vụ, tiến trình khắc phục và báo cáo nguyên nhân gốc rễ (RCA)",
+  "incidents.create_btn": "Khai Báo Sự Cố Mới",
+  "incidents.search_placeholder": "Tìm sự cố, hệ thống ảnh hưởng, RCA...",
+  "incidents.col_title": "SỰ CỐ & HỆ THỐNG ẢNH HƯỞNG",
+  "incidents.col_severity": "MỨC ĐỘ ẢNH HƯỞNG",
+  "incidents.col_status": "TIẾN ĐỘ KHẮC PHỤC",
+  "incidents.col_downtime": "THỜI GIAN GIÁN ĐOẠN",
+  "incidents.col_lead": "IT CHỦ TRÌ",
+  "incidents.col_actions": "THAO TÁC",
+  "incidents.severity_critical": "P1 - Nghiêm trọng (Toàn công ty)",
+  "incidents.severity_high": "P2 - Cao (Một phòng ban)",
+  "incidents.severity_medium": "P3 - Vừa (Một nhóm)",
+  "incidents.severity_low": "P4 - Thấp (Cá nhân)"
+}

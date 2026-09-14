@@ -7,5 +7,14 @@
   "services.col_vendor": "NHÀ CUNG CẤP",
   "services.col_expiry": "NGÀY HẾT HẠN",
   "services.col_cost": "CHI PHÍ ĐỊNH KỲ",
-  "services.col_status": "TRẠNG THÁI"
+  "services.col_status": "TRẠNG THÁI",
+  "services.modal.add_title": "Thêm Mới Dịch Vụ IT & Viễn Thông",
+  "services.modal.edit_title": "Chỉnh Sửa Dịch Vụ",
+  "services.modal.detail_title": "Chi Tiết Dịch Vụ Viễn Thông",
+  "services.modal.payment_title": "Lịch Sử Thanh Toán & Hóa Đơn",
+  "services.field.name": "Tên dịch vụ (*)",
+  "services.field.type": "Loại dịch vụ",
+  "services.field.billing_cycle": "Chu kỳ thanh toán",
+  "services.field.cost": "Chi phí định kỳ",
+  "services.field.vendor": "Nhà mạng / Đối tác"
 }

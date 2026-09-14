@@ -220,6 +220,22 @@ export default function AssetsAuditPage() {
   const [locationSearchText, setLocationSearchText] = useState('');
   const [isDraggingPhoto, setIsDraggingPhoto] = useState(false);
 
+  // ESC key listener to close active modals & dropdowns
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (lightboxPhotoUrl) setLightboxPhotoUrl(null);
+        else if (isShareModalOpen) setIsShareModalOpen(false);
+        else if (isFinalizeModalOpen) setIsFinalizeModalOpen(false);
+        else if (isNewSessionModalOpen) setIsNewSessionModalOpen(false);
+        else if (userDropdownOpen) setUserDropdownOpen(false);
+        else if (locationDropdownOpen) setLocationDropdownOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxPhotoUrl, isShareModalOpen, isFinalizeModalOpen, isNewSessionModalOpen, userDropdownOpen, locationDropdownOpen]);
+
   // Table Filter & Search
   const [tableFilterTab, setTableFilterTab] = useState<'ALL' | 'MATCHED' | 'MISMATCH' | 'PENDING'>('ALL');
   const [tableSearch, setTableSearch] = useState('');
@@ -912,7 +928,7 @@ export default function AssetsAuditPage() {
   }, [currentSession, tableFilterTab, tableCompanyFilter, tableSearch]);
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-3 sm:p-6 space-y-5">
+    <div className="space-y-6 animate-in fade-in">
       {/* Hidden File Input for Condition Photo Capture */}
       <input
         type="file"
@@ -924,47 +940,47 @@ export default function AssetsAuditPage() {
       />
 
       {/* ==================== 1. MAIN HEADER & SWITCH BAR ==================== */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800/80 p-4 sm:p-5 rounded-3xl border border-slate-700/80 shadow-xl backdrop-blur-md">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div className="space-y-1">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="p-2 bg-indigo-600 text-white rounded-2xl shadow-md">
+            <span className="p-2 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-2xl shadow-xs">
               <ClipboardCheck className="w-5 h-5" />
             </span>
-            <h1 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
+            <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
               {isEn ? 'Asset Audit & Physical Inventory' : 'Quản Lý & Kiểm Kê Tài Sản'}
             </h1>
 
             {/* View Mode Pills */}
-            <div className="flex items-center bg-slate-950 p-1 rounded-2xl border border-slate-700/80 ml-2">
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 ml-2">
               <button
                 type="button"
                 onClick={() => setViewMode('CAMPAIGNS')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'CAMPAIGNS'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <FolderCheck className="w-3.5 h-3.5" />
+                <FolderCheck className="w-3.5 h-3.5 text-indigo-600" />
                 <span>{isEn ? 'Campaigns' : 'Danh Sách Đợt'} ({campaigns.length})</span>
               </button>
               {currentSession && (
                 <button
                   type="button"
                   onClick={() => setViewMode('WORKSPACE')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     viewMode === 'WORKSPACE'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                  <Camera className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{isEn ? 'Active Workspace' : 'Không Gian Quét Đang Mở'}</span>
                 </button>
               )}
             </div>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500">
             {isEn ? 'Manage inventory campaigns, capture physical condition photos, camera QR scanning & automatic reconciliation.' : 'Quản lý danh sách các đợt kiểm kê, chụp ảnh hiện trạng thực tế, quét QR camera & đối soát sai lệch tự động.'}
           </p>
         </div>
@@ -975,9 +991,9 @@ export default function AssetsAuditPage() {
             <button
               type="button"
               onClick={() => setViewMode('CAMPAIGNS')}
-              className="px-3.5 py-2.5 bg-slate-700/80 hover:bg-slate-700 text-slate-200 rounded-2xl text-xs font-bold border border-slate-600 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
             >
-              <ArrowLeft className="w-4 h-4 text-slate-400" />
+              <ArrowLeft className="w-4 h-4 text-slate-500" />
               <span>&larr; {isEn ? 'All Campaigns' : 'Tất Cả Các Đợt'}</span>
             </button>
           )}
@@ -988,7 +1004,7 @@ export default function AssetsAuditPage() {
               setNewSessionCompanies(companies);
               setIsNewSessionModalOpen(true);
             }}
-            className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-2xl text-xs font-bold shadow-lg shadow-indigo-600/30 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>{isEn ? '+ New Audit Campaign' : 'Tạo Đợt Kiểm Kê Mới'}</span>
@@ -999,18 +1015,18 @@ export default function AssetsAuditPage() {
               <button
                 type="button"
                 onClick={() => openShareModal()}
-                className="px-3.5 py-2.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-2xl text-xs font-bold border border-indigo-500/40 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold border border-indigo-200 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
                 title="Mở link kiểm kê trên điện thoại qua cổng HTTPS 3443 để sử dụng Camera"
               >
-                <QrCode className="w-4 h-4 text-indigo-400" />
+                <QrCode className="w-4 h-4 text-indigo-600" />
                 <span>{isEn ? '📱 Mobile Scanner (Port 3443)' : '📱 Mở Trên Di Động (Port 3443)'}</span>
               </button>
               <button
                 type="button"
                 onClick={handleExportReport}
-                className="px-3.5 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-2xl text-xs font-bold border border-slate-600 flex items-center gap-1.5 cursor-pointer transition-all"
+                className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
               >
-                <Download className="w-4 h-4 text-emerald-400" />
+                <Download className="w-4 h-4 text-emerald-600" />
                 <span>Xuất Báo Cáo</span>
               </button>
 
@@ -1018,7 +1034,7 @@ export default function AssetsAuditPage() {
                 <button
                   type="button"
                   onClick={() => setIsFinalizeModalOpen(true)}
-                  className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl text-xs font-bold shadow-lg shadow-emerald-600/30 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-95"
                 >
                   <CheckCheck className="w-4 h-4" />
                   <span>Chốt Đợt Kiểm Kê</span>
@@ -1036,29 +1052,29 @@ export default function AssetsAuditPage() {
         <div className="space-y-5">
           {/* Active Campaign Banner (if any) */}
           {currentSession && (
-            <div className="bg-gradient-to-r from-indigo-950/80 via-slate-800/90 to-blue-950/80 p-4 rounded-3xl border border-indigo-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
+            <div className="bg-gradient-to-r from-blue-50 via-indigo-50/50 to-slate-50 p-4 sm:p-5 rounded-2xl border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-md shrink-0 animate-pulse">
+                <span className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0 animate-pulse">
                   ⚡
                 </span>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-sm sm:text-base text-white">
+                    <h3 className="font-extrabold text-sm sm:text-base text-slate-900">
                       Đang thực hiện kiểm kê: {currentSession.title}
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                       {currentSession.status === 'ACTIVE' ? 'Đang mở' : 'Đã chốt'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-300 mt-0.5">
-                    Tiến độ: <strong>{metrics.audited}/{metrics.total}</strong> thiết bị ({metrics.percent}%) • Phụ trách: {currentSession.responsiblePerson || 'KTV IT'}
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Tiến độ: <strong className="text-slate-900">{metrics.audited}/{metrics.total}</strong> thiết bị ({metrics.percent}%) • Phụ trách: {currentSession.responsiblePerson || 'KTV IT'}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => handleOpenCampaignWorkspace(currentSession)}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <span>Tiếp Tục Quét &rarr;</span>
               </button>
@@ -1067,53 +1083,53 @@ export default function AssetsAuditPage() {
 
           {/* Quick Metrics Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-slate-800/80 p-4 rounded-3xl border border-slate-700/80 shadow-md">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400 uppercase">Tổng số đợt</span>
-                <Layers className="w-4 h-4 text-indigo-400" />
+                <span className="text-xs font-bold text-slate-500 uppercase">Tổng số đợt</span>
+                <Layers className="w-4 h-4 text-indigo-600" />
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
-                <span className="text-2xl font-black text-white font-mono">{overallCampaignMetrics.totalCampaigns}</span>
-                <span className="text-xs text-slate-500">đợt lưu</span>
+                <span className="text-2xl font-black text-slate-900 font-mono">{overallCampaignMetrics.totalCampaigns}</span>
+                <span className="text-xs text-slate-400">đợt lưu</span>
               </div>
             </div>
 
-            <div className="bg-slate-800/80 p-4 rounded-3xl border border-slate-700/80 shadow-md">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-400 uppercase">Đang diễn ra</span>
-                <Clock className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-bold text-amber-600 uppercase">Đang diễn ra</span>
+                <Clock className="w-4 h-4 text-amber-600" />
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
-                <span className="text-2xl font-black text-amber-300 font-mono">{overallCampaignMetrics.activeCampaigns}</span>
-                <span className="text-xs text-amber-500/80">đang kiểm</span>
+                <span className="text-2xl font-black text-amber-600 font-mono">{overallCampaignMetrics.activeCampaigns}</span>
+                <span className="text-xs text-amber-600/80">đang kiểm</span>
               </div>
             </div>
 
-            <div className="bg-slate-800/80 p-4 rounded-3xl border border-slate-700/80 shadow-md">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-400 uppercase">Đã hoàn thành</span>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold text-emerald-600 uppercase">Đã hoàn thành</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
-                <span className="text-2xl font-black text-emerald-300 font-mono">{overallCampaignMetrics.completedCampaigns}</span>
-                <span className="text-xs text-emerald-500/80">đã chốt</span>
+                <span className="text-2xl font-black text-emerald-600 font-mono">{overallCampaignMetrics.completedCampaigns}</span>
+                <span className="text-xs text-emerald-600/80">đã chốt</span>
               </div>
             </div>
 
-            <div className="bg-slate-800/80 p-4 rounded-3xl border border-slate-700/80 shadow-md">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-blue-400 uppercase">Tổng máy đã kiểm</span>
-                <Laptop className="w-4 h-4 text-blue-400" />
+                <span className="text-xs font-bold text-blue-600 uppercase">Tổng máy đã kiểm</span>
+                <Laptop className="w-4 h-4 text-blue-600" />
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
-                <span className="text-2xl font-black text-blue-300 font-mono">{overallCampaignMetrics.totalAuditedAssets}</span>
-                <span className="text-xs text-blue-500/80">thiết bị</span>
+                <span className="text-2xl font-black text-blue-600 font-mono">{overallCampaignMetrics.totalAuditedAssets}</span>
+                <span className="text-xs text-blue-600/80">thiết bị</span>
               </div>
             </div>
           </div>
 
           {/* Search & Filter Bar */}
-          <div className="bg-slate-800/80 p-4 rounded-3xl border border-slate-700/80 shadow-xl flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
             {/* Search Input */}
             <div className="relative w-full md:w-96">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -1122,13 +1138,13 @@ export default function AssetsAuditPage() {
                 placeholder="Tìm kiếm đợt kiểm kê theo tên, người phụ trách, ghi chú..."
                 value={campaignSearch}
                 onChange={(e) => setCampaignSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-2xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:border-indigo-500"
+                className="w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
               />
               {campaignSearch && (
                 <button
                   type="button"
                   onClick={() => setCampaignSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1136,14 +1152,14 @@ export default function AssetsAuditPage() {
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-2xl border border-slate-700 shrink-0 w-full md:w-auto overflow-x-auto">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0 w-full md:w-auto overflow-x-auto">
               <button
                 type="button"
                 onClick={() => setCampaignStatusFilter('ALL')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
                   campaignStatusFilter === 'ALL'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Tất cả ({campaigns.length})
@@ -1151,10 +1167,10 @@ export default function AssetsAuditPage() {
               <button
                 type="button"
                 onClick={() => setCampaignStatusFilter('ACTIVE')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
                   campaignStatusFilter === 'ACTIVE'
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-amber-500 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 🟢 Đang thực hiện ({campaigns.filter((c) => c.status === 'ACTIVE').length})
@@ -1162,10 +1178,10 @@ export default function AssetsAuditPage() {
               <button
                 type="button"
                 onClick={() => setCampaignStatusFilter('COMPLETED')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
                   campaignStatusFilter === 'COMPLETED'
                     ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 ✓ Đã hoàn thành ({campaigns.filter((c) => c.status === 'COMPLETED').length})
@@ -1175,16 +1191,16 @@ export default function AssetsAuditPage() {
 
           {/* Campaigns Cards Grid */}
           {campaignsLoading ? (
-            <div className="bg-slate-800/40 p-12 rounded-3xl border border-slate-800 text-center space-y-2">
+            <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-2 shadow-xs">
               <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mx-auto" />
-              <p className="text-xs text-slate-400">Đang tải danh sách các đợt kiểm kê...</p>
+              <p className="text-xs text-slate-500">Đang tải danh sách các đợt kiểm kê...</p>
             </div>
           ) : filteredCampaigns.length === 0 ? (
-            <div className="bg-slate-800/40 p-12 rounded-3xl border border-dashed border-slate-700 text-center space-y-3">
-              <FolderCheck className="w-12 h-12 text-slate-600 mx-auto" />
+            <div className="bg-white p-12 rounded-2xl border border-dashed border-slate-200 text-center space-y-3 shadow-xs">
+              <FolderCheck className="w-12 h-12 text-slate-300 mx-auto" />
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-slate-200">Không tìm thấy đợt kiểm kê nào phù hợp</h3>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                <h3 className="text-sm font-bold text-slate-800">Không tìm thấy đợt kiểm kê nào phù hợp</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
                   {campaignSearch
                     ? 'Hãy thử tìm với từ khóa khác hoặc xóa bộ lọc.'
                     : 'Chưa có đợt kiểm kê nào. Bấm nút bên dưới để tạo đợt mới.'}
@@ -1196,7 +1212,7 @@ export default function AssetsAuditPage() {
                   setNewSessionCompanies(companies);
                   setIsNewSessionModalOpen(true);
                 }}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md inline-flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Tạo Đợt Mới</span>
@@ -1217,7 +1233,7 @@ export default function AssetsAuditPage() {
                   <div
                     key={camp.id}
                     onClick={() => handleOpenCampaignWorkspace(camp)}
-                    className="bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-indigo-500/60 rounded-3xl p-5 shadow-lg transition-all cursor-pointer group flex flex-col justify-between gap-4"
+                    className="bg-white hover:border-indigo-300 border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between gap-4"
                   >
                     {/* Header */}
                     <div className="space-y-2">
@@ -1225,8 +1241,8 @@ export default function AssetsAuditPage() {
                         <span
                           className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold border ${
                             isCompleted
-                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                              : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
                           }`}
                         >
                           {isCompleted ? '✓ Đã hoàn tất & chốt' : '🟢 Đang thực hiện'}
@@ -1236,29 +1252,29 @@ export default function AssetsAuditPage() {
                         </span>
                       </div>
 
-                      <h3 className="text-base font-extrabold text-white group-hover:text-indigo-300 transition-colors line-clamp-1" title={camp.title}>
+                      <h3 className="text-base font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1" title={camp.title}>
                         {camp.title}
                       </h3>
 
                       {camp.notes && (
-                        <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                           {camp.notes}
                         </p>
                       )}
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="space-y-1.5 bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                    <div className="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-100">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400 font-medium">Tiến độ đối soát</span>
-                        <span className="font-extrabold text-white font-mono">
+                        <span className="text-slate-500 font-medium">Tiến độ đối soát</span>
+                        <span className="font-extrabold text-slate-900 font-mono">
                           {audited}/{total} ({pct}%)
                         </span>
                       </div>
-                      <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-300 ${
-                            isCompleted ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                            isCompleted ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-600 to-indigo-600'
                           }`}
                           style={{ width: `${pct}%` }}
                         />
@@ -1266,17 +1282,17 @@ export default function AssetsAuditPage() {
 
                       {/* Photo Badge if photos exist */}
                       {photoCount > 0 && (
-                        <div className="pt-1 flex items-center gap-1.5 text-[11px] text-emerald-400 font-semibold">
-                          <ImageIcon className="w-3.5 h-3.5" />
+                        <div className="pt-1 flex items-center gap-1.5 text-[11px] text-emerald-700 font-semibold">
+                          <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
                           <span>Đã chụp {photoCount} ảnh hiện trạng thực tế</span>
                         </div>
                       )}
                     </div>
 
                     {/* Footer Info & Actions */}
-                    <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between gap-2 text-xs">
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
                       <div className="min-w-0">
-                        <p className="text-slate-400 text-[11px] truncate">
+                        <p className="text-slate-500 text-[11px] truncate">
                           👤 {camp.responsiblePerson || 'IT Team'}
                         </p>
                       </div>
@@ -1285,13 +1301,13 @@ export default function AssetsAuditPage() {
                         <button
                           type="button"
                           onClick={(e) => handleDeleteCampaign(camp.id, camp.title, e)}
-                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-700/60 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                           title="Xóa đợt kiểm kê"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
 
-                        <span className="px-3 py-1.5 bg-indigo-600 group-hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-1">
+                        <span className="px-3 py-1.5 bg-indigo-50 group-hover:bg-indigo-600 text-indigo-700 group-hover:text-white rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-1">
                           <span>{isCompleted ? 'Xem Báo Cáo' : 'Vào Quét'}</span>
                           <ChevronRight className="w-3.5 h-3.5" />
                         </span>
@@ -1311,47 +1327,47 @@ export default function AssetsAuditPage() {
       {viewMode === 'WORKSPACE' && currentSession && (
         <div className="space-y-5">
           {/* Top Real-time Progress Bar & KPI Cards */}
-          <div className="bg-slate-800/80 p-5 rounded-3xl border border-slate-700/80 shadow-xl space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-700/60 pb-3">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
               <div>
-                <h2 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+                <h2 className="text-sm sm:text-base font-extrabold text-slate-900 flex items-center gap-2">
                   <span>📋 {currentSession.title}</span>
                   <span className="text-xs font-normal text-slate-400">
                     (Khởi tạo: {formatDate(currentSession.createdAt)})
                   </span>
                 </h2>
-                <div className="flex items-center gap-1.5 text-xs text-indigo-300 mt-1 flex-wrap">
-                  <span className="font-semibold">Phạm vi công ty:</span>
+                <div className="flex items-center gap-1.5 text-xs text-indigo-600 mt-1 flex-wrap">
+                  <span className="font-semibold text-slate-600">Phạm vi công ty:</span>
                   {currentSession.selectedCompanies && currentSession.selectedCompanies.length > 0 && !currentSession.selectedCompanies.includes('ALL') ? (
                     currentSession.selectedCompanies.map((c, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-slate-700 rounded-md text-[11px] text-slate-300">
+                      <span key={i} className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-[11px] text-slate-700">
                         {c}
                       </span>
                     ))
                   ) : (
-                    <span className="px-2 py-0.5 bg-indigo-500/20 rounded-md border border-indigo-400/30 font-bold text-[11px]">
+                    <span className="px-2 py-0.5 bg-indigo-50 rounded-md border border-indigo-200 font-bold text-[11px] text-indigo-700">
                       Toàn bộ Tập đoàn (Đa Doanh Nghiệp)
                     </span>
                   )}
                   {currentSession.responsiblePerson && (
-                    <span className="text-slate-400 text-xs ml-2">
-                      • Phụ trách: <strong>{currentSession.responsiblePerson}</strong>
+                    <span className="text-slate-500 text-xs ml-2">
+                      • Phụ trách: <strong className="text-slate-700">{currentSession.responsiblePerson}</strong>
                     </span>
                   )}
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-300">Tiến độ đợt kiểm kê:</span>
-                <span className="text-lg font-black text-indigo-400 font-mono">{metrics.percent}%</span>
+                <span className="text-xs font-bold text-slate-500">Tiến độ đợt kiểm kê:</span>
+                <span className="text-lg font-black text-indigo-600 font-mono">{metrics.percent}%</span>
               </div>
             </div>
 
             {/* Visual Gradient Progress Bar */}
             <div className="space-y-1.5">
-              <div className="w-full h-3.5 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-700/80">
+              <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 transition-all duration-500 shadow-sm"
+                  className="h-full rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500 transition-all duration-500 shadow-2xs"
                   style={{ width: `${metrics.percent}%` }}
                 />
               </div>
@@ -1359,54 +1375,54 @@ export default function AssetsAuditPage() {
 
             {/* 4 Live Metrics Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-              <div className="p-3.5 bg-slate-900/80 border border-slate-700/80 rounded-2xl flex items-center justify-between">
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                     Tổng cần kiểm
                   </span>
-                  <span className="text-xl sm:text-2xl font-black text-white font-mono">{metrics.total}</span>
-                  <span className="text-[10px] text-slate-500 block">thiết bị trong đợt</span>
+                  <span className="text-xl sm:text-2xl font-black text-slate-900 font-mono">{metrics.total}</span>
+                  <span className="text-[10px] text-slate-400 block">thiết bị trong đợt</span>
                 </div>
-                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-xl bg-white text-blue-600 border border-blue-200 flex items-center justify-center font-bold shadow-xs">
                   <Layers className="w-5 h-5" />
                 </div>
               </div>
 
-              <div className="p-3.5 bg-slate-900/80 border border-slate-700/80 rounded-2xl flex items-center justify-between">
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">
+                  <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider block">
                     Đã kiểm kê
                   </span>
-                  <span className="text-xl sm:text-2xl font-black text-emerald-300 font-mono">{metrics.audited}</span>
-                  <span className="text-[10px] text-emerald-500/70 block">({metrics.percent}% hoàn tất)</span>
+                  <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono">{metrics.audited}</span>
+                  <span className="text-[10px] text-emerald-600/70 block">({metrics.percent}% hoàn tất)</span>
                 </div>
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-xl bg-white text-emerald-600 border border-emerald-200 flex items-center justify-center font-bold shadow-xs">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
               </div>
 
-              <div className="p-3.5 bg-slate-900/80 border border-slate-700/80 rounded-2xl flex items-center justify-between">
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider block">
+                  <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider block">
                     Còn lại (Chờ quét)
                   </span>
-                  <span className="text-xl sm:text-2xl font-black text-amber-300 font-mono">{metrics.remaining}</span>
-                  <span className="text-[10px] text-slate-500 block">máy chưa quét</span>
+                  <span className="text-xl sm:text-2xl font-black text-amber-600 font-mono">{metrics.remaining}</span>
+                  <span className="text-[10px] text-slate-400 block">máy chưa quét</span>
                 </div>
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-xl bg-white text-amber-600 border border-amber-200 flex items-center justify-center font-bold shadow-xs">
                   <Clock className="w-5 h-5" />
                 </div>
               </div>
 
-              <div className="p-3.5 bg-slate-900/80 border border-slate-700/80 rounded-2xl flex items-center justify-between">
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <span className="text-[11px] font-bold text-rose-400 uppercase tracking-wider block">
+                  <span className="text-[11px] font-bold text-rose-600 uppercase tracking-wider block">
                     Sai lệch / Báo hỏng
                   </span>
-                  <span className="text-xl sm:text-2xl font-black text-rose-400 font-mono">{metrics.mismatches}</span>
-                  <span className="text-[10px] text-rose-400/70 block">cần điều chuyển / xử lý</span>
+                  <span className="text-xl sm:text-2xl font-black text-rose-600 font-mono">{metrics.mismatches}</span>
+                  <span className="text-[10px] text-rose-600/70 block">cần điều chuyển / xử lý</span>
                 </div>
-                <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-xl bg-white text-rose-600 border border-rose-200 flex items-center justify-center font-bold shadow-xs">
                   <AlertTriangle className="w-5 h-5" />
                 </div>
               </div>
@@ -1418,10 +1434,10 @@ export default function AssetsAuditPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               {/* Left Column: Scanner & Search (5/12 cols) */}
               <div className="lg:col-span-5 space-y-4">
-                <div className="bg-slate-800/80 p-4 sm:p-5 rounded-3xl border border-slate-700/80 shadow-xl space-y-3.5">
+                <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
-                      <Camera className="w-4 h-4 text-indigo-400" />
+                    <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-indigo-600" />
                       <span>Quét tem QR / Tìm máy</span>
                     </span>
                     <button
@@ -1429,8 +1445,8 @@ export default function AssetsAuditPage() {
                       onClick={toggleCamera}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
                         isCameraActive
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                          : 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 hover:bg-indigo-600/30'
+                          ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                          : 'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100'
                       }`}
                     >
                       {isCameraActive ? <CameraOff className="w-3.5 h-3.5" /> : <Camera className="w-3.5 h-3.5" />}
@@ -1440,11 +1456,11 @@ export default function AssetsAuditPage() {
 
                   {/* Camera Video Viewfinder */}
                   {isCameraActive && (
-                    <div className="relative rounded-2xl overflow-hidden bg-black border-2 border-indigo-500/50 aspect-video shadow-2xl animate-in zoom-in-95 duration-150">
+                    <div className="relative rounded-2xl overflow-hidden bg-black border-2 border-indigo-500/50 aspect-video shadow-lg animate-in zoom-in-95 duration-150">
                       <video ref={videoRef} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 border-2 border-indigo-400/40 pointer-events-none flex items-center justify-center">
                         <div className="w-48 h-48 border-2 border-dashed border-emerald-400 rounded-2xl animate-pulse flex items-center justify-center">
-                          <span className="text-[10px] font-bold text-emerald-300 bg-black/60 px-2 py-0.5 rounded-md">
+                          <span className="text-[10px] font-bold text-white bg-black/70 px-2 py-0.5 rounded-md">
                             Đưa mã QR vào khung
                           </span>
                         </div>
@@ -1454,7 +1470,7 @@ export default function AssetsAuditPage() {
 
                   {/* Manual Search Bar */}
                   <div className="space-y-1.5">
-                    <label className="block text-[11px] font-bold text-slate-300">
+                    <label className="block text-[11px] font-bold text-slate-700">
                       Gõ Mã Tag, Số Serial hoặc Tên máy:
                     </label>
                     <div className="relative flex items-center">
@@ -1470,13 +1486,13 @@ export default function AssetsAuditPage() {
                             handleSearchOrScan(searchQuery);
                           }
                         }}
-                        className="w-full pl-10 pr-24 py-3 bg-slate-900 border border-slate-700 rounded-2xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 transition-all shadow-inner"
+                        className="w-full pl-10 pr-24 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
                       />
                       <button
                         type="button"
                         onClick={() => handleSearchOrScan(searchQuery)}
                         disabled={!searchQuery.trim()}
-                        className="absolute right-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                        className="absolute right-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
                       >
                         Tìm & Quét
                       </button>
@@ -1484,8 +1500,8 @@ export default function AssetsAuditPage() {
                   </div>
 
                   {/* Quick Pick List: 10 Machines waiting for verification */}
-                  <div className="pt-2 border-t border-slate-700/60 space-y-1.5">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                       Hoặc chọn nhanh máy chưa kiểm:
                     </span>
                     <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
@@ -1496,22 +1512,22 @@ export default function AssetsAuditPage() {
                           <div
                             key={item.id}
                             onClick={() => handleSelectAssetForAudit(item)}
-                            className="p-2.5 bg-slate-900/60 hover:bg-indigo-950/40 border border-slate-700/60 hover:border-indigo-500/50 rounded-xl flex items-center justify-between cursor-pointer transition-all group"
+                            className="p-2.5 bg-slate-50 hover:bg-indigo-50/70 border border-slate-200 hover:border-indigo-200 rounded-xl flex items-center justify-between cursor-pointer transition-all group"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center text-xs shrink-0">
+                              <span className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center text-xs shrink-0">
                                 {item.categoryIcon || '💻'}
                               </span>
                               <div className="min-w-0">
-                                <p className="text-xs font-bold text-white truncate group-hover:text-indigo-300">
+                                <p className="text-xs font-bold text-slate-900 truncate group-hover:text-indigo-600">
                                   [{item.assetTag}] {item.name}
                                 </p>
-                                <p className="text-[10.5px] text-slate-400 truncate">
+                                <p className="text-[10.5px] text-slate-500 truncate">
                                   👤 {item.systemUserName} • 📍 {item.systemLocationName}
                                 </p>
                               </div>
                             </div>
-                            <span className="text-[10px] bg-slate-800 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white px-2 py-0.5 rounded-md font-mono shrink-0 transition-colors">
+                            <span className="text-[10px] bg-white border border-slate-200 text-slate-600 group-hover:bg-indigo-600 group-hover:border-indigo-600 group-hover:text-white px-2 py-0.5 rounded-md font-mono shrink-0 transition-colors">
                               Quét &rarr;
                             </span>
                           </div>
@@ -1524,47 +1540,48 @@ export default function AssetsAuditPage() {
               {/* Right Column: Actual State Verification Card (7/12 cols) */}
               <div className="lg:col-span-7">
                 {activeAuditingItem ? (
-                  <div className="bg-slate-800/80 p-5 rounded-3xl border border-indigo-500/50 shadow-2xl space-y-4 animate-in fade-in duration-150">
-                    <div className="flex items-center justify-between border-b border-slate-700 pb-3">
+                  <div className="bg-white p-5 rounded-2xl border border-indigo-200 shadow-md space-y-4 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="px-2.5 py-1 bg-indigo-600 text-white rounded-xl text-xs font-mono font-black shadow-sm shrink-0">
+                        <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-mono font-black shrink-0">
                           [{activeAuditingItem.assetTag}]
                         </span>
                         <div className="min-w-0">
-                          <h3 className="text-sm sm:text-base font-extrabold text-white truncate">
-                            {activeAuditingItem.name} {activeAuditingItem.brand ? `• ${activeAuditingItem.brand}` : ''}
+                          <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
+                            {activeAuditingItem.name}
                           </h3>
-                          <p className="text-xs text-slate-400 truncate">
-                            🏢 {activeAuditingItem.companyName} • Serial: {activeAuditingItem.serialNumber || 'N/A'}
+                          <p className="text-[11px] text-slate-500 truncate">
+                            Serial: {activeAuditingItem.serialNumber || '—'} • Đơn vị: {activeAuditingItem.companyName || '—'}
                           </p>
                         </div>
                       </div>
+
                       <button
                         type="button"
                         onClick={() => setActiveAuditingItem(null)}
-                        className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
                       >
                         <X className="w-5 h-5" />
                       </button>
                     </div>
 
                     {/* System State Banner */}
-                    <div className="p-3.5 bg-slate-900/90 rounded-2xl border border-slate-700/80 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                           Người dùng lưu trên hệ thống:
                         </span>
-                        <p className="font-bold text-indigo-300 mt-0.5 flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-indigo-400" />
+                        <p className="font-bold text-indigo-700 mt-0.5 flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-indigo-600" />
                           <span>{activeAuditingItem.systemUserName}</span>
                         </p>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                           Vị trí lưu trên hệ thống:
                         </span>
-                        <p className="font-bold text-slate-200 mt-0.5 flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                        <p className="font-bold text-slate-800 mt-0.5 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-slate-500" />
                           <span>{activeAuditingItem.systemLocationName}</span>
                         </p>
                       </div>
@@ -1572,7 +1589,7 @@ export default function AssetsAuditPage() {
 
                     {/* 1. Real Status Selection Buttons */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-white">
+                      <label className="block text-xs font-bold text-slate-800">
                         1. Xác nhận hiện trạng thiết bị (*):
                       </label>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -1586,17 +1603,17 @@ export default function AssetsAuditPage() {
                           }}
                           className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
                             cardStatus === 'MATCHED'
-                              ? 'bg-emerald-500/20 border-emerald-500 text-white ring-2 ring-emerald-500/30'
-                              : 'bg-slate-900/60 border-slate-700 text-slate-300 hover:border-slate-600'
+                              ? 'bg-emerald-50 border-emerald-500 text-emerald-950 ring-2 ring-emerald-500/20'
+                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-white'
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-xs flex items-center gap-1.5">
                               <span>🟢 Khớp thông tin</span>
                             </span>
-                            {cardStatus === 'MATCHED' && <Check className="w-4 h-4 text-emerald-400" />}
+                            {cardStatus === 'MATCHED' && <Check className="w-4 h-4 text-emerald-600" />}
                           </div>
-                          <p className="text-[10.5px] text-slate-400">
+                          <p className="text-[10.5px] text-slate-500">
                             Đúng người dùng & đúng vị trí thực tế
                           </p>
                         </button>
@@ -1607,17 +1624,17 @@ export default function AssetsAuditPage() {
                           onClick={() => setCardStatus('MISMATCH_LOCATION_USER')}
                           className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
                             cardStatus === 'MISMATCH_LOCATION_USER'
-                              ? 'bg-amber-500/20 border-amber-500 text-white ring-2 ring-amber-500/30'
-                              : 'bg-slate-900/60 border-slate-700 text-slate-300 hover:border-slate-600'
+                              ? 'bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-500/20'
+                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-white'
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-xs flex items-center gap-1.5">
                               <span>🟡 Thừa / Thất lạc</span>
                             </span>
-                            {cardStatus === 'MISMATCH_LOCATION_USER' && <Check className="w-4 h-4 text-amber-400" />}
+                            {cardStatus === 'MISMATCH_LOCATION_USER' && <Check className="w-4 h-4 text-amber-600" />}
                           </div>
-                          <p className="text-[10.5px] text-slate-400">
+                          <p className="text-[10.5px] text-slate-500">
                             Người khác đang cầm hoặc đã đổi phòng
                           </p>
                         </button>
@@ -1628,17 +1645,17 @@ export default function AssetsAuditPage() {
                           onClick={() => setCardStatus('DAMAGED_OR_LOST')}
                           className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
                             cardStatus === 'DAMAGED_OR_LOST'
-                              ? 'bg-rose-500/20 border-rose-500 text-white ring-2 ring-rose-500/30'
-                              : 'bg-slate-900/60 border-slate-700 text-slate-300 hover:border-slate-600'
+                              ? 'bg-rose-50 border-rose-500 text-rose-950 ring-2 ring-rose-500/20'
+                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-white'
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-xs flex items-center gap-1.5">
                               <span>🔴 Hỏng hóc / Cần thay thế</span>
                             </span>
-                            {cardStatus === 'DAMAGED_OR_LOST' && <Check className="w-4 h-4 text-rose-400" />}
+                            {cardStatus === 'DAMAGED_OR_LOST' && <Check className="w-4 h-4 text-rose-600" />}
                           </div>
-                          <p className="text-[10.5px] text-slate-400">
+                          <p className="text-[10.5px] text-slate-500">
                             Máy hỏng nặng, mất tích hoặc mất tem
                           </p>
                         </button>
@@ -1647,17 +1664,17 @@ export default function AssetsAuditPage() {
 
                     {/* SEARCHABLE USER & LOCATION (UPGRADED WITH LIVE SEARCH) */}
                     {cardStatus === 'MISMATCH_LOCATION_USER' && (
-                      <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-3 animate-in fade-in">
-                        <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                      <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-3 animate-in fade-in">
+                        <span className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
                           <AlertTriangle className="w-3.5 h-3.5" />
                           <span>Chọn lại Nhân sự & Vị trí thực tế tại hiện trường:</span>
                         </span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                           {/* Searchable User Dropdown */}
                           <div className="relative" ref={userDropdownRef}>
-                            <label className="block text-[11px] font-bold text-slate-300 mb-1 flex items-center justify-between">
+                            <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                               <span>Nhân sự thực tế đang giữ máy:</span>
-                              <span className="text-[10px] text-amber-400 font-semibold">(Có tìm kiếm)</span>
+                              <span className="text-[10px] text-amber-600 font-semibold">(Có tìm kiếm)</span>
                             </label>
                             <button
                               type="button"
@@ -1665,18 +1682,18 @@ export default function AssetsAuditPage() {
                                 setUserDropdownOpen((prev) => !prev);
                                 setUserSearchText('');
                               }}
-                              className="w-full p-2.5 bg-slate-900 border border-slate-700 hover:border-amber-500 rounded-xl text-xs font-semibold text-white outline-none flex items-center justify-between transition-colors text-left cursor-pointer"
+                              className="w-full p-2.5 bg-white border border-slate-200 hover:border-amber-400 rounded-xl text-xs font-semibold text-slate-900 outline-none flex items-center justify-between transition-colors text-left cursor-pointer shadow-xs"
                             >
                               <div className="flex items-center gap-2 truncate">
-                                <User className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                                <User className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                                 <span className="truncate">
                                   {cardActualUserId
-                                    ? users.find((u) => u.id === cardActualUserId)?.fullName || 'Nhân sự'
+                                    ? users.find((u) => u.id === cardActualUserId)?.fullName || 'Nhân viên'
                                     : '-- Thu về kho (Chưa ai giữ) --'}
                                 </span>
                                 {cardActualUserId && (
-                                  <span className="text-[10.5px] text-slate-400 truncate">
-                                    ({users.find((u) => u.id === cardActualUserId)?.department || 'Phòng ban'})
+                                  <span className="text-[10.5px] text-slate-500 truncate">
+                                    {users.find((u) => u.id === cardActualUserId)?.department ? `(${users.find((u) => u.id === cardActualUserId)?.department})` : ''}
                                   </span>
                                 )}
                               </div>
@@ -1685,7 +1702,7 @@ export default function AssetsAuditPage() {
 
                             {/* Dropdown Popup */}
                             {userDropdownOpen && (
-                              <div className="absolute top-full left-0 right-0 mt-1.5 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
+                              <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
                                 <div className="relative">
                                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                                   <input
@@ -1694,7 +1711,7 @@ export default function AssetsAuditPage() {
                                     placeholder="Gõ tên hoặc phòng ban..."
                                     value={userSearchText}
                                     onChange={(e) => setUserSearchText(e.target.value)}
-                                    className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 outline-none focus:border-amber-500"
+                                    className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-amber-500"
                                   />
                                 </div>
                                 <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
@@ -1704,7 +1721,7 @@ export default function AssetsAuditPage() {
                                       setUserDropdownOpen(false);
                                     }}
                                     className={`p-2 rounded-xl text-xs flex items-center gap-2 cursor-pointer transition-colors ${
-                                      !cardActualUserId ? 'bg-amber-600 text-white font-bold' : 'hover:bg-slate-800 text-slate-300'
+                                      !cardActualUserId ? 'bg-amber-500 text-white font-bold' : 'hover:bg-slate-50 text-slate-700'
                                     }`}
                                   >
                                     <span>📦</span>
@@ -1719,8 +1736,8 @@ export default function AssetsAuditPage() {
                                       }}
                                       className={`p-2 rounded-xl text-xs flex items-center justify-between cursor-pointer transition-colors ${
                                         cardActualUserId === u.id
-                                          ? 'bg-amber-600 text-white font-bold'
-                                          : 'hover:bg-slate-800 text-slate-300'
+                                          ? 'bg-amber-500 text-white font-bold'
+                                          : 'hover:bg-slate-50 text-slate-700'
                                       }`}
                                     >
                                       <div className="min-w-0">
@@ -1731,7 +1748,7 @@ export default function AssetsAuditPage() {
                                     </div>
                                   ))}
                                   {filteredDropdownUsers.length === 0 && (
-                                    <p className="text-[11px] text-slate-500 p-2 text-center">Không tìm thấy nhân viên phù hợp</p>
+                                    <p className="text-[11px] text-slate-400 p-2 text-center">Không tìm thấy nhân viên phù hợp</p>
                                   )}
                                 </div>
                               </div>
@@ -1740,9 +1757,9 @@ export default function AssetsAuditPage() {
 
                           {/* Searchable Location Dropdown */}
                           <div className="relative" ref={locationDropdownRef}>
-                            <label className="block text-[11px] font-bold text-slate-300 mb-1 flex items-center justify-between">
+                            <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                               <span>Ghi nhận vị trí thực tế:</span>
-                              <span className="text-[10px] text-amber-400 font-semibold">(Có tìm kiếm)</span>
+                              <span className="text-[10px] text-amber-600 font-semibold">(Có tìm kiếm)</span>
                             </label>
                             <button
                               type="button"
@@ -1750,17 +1767,17 @@ export default function AssetsAuditPage() {
                                 setLocationDropdownOpen((prev) => !prev);
                                 setLocationSearchText('');
                               }}
-                              className="w-full p-2.5 bg-slate-900 border border-slate-700 hover:border-amber-500 rounded-xl text-xs font-semibold text-white outline-none flex items-center justify-between transition-colors text-left cursor-pointer"
+                              className="w-full p-2.5 bg-white border border-slate-200 hover:border-amber-400 rounded-xl text-xs font-semibold text-slate-900 outline-none flex items-center justify-between transition-colors text-left cursor-pointer shadow-xs"
                             >
                               <div className="flex items-center gap-2 truncate">
-                                <MapPin className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                                <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                                 <span className="truncate">
                                   {cardActualLocationId
                                     ? locations.find((l) => l.id === cardActualLocationId)?.name || 'Vị trí'
                                     : '-- Kho thiết bị IT --'}
                                 </span>
                                 {cardActualLocationId && (
-                                  <span className="text-[10.5px] text-slate-400 truncate">
+                                  <span className="text-[10.5px] text-slate-500 truncate">
                                     {locations.find((l) => l.id === cardActualLocationId)?.building ? `(${locations.find((l) => l.id === cardActualLocationId)?.building})` : ''}
                                   </span>
                                 )}
@@ -1770,7 +1787,7 @@ export default function AssetsAuditPage() {
 
                             {/* Dropdown Popup */}
                             {locationDropdownOpen && (
-                              <div className="absolute top-full left-0 right-0 mt-1.5 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
+                              <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
                                 <div className="relative">
                                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                                   <input
@@ -1779,7 +1796,7 @@ export default function AssetsAuditPage() {
                                     placeholder="Gõ tên phòng, kho, tòa nhà..."
                                     value={locationSearchText}
                                     onChange={(e) => setLocationSearchText(e.target.value)}
-                                    className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 outline-none focus:border-amber-500"
+                                    className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-amber-500"
                                   />
                                 </div>
                                 <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
@@ -1789,7 +1806,7 @@ export default function AssetsAuditPage() {
                                       setLocationDropdownOpen(false);
                                     }}
                                     className={`p-2 rounded-xl text-xs flex items-center gap-2 cursor-pointer transition-colors ${
-                                      !cardActualLocationId ? 'bg-amber-600 text-white font-bold' : 'hover:bg-slate-800 text-slate-300'
+                                      !cardActualLocationId ? 'bg-amber-500 text-white font-bold' : 'hover:bg-slate-50 text-slate-700'
                                     }`}
                                   >
                                     <span>📍</span>
@@ -1804,8 +1821,8 @@ export default function AssetsAuditPage() {
                                       }}
                                       className={`p-2 rounded-xl text-xs flex items-center justify-between cursor-pointer transition-colors ${
                                         cardActualLocationId === loc.id
-                                          ? 'bg-amber-600 text-white font-bold'
-                                          : 'hover:bg-slate-800 text-slate-300'
+                                          ? 'bg-amber-500 text-white font-bold'
+                                          : 'hover:bg-slate-50 text-slate-700'
                                       }`}
                                     >
                                       <div className="min-w-0">
@@ -1816,7 +1833,7 @@ export default function AssetsAuditPage() {
                                     </div>
                                   ))}
                                   {filteredDropdownLocations.length === 0 && (
-                                    <p className="text-[11px] text-slate-500 p-2 text-center">Không tìm thấy vị trí phù hợp</p>
+                                    <p className="text-[11px] text-slate-400 p-2 text-center">Không tìm thấy vị trí phù hợp</p>
                                   )}
                                 </div>
                               </div>
@@ -1829,13 +1846,13 @@ export default function AssetsAuditPage() {
                     {/* Condition & Notes */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
                           Tình trạng vật lý thực tế:
                         </label>
                         <select
                           value={cardActualCondition}
                           onChange={(e) => setCardActualCondition(e.target.value)}
-                          className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs font-semibold text-white outline-none focus:border-indigo-500"
+                          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
                         >
                           <option value="NEW">Mới 100%</option>
                           <option value="GOOD">Tốt (Đang hoạt động ổn định)</option>
@@ -1846,7 +1863,7 @@ export default function AssetsAuditPage() {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
                           Ghi chú thực tế (Actual Notes):
                         </label>
                         <input
@@ -1854,7 +1871,7 @@ export default function AssetsAuditPage() {
                           placeholder="VD: Máy trầy xước góc, thiếu sạc zin, bàn giao cho NV mới..."
                           value={cardActualNotes}
                           onChange={(e) => setCardActualNotes(e.target.value)}
-                          className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-indigo-500"
+                          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
                         />
                       </div>
                     </div>
@@ -1876,21 +1893,21 @@ export default function AssetsAuditPage() {
                       }}
                       className={`p-3.5 rounded-2xl border transition-all duration-200 space-y-2.5 ${
                         isDraggingPhoto
-                          ? 'bg-indigo-950/80 border-indigo-400 ring-4 ring-indigo-500/30 scale-[1.01]'
-                          : 'bg-slate-900/90 border-slate-700'
+                          ? 'bg-indigo-50/80 border-indigo-400 ring-4 ring-indigo-500/20 scale-[1.01]'
+                          : 'bg-slate-50 border-slate-200'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <Camera className="w-3.5 h-3.5 text-indigo-400" />
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Camera className="w-3.5 h-3.5 text-indigo-600" />
                           <span>2. Ảnh chụp hiện trạng thiết bị thực tế:</span>
                         </label>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10.5px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/30 hidden sm:inline-flex items-center gap-1">
+                          <span className="text-[10.5px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200 hidden sm:inline-flex items-center gap-1">
                             <span>📋 Hỗ trợ Ctrl+V & Kéo thả ảnh</span>
                           </span>
                           {cardPhotoUrl && (
-                            <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                            <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                               ✓ Đã có ảnh
                             </span>
                           )}
@@ -1899,45 +1916,41 @@ export default function AssetsAuditPage() {
 
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         {cardPhotoUrl ? (
-                          <div className="flex items-center gap-3 bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex-1">
+                          <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 flex-1 shadow-xs">
                             <div className="relative group/thumb shrink-0">
                               <img
                                 src={cardPhotoUrl}
-                                alt="Hiện trạng"
-                                className="w-16 h-16 object-cover rounded-lg border border-slate-700 cursor-pointer shadow-md"
-                                onClick={() => {
-                                  setLightboxPhotoUrl(cardPhotoUrl);
-                                  setLightboxItem(activeAuditingItem);
-                                }}
+                                alt="Xem trước"
+                                className="w-16 h-16 object-cover rounded-lg border border-slate-200"
                               />
                               <div
                                 onClick={() => {
                                   setLightboxPhotoUrl(cardPhotoUrl);
                                   setLightboxItem(activeAuditingItem);
                                 }}
-                                className="absolute inset-0 bg-black/50 opacity-0 group-hover/thumb:opacity-100 rounded-lg flex items-center justify-center text-white cursor-pointer transition-opacity"
+                                className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 rounded-lg flex items-center justify-center text-white cursor-pointer transition-opacity"
                               >
                                 <ZoomIn className="w-4 h-4" />
                               </div>
                             </div>
                             <div className="min-w-0 flex-1 text-xs">
-                              <p className="font-bold text-white truncate">Ảnh hiện trạng thiết bị</p>
-                              <p className="text-[11px] text-slate-400 truncate">
+                              <p className="font-bold text-slate-900 truncate">Ảnh hiện trạng thiết bị</p>
+                              <p className="text-[11px] text-slate-500 truncate">
                                 {isDraggingPhoto ? '👉 Thả tệp vào đây để đổi ảnh!' : 'Dán Ctrl+V hoặc kéo ảnh khác vào để thay thế'}
                               </p>
                               <div className="flex items-center gap-2 mt-1.5">
                                 <button
                                   type="button"
                                   onClick={() => photoInputRef.current?.click()}
-                                  className="text-[11px] text-indigo-400 hover:text-indigo-300 font-bold underline cursor-pointer"
+                                  className="text-[11px] text-indigo-600 hover:text-indigo-700 font-bold underline cursor-pointer"
                                 >
                                   Chụp lại / Đổi ảnh
                                 </button>
-                                <span className="text-slate-600">•</span>
+                                <span className="text-slate-300">•</span>
                                 <button
                                   type="button"
                                   onClick={() => setCardPhotoUrl(null)}
-                                  className="text-[11px] text-rose-400 hover:text-rose-300 font-bold cursor-pointer"
+                                  className="text-[11px] text-rose-600 hover:text-rose-700 font-bold cursor-pointer"
                                 >
                                   Xóa ảnh
                                 </button>
@@ -1947,27 +1960,27 @@ export default function AssetsAuditPage() {
                         ) : (
                           <div
                             onClick={() => photoInputRef.current?.click()}
-                            className={`flex-1 py-4 px-4 bg-slate-950 hover:bg-slate-950/80 border-2 border-dashed rounded-2xl text-xs font-bold text-indigo-300 flex flex-col sm:flex-row items-center justify-center gap-2.5 transition-all cursor-pointer group ${
-                              isDraggingPhoto ? 'border-emerald-400 bg-emerald-950/40 text-emerald-300' : 'border-indigo-500/40 hover:border-indigo-400'
+                            className={`flex-1 py-4 px-4 bg-white hover:bg-slate-50 border-2 border-dashed rounded-2xl text-xs font-bold text-indigo-600 flex flex-col sm:flex-row items-center justify-center gap-2.5 transition-all cursor-pointer group ${
+                              isDraggingPhoto ? 'border-emerald-500 bg-emerald-50/50 text-emerald-700' : 'border-indigo-200 hover:border-indigo-400'
                             }`}
                           >
                             {isUploadingPhoto ? (
                               <div className="flex items-center gap-2">
-                                <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+                                <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
                                 <span>Đang tải và xử lý ảnh...</span>
                               </div>
                             ) : (
                               <>
-                                <div className="w-8 h-8 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform shrink-0">
+                                <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform shrink-0">
                                   <Camera className="w-4 h-4" />
                                 </div>
                                 <div className="text-center sm:text-left">
-                                  <p className="text-white text-xs font-bold flex items-center gap-1.5 justify-center sm:justify-start">
+                                  <p className="text-slate-900 text-xs font-bold flex items-center gap-1.5 justify-center sm:justify-start">
                                     <span>📸 Bấm chụp ảnh / Chọn file</span>
-                                    <span className="text-indigo-400">• Kéo thả ảnh</span>
-                                    <span className="text-amber-400">• Dán Ctrl+V</span>
+                                    <span className="text-indigo-600">• Kéo thả ảnh</span>
+                                    <span className="text-amber-600">• Dán Ctrl+V</span>
                                   </p>
-                                  <p className="text-[10.5px] text-slate-400 font-normal mt-0.5">
+                                  <p className="text-[10.5px] text-slate-500 font-normal mt-0.5">
                                     Chụp từ Camera điện thoại hoặc sao chép ảnh từ Zalo / Snipping Tool dán vào trực tiếp
                                   </p>
                                 </div>
@@ -1979,11 +1992,11 @@ export default function AssetsAuditPage() {
                     </div>
 
                     {/* Save & Continue Button */}
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-700">
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                       <button
                         type="button"
                         onClick={() => setActiveAuditingItem(null)}
-                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition-colors"
                       >
                         Bỏ Qua
                       </button>
@@ -1991,7 +2004,7 @@ export default function AssetsAuditPage() {
                         type="button"
                         disabled={isSavingAuditItem}
                         onClick={handleSaveAndNext}
-                        className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/30 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                        className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                       >
                         {isSavingAuditItem ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -2003,9 +2016,9 @@ export default function AssetsAuditPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-slate-800/40 p-12 rounded-3xl border border-dashed border-slate-700 text-center space-y-2">
-                    <Tag className="w-10 h-10 text-slate-600 mx-auto" />
-                    <h4 className="text-sm font-bold text-slate-300">Chưa chọn thiết bị nào để xác nhận thực tế</h4>
+                  <div className="bg-white p-12 rounded-2xl border border-dashed border-slate-200 text-center space-y-2 shadow-xs">
+                    <Tag className="w-10 h-10 text-slate-300 mx-auto" />
+                    <h4 className="text-sm font-bold text-slate-700">Chưa chọn thiết bị nào để xác nhận thực tế</h4>
                     <p className="text-xs text-slate-500 max-w-sm mx-auto">
                       Hãy quét tem QR, nhập mã tag hoặc chọn một máy từ danh sách bên trái để mở thẻ xác nhận và chụp ảnh hiện trạng.
                     </p>
@@ -2016,17 +2029,17 @@ export default function AssetsAuditPage() {
           )}
 
           {/* ==================== AUDIT RECONCILIATION SUMMARY TABLE ==================== */}
-          <div className="bg-slate-800/80 p-5 rounded-3xl border border-slate-700/80 shadow-xl space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-700 pb-3">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               {/* Tabs */}
-              <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-2xl border border-slate-700 overflow-x-auto">
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto">
                 <button
                   type="button"
                   onClick={() => setTableFilterTab('ALL')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     tableFilterTab === 'ALL'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Tất cả ({currentSession.items.length})
@@ -2035,10 +2048,10 @@ export default function AssetsAuditPage() {
                 <button
                   type="button"
                   onClick={() => setTableFilterTab('MATCHED')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     tableFilterTab === 'MATCHED'
                       ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   🟢 Khớp ({currentSession.items.filter((i) => i.auditStatus === 'MATCHED').length})
@@ -2047,10 +2060,10 @@ export default function AssetsAuditPage() {
                 <button
                   type="button"
                   onClick={() => setTableFilterTab('MISMATCH')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     tableFilterTab === 'MISMATCH'
-                      ? 'bg-amber-600 text-white shadow-xs'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-amber-500 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   🟡 Sai lệch ({currentSession.items.filter((i) => i.auditStatus === 'MISMATCH_LOCATION_USER' || i.auditStatus === 'DAMAGED_OR_LOST').length})
@@ -2059,10 +2072,10 @@ export default function AssetsAuditPage() {
                 <button
                   type="button"
                   onClick={() => setTableFilterTab('PENDING')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     tableFilterTab === 'PENDING'
                       ? 'bg-slate-700 text-white shadow-xs'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   ⚪ Chưa kiểm ({currentSession.items.filter((i) => i.auditStatus === 'PENDING').length})
@@ -2078,16 +2091,16 @@ export default function AssetsAuditPage() {
                     placeholder="Lọc trong bảng..."
                     value={tableSearch}
                     onChange={(e) => setTableSearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 outline-none"
+                    className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-indigo-500"
                   />
                 </div>
               </div>
             </div>
 
             {/* Reconciliation Table */}
-            <div className="overflow-x-auto rounded-2xl border border-slate-700/80">
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider font-bold border-b border-slate-800">
+                <thead className="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-200">
                   <tr>
                     <th className="p-3">Mã Tag & Thiết Bị</th>
                     <th className="p-3 text-center">Ảnh Hiện Trạng</th>
@@ -2099,10 +2112,10 @@ export default function AssetsAuditPage() {
                     <th className="p-3 text-right">Thao Tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-slate-100">
                   {displayItems.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-slate-500">
+                      <td colSpan={8} className="p-8 text-center text-slate-400">
                         Không có thiết bị nào trong danh mục đối soát này.
                       </td>
                     </tr>
@@ -2114,14 +2127,14 @@ export default function AssetsAuditPage() {
                       const isPending = item.auditStatus === 'PENDING';
 
                       return (
-                        <tr key={item.id} className="hover:bg-slate-800/60 transition-colors">
+                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                           {/* Tag & Name */}
                           <td className="p-3 min-w-[180px]">
                             <div className="flex items-center gap-2">
-                              <span className="font-mono font-bold text-indigo-400 bg-indigo-950/60 border border-indigo-800 px-1.5 py-0.5 rounded text-[11px]">
+                              <span className="font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded text-[11px]">
                                 [{item.assetTag}]
                               </span>
-                              <span className="font-bold text-white truncate max-w-[140px]" title={item.name}>
+                              <span className="font-bold text-slate-900 truncate max-w-[140px]" title={item.name}>
                                 {item.name}
                               </span>
                             </div>
@@ -2144,39 +2157,39 @@ export default function AssetsAuditPage() {
                                 <img
                                   src={item.actualPhotoUrl}
                                   alt="Hiện trạng"
-                                  className="w-10 h-10 object-cover rounded-lg border border-slate-700 group-hover:border-indigo-400 transition-colors shadow-sm mx-auto"
+                                  className="w-10 h-10 object-cover rounded-lg border border-slate-200 group-hover:border-indigo-500 transition-colors shadow-2xs mx-auto"
                                 />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center text-white transition-opacity">
                                   <ZoomIn className="w-3.5 h-3.5" />
                                 </div>
                               </div>
                             ) : (
-                              <span className="text-slate-600 text-[11px] italic">—</span>
+                              <span className="text-slate-400 text-[11px] italic">—</span>
                             )}
                           </td>
 
                           {/* Company */}
-                          <td className="p-3 text-slate-300 font-medium max-w-[140px] truncate" title={item.companyName}>
+                          <td className="p-3 text-slate-600 font-medium max-w-[140px] truncate" title={item.companyName}>
                             {item.companyName || '—'}
                           </td>
 
                           {/* System User & Location */}
                           <td className="p-3 min-w-[160px]">
-                            <p className="font-semibold text-slate-200">👤 {item.systemUserName}</p>
+                            <p className="font-semibold text-slate-800">👤 {item.systemUserName}</p>
                             <p className="text-[10.5px] text-slate-400">📍 {item.systemLocationName}</p>
                           </td>
 
                           {/* Actual User & Location */}
                           <td className="p-3 min-w-[160px]">
                             {isPending ? (
-                              <span className="text-slate-500 italic">Chờ quét tại chỗ...</span>
+                              <span className="text-slate-400 italic">Chờ quét tại chỗ...</span>
                             ) : (
                               <div>
                                 <p
                                   className={`font-semibold ${
                                     item.actualUserName !== item.systemUserName
-                                      ? 'text-amber-400 font-bold'
-                                      : 'text-emerald-400'
+                                      ? 'text-amber-700 font-bold'
+                                      : 'text-emerald-700'
                                   }`}
                                 >
                                   👤 {item.actualUserName}
@@ -2184,8 +2197,8 @@ export default function AssetsAuditPage() {
                                 <p
                                   className={`text-[10.5px] ${
                                     item.actualLocationName !== item.systemLocationName
-                                      ? 'text-amber-400 font-bold'
-                                      : 'text-slate-400'
+                                      ? 'text-amber-700 font-bold'
+                                      : 'text-slate-500'
                                   }`}
                                 >
                                   📍 {item.actualLocationName}
@@ -2197,33 +2210,33 @@ export default function AssetsAuditPage() {
                           {/* Audit Status Badge */}
                           <td className="p-3 text-center">
                             {isMatched && (
-                              <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full font-bold text-[10.5px] inline-flex items-center gap-1">
+                              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-bold text-[10.5px] inline-flex items-center gap-1">
                                 <span>🟢 Khớp</span>
                               </span>
                             )}
                             {isMismatched && (
-                              <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full font-bold text-[10.5px] inline-flex items-center gap-1">
+                              <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full font-bold text-[10.5px] inline-flex items-center gap-1">
                                 <span>🟡 Sai lệch</span>
                               </span>
                             )}
                             {isDamaged && (
-                              <span className="px-2.5 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/40 rounded-full font-bold text-[10.5px] inline-flex items-center gap-1">
+                              <span className="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-full font-bold text-[10.5px] inline-flex items-center gap-1">
                                 <span>🔴 Hỏng / Mất</span>
                               </span>
                             )}
                             {isPending && (
-                              <span className="px-2.5 py-1 bg-slate-700/60 text-slate-400 border border-slate-600 rounded-full font-semibold text-[10.5px]">
+                              <span className="px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full font-semibold text-[10.5px]">
                                 ⚪ Chờ kiểm
                               </span>
                             )}
                           </td>
 
                           {/* Notes */}
-                          <td className="p-3 text-slate-300 max-w-[160px] truncate" title={item.actualNotes}>
+                          <td className="p-3 text-slate-700 max-w-[160px] truncate" title={item.actualNotes}>
                             {item.actualNotes ? (
                               <span>📝 {item.actualNotes}</span>
                             ) : (
-                              <span className="text-slate-500 italic">—</span>
+                              <span className="text-slate-400 italic">—</span>
                             )}
                           </td>
 
@@ -2232,7 +2245,7 @@ export default function AssetsAuditPage() {
                             <button
                               type="button"
                               onClick={() => handleSelectAssetForAudit(item)}
-                              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold cursor-pointer transition-colors"
+                              className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-lg text-[11px] font-bold cursor-pointer transition-colors border border-indigo-200 hover:border-indigo-600"
                             >
                               {isPending ? 'Quét ngay' : 'Sửa lại'}
                             </button>
@@ -2252,50 +2265,52 @@ export default function AssetsAuditPage() {
       {/* ==================== MODAL: CREATE NEW AUDIT CAMPAIGN =================== */}
       {/* ========================================================================= */}
       {isNewSessionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-slate-900 rounded-3xl max-w-xl w-full border border-slate-700 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-800/80">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80">
               <div className="flex items-center gap-2.5">
-                <span className="p-2 bg-indigo-600 text-white rounded-xl shadow-xs">
-                  <FolderCheck className="w-5 h-5" />
+                <span className="p-2 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-xl shadow-xs">
+                  <Plus className="w-4 h-4" />
                 </span>
                 <div>
-                  <h3 className="font-extrabold text-base text-white">Khởi Tạo Đợt Kiểm Kê Tài Sản Mới</h3>
-                  <p className="text-xs text-slate-400">Chọn phạm vi công ty và khu vực để hệ thống tự động gom dữ liệu thiết bị</p>
+                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">Tạo Đợt Kiểm Kê Tài Sản Mới</h3>
+                  <p className="text-[11px] text-slate-500">Khởi tạo chiến dịch quét mã QR và đối soát hiện trường</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsNewSessionModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Body */}
-            <div className="p-6 space-y-4 text-xs">
-              {/* Title */}
+            {/* Form */}
+            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* Campaign Title */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
                   Tên đợt kiểm kê (*):
                 </label>
                 <input
                   type="text"
-                  required
-                  placeholder="VD: Kiểm kê Q3/2026, Kiểm kê định kỳ thiết bị CNTT..."
+                  placeholder="VD: Kiểm kê quý 1/2025 - Khối Văn Phòng Hội Sở..."
                   value={newSessionTitle}
                   onChange={(e) => setNewSessionTitle(e.target.value)}
-                  className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-semibold text-white outline-none focus:border-indigo-500"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
                 />
               </div>
 
-              {/* Multi-Select Companies */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-300">
-                    Phạm vi Công Ty / Chi Nhánh (*):
+              {/* Multi-Company Selection */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <span>🏢 Phạm vi Doanh nghiệp / Công ty áp dụng (*):</span>
+                    <span className="text-[10px] text-indigo-600 font-semibold">
+                      (Đã chọn {newSessionCompanies.length}/{companies.length})
+                    </span>
                   </label>
                   <button
                     type="button"
@@ -2306,13 +2321,13 @@ export default function AssetsAuditPage() {
                         setNewSessionCompanies([...companies]);
                       }
                     }}
-                    className="text-[11px] font-bold text-indigo-400 hover:underline cursor-pointer"
+                    className="text-[11px] font-bold text-indigo-600 hover:underline cursor-pointer"
                   >
                     {newSessionCompanies.length === companies.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả công ty'}
                   </button>
                 </div>
 
-                <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-2 max-h-40 overflow-y-auto">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 max-h-40 overflow-y-auto">
                   {companies.map((comp) => {
                     const isChecked = newSessionCompanies.includes(comp);
                     return (
@@ -2325,19 +2340,19 @@ export default function AssetsAuditPage() {
                         }}
                         className={`p-2 rounded-xl flex items-center justify-between cursor-pointer transition-colors ${
                           isChecked
-                            ? 'bg-indigo-950/60 border border-indigo-700 text-white font-bold'
-                            : 'hover:bg-slate-800/60 text-slate-400 border border-transparent'
+                            ? 'bg-indigo-50/80 border border-indigo-200 text-indigo-900 font-bold'
+                            : 'hover:bg-slate-100 text-slate-600 border border-transparent'
                         }`}
                       >
                         <div className="flex items-center gap-2">
                           <div
                             className={`w-4 h-4 rounded-md flex items-center justify-center border ${
-                              isChecked ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-slate-600'
+                              isChecked ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'
                             }`}
                           >
                             {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                           </div>
-                          <span>🏢 {comp}</span>
+                          <span className="text-xs">🏢 {comp}</span>
                         </div>
                       </div>
                     );
@@ -2348,13 +2363,13 @@ export default function AssetsAuditPage() {
               {/* Filters: Location & Category */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     Khu vực / Phòng ban:
                   </label>
                   <select
                     value={newSessionLocationId}
                     onChange={(e) => setNewSessionLocationId(e.target.value)}
-                    className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
                   >
                     <option value="ALL">Tất cả các vị trí</option>
                     {locations.map((loc) => (
@@ -2366,13 +2381,13 @@ export default function AssetsAuditPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     Loại thiết bị:
                   </label>
                   <select
                     value={newSessionCategoryId}
                     onChange={(e) => setNewSessionCategoryId(e.target.value)}
-                    className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
                   >
                     <option value="ALL">Tất cả loại tài sản</option>
                     {categories.map((cat) => (
@@ -2387,32 +2402,32 @@ export default function AssetsAuditPage() {
               {/* Target Date & Responsible Person */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     Hạn chốt dự kiến:
                   </label>
                   <input
                     type="date"
                     value={newSessionTargetDate}
                     onChange={(e) => setNewSessionTargetDate(e.target.value)}
-                    className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     Người phụ trách chính:
                   </label>
                   <input
                     type="text"
                     value={newSessionResponsible}
                     onChange={(e) => setNewSessionResponsible(e.target.value)}
-                    className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
                   />
                 </div>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
                   Ghi chú mục tiêu đợt kiểm kê:
                 </label>
                 <input
@@ -2420,23 +2435,23 @@ export default function AssetsAuditPage() {
                   placeholder="Mục đích, KTV phối hợp, lưu ý hiện trường..."
                   value={newSessionNotes}
                   onChange={(e) => setNewSessionNotes(e.target.value)}
-                  className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:bg-white focus:border-indigo-500"
                 />
               </div>
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-800 bg-slate-800/80">
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100 bg-slate-50/80">
               <button
                 type="button"
                 onClick={() => setIsNewSessionModalOpen(false)}
-                className="px-4 py-2 border border-slate-700 text-slate-400 hover:text-white rounded-xl text-xs font-bold cursor-pointer"
+                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold cursor-pointer shadow-xs"
               >{isEn ? 'Cancel' : 'Hủy'}</button>
               <button
                 type="button"
                 disabled={isSubmittingNewCampaign}
                 onClick={handleStartNewCampaign}
-                className="px-5 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer flex items-center gap-1.5"
+                className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5"
               >
                 {isSubmittingNewCampaign ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -2456,30 +2471,30 @@ export default function AssetsAuditPage() {
       {lightboxPhotoUrl && (
         <div
           onClick={() => setLightboxPhotoUrl(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-150"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl text-xs space-y-3 p-4"
+            className="bg-white border border-slate-200 rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl text-xs space-y-3 p-5"
           >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-emerald-400" />
-                <span className="font-extrabold text-sm text-white">
+                <ImageIcon className="w-4 h-4 text-emerald-600" />
+                <span className="font-extrabold text-sm text-slate-900">
                   Ảnh Hiện Trạng Thực Tế [{lightboxItem?.assetTag || 'Thiết bị'}]
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setLightboxPhotoUrl(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* High-res image */}
-            <div className="rounded-2xl overflow-hidden bg-black/60 max-h-[70vh] flex items-center justify-center border border-slate-800">
+            <div className="rounded-2xl overflow-hidden bg-slate-100 max-h-[70vh] flex items-center justify-center border border-slate-200">
               <img
                 src={lightboxPhotoUrl}
                 alt="Ảnh hiện trạng chi tiết"
@@ -2489,19 +2504,19 @@ export default function AssetsAuditPage() {
 
             {/* Item Meta info */}
             {lightboxItem && (
-              <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800 grid grid-cols-2 gap-2 text-slate-300">
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 grid grid-cols-2 gap-2 text-slate-700">
                 <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Thiết bị:</span>
-                  <span className="font-bold text-white">[{lightboxItem.assetTag}] {lightboxItem.name}</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Thiết bị:</span>
+                  <span className="font-bold text-slate-900">[{lightboxItem.assetTag}] {lightboxItem.name}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Tình trạng thực tế:</span>
-                  <span className="font-bold text-emerald-400">{lightboxItem.actualCondition}</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Tình trạng thực tế:</span>
+                  <span className="font-bold text-emerald-600">{lightboxItem.actualCondition}</span>
                 </div>
                 {lightboxItem.actualNotes && (
                   <div className="col-span-2">
-                    <span className="text-[10px] text-slate-500 uppercase font-bold block">Ghi chú hiện trường:</span>
-                    <span className="text-slate-300">{lightboxItem.actualNotes}</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Ghi chú hiện trường:</span>
+                    <span className="text-slate-600">{lightboxItem.actualNotes}</span>
                   </div>
                 )}
               </div>
@@ -2512,7 +2527,7 @@ export default function AssetsAuditPage() {
                 href={lightboxPhotoUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5"
+                className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-200"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>Mở trong tab mới</span>
@@ -2520,7 +2535,7 @@ export default function AssetsAuditPage() {
               <button
                 type="button"
                 onClick={() => setLightboxPhotoUrl(null)}
-                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer"
+                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs"
               >{isEn ? 'Close' : 'Đóng'}</button>
             </div>
           </div>
@@ -2531,42 +2546,42 @@ export default function AssetsAuditPage() {
       {/* ==================== MODAL: SHARE ON MOBILE VIA QR ===================== */}
       {/* ========================================================================= */}
       {isShareModalOpen && currentSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-slate-900 rounded-3xl max-w-md w-full border border-indigo-500/50 shadow-2xl p-6 text-center space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-white font-extrabold text-sm">
-                <QrCode className="w-4 h-4 text-indigo-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 text-center space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-slate-900 font-extrabold text-sm">
+                <QrCode className="w-4 h-4 text-indigo-600" />
                 <span>Mở Chiến Dịch Trên Điện Thoại</span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsShareModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* HTTPS 3443 Camera Badge */}
-            <div className="p-3 bg-indigo-950/60 rounded-2xl border border-indigo-500/30 text-left space-y-1">
+            <div className="p-3 bg-indigo-50 rounded-2xl border border-indigo-100 text-left space-y-1">
               <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                <span className="text-[11px] font-bold text-emerald-300 font-mono">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                <span className="text-[11px] font-bold text-indigo-900 font-mono">
                   🔒 Cổng HTTPS 3443 (Tự động kích hoạt Camera điện thoại)
                 </span>
               </div>
-              <p className="text-[10.5px] text-slate-300 leading-relaxed">
+              <p className="text-[10.5px] text-slate-600 leading-relaxed">
                 Trình duyệt trên điện thoại (Safari/Chrome) bắt buộc kết nối bảo mật <strong>HTTPS:3443</strong> để mở Camera quét mã QR và chụp ảnh hiện trạng thiết bị.
               </p>
             </div>
 
             {/* Server IP / Host Configuration */}
-            <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-left space-y-2">
+            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-left space-y-2">
               <div className="flex items-center justify-between text-[11px]">
-                <label className="font-bold text-slate-300 flex items-center gap-1">
+                <label className="font-bold text-slate-700 flex items-center gap-1">
                   <span>🌐 Địa chỉ IP Server:</span>
                   {serverUrlSetting && (
-                    <span className="text-slate-500 font-normal truncate max-w-[130px]" title={serverUrlSetting}>
+                    <span className="text-slate-400 font-normal truncate max-w-[130px]" title={serverUrlSetting}>
                       (Gốc: {serverUrlSetting})
                     </span>
                   )}
@@ -2580,85 +2595,53 @@ export default function AssetsAuditPage() {
                     setGeneratedMobileUrl(newUrl);
                     generateAndSetQr(newUrl);
                   }}
-                  className="text-indigo-400 hover:text-indigo-300 font-bold underline text-[10.5px] cursor-pointer"
+                  className="text-indigo-600 hover:text-indigo-700 font-bold underline text-[10.5px] cursor-pointer"
                 >
-                  Lấy IP hiện tại ({typeof window !== 'undefined' ? window.location.hostname : ''})
+                  Lấy IP máy hiện tại
                 </button>
               </div>
-
-              {/* Host input with HTTPS prefix and 3443 suffix */}
-              <div className="flex items-center gap-1.5 font-mono text-xs bg-slate-900 p-1.5 rounded-xl border border-slate-700">
-                <span className="text-emerald-400 font-bold px-1 select-none">https://</span>
+              <div className="flex items-center gap-1.5">
                 <input
                   type="text"
+                  placeholder="VD: 192.168.1.50 hoặc simply-it.company.local"
                   value={mobileHost}
                   onChange={(e) => {
-                    const newHost = e.target.value.trim();
+                    const newHost = e.target.value;
                     setMobileHost(newHost);
                     const newUrl = resolveMobileUrl(currentSession.id, newHost);
                     setGeneratedMobileUrl(newUrl);
                     generateAndSetQr(newUrl);
                   }}
-                  placeholder="192.168.1.100 hoặc tên miền"
-                  className="flex-1 bg-transparent text-white font-bold outline-none placeholder:text-slate-600"
+                  className="flex-1 p-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-900 outline-none focus:border-indigo-500 shadow-2xs"
                 />
-                <span className="text-indigo-400 font-black px-1 select-none">:3443</span>
               </div>
-
-              {/* Quick Save Host into Settings */}
-              <div className="flex items-center justify-between pt-1">
-                <button
-                  type="button"
-                  onClick={handleSaveHostToSettings}
-                  disabled={isSavingServerSetting || !mobileHost.trim()}
-                  className="text-[10.5px] text-slate-400 hover:text-emerald-400 flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  <Save className="w-3 h-3" />
-                  <span>{savedSettingToast ? '✅ Đã lưu vào Cài Đặt!' : 'Lưu IP này làm mặc định trong Cài Đặt'}</span>
-                </button>
-
-                {serverUrlSetting && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const h = extractHostname(serverUrlSetting);
-                      if (h) {
-                        setMobileHost(h);
-                        const newUrl = resolveMobileUrl(currentSession.id, h);
-                        setGeneratedMobileUrl(newUrl);
-                        generateAndSetQr(newUrl);
-                      }
-                    }}
-                    className="text-[10.5px] text-amber-400 hover:underline cursor-pointer"
-                  >
-                    Khôi phục IP Cài Đặt
-                  </button>
-                )}
-              </div>
+              <p className="text-[10px] text-slate-500">
+                💡 Nếu quét QR từ iPhone/Android, đảm bảo điện thoại kết nối chung mạng Wi-Fi và nhập đúng IP LAN của máy tính.
+              </p>
             </div>
 
             {/* QR Code Container */}
             <div className="space-y-1">
-              <p className="text-xs text-slate-300 font-medium">
+              <p className="text-xs text-slate-600 font-medium">
                 Dùng Camera điện thoại hoặc Zalo quét mã QR bên dưới:
               </p>
               {shareQrDataUrl ? (
-                <div className="p-3 bg-white rounded-2xl inline-block shadow-lg mx-auto border-4 border-indigo-500/30">
+                <div className="p-3 bg-white rounded-2xl inline-block shadow-md mx-auto border-2 border-indigo-100">
                   <img src={shareQrDataUrl} alt="Mobile Audit QR" className="w-56 h-56 mx-auto object-contain" />
                 </div>
               ) : (
-                <div className="w-56 h-56 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto text-slate-500 text-xs">
+                <div className="w-56 h-56 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto text-slate-400 text-xs">
                   Đang tạo mã QR...
                 </div>
               )}
             </div>
 
             {/* Generated Link URL Display */}
-            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-left">
-              <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-left">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">
                 Đường dẫn trực tiếp (HTTPS :3443):
               </span>
-              <p className="text-[11px] font-mono text-emerald-300 break-all select-all font-semibold">
+              <p className="text-[11px] font-mono text-emerald-700 break-all select-all font-semibold">
                 {generatedMobileUrl || resolveMobileUrl(currentSession.id)}
               </p>
             </div>
@@ -2673,9 +2656,9 @@ export default function AssetsAuditPage() {
                     setCopiedShareLink(true);
                     setTimeout(() => setCopiedShareLink(false), 2500);
                   }}
-                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all active:scale-95"
+                  className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all active:scale-95"
                 >
-                  {copiedShareLink ? <Check className="w-4 h-4 text-emerald-300" /> : <Tag className="w-4 h-4" />}
+                  {copiedShareLink ? <Check className="w-4 h-4 text-emerald-200" /> : <Tag className="w-4 h-4" />}
                   <span>{copiedShareLink ? '✅ Đã sao chép link!' : 'Sao chép Link kiểm kê'}</span>
                 </button>
 
@@ -2683,10 +2666,10 @@ export default function AssetsAuditPage() {
                   href={generatedMobileUrl || resolveMobileUrl(currentSession.id)}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-700"
+                  className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-200 shadow-xs"
                   title="Mở thử trong tab mới để kiểm tra kết nối HTTPS"
                 >
-                  <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+                  <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
                   <span>Mở tab mới</span>
                 </a>
               </div>
@@ -2694,7 +2677,7 @@ export default function AssetsAuditPage() {
               <button
                 type="button"
                 onClick={() => setIsShareModalOpen(false)}
-                className="w-full py-2 bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs font-bold cursor-pointer"
+                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 rounded-xl text-xs font-bold cursor-pointer transition-colors"
               >{isEn ? 'Close' : 'Đóng'}</button>
             </div>
           </div>
@@ -2705,47 +2688,47 @@ export default function AssetsAuditPage() {
       {/* ==================== MODAL: FINALIZE CONFIRMATION ====================== */}
       {/* ========================================================================= */}
       {isFinalizeModalOpen && currentSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-slate-900 rounded-3xl max-w-md w-full border border-slate-700 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150 text-xs">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150 text-xs">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto shadow-xs">
               <CheckCheck className="w-6 h-6" />
             </div>
 
             <div className="text-center space-y-1">
-              <h3 className="text-base font-extrabold text-white">Xác Nhận Chốt Đợt Kiểm Kê</h3>
-              <p className="text-slate-400">
-                Bạn đã kiểm kê <strong>{metrics.audited}/{metrics.total}</strong> thiết bị ({metrics.percent}%).
+              <h3 className="text-base font-extrabold text-slate-900">Xác Nhận Chốt Đợt Kiểm Kê</h3>
+              <p className="text-slate-500">
+                Bạn đã kiểm kê <strong className="text-slate-800">{metrics.audited}/{metrics.total}</strong> thiết bị ({metrics.percent}%).
               </p>
             </div>
 
-            <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-2 text-slate-300">
+            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-slate-700">
               <div className="flex items-center justify-between">
                 <span>🟢 Khớp hoàn toàn:</span>
-                <span className="font-bold text-emerald-400 font-mono">
+                <span className="font-bold text-emerald-600 font-mono">
                   {currentSession.items.filter((i) => i.auditStatus === 'MATCHED').length} máy
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span>🟡 Sai lệch vị trí / người dùng:</span>
-                <span className="font-bold text-amber-400 font-mono">
+                <span className="font-bold text-amber-600 font-mono">
                   {currentSession.items.filter((i) => i.auditStatus === 'MISMATCH_LOCATION_USER').length} máy
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span>🔴 Hỏng / Thất thoát:</span>
-                <span className="font-bold text-rose-400 font-mono">
+                <span className="font-bold text-rose-600 font-mono">
                   {currentSession.items.filter((i) => i.auditStatus === 'DAMAGED_OR_LOST').length} máy
                 </span>
               </div>
-              <div className="flex items-center justify-between border-t border-slate-800 pt-1.5">
+              <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
                 <span>⚪ Chưa kiểm kê:</span>
-                <span className="font-bold text-slate-400 font-mono">
+                <span className="font-bold text-slate-500 font-mono">
                   {currentSession.items.filter((i) => i.auditStatus === 'PENDING').length} máy
                 </span>
               </div>
             </div>
 
-            <p className="text-[11px] text-amber-300 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20 leading-relaxed">
+            <p className="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 leading-relaxed">
               ⚠️ Khi chốt, hệ thống sẽ tự động đồng bộ vị trí, tình trạng thực tế và ghi chú vào Hồ sơ Tài sản gốc.
             </p>
 
@@ -2753,12 +2736,12 @@ export default function AssetsAuditPage() {
               <button
                 type="button"
                 onClick={() => setIsFinalizeModalOpen(false)}
-                className="px-4 py-2 border border-slate-700 text-slate-400 hover:text-white rounded-xl text-xs font-bold cursor-pointer"
+                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold cursor-pointer shadow-xs"
               >{isEn ? 'Cancel' : 'Hủy'}</button>
               <button
                 type="button"
                 onClick={handleFinalizeAudit}
-                className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer flex items-center gap-1.5"
+                className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5 transition-all active:scale-95"
               >
                 <Check className="w-4 h-4 stroke-[3]" />
                 <span>Đồng Ý Chốt & Đồng Bộ</span>

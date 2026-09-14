@@ -1,0 +1,19 @@
+{
+  "spare_parts.title": "IT Spare Parts & Consumables Inventory",
+  "spare_parts.subtitle": "Track replacement components inventory (RAM, SSD, chargers, mice, keyboards, cables) and transaction logs",
+  "spare_parts.add_btn": "Add Spare Part",
+  "spare_parts.stock_in_btn": "Stock In",
+  "spare_parts.stock_out_btn": "Stock Out (Issue)",
+  "spare_parts.search_placeholder": "Search part, part number, shelf location...",
+  "spare_parts.col_name": "PART NAME & PART NUMBER",
+  "spare_parts.col_category": "CATEGORY",
+  "spare_parts.col_stock": "CURRENT STOCK",
+  "spare_parts.col_min_stock": "MIN THRESHOLD",
+  "spare_parts.col_unit_price": "AVG UNIT PRICE",
+  "spare_parts.col_location": "SHELF LOCATION",
+  "spare_parts.col_actions": "ACTIONS",
+  "spare_parts.status_in_stock": "In Stock",
+  "spare_parts.status_low_stock": "Low Stock",
+  "spare_parts.status_out_of_stock": "Out of Stock",
+  "spare_parts.transaction_history": "Stock In / Out Transaction History"
+}

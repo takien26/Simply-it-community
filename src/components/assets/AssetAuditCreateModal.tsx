@@ -50,7 +50,24 @@ export function AssetAuditCreateModal({
   categories = [],
   onCreated,
 }: AssetAuditCreateModalProps) {
+  // ESC key listener to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const { language } = useLanguage();
+  const txt = (vi: string, en: string, ja?: string) => {
+    if (language === 'ja') return ja || en;
+    if (language === 'en') return en;
+    return vi;
+  };
   const isEn = language === 'en';
   const [scopeType, setScopeType] = useState<'SELECTED' | 'FILTER' | 'CUSTOM'>(
     selectedAssetIds.length > 0 ? 'SELECTED' : 'FILTER'
@@ -88,7 +105,7 @@ export function AssetAuditCreateModal({
     const month = new Date().getMonth() + 1;
     const year = new Date().getFullYear();
     const quarter = Math.ceil(month / 3);
-    setTitle(`Kiểm kê tài sản Q${quarter}/${year} - Đợt ${new Date().getDate()}/${month}`);
+    setTitle(txt(`Kiểm kê tài sản Q${quarter}/${year} - Đợt ${new Date().getDate()}/${month}`, `Asset Audit Q${quarter}/${year} - Round ${new Date().getDate()}/${month}`, `棚卸・資産点検 Q${quarter}/${year} - 第${new Date().getDate()}/${month}回`));
 
     if (selectedAssetIds.length > 0) {
       setScopeType('SELECTED');
@@ -145,11 +162,11 @@ export function AssetAuditCreateModal({
         onClose();
         window.location.href = '/scan';
       } else {
-        alert(data.error || 'Lỗi khởi tạo đợt kiểm kê');
+        alert(data.error || txt('Lỗi khởi tạo đợt kiểm kê', 'Failed to initialize audit round', '棚卸セッションの作成に失敗しました'));
       }
     } catch (err) {
       console.error(err);
-      alert('Lỗi kết nối khi tạo đợt kiểm kê');
+      alert(txt('Lỗi kết nối khi tạo đợt kiểm kê', 'Connection error creating audit round', '棚卸作成の通信エラー'));
     } finally {
       setIsSubmitting(false);
     }
@@ -165,9 +182,9 @@ export function AssetAuditCreateModal({
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-extrabold text-base leading-snug">Khởi Tạo Đợt Kiểm Kê Tài Sản</h3>
+              <h3 className="font-extrabold text-base leading-snug">{txt('Khởi Tạo Đợt Kiểm Kê Tài Sản', 'Create Asset Audit Session', '新規棚卸セッション作成')}</h3>
               <p className="text-xs text-blue-100 mt-0.5">
-                Thiết lập đợt kiểm kê & cấp mã QR để Kỹ thuật viên quét bằng điện thoại
+                {txt('Thiết lập đợt kiểm kê & cấp mã QR để Kỹ thuật viên quét bằng điện thoại', 'Set up audit session & generate QR code for mobile scanner', '棚卸セッションを設定し、スマホ端末スキャン用QRコードを発行')}
               </p>
             </div>
           </div>
@@ -187,14 +204,14 @@ export function AssetAuditCreateModal({
           <form onSubmit={handleSubmit} className="md:col-span-7 space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Tên Đợt Kiểm Kê (*):
+                {txt('Tên Đợt Kiểm Kê (*):', 'Audit Session Name (*):', '棚卸セッション名 (*):')}
               </label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="VD: Kiểm kê định kỳ Q3/2026 - Tòa nhà A"
+                placeholder={txt('VD: Kiểm kê định kỳ Q3/2026 - Tòa nhà A', 'e.g. Periodic Audit Q3/2026 - Building A', '例：定期棚卸 2026Q3 - 本社A棟')}
                 className="w-full bg-slate-50 border border-slate-300 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-semibold outline-none transition-colors"
               />
             </div>
@@ -202,7 +219,7 @@ export function AssetAuditCreateModal({
             {/* Scope Selection */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Phạm Vi Thiết Bị Kiểm Kê:
+                {txt('Phạm Vi Thiết Bị Kiểm Kê:', 'Audit Device Scope:', '棚卸対象範囲:')}
               </label>
               <div className="grid grid-cols-1 gap-2">
                 {selectedAssetIds.length > 0 && (
@@ -220,10 +237,10 @@ export function AssetAuditCreateModal({
                     />
                     <div>
                       <span className="text-xs font-bold block">
-                        Các thiết bị đang tick chọn ({selectedAssetIds.length} máy)
+                        {txt('Các thiết bị đang tick chọn', 'Selected assets', '選択中のデバイス')} ({selectedAssetIds.length})
                       </span>
                       <span className="text-[11px] text-slate-500">
-                        Chỉ gom {selectedAssetIds.length} thiết bị bạn vừa chọn trong bảng vào đợt kiểm kê.
+                        {txt(`Chỉ gom ${selectedAssetIds.length} thiết bị bạn vừa chọn trong bảng vào đợt kiểm kê.`, `Only include ${selectedAssetIds.length} assets selected from the table.`, `テーブルで選択した${selectedAssetIds.length}台のみを棚卸対象にします。`)}
                       </span>
                     </div>
                   </label>
@@ -243,10 +260,10 @@ export function AssetAuditCreateModal({
                   />
                   <div>
                     <span className="text-xs font-bold block">
-                      Toàn bộ theo bộ lọc hiện tại ({totalFilteredAssets} thiết bị)
+                      {txt('Toàn bộ theo bộ lọc hiện tại', 'All assets matching current filter', '現在のフィルタに一致する全デバイス')} ({totalFilteredAssets})
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      Gom tất cả tài sản đang hiển thị trên màn hình Tài sản vào đợt này.
+                      {txt('Gom tất cả tài sản đang hiển thị trên màn hình Tài sản vào đợt này.', 'Include all assets currently shown in the Asset table.', '画面に表示中のすべての資産を対象にします。')}
                     </span>
                   </div>
                 </label>
@@ -264,9 +281,9 @@ export function AssetAuditCreateModal({
                     className="mt-0.5"
                   />
                   <div>
-                    <span className="text-xs font-bold block">Tùy chọn Công ty / Phòng ban</span>
+                    <span className="text-xs font-bold block">{txt('Tùy chọn Công ty / Phòng ban', 'Custom Company / Department', '会社・部門で絞り込み')}</span>
                     <span className="text-[11px] text-slate-500">
-                      Tự cấu hình chi tiết Công ty, Vị trí hoặc Loại máy cụ thể bên dưới.
+                      {txt('Tự cấu hình chi tiết Công ty, Vị trí hoặc Loại máy cụ thể bên dưới.', 'Configure specific Company, Location or Category below.', '会社、設置場所、カテゴリを個別に設定します。')}
                     </span>
                   </div>
                 </label>
@@ -277,26 +294,26 @@ export function AssetAuditCreateModal({
             {scopeType === 'CUSTOM' && (
               <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5 text-xs animate-in fade-in">
                 <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Công ty:</label>
+                  <label className="block font-semibold text-slate-600 mb-1">{txt('Công ty:', 'Company:', '会社:')}</label>
                   <select
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs"
                   >
-                    <option value="ALL">-- Tất cả công ty --</option>
+                    <option value="ALL">{txt('-- Tất cả công ty --', '-- All companies --', '-- すべての会社 --')}</option>
                     {companies.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Vị trí / Phòng ban:</label>
+                  <label className="block font-semibold text-slate-600 mb-1">{txt('Vị trí / Phòng ban:', 'Location / Department:', '設置場所 / 部署:')}</label>
                   <select
                     value={locationId}
                     onChange={(e) => setLocationId(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs"
                   >
-                    <option value="ALL">-- Tất cả vị trí --</option>
+                    <option value="ALL">{txt('-- Tất cả vị trí --', '-- All locations --', '-- すべての場所 --')}</option>
                     {locations.map((l) => (
                       <option key={l.id} value={l.id}>{l.name} ({l.building || 'Tòa nhà'})</option>
                     ))}
@@ -307,13 +324,13 @@ export function AssetAuditCreateModal({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Ghi Chú & Mục Tiêu Đợt Kiểm Kê:
+                {txt('Ghi Chú & Mục Tiêu Đợt Kiểm Kê:', 'Notes & Audit Objectives:', '備考・点検目的:')}
               </label>
               <textarea
                 rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="VD: Đối soát hiện trạng tài sản trước kỳ quyết toán..."
+                placeholder={txt('VD: Đối soát hiện trạng tài sản trước kỳ quyết toán...', 'e.g. Reconciliation before financial closing...', '例：期末決算前の実地資産確認...')}
                 className="w-full bg-slate-50 border border-slate-300 focus:border-blue-500 rounded-xl p-2.5 text-xs text-slate-800 outline-none resize-none"
               />
             </div>
@@ -330,7 +347,7 @@ export function AssetAuditCreateModal({
                 className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold rounded-xl text-xs shadow-md shadow-blue-500/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{isSubmitting ? 'Đang khởi tạo...' : 'Tạo Đợt & Bắt Đầu Quét Ngay'}</span>
+                <span>{isSubmitting ? txt('Đang khởi tạo...', 'Creating...', '作成中...') : txt('Tạo Đợt & Bắt Đầu Quét Ngay', 'Create & Start Scanning', '作成してスキャン開始')}</span>
               </button>
             </div>
           </form>
@@ -340,7 +357,7 @@ export function AssetAuditCreateModal({
             <div className="w-full flex flex-col items-center">
               <div className="flex items-center gap-1.5 text-blue-700 font-bold text-xs mb-2">
                 <Smartphone className="w-4 h-4" />
-                <span>Quét Mã Mở App Điện Thoại</span>
+                <span>{txt('Quét Mã Mở App Điện Thoại', 'Scan QR on Mobile', 'スマホでスキャン')}</span>
               </div>
 
               {/* QR Image */}
@@ -359,7 +376,7 @@ export function AssetAuditCreateModal({
               </div>
 
               <p className="text-[11px] text-slate-600 leading-snug px-1">
-                Kỹ thuật viên chỉ cần <strong>bật camera điện thoại</strong> quét mã QR ở trên để vào ngay trang Quét kiểm kê!
+                {txt('Kỹ thuật viên chỉ cần bật camera điện thoại quét mã QR ở trên để vào ngay trang Quét kiểm kê!', 'Technicians simply open mobile camera to scan QR above and start auditing!', 'スマートフォンのカメラで上記QRをスキャンして棚卸を開始できます！')}
               </p>
             </div>
 
@@ -373,10 +390,10 @@ export function AssetAuditCreateModal({
                   type="button"
                   onClick={handleCopyLink}
                   className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold shrink-0 flex items-center gap-1 cursor-pointer transition-colors"
-                  title="Sao chép đường dẫn"
+                  title={txt('Sao chép đường dẫn', 'Copy link', 'リンクをコピー')}
                 >
                   {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                  <span>{copied ? 'Đã chép' : 'Chép'}</span>
+                  <span>{copied ? txt('Đã chép', 'Copied', 'コピー完了') : txt('Chép', 'Copy', 'コピー')}</span>
                 </button>
               </div>
 
@@ -385,7 +402,7 @@ export function AssetAuditCreateModal({
                 target="_blank"
                 className="mt-2 text-[11px] text-blue-600 hover:text-blue-800 font-bold flex items-center justify-center gap-1 transition-colors"
               >
-                <span>Mở màn hình Quét QR trên tab mới</span>
+                <span>{txt('Mở màn hình Quét QR trên tab mới', 'Open Mobile Scanner in New Tab', '別タブでスキャナーを開く')}</span>
                 <ExternalLink className="w-3 h-3" />
               </Link>
             </div>

@@ -231,6 +231,18 @@ export default function DiscoveryPage() {
     storage: '',
   });
 
+  // ESC key listener to close active modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isAddAssetModalOpen) setIsAddAssetModalOpen(false);
+        else if (selectedAgent) setSelectedAgent(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAddAssetModalOpen, selectedAgent]);
+
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3500);

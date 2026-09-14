@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, X, Save, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 
@@ -17,6 +17,18 @@ export function SlaExtensionModal({
   ticket,
   onSuccess,
 }: SlaExtensionModalProps) {
+  // ESC key listener to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const { language } = useLanguage();
   const isEn = language === 'en';
 

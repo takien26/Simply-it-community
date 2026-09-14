@@ -47,67 +47,20 @@ import {
   Image as ImageIcon,
   Smile,
 } from 'lucide-react';
-import * as kdbxweb from 'kdbxweb';
 import { SecondaryPasswordModal } from '@/components/common/SecondaryPasswordModal';
 import { useLanguage } from '@/lib/i18n/context';
-
-interface PasswordItem {
-  id: string;
-  title: string;
-  username: string | null;
-  password: string;
-  url: string | null;
-  category: string;
-  groupName: string | null;
-  assetId: string | null;
-  serviceId: string | null;
-  vendorId: string | null;
-  isFavorite: boolean;
-  totpSecret: string | null;
-  notes: string | null;
-  asset?: { id: string; assetTag: string; name: string } | null;
-  service?: { id: string; serviceCode: string; name: string } | null;
-  vendor?: { id: string; name: string } | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface FolderNode {
-  id: string;
-  name: string;
-  fullPath: string;
-  iconStr?: string;
-  count: number;
-  totalCount: number;
-  children: FolderNode[];
-}
-
-const POPULAR_ICONS = [
-  { emoji: '📁', label: 'Thư mục chung' },
-  { emoji: '🏢', label: 'Văn phòng / Trụ sở' },
-  { emoji: '🏭', label: 'Nhà máy / Xí nghiệp' },
-  { emoji: '🏬', label: 'Chi nhánh / Cửa hàng' },
-  { emoji: '📍', label: 'Địa điểm / Vị trí' },
-  { emoji: '🖥️', label: 'Máy chủ / Server' },
-  { emoji: '🗄️', label: 'Cơ sở dữ liệu / Database' },
-  { emoji: '☁️', label: 'Đám mây / Cloud' },
-  { emoji: '🌐', label: 'Mạng / Router / Firewall' },
-  { emoji: '📡', label: 'WiFi / Thiết bị mạng' },
-  { emoji: '📹', label: 'Camera / An ninh' },
-  { emoji: '🛡️', label: 'Bảo mật / Admin Root' },
-  { emoji: '🔒', label: 'Khóa bảo vệ VIP' },
-  { emoji: '🔑', label: 'Chìa khóa truy cập' },
-  { emoji: '✉️', label: 'Email / Microsoft 365' },
-  { emoji: '💻', label: 'Máy tính cá nhân / PC' },
-  { emoji: '📱', label: 'Thiết bị di động' },
-  { emoji: '⚙️', label: 'Hệ thống / ERP' },
-  { emoji: '⚡', label: 'Hạ tầng điện / UPS' },
-  { emoji: '🖨️', label: 'Máy in / Scan' },
-  { emoji: '📦', label: 'Kho thiết bị / Package' },
-  { emoji: '🚀', label: 'Dự án / Triển khai' },
-  { emoji: '🔌', label: 'Cổng kết nối / Switch' },
-  { emoji: '🏷️', label: 'Nhãn định danh / Tag' },
-];
+import {
+  PasswordItem,
+  FolderNode,
+  renderFolderIcon,
+  parseFolderDisplay,
+  evaluatePasswordStrength,
+  FolderModal,
+  PasswordDetailModal,
+  PasswordGeneratorModal,
+  KeePassImportModal,
+  PasswordFormModal,
+} from '@/components/passwords';
 
 const DEFAULT_ROOT_FOLDERS = [
   {
@@ -136,28 +89,7 @@ const DEFAULT_ROOT_FOLDERS = [
   },
 ];
 
-function renderFolderIcon(iconStr?: string) {
-  if (!iconStr) return <Folder className="w-3.5 h-3.5 text-indigo-600 shrink-0" />;
-  if (iconStr.startsWith('http') || iconStr.startsWith('data:image')) {
-    return <img src={iconStr} alt="icon" className="w-3.5 h-3.5 object-contain rounded shrink-0" />;
-  }
-  return <span className="text-sm leading-none shrink-0">{iconStr}</span>;
-}
 
-function parseFolderDisplay(fullFolderName: string): { icon: string; name: string } {
-  const trimmed = fullFolderName.trim();
-  const spaceIdx = trimmed.indexOf(' ');
-  if (spaceIdx > 0 && spaceIdx <= 4) {
-    const possibleIcon = trimmed.slice(0, spaceIdx);
-    const restName = trimmed.slice(spaceIdx + 1).trim();
-    return { icon: possibleIcon, name: restName };
-  }
-  if (trimmed.startsWith('data:image') || trimmed.startsWith('http')) {
-    const parts = trimmed.split(' ');
-    return { icon: parts[0], name: parts.slice(1).join(' ') };
-  }
-  return { icon: '📁', name: trimmed };
-}
 
 
 function buildRecursiveFolderTree(
@@ -253,59 +185,7 @@ function buildRecursiveFolderTree(
   return rootNodes;
 }
 
-function evaluatePasswordStrength(pass: string): { score: number; label: string; color: string; bg: string } {
-  if (!pass) return { score: 0, label: 'Chưa nhập', color: 'text-slate-400', bg: 'bg-slate-200' };
-  let score = 0;
-  if (pass.length >= 8) score += 20;
-  if (pass.length >= 12) score += 20;
-  if (pass.length >= 16) score += 10;
-  if (/[A-Z]/.test(pass)) score += 15;
-  if (/[a-z]/.test(pass)) score += 15;
-  if (/[0-9]/.test(pass)) score += 10;
-  if (/[^A-Za-z0-9]/.test(pass)) score += 10;
 
-  if (score < 40) return { score, label: 'Yếu', color: 'text-rose-600', bg: 'bg-rose-500' };
-  if (score < 70) return { score, label: 'Trung bình', color: 'text-amber-600', bg: 'bg-amber-500' };
-  if (score < 90) return { score, label: 'Mạnh', color: 'text-emerald-600', bg: 'bg-emerald-500' };
-  return { score: 100, label: 'Rất mạnh', color: 'text-indigo-600', bg: 'bg-indigo-600' };
-}
-
-function generateSecurePassword(options: {
-  length: number;
-  useUpper: boolean;
-  useLower: boolean;
-  useDigits: boolean;
-  useSymbols: boolean;
-  avoidAmbiguous: boolean;
-}): string {
-  let upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  let lower = 'abcdefghijklmnopqrstuvwxyz';
-  let digits = '0123456789';
-  let symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-  if (options.avoidAmbiguous) {
-    upper = upper.replace(/[IO]/g, '');
-    lower = lower.replace(/[lo]/g, '');
-    digits = digits.replace(/[01]/g, '');
-    symbols = symbols.replace(/[|]/g, '');
-  }
-
-  let charset = '';
-  if (options.useUpper) charset += upper;
-  if (options.useLower) charset += lower;
-  if (options.useDigits) charset += digits;
-  if (options.useSymbols) charset += symbols;
-
-  if (!charset) charset = lower + digits;
-
-  let password = '';
-  const array = new Uint32Array(options.length);
-  window.crypto.getRandomValues(array);
-  for (let i = 0; i < options.length; i++) {
-    password += charset[array[i] % charset.length];
-  }
-  return password;
-}
 
 export default function PasswordsPage() {
   const { language, t } = useLanguage();
@@ -366,61 +246,52 @@ export default function PasswordsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Modals
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [formModalConfig, setFormModalConfig] = useState<{
+    isOpen: boolean;
+    mode: 'create' | 'edit';
+    item?: PasswordItem | null;
+  }>({ isOpen: false, mode: 'create' });
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isGeneratorModalOpen, setIsGeneratorModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedPassword, setSelectedPassword] = useState<PasswordItem | null>(null);
 
-  // Folder Create/Edit Modal State
-  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
-  const [folderModalParentPath, setFolderModalParentPath] = useState<string>('');
-  const [folderModalOldPath, setFolderModalOldPath] = useState<string>('');
-  const [folderModalInputName, setFolderModalInputName] = useState<string>('');
-  const [folderModalSelectedIcon, setFolderModalSelectedIcon] = useState<string>('📁');
-  const [folderIconMode, setFolderIconMode] = useState<'PALETTE' | 'UPLOAD' | 'CUSTOM'>('PALETTE');
-  const folderIconUploadRef = useRef<HTMLInputElement>(null);
+  // Folder Modal State
+  const [folderModalConfig, setFolderModalConfig] = useState<{
+    isOpen: boolean;
+    oldPath?: string;
+    parentPath?: string;
+    initialName?: string;
+    initialIcon?: string;
+  }>({ isOpen: false });
 
-  // Import states
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importMasterPassword, setImportMasterPassword] = useState<string>('');
-  const [showImportMasterPassword, setShowImportMasterPassword] = useState<boolean>(false);
-  const [importKeyFile, setImportKeyFile] = useState<File | null>(null);
-  const keyFileInputRef = useRef<HTMLInputElement>(null);
-  const [importGroup, setImportGroup] = useState('🏢 Văn Phòng Trụ Sở Chính / KeePass Import');
-  const [isImporting, setIsImporting] = useState(false);
-  const [importResult, setImportResult] = useState<any>(null);
-  const [importErrorMsg, setImportErrorMsg] = useState<string>('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Generator Options State
-  const [genLength, setGenLength] = useState(16);
-  const [genUpper, setGenUpper] = useState(true);
-  const [genLower, setGenLower] = useState(true);
-  const [genDigits, setGenDigits] = useState(true);
-  const [genSymbols, setGenSymbols] = useState(true);
-  const [genAvoidAmbiguous, setGenAvoidAmbiguous] = useState(false);
-  const [generatedPassword, setGeneratedPassword] = useState('');
-
-  // Form State
-  const initialForm = {
-    title: '',
-    username: '',
-    password: '',
-    url: '',
-    category: 'GENERAL',
-    groupName: '🏢 Văn Phòng Trụ Sở Chính / 🌐 Mạng & Firewall Trụ Sở',
-    assetId: '',
-    serviceId: '',
-    isFavorite: false,
-    totpSecret: '',
-    notes: '',
+  const openCreateFolder = (parentPath = '') => {
+    setFolderModalConfig({
+      isOpen: true,
+      parentPath,
+      oldPath: '',
+      initialName: '',
+      initialIcon: '📁',
+    });
   };
 
-  const [formData, setFormData] = useState(initialForm);
-  const [editFormData, setEditFormData] = useState(initialForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const openEditFolder = (oldPath: string, name: string, icon = '📁') => {
+    setFolderModalConfig({
+      isOpen: true,
+      parentPath: '',
+      oldPath,
+      initialName: name,
+      initialIcon: icon,
+    });
+  };
+
+  const handleOpenAdd = () => {
+    setFormModalConfig({ isOpen: true, mode: 'create', item: null });
+  };
+
+  const handleOpenEdit = (item: PasswordItem) => {
+    setFormModalConfig({ isOpen: true, mode: 'edit', item });
+  };
 
   // Secondary Password (Mật khẩu cấp 2) Vault Lock States
   const [isVaultUnlocked, setIsVaultUnlocked] = useState<boolean>(false);
@@ -510,22 +381,7 @@ export default function PasswordsPage() {
     }
   };
 
-  // Generate new password for generator modal
-  const handleRegeneratePassword = useCallback(() => {
-    const newPass = generateSecurePassword({
-      length: genLength,
-      useUpper: genUpper,
-      useLower: genLower,
-      useDigits: genDigits,
-      useSymbols: genSymbols,
-      avoidAmbiguous: genAvoidAmbiguous,
-    });
-    setGeneratedPassword(newPass);
-  }, [genLength, genUpper, genLower, genDigits, genSymbols, genAvoidAmbiguous]);
 
-  useEffect(() => {
-    handleRegeneratePassword();
-  }, [handleRegeneratePassword]);
 
   // Load Data & Custom Folders
   const loadData = useCallback(async () => {
@@ -562,12 +418,11 @@ export default function PasswordsPage() {
     }
     function handleGlobalKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        setIsAddModalOpen(false);
-        setIsEditModalOpen(false);
+        setFormModalConfig({ isOpen: false, mode: 'create' });
         setIsDetailModalOpen(false);
         setIsGeneratorModalOpen(false);
         setIsImportModalOpen(false);
-        setIsFolderModalOpen(false);
+        setFolderModalConfig({ isOpen: false });
         setIsSearchFocused(false);
         setContextMenu((prev) => ({ ...prev, visible: false }));
       }
@@ -915,74 +770,7 @@ export default function PasswordsPage() {
     });
   };
 
-  // Upload Icon Image File Handler
-  const handleIconFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      const base64 = uploadEvent.target?.result as string;
-      if (base64) {
-        setFolderModalSelectedIcon(base64);
-        showToast('🖼️ Đã tải lên icon hình ảnh thành công');
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Folder Operations: Create / Rename / Delete
-  const handleSaveFolderModal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const rawName = folderModalInputName.trim();
-    if (!rawName) return;
-
-    const iconPrefix = folderModalSelectedIcon ? `${folderModalSelectedIcon} ` : '📁 ';
-    let cleanName = rawName.trim();
-    const spaceIdx = cleanName.indexOf(' ');
-    if (spaceIdx > 0 && spaceIdx <= 4) {
-      cleanName = cleanName.slice(spaceIdx + 1).trim();
-    }
-    const finalFormattedName = `${iconPrefix}${cleanName}`;
-
-    try {
-      if (folderModalOldPath) {
-        const parts = folderModalOldPath.split(' / ');
-        parts[parts.length - 1] = finalFormattedName;
-        const newFullPath = parts.join(' / ');
-
-        const res = await fetch('/api/passwords/folders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'RENAME', oldPath: folderModalOldPath, newPath: newFullPath }),
-        });
-        if (res.ok) {
-          showToast(`✏️ Đã đổi tên thư mục thành "${newFullPath}"`);
-          setIsFolderModalOpen(false);
-          if (selectedGroupPath === folderModalOldPath) setSelectedGroupPath(newFullPath);
-          loadData();
-        }
-      } else {
-        const res = await fetch('/api/passwords/folders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'CREATE', folderName: finalFormattedName, parentPath: folderModalParentPath }),
-        });
-        if (res.ok) {
-          showToast(`📁 Đã tạo thư mục "${finalFormattedName}"`);
-          setIsFolderModalOpen(false);
-          if (folderModalParentPath) {
-            setExpandedFolders((prev) => new Set([...Array.from(prev), folderModalParentPath]));
-          } else {
-            setExpandedFolders((prev) => new Set([...Array.from(prev), finalFormattedName]));
-          }
-          loadData();
-        }
-      }
-    } catch {
-      alert('Thao tác thư mục thất bại');
-    }
-  };
 
   const handleDeleteFolder = async (folderPath: string) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa thư mục "${folderPath}"? Các tài khoản mật khẩu bên trong sẽ được chuyển về nhóm Mặc Định.`)) return;
@@ -1031,72 +819,7 @@ export default function PasswordsPage() {
     }
   };
 
-  // Create Password
-  const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/passwords', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setIsAddModalOpen(false);
-        setFormData(initialForm);
-        showToast(`✅ Đã thêm tài khoản mật khẩu "${data.data.title}"`);
-        loadData();
-      } else {
-        alert(data.error || 'Thêm mật khẩu thất bại');
-      }
-    } catch {
-      alert('Lỗi kết nối khi thêm mật khẩu');
-    }
-  };
 
-  // Open Edit Modal
-  const handleOpenEdit = (item: PasswordItem) => {
-    setEditingId(item.id);
-    setEditFormData({
-      title: item.title,
-      username: item.username || '',
-      password: item.password,
-      url: item.url || '',
-      category: item.category,
-      groupName: item.groupName || '🏢 Văn Phòng Trụ Sở Chính / 🌐 Mạng & Firewall Trụ Sở',
-      assetId: item.assetId || '',
-      serviceId: item.serviceId || '',
-      isFavorite: item.isFavorite,
-      totpSecret: item.totpSecret || '',
-      notes: item.notes || '',
-    });
-    setIsEditModalOpen(true);
-  };
-
-  // Update Password
-  const handleUpdateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingId) return;
-    try {
-      const res = await fetch(`/api/passwords/${editingId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editFormData),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setIsEditModalOpen(false);
-        setEditingId(null);
-        if (selectedPassword?.id === editingId) setSelectedPassword(data.data);
-        showToast('✅ Đã cập nhật mật khẩu thành công');
-        loadData();
-      } else {
-        alert(data.error || 'Cập nhật thất bại');
-      }
-    } catch {
-      alert('Lỗi kết nối');
-    }
-  };
 
   // Delete Password
   const handleDeletePassword = async (id: string, title: string) => {
@@ -1112,288 +835,6 @@ export default function PasswordsPage() {
       }
     } catch {
       alert('Lỗi kết nối');
-    }
-  };
-
-  // Download Sample Template for KeePass/Excel (Lazy loaded)
-  const handleDownloadSampleTemplate = async () => {
-    const ExcelJS = await import('exceljs');
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('KeePass_Import_Template');
-
-    worksheet.columns = [
-      { header: 'Thư Mục (Group)', key: 'groupName', width: 40 },
-      { header: 'Tiêu Đề / Dịch Vụ (Title) (*)', key: 'title', width: 30 },
-      { header: 'Tên Đăng Nhập (Username)', key: 'username', width: 25 },
-      { header: 'Mật Khẩu (Password) (*)', key: 'password', width: 25 },
-      { header: 'Đường Dẫn Đăng Nhập / IP (URL)', key: 'url', width: 35 },
-      { header: 'Phân Loại (Category)', key: 'category', width: 20 },
-      { header: 'Ghi Chú (Notes)', key: 'notes', width: 35 },
-    ];
-
-    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    worksheet.getRow(1).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF4338CA' },
-    };
-
-    worksheet.addRow({
-      groupName: '🏢 Văn Phòng Trụ Sở Chính / 🐧 Máy chủ Linux / Ubuntu',
-      title: 'Root Server Ubuntu 24.04 Production',
-      username: 'root',
-      password: 'P@ssw0rd!Secure2025',
-      url: 'ssh://103.142.26.88:22',
-      category: 'SERVER',
-      notes: 'Server chạy ERP và Postgres chính thức',
-    });
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'Mau_Import_KeePass_Passwords.xlsx';
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
-  // Helper function to decode XML entities
-  const decodeXml = (str: string) => {
-    if (!str) return '';
-    return str
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/&apos;/g, "'")
-      .trim();
-  };
-
-  // Submit KeePass Import (Direct Browser-Side High-Speed Decryption & Streaming Save)
-  const handleUploadKeePassFile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!importFile) {
-      setImportErrorMsg('Vui lòng chọn file KeePass (.kdbx, .kbdx, .xml, .csv) hoặc Excel (.xlsx)');
-      return;
-    }
-
-    const fileName = importFile.name.toLowerCase();
-    const isKdbx = fileName.endsWith('.kdbx') || fileName.endsWith('.kbdx');
-
-    if (isKdbx && !importMasterPassword && !importKeyFile) {
-      setImportErrorMsg('Vui lòng nhập Mật khẩu Master Password để mở file .kdbx');
-      return;
-    }
-
-    setIsImporting(true);
-    setImportResult(null);
-    setImportErrorMsg('');
-
-    try {
-      const extractedRows: any[] = [];
-
-      // 1. DIRECT BROWSER-SIDE DECRYPTION FOR .KDBX FILES
-      if (isKdbx) {
-        const fileBuffer = await importFile.arrayBuffer();
-        let keyBuffer: Uint8Array | undefined;
-        if (importKeyFile) {
-          keyBuffer = new Uint8Array(await importKeyFile.arrayBuffer());
-        }
-
-        const credentials = new kdbxweb.Credentials(
-          kdbxweb.ProtectedValue.fromString(importMasterPassword || ''),
-          keyBuffer
-        );
-
-        let db: kdbxweb.Kdbx;
-        try {
-          db = await kdbxweb.Kdbx.load(fileBuffer, credentials);
-        } catch (kdbxErr: any) {
-          const msg = (kdbxErr.message || '').toLowerCase();
-          if (msg.includes('password') || msg.includes('key') || msg.includes('mac') || msg.includes('invalid') || msg.includes('hash')) {
-            throw new Error('Mật khẩu Master Password không chính xác. Vui lòng kiểm tra lại mật khẩu mở file KeePass.');
-          }
-          throw new Error('Không thể giải mã file KDBX: ' + (kdbxErr.message || 'Sai mật khẩu hoặc file bị lỗi'));
-        }
-
-        const traverseGroup = (group: kdbxweb.KdbxGroup, parentPath: string[] = []) => {
-          const groupName = group.name;
-          if ((group as any).isRecycleBin || (groupName && (groupName.toLowerCase().includes('recycle') || groupName.toLowerCase().includes('thùng rác')))) {
-            return;
-          }
-
-          const currentPath =
-            groupName && groupName !== 'Root' && groupName !== 'Database' && groupName !== 'KeePass'
-              ? [...parentPath, groupName]
-              : parentPath;
-
-          const fullGroupPath = currentPath.length > 0 ? currentPath.join(' / ') : importGroup;
-
-          for (const entry of group.entries) {
-            const getField = (key: string) => {
-              const val = entry.fields.get(key);
-              if (!val) return '';
-              if (typeof (val as any).getText === 'function') return (val as any).getText();
-              return val.toString();
-            };
-
-            const title = getField('Title');
-            const username = getField('UserName');
-            const password = getField('Password');
-            const url = getField('URL');
-            let notes = getField('Notes');
-            const totp = getField('TOTP Seed') || getField('otp') || getField('totp') || '';
-
-            const customFields: string[] = [];
-            for (const [k, v] of entry.fields) {
-              if (['Title', 'UserName', 'Password', 'URL', 'Notes', 'TOTP Seed', 'otp', 'totp'].includes(k)) continue;
-              const valStr = typeof (v as any).getText === 'function' ? (v as any).getText() : v?.toString();
-              if (valStr) customFields.push(`${k}: ${valStr}`);
-            }
-
-            if (customFields.length > 0) {
-              notes = notes ? `${notes}\n\n[Thông tin mở rộng]\n${customFields.join('\n')}` : customFields.join('\n');
-            }
-
-            if (title || password || username) {
-              extractedRows.push({
-                title: title || 'Tài khoản KDBX',
-                username: username || null,
-                password: password || '123456',
-                url: url || null,
-                groupName: fullGroupPath,
-                notes: notes || null,
-                totpSecret: totp || null,
-              });
-            }
-          }
-
-          for (const sub of group.groups) {
-            traverseGroup(sub, currentPath);
-          }
-        };
-
-        traverseGroup(db.getDefaultGroup());
-      }
-      // 2. DIRECT BROWSER-SIDE PARSING FOR .XML FILES
-      else if (fileName.endsWith('.xml')) {
-        const xmlText = await importFile.text();
-        const tagRegex = /<Group>|<\/Group>|<Name>([\s\S]*?)<\/Name>|<Entry>([\s\S]*?)<\/Entry>/gi;
-        let match;
-        const groupStack: Array<{ name: string; isNamed: boolean }> = [];
-
-        while ((match = tagRegex.exec(xmlText)) !== null) {
-          const fullTag = match[0];
-
-          if (fullTag.startsWith('<Group>')) {
-            groupStack.push({ name: '', isNamed: false });
-          } else if (fullTag.startsWith('</Group>')) {
-            if (groupStack.length > 0) groupStack.pop();
-          } else if (match[1] !== undefined) {
-            if (groupStack.length > 0 && !groupStack[groupStack.length - 1].isNamed) {
-              groupStack[groupStack.length - 1].name = decodeXml(match[1]);
-              groupStack[groupStack.length - 1].isNamed = true;
-            }
-          } else if (match[2] !== undefined) {
-            const entryContent = match[2];
-            const stringRegex = /<String>\s*<Key>([^<]+)<\/Key>\s*<Value[^>]*>([^<]*)<\/Value>\s*<\/String>/gi;
-            let sMatch;
-            const entryData: Record<string, string> = {};
-
-            while ((sMatch = stringRegex.exec(entryContent)) !== null) {
-              entryData[decodeXml(sMatch[1])] = decodeXml(sMatch[2]);
-            }
-
-            const title = entryData.Title || '';
-            const username = entryData.UserName || entryData.Username || '';
-            const password = entryData.Password || '';
-            const url = entryData.URL || entryData.Url || '';
-            const notes = entryData.Notes || '';
-
-            const isRecycleBin = groupStack.some(
-              (g) => g.name.toLowerCase().includes('recycle') || g.name.toLowerCase().includes('thùng rác')
-            );
-
-            if (!isRecycleBin && (title || password || username)) {
-              const names = groupStack
-                .map((g) => g.name.trim())
-                .filter((n) => n && n !== 'Root' && n !== 'Database' && n !== 'KeePass');
-              const fullGroupPath = names.length > 0 ? names.join(' / ') : importGroup;
-
-              extractedRows.push({
-                title: title || 'KeePass Item',
-                username: username || null,
-                password: password || '123456',
-                url: url || null,
-                groupName: fullGroupPath,
-                notes: notes || null,
-              });
-            }
-          }
-        }
-      }
-      // 3. DIRECT PARSING FOR .CSV / .XLSX
-      else if (fileName.endsWith('.csv') || fileName.endsWith('.txt')) {
-        const text = await importFile.text();
-        const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-        for (let i = 1; i < lines.length; i++) {
-          const parts = lines[i].split(',').map((p) => p.replace(/^"|"$/g, '').trim());
-          if (parts[0] || parts[1]) {
-            extractedRows.push({
-              title: parts[1] || parts[0],
-              username: parts[2] || '',
-              password: parts[3] || '123456',
-              url: parts[4] || '',
-              groupName: parts[0] || importGroup,
-              notes: parts[5] || '',
-            });
-          }
-        }
-      }
-
-      if (extractedRows.length === 0) {
-        throw new Error('Không tìm thấy tài khoản hợp lệ nào trong file để nhập');
-      }
-
-      // SEND CLEAN EXTRACTED ARRAY TO SERVER IN CHUNKS (Guaranteed 100% success for any file size!)
-      const CHUNK_SIZE = 300;
-      let totalImported = 0;
-      let totalGroups = new Set<string>();
-
-      for (let i = 0; i < extractedRows.length; i += CHUNK_SIZE) {
-        const chunk = extractedRows.slice(i, i + CHUNK_SIZE);
-        const res = await fetch('/api/passwords/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            rows: chunk,
-            defaultGroup: importGroup,
-          }),
-        });
-
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Lỗi khi lưu dữ liệu lên server');
-        }
-        totalImported += (data.successCount || chunk.length);
-        if (Array.isArray(data.groups)) {
-          data.groups.forEach((g: string) => totalGroups.add(g));
-        }
-      }
-
-      setImportResult({
-        success: true,
-        message: `Đã import thành công ${totalImported}/${extractedRows.length} tài khoản từ file KeePass với ${totalGroups.size} thư mục nhóm.`,
-        groupsCount: totalGroups.size,
-      });
-      setImportErrorMsg('');
-      loadData();
-    } catch (err: any) {
-      setImportErrorMsg(err.message || 'Lỗi nạp file KeePass');
-    } finally {
-      setIsImporting(false);
     }
   };
 
@@ -1430,13 +871,7 @@ export default function PasswordsPage() {
           {/* Add Folder Button */}
           <button
             type="button"
-            onClick={() => {
-              setFolderModalParentPath('');
-              setFolderModalOldPath('');
-              setFolderModalInputName('');
-              setFolderModalSelectedIcon('📁');
-              setIsFolderModalOpen(true);
-            }}
+            onClick={() => openCreateFolder('')}
             className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
             title="Thêm thư mục mới với icon tùy chọn hoặc tải lên"
           >
@@ -1455,11 +890,7 @@ export default function PasswordsPage() {
 
           <button
             type="button"
-            onClick={() => {
-              setImportFile(null);
-              setImportResult(null);
-              setIsImportModalOpen(true);
-            }}
+            onClick={() => setIsImportModalOpen(true)}
             className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
           >
             <Upload className="w-3.5 h-3.5 text-slate-600" />
@@ -1498,13 +929,7 @@ export default function PasswordsPage() {
 
           <button
             type="button"
-            onClick={() => {
-              setFormData({
-                ...initialForm,
-                groupName: selectedGroupPath !== 'ALL' ? selectedGroupPath : initialForm.groupName,
-              });
-              setIsAddModalOpen(true);
-            }}
+            onClick={handleOpenAdd}
             className="px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -1529,13 +954,7 @@ export default function PasswordsPage() {
             </div>
             <button
               type="button"
-              onClick={() => {
-                setFolderModalParentPath('');
-                setFolderModalOldPath('');
-                setFolderModalInputName('');
-                setFolderModalSelectedIcon('📁');
-                setIsFolderModalOpen(true);
-              }}
+              onClick={() => openCreateFolder('')}
               className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-0.5 cursor-pointer"
             >
               <Plus className="w-3 h-3" />
@@ -1679,11 +1098,7 @@ export default function PasswordsPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              setFolderModalParentPath(node.fullPath);
-                              setFolderModalOldPath('');
-                              setFolderModalInputName('');
-                              setFolderModalSelectedIcon('📁');
-                              setIsFolderModalOpen(true);
+                              openCreateFolder(node.fullPath);
                             }}
                             title="Thêm thư mục con"
                             className={`p-0.5 rounded cursor-pointer ${isSelected ? 'text-white hover:bg-indigo-700' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-200'}`}
@@ -1693,11 +1108,7 @@ export default function PasswordsPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              setFolderModalOldPath(node.fullPath);
-                              setFolderModalParentPath('');
-                              setFolderModalInputName(node.name);
-                              setFolderModalSelectedIcon(node.iconStr || '📁');
-                              setIsFolderModalOpen(true);
+                              openEditFolder(node.fullPath, node.name, node.iconStr || '📁');
                             }}
                             title="Đổi tên & icon"
                             className={`p-0.5 rounded cursor-pointer ${isSelected ? 'text-white hover:bg-indigo-700' : 'text-slate-400 hover:text-amber-500 hover:bg-slate-200'}`}
@@ -2043,11 +1454,8 @@ export default function PasswordsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setFormData({
-                    ...initialForm,
-                    groupName: contextMenu.targetFolder || initialForm.groupName,
-                  });
-                  setIsAddModalOpen(true);
+                  if (contextMenu.targetFolder) setSelectedGroupPath(contextMenu.targetFolder);
+                  handleOpenAdd();
                   setContextMenu((prev) => ({ ...prev, visible: false }));
                 }}
                 className="w-full text-left px-3 py-2 hover:bg-indigo-50 text-indigo-700 font-bold flex items-center gap-2 cursor-pointer transition-colors"
@@ -2058,11 +1466,7 @@ export default function PasswordsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setFolderModalParentPath(contextMenu.targetFolder || '');
-                  setFolderModalOldPath('');
-                  setFolderModalInputName('');
-                  setFolderModalSelectedIcon('📁');
-                  setIsFolderModalOpen(true);
+                  openCreateFolder(contextMenu.targetFolder || '');
                   setContextMenu((prev) => ({ ...prev, visible: false }));
                 }}
                 className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700 font-semibold flex items-center gap-2 cursor-pointer transition-colors"
@@ -2076,11 +1480,7 @@ export default function PasswordsPage() {
                   const parts = (contextMenu.targetFolder || '').split(' / ');
                   const lastPart = parts[parts.length - 1];
                   const parsed = parseFolderDisplay(lastPart);
-                  setFolderModalOldPath(contextMenu.targetFolder || '');
-                  setFolderModalParentPath('');
-                  setFolderModalInputName(parsed.name);
-                  setFolderModalSelectedIcon(parsed.icon || '📁');
-                  setIsFolderModalOpen(true);
+                  openEditFolder(contextMenu.targetFolder || '', parsed.name, parsed.icon || '📁');
                   setContextMenu((prev) => ({ ...prev, visible: false }));
                 }}
                 className="w-full text-left px-3 py-1.5 hover:bg-amber-50 text-amber-700 font-semibold flex items-center gap-2 cursor-pointer transition-colors"
@@ -2213,8 +1613,7 @@ export default function PasswordsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setFormData(initialForm);
-                  setIsAddModalOpen(true);
+                  handleOpenAdd();
                   setContextMenu((prev) => ({ ...prev, visible: false }));
                 }}
                 className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 text-indigo-700 font-bold flex items-center gap-2 cursor-pointer"
@@ -2236,11 +1635,7 @@ export default function PasswordsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setFolderModalParentPath('');
-                  setFolderModalOldPath('');
-                  setFolderModalInputName('');
-                  setFolderModalSelectedIcon('📁');
-                  setIsFolderModalOpen(true);
+                  openCreateFolder('');
                   setContextMenu((prev) => ({ ...prev, visible: false }));
                 }}
                 className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700 font-semibold flex items-center gap-2 cursor-pointer"
@@ -2266,867 +1661,72 @@ export default function PasswordsPage() {
       )}
 
       {/* FOLDER CREATE / EDIT MODAL */}
-      {isFolderModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                <FolderPlus className="w-4 h-4 text-indigo-600" />
-                <span>
-                  {folderModalOldPath
-                    ? `Sửa Thư Mục "${folderModalOldPath}"`
-                    : folderModalParentPath
-                    ? `Tạo Thư Mục Trong "${folderModalParentPath}"`
-                    : 'Tạo Thư Mục Mới'}
-                </span>
-              </h3>
-              <button onClick={() => setIsFolderModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveFolderModal} className="space-y-4 text-xs">
-              {/* Icon Selection with 3 Tabs */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="font-bold text-slate-700">Biểu Tượng (Icon) Thư Mục</label>
-                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
-                    <button
-                      type="button"
-                      onClick={() => setFolderIconMode('PALETTE')}
-                      className={`px-2 py-0.5 rounded-md cursor-pointer transition-colors ${
-                        folderIconMode === 'PALETTE' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-500'
-                      }`}
-                    >
-                      Kho Icon
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFolderIconMode('UPLOAD')}
-                      className={`px-2 py-0.5 rounded-md cursor-pointer transition-colors ${
-                        folderIconMode === 'UPLOAD' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-500'
-                      }`}
-                    >
-                      Tải Lên Ảnh
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFolderIconMode('CUSTOM')}
-                      className={`px-2 py-0.5 rounded-md cursor-pointer transition-colors ${
-                        folderIconMode === 'CUSTOM' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-500'
-                      }`}
-                    >
-                      Dán Emoji
-                    </button>
-                  </div>
-                </div>
-
-                {/* Tab 1: Palette */}
-                {folderIconMode === 'PALETTE' && (
-                  <div className="grid grid-cols-6 gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-2xl max-h-32 overflow-y-auto">
-                    {POPULAR_ICONS.map((item) => (
-                      <button
-                        key={item.emoji}
-                        type="button"
-                        onClick={() => setFolderModalSelectedIcon(item.emoji)}
-                        className={`p-1.5 rounded-xl text-base flex items-center justify-center transition-all cursor-pointer ${
-                          folderModalSelectedIcon === item.emoji
-                            ? 'bg-indigo-600 text-white shadow-xs scale-110'
-                            : 'hover:bg-slate-200/70 bg-white border border-slate-200'
-                        }`}
-                        title={item.label}
-                      >
-                        {item.emoji}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Tab 2: Upload File */}
-                {folderIconMode === 'UPLOAD' && (
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                    <input
-                      ref={folderIconUploadRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleIconFileUpload}
-                    />
-                    <div
-                      onClick={() => folderIconUploadRef.current?.click()}
-                      className="p-3 border-2 border-dashed border-indigo-300 hover:border-indigo-500 rounded-xl flex items-center justify-center gap-2 cursor-pointer bg-white text-indigo-700 font-bold text-xs"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>Chọn file ảnh icon (.png, .svg, .ico, .jpg)</span>
-                    </div>
-                    {folderModalSelectedIcon && (folderModalSelectedIcon.startsWith('data:image') || folderModalSelectedIcon.startsWith('http')) && (
-                      <div className="flex items-center gap-2 bg-white p-2 border border-slate-200 rounded-xl">
-                        <img src={folderModalSelectedIcon} alt="preview" className="w-6 h-6 object-contain rounded" />
-                        <span className="text-[11px] text-slate-600 truncate flex-1">Ảnh icon đã chọn</span>
-                        <button
-                          type="button"
-                          onClick={() => setFolderModalSelectedIcon('📁')}
-                          className="text-rose-500 hover:underline text-[10px] font-bold cursor-pointer"
-                        >{isEn ? 'Delete' : 'Xóa'}</button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Tab 3: Custom Text / Emoji Input */}
-                {folderIconMode === 'CUSTOM' && (
-                  <div className="p-2 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-2">
-                    <span className="text-sm text-slate-500">Dán ký hiệu:</span>
-                    <input
-                      type="text"
-                      placeholder="Dán bất kỳ emoji hoặc biểu tượng..."
-                      value={folderModalSelectedIcon}
-                      onChange={(e) => setFolderModalSelectedIcon(e.target.value)}
-                      className="flex-1 p-2 bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Tên Thư Mục (*)</label>
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 flex items-center justify-center bg-indigo-50 border border-indigo-200 rounded-xl shrink-0">
-                    {renderFolderIcon(folderModalSelectedIcon)}
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    autoFocus
-                    placeholder="VD: Hạ Tầng Server, Camera, Kế Toán, Chi Nhánh..."
-                    value={folderModalInputName}
-                    onChange={(e) => setFolderModalInputName(e.target.value)}
-                    className="w-full p-2.5 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-900"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsFolderModalOpen(false)}
-                  className="px-3 py-1.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                >{isEn ? 'Cancel' : 'Hủy'}</button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
-                >
-                  💾 Lưu Thư Mục
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <FolderModal
+        isOpen={folderModalConfig.isOpen}
+        onClose={() => setFolderModalConfig({ isOpen: false })}
+        oldPath={folderModalConfig.oldPath}
+        parentPath={folderModalConfig.parentPath}
+        initialName={folderModalConfig.initialName}
+        initialIcon={folderModalConfig.initialIcon}
+        onSuccess={(toastMsg, newFullPath, expandPath) => {
+          showToast(toastMsg);
+          if (newFullPath && selectedGroupPath === folderModalConfig.oldPath) {
+            setSelectedGroupPath(newFullPath);
+          }
+          if (expandPath) {
+            setExpandedFolders((prev) => new Set([...Array.from(prev), expandPath]));
+          }
+          loadData();
+        }}
+      />
 
       {/* DETAIL MODAL */}
-      {isDetailModalOpen && selectedPassword && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-purple-50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-xs">
-                  <KeyRound className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="font-mono text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">
-                    📁 {selectedPassword.groupName || 'Root'}
-                  </span>
-                  <h3 className="font-bold text-base text-slate-900 leading-snug mt-0.5">{selectedPassword.title}</h3>
-                </div>
-              </div>
-              <button onClick={() => setIsDetailModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 text-xs">
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Tên đăng nhập:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(selectedPassword.username || '', 'd_user', 'Tên đăng nhập')}
-                    className="text-indigo-600 font-bold flex items-center gap-1 hover:underline cursor-pointer"
-                  >
-                    {copiedId === 'd_user' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedId === 'd_user' ? 'Đã copy' : 'Copy'}</span>
-                  </button>
-                </div>
-                <p className="font-mono font-bold text-sm text-slate-900">{selectedPassword.username || '—'}</p>
-              </div>
-
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Mật khẩu bảo mật:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(selectedPassword.password, 'd_pass', 'Mật khẩu')}
-                    className="text-indigo-600 font-bold flex items-center gap-1 hover:underline cursor-pointer"
-                  >
-                    {copiedId === 'd_pass' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedId === 'd_pass' ? 'Đã copy' : 'Copy mật khẩu'}</span>
-                  </button>
-                </div>
-                <p className="font-mono font-black text-base text-indigo-950 bg-white p-2.5 border border-slate-200 rounded-xl break-all">
-                  {selectedPassword.password}
-                </p>
-              </div>
-
-              {selectedPassword.url && (
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">Đường dẫn truy cập / IP:</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(selectedPassword.url || '', 'd_url', 'Đường dẫn / IP')}
-                      className="text-indigo-600 font-bold flex items-center gap-1 hover:underline cursor-pointer"
-                    >
-                      {copiedId === 'd_url' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedId === 'd_url' ? 'Đã copy' : 'Copy URL/IP'}</span>
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 bg-white p-2.5 border border-slate-200 rounded-xl">
-                    <span className="font-mono text-xs font-bold text-indigo-950 truncate flex-1">{selectedPassword.url}</span>
-                    <a
-                      href={selectedPassword.url.startsWith('http') || selectedPassword.url.startsWith('ssh') ? selectedPassword.url : `https://${selectedPassword.url}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-1 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer shrink-0"
-                      title="Mở liên kết"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              {selectedPassword.notes && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Ghi chú & Hướng dẫn:</span>
-                  <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{selectedPassword.notes}</p>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDetailModalOpen(false);
-                    handleOpenEdit(selectedPassword);
-                  }}
-                  className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl font-bold flex items-center gap-1 cursor-pointer"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  <span>Sửa thông tin</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsDetailModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold cursor-pointer"
-                >
-                  Đóng (ESC)
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <PasswordDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        password={selectedPassword}
+        onEdit={handleOpenEdit}
+        onCopyText={handleCopy}
+      />
 
       {/* PASSWORD GENERATOR MODAL */}
-      {isGeneratorModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                <Dices className="w-5 h-5 text-purple-600" />
-                <span>Bộ Sinh Mật Khẩu Ngẫu Nhiên</span>
-              </h3>
-              <button onClick={() => setIsGeneratorModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-4 bg-purple-50/70 border border-purple-200 rounded-2xl space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-purple-900 uppercase">Mật khẩu được tạo:</span>
-                <span className={`text-[10px] font-bold ${evaluatePasswordStrength(generatedPassword).color}`}>
-                  {evaluatePasswordStrength(generatedPassword).label}
-                </span>
-              </div>
-              <p className="font-mono font-black text-lg text-purple-950 bg-white p-3 border border-purple-200 rounded-xl break-all select-all text-center">
-                {generatedPassword}
-              </p>
-              <div className="flex items-center justify-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleRegeneratePassword}
-                  className="px-3 py-1.5 bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Tạo lại</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleCopy(generatedPassword, 'gen_pass', 'Mật khẩu ngẫu nhiên')}
-                  className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
-                >
-                  {copiedId === 'gen_pass' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedId === 'gen_pass' ? 'Đã sao chép!' : 'Sao chép'}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="font-bold text-slate-700">Độ dài mật khẩu: {genLength} ký tự</label>
-                </div>
-                <input
-                  type="range"
-                  min="8"
-                  max="48"
-                  value={genLength}
-                  onChange={(e) => setGenLength(parseInt(e.target.value, 10))}
-                  className="w-full accent-purple-600 cursor-pointer"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <label className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={genUpper}
-                    onChange={(e) => setGenUpper(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 rounded"
-                  />
-                  <span className="font-semibold text-slate-700">Chữ in hoa (A-Z)</span>
-                </label>
-
-                <label className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={genLower}
-                    onChange={(e) => setGenLower(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 rounded"
-                  />
-                  <span className="font-semibold text-slate-700">{isEn ? 'Lowercase (a-z)' : 'Chữ thường (a-z)'}</span>
-                </label>
-
-                <label className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={genDigits}
-                    onChange={(e) => setGenDigits(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 rounded"
-                  />
-                  <span className="font-semibold text-slate-700">{isEn ? 'Numbers (0-9)' : 'Chữ số (0-9)'}</span>
-                </label>
-
-                <label className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={genSymbols}
-                    onChange={(e) => setGenSymbols(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 rounded"
-                  />
-                  <span className="font-semibold text-slate-700">{isEn ? 'Special Symbols (!@#$)' : 'Ký tự đặc biệt (!@#$)'}</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setIsGeneratorModalOpen(false)}
-                className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >{isEn ? 'Close' : 'Đóng'}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PasswordGeneratorModal
+        isOpen={isGeneratorModalOpen}
+        onClose={() => setIsGeneratorModalOpen(false)}
+        onCopyText={handleCopy}
+      />
 
       {/* MODAL: IMPORT KEEPASS FILE */}
-      {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full p-6 space-y-4 border border-slate-200 animate-in fade-in zoom-in-95 my-8">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-purple-50 -mx-6 -mt-6 p-6 rounded-t-3xl">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
-                  <ShieldCheck className="w-5 h-5 text-amber-300" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-indigo-950">Import Trực Tiếp Từ KeePass</h3>
-                  <p className="text-[11px] text-indigo-700">Hỗ trợ file gốc <strong>.kdbx / .kbdx</strong>, <strong>.xml</strong>, <strong>.csv</strong> & <strong>Excel</strong></p>
-                </div>
-              </div>
-              <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <KeePassImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={(msg) => {
+          if (msg) showToast(msg);
+          loadData();
+        }}
+      />
 
-            <div className="space-y-4 text-xs">
-              {/* Format Badge Tips */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 text-slate-600 text-[11px]">
-                <p className="font-bold text-slate-800 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Các định dạng được hỗ trợ nạp tự động:</span>
-                </p>
-                <ul className="list-disc list-inside space-y-1 pl-1 text-[11px] text-slate-600">
-                  <li><strong className="text-indigo-700 font-mono font-bold">File gốc .kdbx (KDBX 3/4):</strong> Giữ 100% cây thư mục & mật khẩu (nhập Master Password bên dưới).</li>
-                  <li><strong className="text-purple-700 font-mono font-bold">File .xml (KeePass 2.x XML):</strong> Giữ nguyên 100% cây thư mục cha/con.</li>
-                  <li><strong className="text-emerald-700 font-mono font-bold">File .csv hoặc .xlsx:</strong> Nhập bảng tính tài khoản theo cột Group/Folder.</li>
-                </ul>
-              </div>
+      {/* MODAL: ADD / EDIT PASSWORD */}
+      <PasswordFormModal
+        isOpen={formModalConfig.isOpen}
+        onClose={() => setFormModalConfig({ isOpen: false, mode: 'create' })}
+        mode={formModalConfig.mode}
+        item={formModalConfig.item}
+        defaultGroupName={selectedGroupPath !== 'ALL' ? selectedGroupPath : undefined}
+        folderTree={folderTree}
+        onSuccess={(savedItem, isEdit) => {
+          showToast(
+            isEdit
+              ? '✅ Đã cập nhật mật khẩu thành công'
+              : `✅ Đã thêm tài khoản mật khẩu "${savedItem.title}"`
+          );
+          if (isEdit && selectedPassword?.id === savedItem.id) {
+            setSelectedPassword(savedItem);
+          }
+          loadData();
+        }}
+      />
 
-              <form onSubmit={handleUploadKeePassFile} className="space-y-3">
-                {/* File Upload Drop Zone */}
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">Chọn file KeePass (.kdbx, .kbdx, .xml, .csv) (*)</label>
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-5 border-2 border-dashed border-indigo-300 hover:border-indigo-500 bg-slate-50/70 hover:bg-indigo-50/40 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors"
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".kdbx, .kbdx, .xml, .csv, .xlsx, .xls, .txt"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0] || null;
-                        setImportFile(f);
-                        setImportResult(null);
-                        setImportErrorMsg('');
-                      }}
-                    />
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center shadow-xs">
-                      <Lock className="w-5 h-5" />
-                    </div>
-                    {importFile ? (
-                      <div className="text-center">
-                        <p className="font-bold text-indigo-900 text-xs flex items-center justify-center gap-1">
-                          <span>📄 {importFile.name}</span>
-                          <span className="text-[10px] text-indigo-600 font-mono">({(importFile.size / 1024).toFixed(1)} KB)</span>
-                        </p>
-                        <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">✓ Đã chọn file thành công</p>
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <p className="font-bold text-slate-700">Bấm để chọn file hoặc kéo thả file .kdbx / .xml vào đây</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">KeePass Database (.kdbx), KeePass XML (.xml), CSV, Excel (.xlsx)</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Master Password Field for .kdbx files */}
-                {importFile && (importFile.name.toLowerCase().endsWith('.kdbx') || importFile.name.toLowerCase().endsWith('.kbdx')) && (
-                  <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-2 animate-in fade-in slide-in-from-top-2 duration-150">
-                    <label className="block font-bold text-amber-950 text-xs flex items-center gap-1.5">
-                      <KeyRound className="w-3.5 h-3.5 text-amber-600" />
-                      <span>Mật khẩu Master Password của file KDBX (*)</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showImportMasterPassword ? 'text' : 'password'}
-                        value={importMasterPassword}
-                        onChange={(e) => {
-                          setImportMasterPassword(e.target.value);
-                          setImportErrorMsg('');
-                        }}
-                        placeholder="Nhập Master Password để giải mã file .kdbx..."
-                        className="w-full pl-3 pr-9 py-2 bg-white border border-amber-300 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 font-mono text-xs text-slate-900"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowImportMasterPassword(!showImportMasterPassword)}
-                        className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                      >
-                        {showImportMasterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-amber-800">
-                      🔒 Mật khẩu chỉ dùng để giải mã một lần trong bộ nhớ máy chủ và không được lưu lại bất kỳ đâu.
-                    </p>
-
-                    {/* Optional Key File */}
-                    <div className="pt-1">
-                      <label className="block font-semibold text-amber-900 text-[11px] mb-1">File Key (.key) nếu cơ sở dữ liệu có dùng:</label>
-                      <input
-                        ref={keyFileInputRef}
-                        type="file"
-                        accept=".key, .keyx, .bin"
-                        className="hidden"
-                        onChange={(e) => setImportKeyFile(e.target.files?.[0] || null)}
-                      />
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => keyFileInputRef.current?.click()}
-                          className="px-2.5 py-1 bg-white border border-amber-300 hover:bg-amber-100/50 rounded-lg text-[11px] font-semibold text-amber-900 cursor-pointer"
-                        >
-                          {importKeyFile ? '🔑 ' + importKeyFile.name : '+ Chọn file Key (Nếu có)'}
-                        </button>
-                        {importKeyFile && (
-                          <button
-                            type="button"
-                            onClick={() => setImportKeyFile(null)}
-                            className="text-rose-600 hover:underline text-[10px] cursor-pointer"
-                          >
-                            Xóa file key
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Default Folder Fallback */}
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Thư Mục Mặc Định (Nếu mục không có thư mục)</label>
-                  <input
-                    type="text"
-                    value={importGroup}
-                    onChange={(e) => setImportGroup(e.target.value)}
-                    placeholder="VD: 🏢 Văn Phòng Trụ Sở Chính / KeePass Import"
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-semibold"
-                  />
-                </div>
-
-                {importErrorMsg && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2 font-medium">
-                    <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
-                    <span>{importErrorMsg}</span>
-                  </div>
-                )}
-
-                {importResult && (
-                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl space-y-1">
-                    <p className="font-bold flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>{importResult.message}</span>
-                    </p>
-                    {importResult.groupsCount > 0 && (
-                      <p className="text-[11px] text-emerald-700 pl-5.5">
-                        📁 Đã nạp và tái hiện <strong>{importResult.groupsCount}</strong> thư mục nhóm trên cây thư mục.
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={handleDownloadSampleTemplate}
-                    className="text-indigo-600 hover:underline font-semibold text-xs flex items-center gap-1"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Tải mẫu Excel</span>
-                  </button>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsImportModalOpen(false)}
-                      className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                    >
-                      Đóng (ESC)
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={!importFile || isImporting}
-                      className="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-                    >
-                      {isImporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                      <span>{isImporting ? 'Đang Giải Mã & Nạp...' : 'Tiến Hành Import'}</span>
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: ADD PASSWORD */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full flex flex-col max-h-[92vh] border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-purple-50 shrink-0">
-              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                <span className="p-1.5 bg-indigo-600 text-white rounded-xl shadow-xs">
-                  <Lock className="w-4 h-4" />
-                </span>
-                <span>Thêm Mới Tài Khoản & Mật Khẩu</span>
-              </h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tiêu đề / Tên dịch vụ (*) </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="VD: Root Server Ubuntu 24.04, Admin Router..."
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-bold text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Thư Mục</label>
-                  <input
-                    type="text"
-                    list="folder-datalist"
-                    placeholder="VD: 🏢 Văn Phòng Trụ Sở Chính / 🐧 Máy chủ Linux / Ubuntu"
-                    value={formData.groupName}
-                    onChange={(e) => setFormData({ ...formData, groupName: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-semibold text-indigo-950"
-                  />
-                  <datalist id="folder-datalist">
-                    {folderTree.flatMap((rg) => [rg.fullPath, ...rg.children.map((c) => c.fullPath)]).map((p) => (
-                      <option key={p} value={p} />
-                    ))}
-                  </datalist>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tên đăng nhập / Email / Username</label>
-                  <input
-                    type="text"
-                    placeholder="VD: administrator, root, admin@company.local..."
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-bold text-slate-700">Mật khẩu (*) </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newPass = generateSecurePassword({ length: 16, useUpper: true, useLower: true, useDigits: true, useSymbols: true, avoidAmbiguous: false });
-                        setFormData({ ...formData, password: newPass });
-                      }}
-                      className="text-purple-600 font-bold text-[10px] hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <Dices className="w-3 h-3" />
-                      <span>Sinh mật khẩu</span>
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nhập hoặc tạo mật khẩu..."
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-mono font-bold text-indigo-950"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Đường dẫn đăng nhập / IP / Host / Port (URL)</label>
-                <input
-                  type="text"
-                  placeholder="VD: https://portal.company.com hoặc 192.168.1.1:8443 hoặc ssh://10.0.0.15:22"
-                  value={formData.url}
-                  onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Ghi chú & Hướng dẫn bảo mật</label>
-                <textarea
-                  rows={2}
-                  placeholder="Ghi chú về cổng port, tài khoản dự phòng, chu kỳ đổi mật khẩu, người quản lý..."
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={formData.isFavorite}
-                    onChange={(e) => setFormData({ ...formData, isFavorite: e.target.checked })}
-                    className="w-4 h-4 text-amber-500 rounded"
-                  />
-                  <span>⭐ Đánh dấu yêu thích (Ghim lên đầu)</span>
-                </label>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                >
-                  Hủy (ESC)
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
-                >
-                  💾 Lưu Mật Khẩu
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: EDIT PASSWORD */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full flex flex-col max-h-[92vh] border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50 shrink-0">
-              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                <span className="p-1.5 bg-amber-500 text-white rounded-xl shadow-xs">
-                  <Edit2 className="w-4 h-4" />
-                </span>
-                <span>Cập Nhật Tài Khoản & Mật Khẩu</span>
-              </h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tiêu đề / Tên dịch vụ (*) </label>
-                  <input
-                    type="text"
-                    required
-                    value={editFormData.title}
-                    onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 font-bold text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Thư Mục</label>
-                  <input
-                    type="text"
-                    list="folder-datalist-edit"
-                    value={editFormData.groupName}
-                    onChange={(e) => setEditFormData({ ...editFormData, groupName: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 font-semibold text-indigo-950"
-                  />
-                  <datalist id="folder-datalist-edit">
-                    {folderTree.flatMap((rg) => [rg.fullPath, ...rg.children.map((c) => c.fullPath)]).map((p) => (
-                      <option key={p} value={p} />
-                    ))}
-                  </datalist>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tên đăng nhập / Email / Username</label>
-                  <input
-                    type="text"
-                    value={editFormData.username}
-                    onChange={(e) => setEditFormData({ ...editFormData, username: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-bold text-slate-700">Mật khẩu (*) </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newPass = generateSecurePassword({ length: 16, useUpper: true, useLower: true, useDigits: true, useSymbols: true, avoidAmbiguous: false });
-                        setEditFormData({ ...editFormData, password: newPass });
-                      }}
-                      className="text-purple-600 font-bold text-[10px] hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <Dices className="w-3 h-3" />
-                      <span>Sinh mật khẩu</span>
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={editFormData.password}
-                    onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 font-mono font-bold text-slate-900"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Đường dẫn đăng nhập / IP / Host / Port (URL)</label>
-                <input
-                  type="text"
-                  value={editFormData.url}
-                  onChange={(e) => setEditFormData({ ...editFormData, url: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Ghi chú & Hướng dẫn bảo mật</label>
-                <textarea
-                  rows={2}
-                  value={editFormData.notes}
-                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-amber-500"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={editFormData.isFavorite}
-                    onChange={(e) => setEditFormData({ ...editFormData, isFavorite: e.target.checked })}
-                    className="w-4 h-4 text-amber-500 rounded"
-                  />
-                  <span>⭐ Đánh dấu yêu thích (Ghim lên đầu)</span>
-                </label>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                >
-                  Hủy (ESC)
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
-                >
-                  💾 Lưu Cập Nhật
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    
       {/* MODAL: MẬT KHẨU CẤP 2 (SECONDARY PASSWORD) */}
       <SecondaryPasswordModal
         isOpen={isSecPwModalOpen}

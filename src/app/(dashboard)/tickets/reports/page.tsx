@@ -196,62 +196,72 @@ interface ReportData {
   }>;
 }
 
-const getCategoryName = (cat: string, isEn: boolean) => {
-  if (!isEn) {
-    const mapVi: Record<string, string> = {
-      HARDWARE: 'Phần Cứng',
-      SOFTWARE: 'Phần Mềm',
-      NETWORK: 'Mạng & Internet',
-      LICENSE: 'Bản Quyền / License',
-      ACCESS_REQUEST: 'Quyền Truy Cập',
-      OTHER: 'Khác',
+const getCategoryName = (cat: string, lang: string) => {
+  if (lang === 'ja') {
+    const mapJa: Record<string, string> = {
+      HARDWARE: 'ハードウェア',
+      SOFTWARE: 'ソフトウェア',
+      NETWORK: 'ネットワーク＆回線',
+      LICENSE: 'ライセンス',
+      ACCESS_REQUEST: 'アクセス権限申請',
+      OTHER: 'その他',
     };
-    return mapVi[cat] || cat;
+    return mapJa[cat] || cat;
   }
-  const mapEn: Record<string, string> = {
-    HARDWARE: 'Hardware',
-    SOFTWARE: 'Software',
-    NETWORK: 'Network & Internet',
-    LICENSE: 'License & Software',
-    ACCESS_REQUEST: 'Access Request',
-    OTHER: 'Other',
+  if (lang === 'en') {
+    const mapEn: Record<string, string> = {
+      HARDWARE: 'Hardware',
+      SOFTWARE: 'Software',
+      NETWORK: 'Network & Internet',
+      LICENSE: 'License & Software',
+      ACCESS_REQUEST: 'Access Request',
+      OTHER: 'Other',
+    };
+    return mapEn[cat] || cat;
+  }
+  const mapVi: Record<string, string> = {
+    HARDWARE: 'Phần Cứng',
+    SOFTWARE: 'Phần Mềm',
+    NETWORK: 'Mạng & Internet',
+    LICENSE: 'Bản Quyền / License',
+    ACCESS_REQUEST: 'Quyền Truy Cập',
+    OTHER: 'Khác',
   };
-  return mapEn[cat] || cat;
+  return mapVi[cat] || cat;
 };
 
-const getPriorityInfo = (pri: string, isEn: boolean) => {
-  const map: Record<string, { labelVi: string; labelEn: string; color: string; badge: string }> = {
-    URGENT: { labelVi: 'Khẩn cấp', labelEn: 'Urgent', color: 'text-rose-600', badge: 'bg-rose-50 text-rose-700 border-rose-200' },
-    HIGH: { labelVi: 'Cao', labelEn: 'High', color: 'text-amber-600', badge: 'bg-amber-50 text-amber-700 border-amber-200' },
-    MEDIUM: { labelVi: 'Trung bình', labelEn: 'Medium', color: 'text-blue-600', badge: 'bg-blue-50 text-blue-700 border-blue-200' },
-    LOW: { labelVi: 'Thấp', labelEn: 'Low', color: 'text-slate-600', badge: 'bg-slate-50 text-slate-700 border-slate-200' },
+const getPriorityInfo = (pri: string, lang: string) => {
+  const map: Record<string, { labelVi: string; labelEn: string; labelJa: string; color: string; badge: string }> = {
+    URGENT: { labelVi: 'Khẩn cấp', labelEn: 'Urgent', labelJa: '緊急', color: 'text-rose-600', badge: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300' },
+    HIGH: { labelVi: 'Cao', labelEn: 'High', labelJa: '高', color: 'text-amber-600', badge: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300' },
+    MEDIUM: { labelVi: 'Trung bình', labelEn: 'Medium', labelJa: '中', color: 'text-blue-600', badge: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300' },
+    LOW: { labelVi: 'Thấp', labelEn: 'Low', labelJa: '低', color: 'text-slate-600', badge: 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300' },
   };
   const info = map[pri] || map.LOW;
   return {
-    label: isEn ? info.labelEn : info.labelVi,
+    label: lang === 'ja' ? info.labelJa : (lang === 'en' ? info.labelEn : info.labelVi),
     color: info.color,
     badge: info.badge,
   };
 };
 
-const getStatusInfo = (status: string, isEn: boolean) => {
-  const map: Record<string, { labelVi: string; labelEn: string; badge: string }> = {
-    OPEN: { labelVi: 'Mới tạo', labelEn: 'Open', badge: 'bg-blue-50 text-blue-700 border-blue-200' },
-    IN_PROGRESS: { labelVi: 'Đang xử lý', labelEn: 'In Progress', badge: 'bg-amber-50 text-amber-700 border-amber-200' },
-    WAITING: { labelVi: 'Chờ phản hồi', labelEn: 'Waiting', badge: 'bg-purple-50 text-purple-700 border-purple-200' },
-    RESOLVED: { labelVi: 'Đã giải quyết', labelEn: 'Resolved', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    CLOSED: { labelVi: 'Đã đóng', labelEn: 'Closed', badge: 'bg-slate-100 text-slate-700 border-slate-300' },
+const getStatusInfo = (status: string, lang: string) => {
+  const map: Record<string, { labelVi: string; labelEn: string; labelJa: string; badge: string }> = {
+    OPEN: { labelVi: 'Mới tạo', labelEn: 'Open', labelJa: '新規受付', badge: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300' },
+    IN_PROGRESS: { labelVi: 'Đang xử lý', labelEn: 'In Progress', labelJa: '対応中', badge: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300' },
+    WAITING: { labelVi: 'Chờ phản hồi', labelEn: 'Waiting', labelJa: '返信待ち', badge: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300' },
+    RESOLVED: { labelVi: 'Đã giải quyết', labelEn: 'Resolved', labelJa: '解決済み', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300' },
+    CLOSED: { labelVi: 'Đã đóng', labelEn: 'Closed', labelJa: '完了', badge: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300' },
   };
   const info = map[status] || map.OPEN;
   return {
-    label: isEn ? info.labelEn : info.labelVi,
+    label: lang === 'ja' ? info.labelJa : (lang === 'en' ? info.labelEn : info.labelVi),
     badge: info.badge,
   };
 };
 
 export default function TicketReportsPage() {
-  const { language } = useLanguage();
-  const isEn = language === 'en';
+  const { language, t, isEn, isJa } = useLanguage();
 
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -426,9 +436,9 @@ export default function TicketReportsPage() {
           department: t.createdBy?.department || 'N/A',
           team: t.team?.name || (isEn ? 'Unassigned' : 'Chưa phân team'),
           assignee: t.assignedTo?.fullName || (isEn ? 'Unassigned' : 'Chưa gán'),
-          category: getCategoryName(t.category, isEn),
-          priority: getPriorityInfo(t.priority, isEn).label,
-          status: getStatusInfo(t.status, isEn).label,
+          category: getCategoryName(t.category, language),
+          priority: getPriorityInfo(t.priority, language).label,
+          status: getStatusInfo(t.status, language).label,
           asset: t.asset ? `[${t.asset.assetTag}] ${t.asset.name}` : '—',
           createdAt: new Date(t.createdAt).toLocaleString(isEn ? 'en-US' : 'vi-VN'),
           slaDeadline: t.slaDeadline ? new Date(t.slaDeadline).toLocaleString(isEn ? 'en-US' : 'vi-VN') : '—',
@@ -539,15 +549,17 @@ export default function TicketReportsPage() {
             </div>
             <div>
               <h1 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <span>{isEn ? 'ITSM Dashboard & Technical Support Reports' : 'Dashboard & Báo Cáo Hỗ Trợ Kỹ Thuật'}</span>
+                <span>{isJa ? 'ITSMダッシュボード＆テクニカルサポートレポート' : (isEn ? 'ITSM Dashboard & Technical Support Reports' : 'Dashboard & Báo Cáo Hỗ Trợ Kỹ Thuật')}</span>
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800">
                   ITSM Analytics
                 </span>
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {isEn
+                {isJa
+                  ? '多角的な分析: チケット全体、インシデント、ITチーム実績、グループ会社別集計'
+                  : (isEn
                   ? 'Multi-dimensional analytics: All Tickets, Incidents, IT Team Performance & Corporate Entities'
-                  : 'Thống kê đa chiều: Toàn bộ Ticket, Sự cố Incidents, Hiệu suất Team IT & Từng Công ty thành viên'}
+                  : 'Thống kê đa chiều: Toàn bộ Ticket, Sự cố Incidents, Hiệu suất Team IT & Từng Công ty thành viên')}
               </p>
             </div>
           </div>
@@ -560,7 +572,7 @@ export default function TicketReportsPage() {
             className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <LifeBuoy className="w-3.5 h-3.5" />
-            <span>{isEn ? 'Ticket List' : 'Danh Sách Ticket'}</span>
+            <span>{isJa ? 'チケット一覧' : (isEn ? 'Ticket List' : 'Danh Sách Ticket')}</span>
           </Link>
 
           <button
@@ -571,7 +583,7 @@ export default function TicketReportsPage() {
             title={isEn ? "Refresh data" : "Làm mới dữ liệu"}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>{isEn ? 'Refresh' : 'Làm Mới'}</span>
+            <span>{isJa ? '更新' : (isEn ? 'Refresh' : 'Làm Mới')}</span>
           </button>
 
           <button
@@ -581,7 +593,7 @@ export default function TicketReportsPage() {
             title={isEn ? "Print or save as PDF" : "In hoặc lưu PDF"}
           >
             <Printer className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
-            <span>{isEn ? 'Print Report' : 'In Báo Cáo'}</span>
+            <span>{isJa ? '印刷' : (isEn ? 'Print Report' : 'In Báo Cáo')}</span>
           </button>
 
           <button
@@ -590,7 +602,7 @@ export default function TicketReportsPage() {
             className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>{isEn ? 'Export Full Excel (.xlsx)' : 'Xuất Excel Đầy Đủ (.xlsx)'}</span>
+            <span>{isJa ? 'Excelエクスポート (.xlsx)' : (isEn ? 'Export Full Excel (.xlsx)' : 'Xuất Excel Đầy Đủ (.xlsx)')}</span>
           </button>
         </div>
       </div>
@@ -601,7 +613,7 @@ export default function TicketReportsPage() {
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-blue-600" />
             <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
-              {isEn ? 'Multi-Dimensional Analytics Filters' : 'Bộ Lọc Phân Tích Đa Chiều'}
+              {isJa ? '詳細分析フィルター' : (isEn ? 'Multi-Dimensional Analytics Filters' : 'Bộ Lọc Phân Tích Đa Chiều')}
             </h3>
           </div>
           <button
@@ -610,23 +622,23 @@ export default function TicketReportsPage() {
             className="text-xs font-bold text-slate-500 hover:text-blue-600 flex items-center gap-1 cursor-pointer transition-colors"
           >
             <RotateCcw className="w-3 h-3" />
-            <span>{isEn ? 'Reset Defaults' : 'Khôi Phục Mặc Định'}</span>
+            <span>{isJa ? 'デフォルトに戻す' : (isEn ? 'Reset Defaults' : 'Khôi Phục Mặc Định')}</span>
           </button>
         </div>
 
         {/* Quick Time Range Selector */}
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-xs font-bold text-slate-500 mr-1 flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5" /> {isEn ? 'Time range:' : 'Thời gian:'}
+            <Calendar className="w-3.5 h-3.5" /> {isJa ? '集計期間:' : (isEn ? 'Time range:' : 'Thời gian:')}
           </span>
           {[
-            { id: 'today', labelVi: 'Hôm nay', labelEn: 'Today' },
-            { id: 'this_week', labelVi: 'Tuần này', labelEn: 'This Week' },
-            { id: 'this_month', labelVi: 'Tháng này', labelEn: 'This Month' },
-            { id: 'this_quarter', labelVi: 'Quý này', labelEn: 'This Quarter' },
-            { id: 'this_year', labelVi: 'Năm nay', labelEn: 'This Year' },
-            { id: 'all', labelVi: 'Tất cả', labelEn: 'All Time' },
-            { id: 'custom', labelVi: 'Tùy chỉnh', labelEn: 'Custom' },
+            { id: 'today', labelVi: 'Hôm nay', labelEn: 'Today', labelJa: '今日' },
+            { id: 'this_week', labelVi: 'Tuần này', labelEn: 'This Week', labelJa: '今週' },
+            { id: 'this_month', labelVi: 'Tháng này', labelEn: 'This Month', labelJa: '今月' },
+            { id: 'this_quarter', labelVi: 'Quý này', labelEn: 'This Quarter', labelJa: '今四半期' },
+            { id: 'this_year', labelVi: 'Năm nay', labelEn: 'This Year', labelJa: '今年' },
+            { id: 'all', labelVi: 'Tất cả', labelEn: 'All Time', labelJa: '全期間' },
+            { id: 'custom', labelVi: 'Tùy chỉnh', labelEn: 'Custom', labelJa: 'カスタム' },
           ].map((item) => (
             <button
               key={item.id}
@@ -638,7 +650,7 @@ export default function TicketReportsPage() {
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
-              {isEn ? item.labelEn : item.labelVi}
+              {isJa ? item.labelJa : (isEn ? item.labelEn : item.labelVi)}
             </button>
           ))}
 
@@ -667,7 +679,7 @@ export default function TicketReportsPage() {
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
               <Building className="w-3 h-3 text-blue-500" />
-              <span>{isEn ? 'Company' : 'Công Ty Hỗ Trợ'}</span>
+              <span>{isJa ? '対象会社' : (isEn ? 'Company' : 'Công Ty Hỗ Trợ')}</span>
             </label>
             <select
               value={selectedCompany}
@@ -677,7 +689,7 @@ export default function TicketReportsPage() {
               }}
               className="w-full text-xs py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              <option value="ALL">{isEn ? '🏢 All Companies' : '🏢 Tất cả Công ty'}</option>
+              <option value="ALL">{isJa ? '🏢 すべての会社' : (isEn ? '🏢 All Companies' : '🏢 Tất cả Công ty')}</option>
               {data?.filterOptions?.companies.map((comp) => (
                 <option key={comp} value={comp}>
                   {comp}
@@ -690,14 +702,14 @@ export default function TicketReportsPage() {
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
               <UserIcon className="w-3 h-3 text-cyan-500" />
-              <span>{isEn ? 'Requester' : 'Nhân Sự Yêu Cầu'}</span>
+              <span>{isJa ? '申請者' : (isEn ? 'Requester' : 'Nhân Sự Yêu Cầu')}</span>
             </label>
             <select
               value={selectedRequester}
               onChange={(e) => setSelectedRequester(e.target.value)}
               className="w-full text-xs py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              <option value="ALL">{isEn ? '👤 All Requesters' : '👤 Tất cả nhân sự'}</option>
+              <option value="ALL">{isJa ? '👤 すべての申請者' : (isEn ? '👤 All Requesters' : '👤 Tất cả nhân sự')}</option>
               {availableRequesters.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.fullName} {u.department ? `(${u.department})` : ''}
@@ -710,14 +722,14 @@ export default function TicketReportsPage() {
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
               <Users className="w-3 h-3 text-purple-500" />
-              <span>{isEn ? 'Assigned IT Team' : 'Team IT Phụ Trách'}</span>
+              <span>{isJa ? '担当ITチーム' : (isEn ? 'Assigned IT Team' : 'Team IT Phụ Trách')}</span>
             </label>
             <select
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value)}
               className="w-full text-xs py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              <option value="ALL">{isEn ? '👥 All IT Teams' : '👥 Tất cả Team IT'}</option>
+              <option value="ALL">{isJa ? '👥 すべてのチーム' : (isEn ? '👥 All IT Teams' : '👥 Tất cả Team IT')}</option>
               {data?.filterOptions?.teams.map((t) => (
                 <option key={t.id} value={t.id}>
                   [{t.code}] {t.name}
@@ -730,14 +742,14 @@ export default function TicketReportsPage() {
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
               <Shield className="w-3 h-3 text-indigo-500" />
-              <span>{isEn ? 'IT Technician' : 'Kỹ Thuật Viên IT'}</span>
+              <span>{isJa ? '対応技術員' : (isEn ? 'IT Technician' : 'Kỹ Thuật Viên IT')}</span>
             </label>
             <select
               value={selectedTechnician}
               onChange={(e) => setSelectedTechnician(e.target.value)}
               className="w-full text-xs py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              <option value="ALL">{isEn ? '🛡️ All Technicians' : '🛡️ Tất cả kỹ thuật viên'}</option>
+              <option value="ALL">{isJa ? '🛡️ すべての技術員' : (isEn ? '🛡️ All Technicians' : '🛡️ Tất cả kỹ thuật viên')}</option>
               {data?.filterOptions?.technicians.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.fullName} ({u.email})
@@ -750,17 +762,17 @@ export default function TicketReportsPage() {
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
               <Layers className="w-3 h-3 text-amber-500" />
-              <span>{isEn ? 'Category' : 'Phân Loại Sự Cố'}</span>
+              <span>{isJa ? 'カテゴリー' : (isEn ? 'Category' : 'Phân Loại Sự Cố')}</span>
             </label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full text-xs py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              <option value="ALL">{isEn ? '📁 All Categories' : '📁 Tất cả danh mục'}</option>
+              <option value="ALL">{isJa ? '📁 すべてのカテゴリ' : (isEn ? '📁 All Categories' : '📁 Tất cả danh mục')}</option>
               {['HARDWARE', 'SOFTWARE', 'NETWORK', 'LICENSE', 'ACCESS_REQUEST', 'OTHER'].map((catKey) => (
                 <option key={catKey} value={catKey}>
-                  {getCategoryName(catKey, isEn)}
+                  {getCategoryName(catKey, language)}
                 </option>
               ))}
             </select>
@@ -770,17 +782,17 @@ export default function TicketReportsPage() {
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
               <Flame className="w-3 h-3 text-rose-500" />
-              <span>{isEn ? 'Priority Level' : 'Mức Độ Ưu Tiên'}</span>
+              <span>{isJa ? '優先度' : (isEn ? 'Priority Level' : 'Mức Độ Ưu Tiên')}</span>
             </label>
             <select
               value={selectedPriority}
               onChange={(e) => setSelectedPriority(e.target.value)}
               className="w-full text-xs py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              <option value="ALL">{isEn ? '⚡ All Priorities' : '⚡ Tất cả ưu tiên'}</option>
+              <option value="ALL">{isJa ? '⚡ すべての優先度' : (isEn ? '⚡ All Priorities' : '⚡ Tất cả ưu tiên')}</option>
               {['URGENT', 'HIGH', 'MEDIUM', 'LOW'].map((pKey) => (
                 <option key={pKey} value={pKey}>
-                  {getPriorityInfo(pKey, isEn).label}
+                  {getPriorityInfo(pKey, language).label}
                 </option>
               ))}
             </select>
@@ -793,7 +805,7 @@ export default function TicketReportsPage() {
         {/* Tile 1: Tổng Tickets */}
         <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase">{isEn ? 'Total' : 'Tổng Vé'}</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase">{isJa ? '総チケット' : (isEn ? 'Total' : 'Tổng Vé')}</span>
             <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600">
               <LifeBuoy className="w-3.5 h-3.5" />
             </div>
@@ -801,13 +813,13 @@ export default function TicketReportsPage() {
           <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
             {data?.summary.totalTickets || 0}
           </div>
-          <div className="text-[9px] text-slate-400 font-medium">{isEn ? 'Tickets' : 'Trong kỳ'}</div>
+          <div className="text-[9px] text-slate-400 font-medium">{isJa ? '期間内' : (isEn ? 'Tickets' : 'Trong kỳ')}</div>
         </div>
 
         {/* Tile 2: Đang Xử Lý & Chờ */}
         <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">{isEn ? 'Active' : 'Đang Làm'}</span>
+            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">{isJa ? '対応中' : (isEn ? 'Active' : 'Đang Làm')}</span>
             <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center text-amber-600">
               <Clock className="w-3.5 h-3.5" />
             </div>
@@ -816,14 +828,14 @@ export default function TicketReportsPage() {
             {(data?.summary.openTickets || 0) + (data?.summary.inProgressTickets || 0) + (data?.summary.waitingTickets || 0)}
           </div>
           <div className="text-[9px] text-slate-400 font-medium">
-            {data?.summary.openTickets || 0} Mới • {data?.summary.inProgressTickets || 0} Làm
+            {data?.summary.openTickets || 0} {isJa ? '新規' : (isEn ? 'New' : 'Mới')} • {data?.summary.inProgressTickets || 0} {isJa ? '着手' : (isEn ? 'Active' : 'Làm')}
           </div>
         </div>
 
         {/* Tile 3: Đã Hoàn Tất */}
         <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">{isEn ? 'Resolved' : 'Đã Xử Lý'}</span>
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">{isJa ? '解決済み' : (isEn ? 'Resolved' : 'Đã Xử Lý')}</span>
             <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center text-emerald-600">
               <CheckCircle2 className="w-3.5 h-3.5" />
             </div>
@@ -832,7 +844,7 @@ export default function TicketReportsPage() {
             {(data?.summary.resolvedTickets || 0) + (data?.summary.closedTickets || 0)}
           </div>
           <div className="text-[9px] text-slate-400 font-medium">
-            Tỷ lệ: {data?.summary.totalTickets
+            {isJa ? '完了率:' : (isEn ? 'Rate:' : 'Tỷ lệ:')} {data?.summary.totalTickets
               ? Math.round((((data.summary.resolvedTickets + data.summary.closedTickets) / data.summary.totalTickets) * 100))
               : 0}%
           </div>
@@ -850,7 +862,7 @@ export default function TicketReportsPage() {
             {data?.summary.slaComplianceRate || 100}%
           </div>
           <div className="text-[9px] text-rose-500 font-bold">
-            {data?.summary.breachedSlaCount || 0} trễ hạn
+            {data?.summary.breachedSlaCount || 0} {isJa ? '件 期限超過' : (isEn ? 'breached' : 'trễ hạn')}
           </div>
         </div>
 
@@ -865,13 +877,13 @@ export default function TicketReportsPage() {
           <div className="text-xl font-black text-cyan-600 dark:text-cyan-400 font-mono">
             {data?.summary.avgResolutionHours || 0}h
           </div>
-          <div className="text-[9px] text-slate-400 font-medium">Giờ/ticket</div>
+          <div className="text-[9px] text-slate-400 font-medium">{isJa ? '時間/件' : (isEn ? 'Hours/ticket' : 'Giờ/ticket')}</div>
         </div>
 
         {/* Tile 6: Giờ Công Thực Tế (Time Tracking) */}
         <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">Giờ Công</span>
+            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">{isJa ? '実作業工数' : (isEn ? 'Work Hours' : 'Giờ Công')}</span>
             <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center text-amber-600">
               <Clock className="w-3.5 h-3.5" />
             </div>
@@ -879,7 +891,7 @@ export default function TicketReportsPage() {
           <div className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono">
             {data?.summary.totalActualSpentHours || 0}h
           </div>
-          <div className="text-[9px] text-slate-400 font-medium">{data?.summary.totalActualSpentMinutes || 0} phút ghi nhận</div>
+          <div className="text-[9px] text-slate-400 font-medium">{data?.summary.totalActualSpentMinutes || 0} {isJa ? '分 記録' : (isEn ? 'mins logged' : 'phút ghi nhận')}</div>
         </div>
 
         {/* Tile 7: Đánh Giá CSAT */}
@@ -893,13 +905,13 @@ export default function TicketReportsPage() {
           <div className="text-xl font-black text-yellow-600 dark:text-yellow-400 font-mono">
             {data?.summary.avgCsatRating || 5.0}★
           </div>
-          <div className="text-[9px] text-slate-400 font-medium">{data?.summary.csatSatisfactionRate || 100}% hài lòng</div>
+          <div className="text-[9px] text-slate-400 font-medium">{data?.summary.csatSatisfactionRate || 100}% {isJa ? '満足' : (isEn ? 'satisfied' : 'hài lòng')}</div>
         </div>
 
         {/* Tile 8: AI Auto-Routed */}
         <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">AI Định Tuyến</span>
+            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">{isJa ? 'AI自動振分' : (isEn ? 'AI Routed' : 'AI Định Tuyến')}</span>
             <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center text-indigo-600">
               <Sparkles className="w-3.5 h-3.5" />
             </div>
@@ -907,19 +919,19 @@ export default function TicketReportsPage() {
           <div className="text-xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
             {data?.summary.aiAutoRoutedCount || 0}
           </div>
-          <div className="text-[9px] text-indigo-500 font-semibold">Tự động hóa</div>
+          <div className="text-[9px] text-indigo-500 font-semibold">{isJa ? '自動化' : (isEn ? 'Automated' : 'Tự động hóa')}</div>
         </div>
       </div>
 
       {/* ==================== 4. NAVIGATION TABS ==================== */}
       <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2 overflow-x-auto pb-1">
         {[
-          { id: 'executive', labelVi: '👑 Báo Cáo & KPI Lãnh Đạo', labelEn: '👑 Executive Briefing & KPI', icon: Sparkles },
-          { id: 'overview', labelVi: '📊 Tổng Quan & Phân Loại', labelEn: '📊 Overview & Breakdown', icon: BarChart3 },
-          { id: 'company', labelVi: '🏢 Báo Cáo Theo Công Ty & Nhân Sự', labelEn: '🏢 By Company & Staff', icon: Building, badge: data?.companyStats.length },
-          { id: 'team', labelVi: '👥 Báo Cáo Theo Team IT & Nhân Viên', labelEn: '👥 By IT Team & Tech', icon: Users, badge: data?.teamStats.length },
-          { id: 'incidents', labelVi: '⚠️ Sự Cố & Vấn Đề (Incidents)', labelEn: '⚠️ Major Incidents', icon: AlertTriangle, badge: data?.incidentsSummary.totalIncidents },
-          { id: 'tickets', labelVi: '📋 Danh Sách Chi Tiết Tickets', labelEn: '📋 Ticket Explorer', icon: LifeBuoy, badge: data?.tickets.length },
+          { id: 'executive', labelVi: '👑 Báo Cáo & KPI Lãnh Đạo', labelEn: '👑 Executive Briefing & KPI', labelJa: '👑 エグゼクティブKPIサマリー', icon: Sparkles },
+          { id: 'overview', labelVi: '📊 Tổng Quan & Phân Loại', labelEn: '📊 Overview & Breakdown', labelJa: '📊 概要＆カテゴリ分析', icon: BarChart3 },
+          { id: 'company', labelVi: '🏢 Báo Cáo Theo Công Ty & Nhân Sự', labelEn: '🏢 By Company & Staff', labelJa: '🏢 会社・社員別レポート', icon: Building, badge: data?.companyStats.length },
+          { id: 'team', labelVi: '👥 Báo Cáo Theo Team IT & Nhân Viên', labelEn: '👥 By IT Team & Tech', labelJa: '👥 ITチーム・技術員別', icon: Users, badge: data?.teamStats.length },
+          { id: 'incidents', labelVi: '⚠️ Sự Cố & Vấn Đề (Incidents)', labelEn: '⚠️ Major Incidents', labelJa: '⚠️ 重大インシデント', icon: AlertTriangle, badge: data?.incidentsSummary.totalIncidents },
+          { id: 'tickets', labelVi: '📋 Danh Sách Chi Tiết Tickets', labelEn: '📋 Ticket Explorer', labelJa: '📋 チケット詳細エクスプローラー', icon: LifeBuoy, badge: data?.tickets.length },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -932,7 +944,7 @@ export default function TicketReportsPage() {
             }`}
           >
             <tab.icon className="w-4 h-4" />
-            <span>{isEn ? tab.labelEn : tab.labelVi}</span>
+            <span>{isJa ? tab.labelJa : (isEn ? tab.labelEn : tab.labelVi)}</span>
             {tab.badge !== undefined && tab.badge > 0 && (
               <span
                 className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
@@ -949,91 +961,109 @@ export default function TicketReportsPage() {
       {/* ==================== TAB 0: EXECUTIVE BRIEFING (👑 Enterprise) ==================== */}
       {activeTab === 'executive' && (
         <div className="space-y-6 animate-in fade-in duration-150">
-          {/* Executive Summary Card */}
-          <div className="bg-linear-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-7 rounded-3xl border border-indigo-500/30 shadow-xl space-y-5">
-            <div className="flex items-center justify-between flex-wrap gap-4 border-b border-indigo-800/40 pb-4">
+          {/* Executive Summary Card (Premium Dark Gradient, Crisp High-Contrast Typography) */}
+          <div className="bg-slate-900 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-7 rounded-3xl border border-indigo-500/40 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between flex-wrap gap-4 border-b border-indigo-800/50 pb-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="p-2 rounded-xl bg-amber-500 text-white font-black text-sm">👑</span>
-                  <h2 className="text-xl font-black tracking-tight">
-                    {isEn ? 'Executive IT Operations & SLA Briefing' : 'Báo Cáo Tóm Tắt Vận Hành IT & Đánh Giá KPI'}
+                  <span className="p-2 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white font-black text-sm shadow-md">👑</span>
+                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-xs">
+                    {isJa
+                      ? 'IT運用サマリー＆SLAパフォーマンス分析'
+                      : (isEn ? 'Executive IT Operations & SLA Briefing' : 'Báo Cáo Tóm Tắt Vận Hành IT & Đánh Giá KPI')}
                   </h2>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-extrabold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[10px] font-extrabold uppercase tracking-wider">
                     Enterprise
                   </span>
                 </div>
-                <p className="text-xs text-indigo-200/80">
-                  {isEn
+                <p className="text-xs sm:text-sm text-indigo-200 font-medium max-w-3xl leading-relaxed">
+                  {isJa
+                    ? '総合パフォーマンススコア、SLA達成ベンチマーク、再発障害機器、および実作業工数の集計。'
+                    : (isEn
                     ? 'Synthesized performance score, SLA compliance benchmark, chronic asset defects, and resource time tracking.'
-                    : 'Báo cáo tổng hợp hiệu suất, mức độ đạt SLA cam kết, thiết bị hỏng kinh niên và thời lượng làm việc thực tế.'}
+                    : 'Báo cáo tổng hợp hiệu suất, mức độ đạt SLA cam kết, thiết bị hỏng kinh niên và thời lượng làm việc thực tế.')}
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold rounded-2xl shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 cursor-pointer hover:scale-102 active:scale-98"
               >
                 <Printer className="w-4 h-4" />
-                <span>{isEn ? 'Print Executive Report' : 'In Báo Cáo Giao Ban'}</span>
+                <span>{isJa ? 'レポートを印刷' : (isEn ? 'Print Executive Report' : 'In Báo Cáo Giao Ban')}</span>
               </button>
             </div>
 
             {/* 4 Main Executive Focus Blocks */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* SLA Benchmark */}
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
-                <div className="text-[11px] font-bold text-indigo-300 flex items-center justify-between">
-                  <span>TỶ LỆ ĐẠT SLA CAM KẾT</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/30 text-indigo-200">Mục tiêu ≥95%</span>
+              <div className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 space-y-2 backdrop-blur-md transition-all">
+                <div className="text-[11px] font-extrabold text-indigo-200 flex items-center justify-between">
+                  <span>{isJa ? 'SLA達成率ベンチマーク' : (isEn ? 'SLA COMPLIANCE RATE' : 'TỶ LỆ ĐẠT SLA CAM KẾT')}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-500/40 text-indigo-100 font-bold border border-indigo-400/30">
+                    {isJa ? '目標 ≥95%' : (isEn ? 'Target ≥95%' : 'Mục tiêu ≥95%')}
+                  </span>
                 </div>
                 <div className="text-3xl font-black font-mono text-emerald-400">
                   {data?.summary.slaComplianceRate || 100}%
                 </div>
-                <div className="text-[11px] text-slate-300">
-                  {data?.summary.onTimeSlaCount || 0} vé đúng hạn • <span className="text-rose-400 font-bold">{data?.summary.breachedSlaCount || 0} vé trễ hạn</span>
+                <div className="text-[11px] text-slate-200 font-medium">
+                  {data?.summary.onTimeSlaCount || 0} {isJa ? '件 期限内' : (isEn ? 'on-time' : 'vé đúng hạn')} • <span className="text-rose-400 font-bold">{data?.summary.breachedSlaCount || 0} {isJa ? '件 期限超過' : (isEn ? 'breached' : 'vé trễ hạn')}</span>
                 </div>
               </div>
 
               {/* MTTR */}
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
-                <div className="text-[11px] font-bold text-cyan-300 flex items-center justify-between">
-                  <span>MTTR (THỜI GIAN XỬ LÝ TB)</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/30 text-cyan-200">Chuẩn &lt;4h</span>
+              <div className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 space-y-2 backdrop-blur-md transition-all">
+                <div className="text-[11px] font-extrabold text-cyan-200 flex items-center justify-between">
+                  <span>{isJa ? 'MTTR (平均解決時間)' : (isEn ? 'MTTR (AVG RESOLUTION)' : 'MTTR (THỜI GIAN XỬ LÝ TB)')}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-cyan-500/40 text-cyan-100 font-bold border border-cyan-400/30">
+                    {isJa ? '基準 <4h' : (isEn ? 'Standard <4h' : 'Chuẩn <4h')}
+                  </span>
                 </div>
-                <div className="text-3xl font-black font-mono text-cyan-400">
+                <div className="text-3xl font-black font-mono text-cyan-300">
                   {data?.summary.avgResolutionHours || 0}h
                 </div>
-                <div className="text-[11px] text-slate-300">
-                  {(data?.summary.avgResolutionHours || 0) <= 4 ? '✅ Đạt chuẩn phản ứng nhanh' : '⚠️ Cần rút ngắn thời gian xử lý'}
+                <div className="text-[11px] text-slate-200 font-medium">
+                  {(data?.summary.avgResolutionHours || 0) <= 4
+                    ? (isJa ? '✅ 迅速対応基準を達成' : (isEn ? '✅ Fast response met standard' : '✅ Đạt chuẩn phản ứng nhanh'))
+                    : (isJa ? '⚠️ 解決時間の短縮が必要' : (isEn ? '⚠️ Needs resolution optimization' : '⚠️ Cần rút ngắn thời gian xử lý'))}
                 </div>
               </div>
 
               {/* Time Spent */}
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
-                <div className="text-[11px] font-bold text-amber-300 flex items-center justify-between">
-                  <span>TỔNG GIỜ CÔNG IT (LOG WORK)</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/30 text-amber-200">Time Tracking</span>
+              <div className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 space-y-2 backdrop-blur-md transition-all">
+                <div className="text-[11px] font-extrabold text-amber-200 flex items-center justify-between">
+                  <span>{isJa ? 'IT作業総工数 (実績ログ)' : (isEn ? 'TOTAL IT WORK HOURS' : 'TỔNG GIỜ CÔNG IT (LOG WORK)')}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/40 text-amber-100 font-bold border border-amber-400/30">
+                    {isJa ? '工数追跡' : (isEn ? 'Time Tracking' : 'Ghi nhận giờ')}
+                  </span>
                 </div>
-                <div className="text-3xl font-black font-mono text-amber-400">
+                <div className="text-3xl font-black font-mono text-amber-300">
                   {data?.summary.totalActualSpentHours || 0}h
                 </div>
-                <div className="text-[11px] text-slate-300">
-                  Tổng {data?.summary.totalActualSpentMinutes || 0} phút kỹ thuật viên ghi nhận
+                <div className="text-[11px] text-slate-200 font-medium">
+                  {isJa
+                    ? `技術員による記録累計 ${data?.summary.totalActualSpentMinutes || 0}分`
+                    : (isEn
+                    ? `Total ${data?.summary.totalActualSpentMinutes || 0} mins logged by technicians`
+                    : `Tổng ${data?.summary.totalActualSpentMinutes || 0} phút kỹ thuật viên ghi nhận`)}
                 </div>
               </div>
 
               {/* CSAT Rating */}
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
-                <div className="text-[11px] font-bold text-rose-300 flex items-center justify-between">
-                  <span>ĐÁNH GIÁ HÀI LÒNG (CSAT)</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-500/30 text-rose-200">Khách hàng</span>
+              <div className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 space-y-2 backdrop-blur-md transition-all">
+                <div className="text-[11px] font-extrabold text-rose-200 flex items-center justify-between">
+                  <span>{isJa ? '顧客満足度評価 (CSAT)' : (isEn ? 'CSAT SATISFACTION SCORE' : 'ĐÁNH GIÁ HÀI LÒNG (CSAT)')}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-rose-500/40 text-rose-100 font-bold border border-rose-400/30">
+                    {isJa ? '利用者評価' : (isEn ? 'Users / Staff' : 'Khách hàng')}
+                  </span>
                 </div>
-                <div className="text-3xl font-black font-mono text-yellow-400">
-                  {data?.summary.avgCsatRating || 5.0} <span className="text-base text-slate-300">/ 5.0 ⭐</span>
+                <div className="text-3xl font-black font-mono text-yellow-300">
+                  {data?.summary.avgCsatRating || 5.0} <span className="text-base text-slate-200 font-normal">/ 5.0 ⭐</span>
                 </div>
-                <div className="text-[11px] text-slate-300">
-                  {data?.summary.csatSatisfactionRate || 100}% hài lòng ({data?.summary.totalRatedTickets || 0} lượt bầu)
+                <div className="text-[11px] text-slate-200 font-medium">
+                  {data?.summary.csatSatisfactionRate || 100}% {isJa ? '満足' : (isEn ? 'satisfied' : 'hài lòng')} ({data?.summary.totalRatedTickets || 0} {isJa ? '件の投票' : (isEn ? 'ratings' : 'lượt bầu')})
                 </div>
               </div>
             </div>
@@ -1046,10 +1076,10 @@ export default function TicketReportsPage() {
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-rose-600" />
-                  <span>{isEn ? 'Top Chronic Faulty Assets' : 'Top Thiết Bị Hay Phát Sinh Sự Cố Nhất'}</span>
+                  <span>{isJa ? '再発障害・故障頻発デバイス Top' : (isEn ? 'Top Chronic Faulty Assets' : 'Top Thiết Bị Hay Phát Sinh Sự Cố Nhất')}</span>
                 </h3>
                 <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 text-xs font-bold border border-rose-200 dark:border-rose-800">
-                  {data?.topFaultyAssets?.length || 0} thiết bị
+                  {data?.topFaultyAssets?.length || 0} {isJa ? '台' : (isEn ? 'devices' : 'thiết bị')}
                 </span>
               </div>
 
@@ -1075,7 +1105,7 @@ export default function TicketReportsPage() {
                         </div>
                         {asset.latestTicketTitle && (
                           <p className="text-[11px] text-slate-500 line-clamp-1 italic">
-                            Sự cố gần nhất: &quot;{asset.latestTicketTitle}&quot;
+                            {isJa ? '直近のインシデント' : (isEn ? 'Latest issue' : 'Sự cố gần nhất')}: &quot;{asset.latestTicketTitle}&quot;
                           </p>
                         )}
                       </div>
@@ -1095,7 +1125,7 @@ export default function TicketReportsPage() {
                 </div>
               ) : (
                 <div className="p-8 text-center text-slate-400 text-xs italic">
-                  Chưa phát hiện thiết bị nào bị lỗi lặp lại trong kỳ này.
+                  {isJa ? 'この集計期間において再発障害機器は検出されませんでした。' : (isEn ? 'No recurring device faults detected in this period.' : 'Chưa phát hiện thiết bị nào bị lỗi lặp lại trong kỳ này.')}
                 </div>
               )}
             </div>
@@ -1150,7 +1180,7 @@ export default function TicketReportsPage() {
                           <div className="font-extrabold text-amber-600 dark:text-amber-400 font-mono">
                             {tech.actualSpentHours}h
                           </div>
-                          <div className="text-[10px] text-slate-400">{isEn ? 'Work log' : 'Giờ công'}</div>
+                          <div className="text-[10px] text-slate-400">{isJa ? '実工数' : (isEn ? 'Work log' : 'Giờ công')}</div>
                         </div>
                       )}
                     </div>
@@ -1170,10 +1200,10 @@ export default function TicketReportsPage() {
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Layers className="w-4 h-4 text-blue-600" />
-                <span>{isEn ? 'Breakdown by Incident Category' : 'Phân Bổ Theo Danh Mục Sự Cố'}</span>
+                <span>{isJa ? 'カテゴリ別インシデント分布' : (isEn ? 'Breakdown by Incident Category' : 'Phân Bổ Theo Danh Mục Sự Cố')}</span>
               </h3>
               <span className="text-xs text-slate-400">
-                {data?.categoryStats.length || 0} {isEn ? 'categories' : 'danh mục'}
+                {data?.categoryStats.length || 0} {isJa ? 'カテゴリ' : (isEn ? 'categories' : 'danh mục')}
               </span>
             </div>
 
@@ -1182,10 +1212,10 @@ export default function TicketReportsPage() {
                 <div key={cat.category} className="space-y-1">
                   <div className="flex items-center justify-between text-xs font-bold">
                     <span className="text-slate-800 dark:text-slate-200">
-                      {getCategoryName(cat.category, isEn)}
+                      {getCategoryName(cat.category, language)}
                     </span>
                     <span className="text-slate-500 font-mono">
-                      {cat.count} {isEn ? 'tickets' : 'ticket'} ({cat.percentage}%) • {isEn ? 'Avg:' : 'TB:'} {cat.avgHours}h
+                      {cat.count} {isJa ? '件' : (isEn ? 'tickets' : 'ticket')} ({cat.percentage}%) • {isJa ? '平均:' : (isEn ? 'Avg:' : 'TB:')} {cat.avgHours}h
                     </span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
@@ -1204,9 +1234,9 @@ export default function TicketReportsPage() {
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Flame className="w-4 h-4 text-rose-600" />
-                <span>{isEn ? 'Urgency & Priority Distribution' : 'Mức Độ Khẩn Cấp & Ưu Tiên'}</span>
+                <span>{isJa ? '緊急度・優先度別分布' : (isEn ? 'Urgency & Priority Distribution' : 'Mức Độ Khẩn Cấp & Ưu Tiên')}</span>
               </h3>
-              <span className="text-xs text-slate-400">{isEn ? '4 priority tiers' : '4 cấp độ ưu tiên'}</span>
+              <span className="text-xs text-slate-400">{isJa ? '4段階の優先度' : (isEn ? '4 priority tiers' : '4 cấp độ ưu tiên')}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -1214,7 +1244,7 @@ export default function TicketReportsPage() {
                 const count = data?.priorityStats[pKey] || 0;
                 const total = data?.summary.totalTickets || 1;
                 const pct = Math.round((count / total) * 100);
-                const info = getPriorityInfo(pKey, isEn);
+                const info = getPriorityInfo(pKey, language);
 
                 return (
                   <div key={pKey} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1">
@@ -1242,12 +1272,14 @@ export default function TicketReportsPage() {
               <div>
                 <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
                   <Building className="w-5 h-5 text-blue-600" />
-                  <span>{isEn ? 'Performance Report by Member Company' : 'Báo Cáo Hiệu Suất Theo Từng Công Ty Thành Viên'}</span>
+                  <span>{isJa ? 'グループ会社別パフォーマンスレポート' : (isEn ? 'Performance Report by Member Company' : 'Báo Cáo Hiệu Suất Theo Từng Công Ty Thành Viên')}</span>
                 </h3>
                 <p className="text-xs text-slate-500">
-                  {isEn
+                  {isJa
+                    ? '法人ごとのチケット受付数および申請上位者の詳細集計'
+                    : (isEn
                     ? 'Detailed breakdown of ticket volume and top requesters per corporate entity'
-                    : 'Thống kê chi tiết khối lượng yêu cầu và top nhân sự gửi ticket của từng đơn vị'}
+                    : 'Thống kê chi tiết khối lượng yêu cầu và top nhân sự gửi ticket của từng đơn vị')}
                 </p>
               </div>
             </div>
@@ -1256,12 +1288,12 @@ export default function TicketReportsPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-50 dark:bg-slate-800/80 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
                   <tr>
-                    <th className="py-3 px-3">{isEn ? 'Company Name' : 'Tên Công Ty'}</th>
-                    <th className="py-3 px-3 text-center">{isEn ? 'Total Tickets' : 'Tổng Ticket'}</th>
-                    <th className="py-3 px-3 text-center">{isEn ? 'Resolved' : 'Đã Xử Lý Xong'}</th>
-                    <th className="py-3 px-3 text-center">{isEn ? 'Resolution Rate' : 'Tỷ Lệ Hoàn Thành'}</th>
-                    <th className="py-3 px-3 text-center">{isEn ? 'SLA Breached' : 'Vi Phạm SLA'}</th>
-                    <th className="py-3 px-3 text-right">{isEn ? 'Actions' : 'Thao Tác'}</th>
+                    <th className="py-3 px-3">{isJa ? '会社名' : (isEn ? 'Company Name' : 'Tên Công Ty')}</th>
+                    <th className="py-3 px-3 text-center">{isJa ? '総チケット数' : (isEn ? 'Total Tickets' : 'Tổng Ticket')}</th>
+                    <th className="py-3 px-3 text-center">{isJa ? '解決済み' : (isEn ? 'Resolved' : 'Đã Xử Lý Xong')}</th>
+                    <th className="py-3 px-3 text-center">{isJa ? '完了率' : (isEn ? 'Resolution Rate' : 'Tỷ Lệ Hoàn Thành')}</th>
+                    <th className="py-3 px-3 text-center">{isJa ? 'SLA超過' : (isEn ? 'SLA Breached' : 'Vi Phạm SLA')}</th>
+                    <th className="py-3 px-3 text-right">{isJa ? '操作' : (isEn ? 'Actions' : 'Thao Tác')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1298,7 +1330,7 @@ export default function TicketReportsPage() {
                               onClick={() => setExpandedCompany(isExpanded ? null : comp.companyName)}
                               className="px-2.5 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg cursor-pointer transition-colors inline-flex items-center gap-1"
                             >
-                              <span>{isExpanded ? (isEn ? 'Hide Staff' : 'Ẩn Nhân Sự') : (isEn ? 'View Staff' : 'Xem Nhân Sự')}</span>
+                              <span>{isExpanded ? (isJa ? '閉じる' : (isEn ? 'Hide Staff' : 'Ẩn Nhân Sự')) : (isJa ? '社員を見る' : (isEn ? 'View Staff' : 'Xem Nhân Sự'))}</span>
                               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                             </button>
                           </td>
@@ -1312,9 +1344,11 @@ export default function TicketReportsPage() {
                                 <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                                   <Users className="w-3.5 h-3.5 text-blue-600" />
                                   <span>
-                                    {isEn
+                                    {isJa
+                                      ? `${comp.companyName} の最多申請社員 Top:`
+                                      : (isEn
                                       ? `Top Requesters in ${comp.companyName}:`
-                                      : `Top Nhân Sự Gửi Yêu Cầu Nhiều Nhất Thuộc ${comp.companyName}:`}
+                                      : `Top Nhân Sự Gửi Yêu Cầu Nhiều Nhất Thuộc ${comp.companyName}:`)}
                                   </span>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
@@ -1322,10 +1356,10 @@ export default function TicketReportsPage() {
                                     <div key={req.id} className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
                                       <div className="space-y-0.5">
                                         <div className="font-bold text-xs text-slate-900 dark:text-white">👤 {req.fullName}</div>
-                                        <div className="text-[10px] text-slate-400">{isEn ? 'Dept:' : 'Phòng:'} {req.department}</div>
+                                        <div className="text-[10px] text-slate-400">{isJa ? '部署:' : (isEn ? 'Dept:' : 'Phòng:')} {req.department}</div>
                                       </div>
                                       <span className="font-mono font-black text-xs px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                                        {req.count} {isEn ? 'tickets' : 'ticket'}
+                                        {req.count} {isJa ? '件' : (isEn ? 'tickets' : 'ticket')}
                                       </span>
                                     </div>
                                   ))}
@@ -1352,12 +1386,14 @@ export default function TicketReportsPage() {
             <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
                 <Users className="w-5 h-5 text-purple-600" />
-                <span>{isEn ? 'Operational Performance by IT Support Team' : 'Hiệu Suất Vận Hành Từng Team IT (Support Teams)'}</span>
+                <span>{isJa ? 'ITサポートチーム別運用実績' : (isEn ? 'Operational Performance by IT Support Team' : 'Hiệu Suất Vận Hành Từng Team IT (Support Teams)')}</span>
               </h3>
               <p className="text-xs text-slate-500">
-                {isEn
+                {isJa
+                  ? 'チームごとの受付件数、解決率、およびSLA遵守状況'
+                  : (isEn
                   ? 'Ticket volume, resolution rate and SLA compliance by team'
-                  : 'Khối lượng ticket tiếp nhận, tỷ lệ giải quyết và tuân thủ cam kết SLA theo đội nhóm'}
+                  : 'Khối lượng ticket tiếp nhận, tỷ lệ giải quyết và tuân thủ cam kết SLA theo đội nhóm')}
               </p>
             </div>
 
@@ -1370,17 +1406,17 @@ export default function TicketReportsPage() {
                       <span className="font-mono text-[10px] text-slate-400">Code: {team.teamCode}</span>
                     </div>
                     <span className="text-xs font-black px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-mono">
-                      {team.total} {isEn ? 'Tickets' : 'Ticket'}
+                      {team.total} {isJa ? '件' : (isEn ? 'Tickets' : 'Ticket')}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
                     <div className="p-2 bg-white dark:bg-slate-900 rounded-xl">
-                      <span className="text-[10px] text-slate-400 block">{isEn ? 'Done' : 'Đã Xong'}</span>
+                      <span className="text-[10px] text-slate-400 block">{isJa ? '完了' : (isEn ? 'Done' : 'Đã Xong')}</span>
                       <span className="font-mono font-bold text-emerald-600">{team.resolved}</span>
                     </div>
                     <div className="p-2 bg-white dark:bg-slate-900 rounded-xl">
-                      <span className="text-[10px] text-slate-400 block">{isEn ? 'SLA Met' : 'Đạt SLA'}</span>
+                      <span className="text-[10px] text-slate-400 block">{isJa ? 'SLA達成' : (isEn ? 'SLA Met' : 'Đạt SLA')}</span>
                       <span className="font-mono font-bold text-purple-600">{team.slaRate}%</span>
                     </div>
                     <div className="p-2 bg-white dark:bg-slate-900 rounded-xl">
@@ -1398,12 +1434,14 @@ export default function TicketReportsPage() {
             <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
                 <Shield className="w-5 h-5 text-indigo-600" />
-                <span>{isEn ? 'Productivity & KPI Metrics by IT Technician' : 'Năng Suất & Chỉ Số KPI Từng Kỹ Thuật Viên IT'}</span>
+                <span>{isJa ? 'IT技術員別生産性＆KPI指標' : (isEn ? 'Productivity & KPI Metrics by IT Technician' : 'Năng Suất & Chỉ Số KPI Từng Kỹ Thuật Viên IT')}</span>
               </h3>
               <p className="text-xs text-slate-500">
-                {isEn
+                {isJa
+                  ? '技術員ごとの担当業務量、対応スピード、および完了品質の評価'
+                  : (isEn
                   ? 'Workload evaluation, turnaround speed and completion quality per technician'
-                  : 'Đánh giá khối lượng công việc, tốc độ xử lý và chất lượng hoàn thành của từng cá nhân'}
+                  : 'Đánh giá khối lượng công việc, tốc độ xử lý và chất lượng hoàn thành của từng cá nhân')}
               </p>
             </div>
 
@@ -1411,12 +1449,12 @@ export default function TicketReportsPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-50 dark:bg-slate-800/80 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
                   <tr>
-                    <th className="py-3 px-3">{isEn ? 'Technician' : 'Kỹ Thuật Viên'}</th>
-                    <th className="py-3 px-3">{isEn ? 'Email & Department' : 'Email & Phòng Ban'}</th>
-                    <th className="py-3 px-3 text-center">{isEn ? 'Assigned Total' : 'Tổng Tiếp Nhận'}</th>
-                    <th className="py-3 px-3 text-center">{isEn ? 'Completed' : 'Đã Hoàn Tất'}</th>
-                    <th className="py-3 px-3 text-center">{isEn ? 'SLA Compliance' : 'Tỷ Lệ Đạt SLA'}</th>
-                    <th className="py-3 px-3 text-center">{isEn ? 'Avg Time (MTTR)' : 'Thời Gian TB (MTTR)'}</th>
+                    <th className="py-3 px-3">{isJa ? '技術員' : (isEn ? 'Technician' : 'Kỹ Thuật Viên')}</th>
+                    <th className="py-3 px-3">{isJa ? 'メール＆部署' : (isEn ? 'Email & Department' : 'Email & Phòng Ban')}</th>
+                    <th className="py-3 px-3 text-center">{isJa ? '総担当件数' : (isEn ? 'Assigned Total' : 'Tổng Tiếp Nhận')}</th>
+                    <th className="py-3 px-3 text-center">{isJa ? '完了数' : (isEn ? 'Completed' : 'Đã Hoàn Tất')}</th>
+                    <th className="py-3 px-3 text-center">{isJa ? 'SLA達成率' : (isEn ? 'SLA Compliance' : 'Tỷ Lệ Đạt SLA')}</th>
+                    <th className="py-3 px-3 text-center">{isJa ? '平均時間 (MTTR)' : (isEn ? 'Avg Time (MTTR)' : 'Thời Gian TB (MTTR)')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1439,7 +1477,7 @@ export default function TicketReportsPage() {
                         {tech.slaRate}%
                       </td>
                       <td className="py-3 px-3 text-center font-mono font-bold text-cyan-600">
-                        {tech.avgHours} {isEn ? 'Hours' : 'Giờ'}
+                        {tech.avgHours} {isJa ? '時間' : (isEn ? 'Hours' : 'Giờ')}
                       </td>
                     </tr>
                   ))}
@@ -1457,19 +1495,21 @@ export default function TicketReportsPage() {
             <div>
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-rose-600" />
-                <span>{isEn ? 'System Major Incidents & Problems Report' : 'Báo Cáo Sự Cố Hệ Thống (Major Incidents & Problems)'}</span>
+                <span>{isJa ? '重大システムインシデント＆障害レポート' : (isEn ? 'System Major Incidents & Problems Report' : 'Báo Cáo Sự Cố Hệ Thống (Major Incidents & Problems)')}</span>
               </h3>
               <p className="text-xs text-slate-500">
-                {isEn
+                {isJa
+                  ? '広範囲に影響を及ぼすP1/P2インシデントと復旧状況の追跡'
+                  : (isEn
                   ? 'Tracking P1/P2 widespread incidents and recovery progress'
-                  : 'Theo dõi các sự cố P1/P2 ảnh hưởng diện rộng và tiến độ khắc phục'}
+                  : 'Theo dõi các sự cố P1/P2 ảnh hưởng diện rộng và tiến độ khắc phục')}
               </p>
             </div>
             <Link
               href="/incidents"
               className="px-3 py-1.5 rounded-xl text-xs font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 flex items-center gap-1 cursor-pointer"
             >
-              <span>{isEn ? 'View Incident Management' : 'Xem Quản Lý Sự Cố'}</span>
+              <span>{isJa ? 'インシデント管理を開く' : (isEn ? 'View Incident Management' : 'Xem Quản Lý Sự Cố')}</span>
               <ExternalLink className="w-3 h-3" />
             </Link>
           </div>
@@ -1478,12 +1518,12 @@ export default function TicketReportsPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-slate-50 dark:bg-slate-800/80 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
                 <tr>
-                  <th className="py-3 px-3">{isEn ? 'Incident ID' : 'Mã Sự Cố'}</th>
-                  <th className="py-3 px-3">{isEn ? 'Title & Description' : 'Tiêu Đề & Nội Dung'}</th>
-                  <th className="py-3 px-3 text-center">{isEn ? 'Severity' : 'Mức Độ'}</th>
-                  <th className="py-3 px-3 text-center">{isEn ? 'Status' : 'Trạng Thái'}</th>
-                  <th className="py-3 px-3">{isEn ? 'Handling Team' : 'Team Xử Lý'}</th>
-                  <th className="py-3 px-3 text-right">{isEn ? 'Started At' : 'Thời Điểm Bắt Đầu'}</th>
+                  <th className="py-3 px-3">{isJa ? '障害番号' : (isEn ? 'Incident ID' : 'Mã Sự Cố')}</th>
+                  <th className="py-3 px-3">{isJa ? '件名＆内容' : (isEn ? 'Title & Description' : 'Tiêu Đề & Nội Dung')}</th>
+                  <th className="py-3 px-3 text-center">{isJa ? '重大度' : (isEn ? 'Severity' : 'Mức Độ')}</th>
+                  <th className="py-3 px-3 text-center">{isJa ? 'ステータス' : (isEn ? 'Status' : 'Trạng Thái')}</th>
+                  <th className="py-3 px-3">{isJa ? '対応チーム' : (isEn ? 'Handling Team' : 'Team Xử Lý')}</th>
+                  <th className="py-3 px-3 text-right">{isJa ? '発生日時' : (isEn ? 'Started At' : 'Thời Điểm Bắt Đầu')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1506,7 +1546,7 @@ export default function TicketReportsPage() {
                       </span>
                     </td>
                     <td className="py-3 px-3 text-slate-600 dark:text-slate-400">
-                      {inc.team?.name || (isEn ? 'General' : 'Chung')}
+                      {inc.team?.name || (isJa ? '共通' : (isEn ? 'General' : 'Chung'))}
                     </td>
                     <td className="py-3 px-3 text-right font-mono text-slate-500 text-[11px]">
                       {new Date(inc.startedAt).toLocaleString(isEn ? 'en-US' : 'vi-VN')}
@@ -1527,9 +1567,11 @@ export default function TicketReportsPage() {
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
                 <LifeBuoy className="w-5 h-5 text-blue-600" />
                 <span>
-                  {isEn
+                  {isJa
+                    ? `チケット詳細エクスプローラー (${filteredTickets.length} 件)`
+                    : (isEn
                     ? `Detailed Ticket Explorer (${filteredTickets.length} records)`
-                    : `Danh Sách Chi Tiết Toàn Bộ Ticket (${filteredTickets.length} bản ghi)`}
+                    : `Danh Sách Chi Tiết Toàn Bộ Ticket (${filteredTickets.length} bản ghi)`)}
                 </span>
               </h3>
             </div>
@@ -1537,7 +1579,7 @@ export default function TicketReportsPage() {
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder={isEn ? "Search ticket ID, title, company..." : "Tìm mã ticket, tiêu đề, công ty..."}
+                placeholder={isJa ? "チケット番号、件名、会社名で検索..." : (isEn ? "Search ticket ID, title, company..." : "Tìm mã ticket, tiêu đề, công ty...")}
                 value={tableSearch}
                 onChange={(e) => setTableSearch(e.target.value)}
                 className="w-full pl-8.5 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
@@ -1549,15 +1591,15 @@ export default function TicketReportsPage() {
             <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
               <thead className="bg-slate-50 dark:bg-slate-800/80 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
                 <tr>
-                  <th className="py-2.5 px-2.5 min-w-[90px]">{isEn ? 'TICKET ID' : 'MÃ TICKET'}</th>
-                  <th className="py-2.5 px-2.5 min-w-[180px]">{isEn ? 'TITLE & DETAILS' : 'TIÊU ĐỀ & NỘI DUNG'}</th>
-                  <th className="py-2.5 px-2 min-w-[130px]">{isEn ? 'COMPANY & REQUESTER' : 'CÔNG TY & NGƯỜI GỬI'}</th>
-                  <th className="py-2.5 px-2 min-w-[120px]">{isEn ? 'TEAM & ASSIGNEE' : 'TEAM & NGƯỜI XỬ LÝ'}</th>
-                  <th className="py-2.5 px-2 min-w-[95px]">{isEn ? 'CATEGORY' : 'DANH MỤC'}</th>
-                  <th className="py-2.5 px-2 min-w-[80px]">{isEn ? 'PRIORITY' : 'ƯU TIÊN'}</th>
-                  <th className="py-2.5 px-2 min-w-[85px]">{isEn ? 'STATUS' : 'TRẠNG THÁI'}</th>
-                  <th className="py-2.5 px-2 min-w-[100px]">{isEn ? 'SLA DEADLINE' : 'HẠN SLA'}</th>
-                  <th className="py-2.5 px-2 min-w-[90px] text-right">{isEn ? 'CREATED AT' : 'NGÀY TẠO'}</th>
+                  <th className="py-2.5 px-2.5 min-w-[90px]">{isJa ? 'チケット番号' : (isEn ? 'TICKET ID' : 'MÃ TICKET')}</th>
+                  <th className="py-2.5 px-2.5 min-w-[180px]">{isJa ? '件名＆内容' : (isEn ? 'TITLE & DETAILS' : 'TIÊU ĐỀ & NỘI DUNG')}</th>
+                  <th className="py-2.5 px-2 min-w-[130px]">{isJa ? '会社＆申請者' : (isEn ? 'COMPANY & REQUESTER' : 'CÔNG TY & NGƯỜI GỬI')}</th>
+                  <th className="py-2.5 px-2 min-w-[120px]">{isJa ? 'チーム＆担当者' : (isEn ? 'TEAM & ASSIGNEE' : 'TEAM & NGƯỜI XỬ LÝ')}</th>
+                  <th className="py-2.5 px-2 min-w-[95px]">{isJa ? 'カテゴリ' : (isEn ? 'CATEGORY' : 'DANH MỤC')}</th>
+                  <th className="py-2.5 px-2 min-w-[80px]">{isJa ? '優先度' : (isEn ? 'PRIORITY' : 'ƯU TIÊN')}</th>
+                  <th className="py-2.5 px-2 min-w-[85px]">{isJa ? 'ステータス' : (isEn ? 'STATUS' : 'TRẠNG THÁI')}</th>
+                  <th className="py-2.5 px-2 min-w-[100px]">{isJa ? 'SLA期限' : (isEn ? 'SLA DEADLINE' : 'HẠN SLA')}</th>
+                  <th className="py-2.5 px-2 min-w-[90px] text-right">{isJa ? '作成日' : (isEn ? 'CREATED AT' : 'NGÀY TẠO')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1582,25 +1624,25 @@ export default function TicketReportsPage() {
                     </td>
                     <td className="py-2.5 px-2">
                       <div className="font-bold text-purple-700 dark:text-purple-400 text-[10.5px]">
-                        {t.team?.name || (isEn ? 'Unassigned' : 'Chưa phân team')}
+                        {t.team?.name || (isJa ? 'チーム未定' : (isEn ? 'Unassigned' : 'Chưa phân team'))}
                       </div>
                       <div className="text-[10px] text-slate-500">
-                        {t.assignedTo ? `🛡️ ${t.assignedTo.fullName}` : (isEn ? 'Unassigned' : 'Chưa gán')}
+                        {t.assignedTo ? `🛡️ ${t.assignedTo.fullName}` : (isJa ? '担当未定' : (isEn ? 'Unassigned' : 'Chưa gán'))}
                       </div>
                     </td>
                     <td className="py-2.5 px-2">
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                        {getCategoryName(t.category, isEn)}
+                        {getCategoryName(t.category, language)}
                       </span>
                     </td>
                     <td className="py-2.5 px-2">
-                      <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-full border ${getPriorityInfo(t.priority, isEn).badge}`}>
-                        {getPriorityInfo(t.priority, isEn).label}
+                      <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-full border ${getPriorityInfo(t.priority, language).badge}`}>
+                        {getPriorityInfo(t.priority, language).label}
                       </span>
                     </td>
                     <td className="py-2.5 px-2">
-                      <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-full border ${getStatusInfo(t.status, isEn).badge}`}>
-                        {getStatusInfo(t.status, isEn).label}
+                      <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-full border ${getStatusInfo(t.status, language).badge}`}>
+                        {getStatusInfo(t.status, language).label}
                       </span>
                     </td>
                     <td className="py-2.5 px-2 font-mono text-[10px] text-slate-500">

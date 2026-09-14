@@ -1,0 +1,20 @@
+{
+  "services.title": "ITサービス・通信サブスクリプション管理",
+  "services.subtitle": "光回線、クラウドサーバー、ホスティング、ドメイン、VoIP電話契約の管理",
+  "services.add_btn": "サービス追加",
+  "services.search_placeholder": "サービス名、プロバイダ、回線番号で検索...",
+  "services.col_name": "サービス名・プラン",
+  "services.col_vendor": "提供事業者",
+  "services.col_expiry": "契約満了日",
+  "services.col_cost": "定期利用料",
+  "services.col_status": "ステータス",
+  "services.modal.add_title": "新規ITサービス・サブスク登録",
+  "services.modal.edit_title": "サービス情報編集",
+  "services.modal.detail_title": "サービス詳細",
+  "services.modal.payment_title": "支払履歴・請求書",
+  "services.field.name": "サービス名 (*)",
+  "services.field.type": "サービス種別",
+  "services.field.billing_cycle": "請求サイクル",
+  "services.field.cost": "利用料金",
+  "services.field.vendor": "契約先プロバイダ"
+}

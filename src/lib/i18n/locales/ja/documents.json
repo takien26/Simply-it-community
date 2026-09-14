@@ -1,0 +1,23 @@
+{
+  "documents.title": "請求書・契約書・IT文書管理",
+  "documents.subtitle": "電子インボイス、引渡書、保証書、調達契約書の一元管理リポジトリ",
+  "documents.upload_btn": "ドキュメントをアップロード",
+  "documents.search_placeholder": "請求書番号、契約番号、ベンダー、資産タグで検索...",
+  "documents.tab_all": "すべての文書",
+  "documents.tab_invoices": "請求書 (Invoice)",
+  "documents.tab_contracts": "調達契約書",
+  "documents.tab_warranties": "保証書",
+  "documents.tab_handovers": "引渡書・受領書",
+  "documents.col_file": "ファイル名・ドキュメント名",
+  "documents.col_type": "ドキュメント種別",
+  "documents.col_ref": "番号・参照コード",
+  "documents.col_entity": "紐付け資産・サービス",
+  "documents.col_date": "発行日",
+  "documents.col_size": "ファイルサイズ",
+  "documents.col_actions": "操作",
+  "documents.preview_btn": "プレビュー",
+  "documents.download_btn": "ダウンロード",
+  "documents.delete_confirm": "この文書をリポジトリから削除してもよろしいですか？",
+  "documents.quick_view_title": "ドキュメント クイックプレビュー",
+  "documents.link_online": "元のリンクを開く"
+}

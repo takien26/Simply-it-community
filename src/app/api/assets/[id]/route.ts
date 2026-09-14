@@ -42,6 +42,20 @@ export async function GET(
           },
           orderBy: { performedAt: 'desc' },
         },
+        documents: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            fileUrl: true,
+            fileName: true,
+            fileSize: true,
+            fileType: true,
+            attachments: true,
+            invoiceNumber: true,
+            contractNumber: true,
+          },
+        },
       },
     });
 
@@ -209,6 +223,7 @@ export async function PUT(
         locationId: body.locationId ? body.locationId : null,
         contractNumber: body.contractNumber !== undefined ? (body.contractNumber || null) : existing.contractNumber,
         invoiceNumber: body.invoiceNumber !== undefined ? (body.invoiceNumber || null) : existing.invoiceNumber,
+        invoiceUrl: body.invoiceUrl !== undefined ? (body.invoiceUrl || null) : (existing as any).invoiceUrl,
         specs: (() => {
           const baseSpecs = body.specs !== undefined ? { ...(body.specs as any) } : { ...(existing.specs as any) };
           if (body.exchangeRate !== undefined) {
@@ -217,6 +232,25 @@ export async function PUT(
           return Object.keys(baseSpecs).length > 0 ? baseSpecs : (existing.specs ?? undefined);
         })(),
         notes: body.notes !== undefined ? (body.notes || null) : existing.notes,
+      },
+      include: {
+        category: true,
+        vendor: true,
+        location: true,
+        documents: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            fileUrl: true,
+            fileName: true,
+            fileSize: true,
+            fileType: true,
+            attachments: true,
+            invoiceNumber: true,
+            contractNumber: true,
+          },
+        },
       },
     });
 

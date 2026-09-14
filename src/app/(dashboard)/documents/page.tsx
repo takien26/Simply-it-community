@@ -211,6 +211,8 @@ export default function DocumentsPage() {
       if (e.key === 'Escape') {
         if (previewDoc) {
           setPreviewDoc(null);
+        } else if (isAiUploadModalOpen) {
+          setIsAiUploadModalOpen(false);
         } else if (isAddProjectModalOpen) {
           setIsAddProjectModalOpen(false);
         } else if (isAddModalOpen) {
@@ -223,7 +225,7 @@ export default function DocumentsPage() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [previewDoc, isAddModalOpen, isEditModalOpen]);
+  }, [previewDoc, isAiUploadModalOpen, isAddProjectModalOpen, isAddModalOpen, isEditModalOpen]);
 
   // Click outside listener for type dropdown popover
   useEffect(() => {
@@ -286,6 +288,25 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     loadReferenceData();
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const searchParam = params.get('search');
+      const idParam = params.get('id');
+      if (searchParam) {
+        setSearch(searchParam);
+      }
+      if (idParam) {
+        fetch(`/api/documents/${idParam}`)
+          .then((r) => r.json())
+          .then((res) => {
+            if (res.data) {
+              setPreviewDoc(res.data);
+              setPreviewAttachmentIndex(0);
+            }
+          })
+          .catch(() => {});
+      }
+    }
   }, []);
 
   useEffect(() => {

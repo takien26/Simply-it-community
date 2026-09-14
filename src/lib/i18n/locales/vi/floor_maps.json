@@ -1,0 +1,9 @@
+{
+  "floor_maps.title": "Sơ Đồ Mặt Bằng & Tủ Rack 2D Trực Quan",
+  "floor_maps.subtitle": "Quản lý vị trí thiết bị trên bản đồ văn phòng và trực quan hóa thiết bị mạng trong tủ Rack",
+  "floor_maps.add_map_btn": "Tải Lên Bản Đồ",
+  "floor_maps.add_rack_btn": "Thêm Tủ Rack",
+  "floor_maps.select_floor": "Chọn tầng / khu vực",
+  "floor_maps.rack_view": "Xem chi tiết tủ Rack (U units)",
+  "floor_maps.drag_hint": "Kéo thả thiết bị để gán vị trí trên mặt bằng"
+}

@@ -212,7 +212,7 @@ export function LicenseSettingsTab() {
         {license?.isEnterprise ? (
           /* ENTERPRISE ACTIVE STATE */
           <div className="space-y-5">
-            <div className="p-5 rounded-2xl border border-amber-300 dark:border-amber-800/60 bg-linear-to-br from-amber-50/70 to-orange-50/40 dark:from-amber-950/20 dark:to-slate-900 text-slate-800 dark:text-slate-200 space-y-4">
+            <div className="p-5 rounded-2xl border border-amber-300 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/70 to-orange-50/40 dark:from-amber-950/20 dark:to-slate-900 text-slate-800 dark:text-slate-200 space-y-4">
               <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-sm">
                 <Crown className="w-5 h-5 fill-current" />
                 <span>{isEn ? 'SIMPLY IT Enterprise Edition is Active' : 'Hệ thống đang hoạt động với Bản Quyền Enterprise'}</span>
@@ -446,7 +446,7 @@ export function LicenseSettingsTab() {
             </form>
 
             {/* Contact to Purchase Enterprise License Card */}
-            <div className="p-6 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-linear-to-br from-indigo-50/70 via-blue-50/40 to-slate-50 dark:from-slate-900 dark:to-indigo-950/20 space-y-4">
+            <div className="p-6 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-br from-indigo-50/70 via-blue-50/40 to-slate-50 dark:from-slate-900 dark:to-indigo-950/20 space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-indigo-100 dark:border-indigo-900/40">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
@@ -465,7 +465,7 @@ export function LicenseSettingsTab() {
                 <button
                   type="button"
                   onClick={() => setShowUpgradeModal(true)}
-                  className="px-4 py-2 bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>{isEn ? 'Request Consultation & Pricing' : 'Đăng Ký Tư Vấn & Nhận Báo Giá'}</span>

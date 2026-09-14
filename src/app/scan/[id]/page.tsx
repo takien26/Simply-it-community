@@ -363,7 +363,7 @@ export default function AssetScanPage() {
           )}
 
           {/* 📱 MOBILE ON-SITE IT OPERATIONS (👑 Enterprise) */}
-          <div className="p-4 bg-linear-to-br from-indigo-50/70 via-slate-50 to-blue-50/50 border border-indigo-200/80 rounded-2xl space-y-3 shadow-2xs">
+          <div className="p-4 bg-gradient-to-br from-indigo-50/70 via-slate-50 to-blue-50/50 border border-indigo-200/80 rounded-2xl space-y-3 shadow-2xs">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center space-x-2">
                 <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">

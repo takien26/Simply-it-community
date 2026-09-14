@@ -1,0 +1,16 @@
+{
+  "incidents.title": "IT Major Incidents & Problem Management",
+  "incidents.subtitle": "Track service outages, response procedures, and Root Cause Analysis (RCA) post-mortems",
+  "incidents.create_btn": "Report Major Incident",
+  "incidents.search_placeholder": "Search incident, affected system, RCA...",
+  "incidents.col_title": "INCIDENT & AFFECTED SERVICES",
+  "incidents.col_severity": "SEVERITY LEVEL",
+  "incidents.col_status": "RESOLUTION PROGRESS",
+  "incidents.col_downtime": "DOWNTIME",
+  "incidents.col_lead": "INCIDENT LEAD",
+  "incidents.col_actions": "ACTIONS",
+  "incidents.severity_critical": "P1 - Critical (Organization-wide)",
+  "incidents.severity_high": "P2 - High (Department-wide)",
+  "incidents.severity_medium": "P3 - Medium (Team)",
+  "incidents.severity_low": "P4 - Low (Individual)"
+}

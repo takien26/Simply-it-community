@@ -87,6 +87,18 @@ export default function ApprovalsPage() {
   const [selectedApproval, setSelectedApproval] = useState<ApprovalRequest | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  // ESC key listener to close active modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isCreateOpen) setIsCreateOpen(false);
+        else if (isDetailOpen) setIsDetailOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCreateOpen, isDetailOpen]);
+
   // Form states for creation
   const [formType, setFormType] = useState('NEW_DEVICE');
   const [formTitle, setFormTitle] = useState('');

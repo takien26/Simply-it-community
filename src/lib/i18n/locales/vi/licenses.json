@@ -10,5 +10,16 @@
   "licenses.col_status": "TRẠNG THÁI",
   "licenses.status_active": "Đang kích hoạt",
   "licenses.status_expired": "Hết hạn",
-  "licenses.status_suspended": "Tạm dừng"
+  "licenses.status_suspended": "Tạm dừng",
+  "licenses.modal.add_title": "Thêm Mới Bản Quyền Phần Mềm",
+  "licenses.modal.edit_title": "Chỉnh Sửa Bản Quyền",
+  "licenses.modal.detail_title": "Chi Tiết Giấy Phép Bản Quyền",
+  "licenses.modal.assign_title": "Cấp Phát Bản Quyền Cho Thiết Bị / Nhân Viên",
+  "licenses.field.software_name": "Tên phần mềm (*)",
+  "licenses.field.license_key": "Mã bản quyền / License Key",
+  "licenses.field.license_type": "Loại bản quyền",
+  "licenses.field.total_seats": "Tổng số lượng cấp phép (Seats)",
+  "licenses.field.purchase_cost": "Chi phí mua",
+  "licenses.field.renewal_date": "Ngày hết hạn / Gia hạn",
+  "licenses.field.vendor": "Nhà cung cấp"
 }

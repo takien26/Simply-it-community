@@ -159,6 +159,19 @@ export default function CategoriesPage() {
     oldName: '',
   });
 
+  // ESC key listener to close active modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isCategoryModalOpen) setIsCategoryModalOpen(false);
+        else if (isVendorModalOpen) setIsVendorModalOpen(false);
+        else if (isSimpleModalOpen) setIsSimpleModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCategoryModalOpen, isVendorModalOpen, isSimpleModalOpen]);
+
   // Load all data
   const loadAllData = async () => {
     setLoading(true);

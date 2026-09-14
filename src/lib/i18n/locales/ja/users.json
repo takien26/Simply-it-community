@@ -1,0 +1,6 @@
+{
+  "users.title": "社員・ユーザーアカウント管理",
+  "users.subtitle": "社員名簿、所属部署、RBACアクセス権限、および貸与機器の一覧管理",
+  "users.add_btn": "ユーザー追加",
+  "users.search_placeholder": "氏名、メールアドレス、部署、役職で検索..."
+}

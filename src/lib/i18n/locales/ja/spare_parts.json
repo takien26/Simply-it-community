@@ -1,0 +1,19 @@
+{
+  "spare_parts.title": "IT予備パーツ・消耗品在庫管理",
+  "spare_parts.subtitle": "交換用部品（RAM、SSD、充電器、マウス、キーボード、LANケーブル等）の在庫数と入出庫履歴",
+  "spare_parts.add_btn": "新規パーツ登録",
+  "spare_parts.stock_in_btn": "入庫",
+  "spare_parts.stock_out_btn": "出庫 (支給)",
+  "spare_parts.search_placeholder": "パーツ名、部品番号、保管棚で検索...",
+  "spare_parts.col_name": "パーツ名・部品番号",
+  "spare_parts.col_category": "分類",
+  "spare_parts.col_stock": "現在庫数",
+  "spare_parts.col_min_stock": "最低在庫アラート閾値",
+  "spare_parts.col_unit_price": "平均単価",
+  "spare_parts.col_location": "保管棚 / ロケーション",
+  "spare_parts.col_actions": "操作",
+  "spare_parts.status_in_stock": "在庫あり",
+  "spare_parts.status_low_stock": "残少アラート",
+  "spare_parts.status_out_of_stock": "在庫切れ",
+  "spare_parts.transaction_history": "入出庫トランザクション履歴"
+}

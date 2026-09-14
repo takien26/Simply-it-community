@@ -128,6 +128,18 @@ export default function KnowledgeBasePage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ESC key listener to close active modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isCreateModalOpen) setIsCreateModalOpen(false);
+        else if (selectedArticle) setSelectedArticle(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCreateModalOpen, selectedArticle]);
+
   const loadData = async () => {
     setLoading(true);
     try {

@@ -1,0 +1,8 @@
+{
+  "dashboard.title": "IT総合ダッシュボード＆概要",
+  "dashboard.subtitle": "資産稼働状況、サブスクリプション期限、サポートチケットをリアルタイムに一元監視",
+  "dashboard.total_assets": "総資産数",
+  "dashboard.active_licenses": "有効ライセンス",
+  "dashboard.expiring_services": "期限切れ間近のサービス",
+  "dashboard.open_tickets": "対応中チケット"
+}

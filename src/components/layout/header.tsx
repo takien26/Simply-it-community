@@ -41,34 +41,34 @@ import { useRouter, usePathname } from 'next/navigation';
 import { GlobalSearch } from '@/components/common/GlobalSearch';
 import { useLanguage } from '@/lib/i18n/context';
 
-const PAGE_TITLES: Record<string, { titleVi: string; titleEn: string; icon: string }> = {
-  '/dashboard': { titleVi: 'Tổng Quan & Dashboard', titleEn: 'Dashboard & Overview', icon: '📊' },
-  '/portal': { titleVi: 'Cổng Tự Phục Vụ Nhân Viên', titleEn: 'Employee Self-Service Portal', icon: '👤' },
-  '/assets': { titleVi: 'Quản Lý Tài Sản & Thiết Bị', titleEn: 'Asset Management & Hardware', icon: '💻' },
-  '/assets/audit': { titleVi: 'Kiểm Kê & Đối Soát Tài Sản', titleEn: 'Asset Audit & Inventory', icon: '📋' },
-  '/discovery': { titleVi: 'Quét & Khám Phá Thiết Bị', titleEn: 'Device Network Scanner', icon: '🔍' },
-  '/licenses': { titleVi: 'Quản Lý Bản Quyền Phần Mềm', titleEn: 'Software License Management', icon: '🔑' },
-  '/services': { titleVi: 'Dịch Vụ Viễn Thông & CNTT', titleEn: 'IT Services & Subscriptions', icon: '🌐' },
-  '/tickets': { titleVi: 'Hỗ Trợ IT & Ticket Helpdesk', titleEn: 'IT Helpdesk & Tickets', icon: '🎫' },
-  '/tickets/reports': { titleVi: 'Báo Cáo Ticket & SLA', titleEn: 'Ticket Reports & SLA Analytics', icon: '📈' },
-  '/approvals': { titleVi: 'Yêu Cầu & Cấp Phát Thiết Bị', titleEn: 'Requests & Approvals', icon: '📋' },
-  '/passwords': { titleVi: 'Kho Mật Khẩu An Toàn (Vault)', titleEn: 'Password Vault', icon: '🔐' },
-  '/documents': { titleVi: 'Hóa Đơn & Chứng Từ IT', titleEn: 'Invoices & Documents', icon: '📄' },
-  '/spare-parts': { titleVi: 'Kho Phụ Tùng & Linh Kiện', titleEn: 'Spare Parts Inventory', icon: '🔩' },
-  '/incidents': { titleVi: 'Quản Lý Sự Cố IT (Incidents)', titleEn: 'Incident Management', icon: '🚨' },
-  '/categories': { titleVi: 'Danh Mục Thiết Bị', titleEn: 'Asset Categories', icon: '🏢' },
-  '/floor-maps': { titleVi: 'Sơ Đồ Vị Trí Tầng', titleEn: '2D Floor Maps', icon: '🗺️' },
-  '/users': { titleVi: 'Người Dùng & Phân Quyền', titleEn: 'Users & RBAC Permissions', icon: '👥' },
-  '/kb': { titleVi: 'Cơ Sở Tri Thức & Hướng Dẫn', titleEn: 'IT Knowledge Base', icon: '📖' },
-  '/scan': { titleVi: 'Quét Mã QR Tài Sản', titleEn: 'QR & Barcode Scanner', icon: '📱' },
-  '/settings': { titleVi: 'Cài Đặt Hệ Thống', titleEn: 'System Settings', icon: '⚙️' },
-  '/settings/support-org': { titleVi: 'Phân Tuyến & Tổ Chức IT', titleEn: 'IT Support Organization', icon: '🎯' },
+const PAGE_TITLES: Record<string, { titleVi: string; titleEn: string; titleJa?: string; icon: string }> = {
+  '/dashboard': { titleVi: 'Tổng Quan & Dashboard', titleEn: 'Dashboard & Overview', titleJa: '総合ダッシュボード＆概要', icon: '📊' },
+  '/portal': { titleVi: 'Cổng Tự Phục Vụ Nhân Viên', titleEn: 'Employee Self-Service Portal', titleJa: '社員セルフサービスポータル', icon: '👤' },
+  '/assets': { titleVi: 'Quản Lý Tài Sản & Thiết Bị', titleEn: 'Asset Management & Hardware', titleJa: 'IT資産・ハードウェア管理', icon: '💻' },
+  '/assets/audit': { titleVi: 'Kiểm Kê & Đối Soát Tài Sản', titleEn: 'Asset Audit & Inventory', titleJa: '資産棚卸し・現物確認', icon: '📋' },
+  '/discovery': { titleVi: 'Quét & Khám Phá Thiết Bị', titleEn: 'Device Network Scanner', titleJa: 'ネットワークデバイス検知', icon: '🔍' },
+  '/licenses': { titleVi: 'Quản Lý Bản Quyền Phần Mềm', titleEn: 'Software License Management', titleJa: 'ソフトウェアライセンス管理', icon: '🔑' },
+  '/services': { titleVi: 'Dịch Vụ Viễn Thông & CNTT', titleEn: 'IT Services & Subscriptions', titleJa: 'ITサービス＆通信回線', icon: '🌐' },
+  '/tickets': { titleVi: 'Hỗ Trợ IT & Ticket Helpdesk', titleEn: 'IT Helpdesk & Tickets', titleJa: 'ITヘルプデスク＆チケット管理', icon: '🎫' },
+  '/tickets/reports': { titleVi: 'Báo Cáo Ticket & SLA', titleEn: 'Ticket Reports & SLA Analytics', titleJa: 'チケット集計＆SLA分析', icon: '📈' },
+  '/approvals': { titleVi: 'Yêu Cầu & Cấp Phát Thiết Bị', titleEn: 'Requests & Approvals', titleJa: '機器申請＆承認ワークフロー', icon: '📋' },
+  '/passwords': { titleVi: 'Kho Mật Khẩu An Toàn (Vault)', titleEn: 'Password Vault', titleJa: 'パスワード保管庫 (Vault)', icon: '🔐' },
+  '/documents': { titleVi: 'Hóa Đơn & Chứng Từ IT', titleEn: 'Invoices & Documents', titleJa: '請求書＆IT契約書管理', icon: '📄' },
+  '/spare-parts': { titleVi: 'Kho Phụ Tùng & Linh Kiện', titleEn: 'Spare Parts Inventory', titleJa: '予備部品・パーツ在庫', icon: '🔩' },
+  '/incidents': { titleVi: 'Quản Lý Sự Cố IT (Incidents)', titleEn: 'Incident Management', titleJa: 'ITインシデント重大障害管理', icon: '🚨' },
+  '/categories': { titleVi: 'Danh Mục Thiết Bị', titleEn: 'Asset Categories', titleJa: '機器カテゴリー分類', icon: '🏢' },
+  '/floor-maps': { titleVi: 'Sơ Đồ Vị Trí Tầng', titleEn: '2D Floor Maps', titleJa: '2Dフロアマップ・座席配置', icon: '🗺️' },
+  '/users': { titleVi: 'Người Dùng & Phân Quyền', titleEn: 'Users & RBAC Permissions', titleJa: 'ユーザー社員＆アクセス権限', icon: '👥' },
+  '/kb': { titleVi: 'Cơ Sở Tri Thức & Hướng Dẫn', titleEn: 'IT Knowledge Base', titleJa: 'ナレッジベース＆マニュアル', icon: '📖' },
+  '/scan': { titleVi: 'Quét Mã QR Tài Sản', titleEn: 'QR & Barcode Scanner', titleJa: 'QR・バーコードスキャン', icon: '📱' },
+  '/settings': { titleVi: 'Cài Đặt Hệ Thống', titleEn: 'System Settings', titleJa: 'システム環境設定', icon: '⚙️' },
+  '/settings/support-org': { titleVi: 'Phân Tuyến & Tổ Chức IT', titleEn: 'IT Support Organization', titleJa: 'ITサポート組織＆ルーティング', icon: '🎯' },
 };
 
 const SUPPORTED_LANGUAGES = [
   { code: 'vi', label: 'Tiếng Việt', sub: 'Việt Nam (VN)', flag: '🇻🇳', ready: true },
   { code: 'en', label: 'English', sub: 'UK / Global', flag: '🇬🇧', ready: true },
-  { code: 'ja', label: '日本語', sub: 'Japanese (Nihongo)', flag: '🇯🇵', ready: false },
+  { code: 'ja', label: '日本語', sub: 'Japanese (Nihongo)', flag: '🇯🇵', ready: true },
   { code: 'zh', label: '中文', sub: 'Chinese (Simplified)', flag: '🇨🇳', ready: false },
   { code: 'ko', label: '한국어', sub: 'Korean (Hangul)', flag: '🇰🇷', ready: false },
   { code: 'fr', label: 'Français', sub: 'French', flag: '🇫🇷', ready: false },
@@ -116,49 +116,49 @@ export function Header({
     return () => window.removeEventListener('app:tab-change', handleTabChange);
   }, [pathname]);
 
-  // Compute active section title and icon (Bilingual)
+  // Compute active section title and icon (Multilingual)
   const pageDef = PAGE_TITLES[pathname];
   let currentTitle =
-    (language === 'en' ? pageDef?.titleEn : pageDef?.titleVi) ||
-    (language === 'en' ? 'ITSM System' : 'Hệ Thống ITSM');
+    (language === 'ja' ? (pageDef?.titleJa || pageDef?.titleEn) : (language === 'en' ? pageDef?.titleEn : pageDef?.titleVi)) ||
+    (language === 'ja' ? 'ITSMシステム' : (language === 'en' ? 'ITSM System' : 'Hệ Thống ITSM'));
   let currentIcon = pageDef?.icon || '💻';
 
   if (pathname === '/settings') {
     if (currentTab === 'license' || currentTab === 'lic' || currentTab === 'banquyen') {
-      currentTitle = language === 'en' ? 'Edition & License' : 'Giấy Phép & Bản Quyền';
+      currentTitle = language === 'ja' ? 'エディション＆ライセンス' : (language === 'en' ? 'Edition & License' : 'Giấy Phép & Bản Quyền');
       currentIcon = '🛡️';
     } else if (currentTab === 'ai' || currentTab === 'ai_copilot' || currentTab === 'copilot') {
-      currentTitle = language === 'en' ? 'AI Copilot Settings' : 'Cài Đặt AI';
+      currentTitle = language === 'ja' ? 'AI Copilot設定' : (language === 'en' ? 'AI Copilot Settings' : 'Cài Đặt AI');
       currentIcon = '🤖';
     } else if (currentTab === 'email' || currentTab === 'smtp') {
-      currentTitle = language === 'en' ? 'Email & SMTP Configuration' : 'Cài Đặt Email & SMTP';
+      currentTitle = language === 'ja' ? 'メール＆SMTP設定' : (language === 'en' ? 'Email & SMTP Configuration' : 'Cài Đặt Email & SMTP');
       currentIcon = '📧';
     } else if (currentTab === 'rbac' || currentTab === 'roles') {
-      currentTitle = language === 'en' ? 'Role-Based Access Control (RBAC)' : 'Phân Quyền Vai Trò (RBAC)';
+      currentTitle = language === 'ja' ? 'ロールベースアクセス制御 (RBAC)' : (language === 'en' ? 'Role-Based Access Control (RBAC)' : 'Phân Quyền Vai Trò (RBAC)');
       currentIcon = '🔐';
     } else if (currentTab === 'sso' || currentTab === 'azure') {
-      currentTitle = language === 'en' ? 'Microsoft 365 SSO Login' : 'Đăng Nhập SSO Microsoft 365';
+      currentTitle = language === 'ja' ? 'Microsoft 365 SSOログイン' : (language === 'en' ? 'Microsoft 365 SSO Login' : 'Đăng Nhập SSO Microsoft 365');
       currentIcon = '🔑';
     } else if (currentTab === 'ldap' || currentTab === 'ad') {
-      currentTitle = language === 'en' ? 'LDAP / Active Directory' : 'Xác Thực LDAP / Active Directory';
+      currentTitle = language === 'ja' ? 'LDAP / Active Directory認証' : (language === 'en' ? 'LDAP / Active Directory' : 'Xác Thực LDAP / Active Directory');
       currentIcon = '🏢';
     } else if (currentTab === 'webhooks') {
-      currentTitle = language === 'en' ? 'Multi-Channel Webhooks' : 'Webhook Đa Kênh';
+      currentTitle = language === 'ja' ? 'マルチチャネル Webhook' : (language === 'en' ? 'Multi-Channel Webhooks' : 'Webhook Đa Kênh');
       currentIcon = '🔔';
     } else if (currentTab === 'maintenance') {
-      currentTitle = language === 'en' ? 'Maintenance Schedules' : 'Lịch Bảo Trì Định Kỳ';
+      currentTitle = language === 'ja' ? '定期保守スケジュール' : (language === 'en' ? 'Maintenance Schedules' : 'Lịch Bảo Trì Định Kỳ');
       currentIcon = '📅';
     } else if (currentTab === 'currency') {
-      currentTitle = language === 'en' ? 'Currency & Exchange Rates' : 'Tiền Tệ & Tỷ Giá';
+      currentTitle = language === 'ja' ? '通貨＆為替レート' : (language === 'en' ? 'Currency & Exchange Rates' : 'Tiền Tệ & Tỷ Giá');
       currentIcon = '💰';
     } else if (currentTab === 'routing') {
-      currentTitle = language === 'en' ? 'IT Routing, Teams & SLA' : 'Tổ Chức IT, Phân Tuyến & SLA';
+      currentTitle = language === 'ja' ? 'IT組織・ルーティング＆SLA' : (language === 'en' ? 'IT Routing, Teams & SLA' : 'Tổ Chức IT, Phân Tuyến & SLA');
       currentIcon = '🎯';
     } else if (currentTab === 'audit') {
-      currentTitle = language === 'en' ? 'Activity Audit Logs' : 'Nhật Ký Hoạt Động (Audit)';
+      currentTitle = language === 'ja' ? 'アクティビティ監査ログ (Audit)' : (language === 'en' ? 'Activity Audit Logs' : 'Nhật Ký Hoạt Động (Audit)');
       currentIcon = '📜';
     } else {
-      currentTitle = language === 'en' ? 'General Settings & Branding' : 'Cài Đặt Chung & Logo';
+      currentTitle = language === 'ja' ? '一般設定＆ブランディング' : (language === 'en' ? 'General Settings & Branding' : 'Cài Đặt Chung & Logo');
       currentIcon = '⚙️';
     }
   }

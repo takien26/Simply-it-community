@@ -1,0 +1,16 @@
+{
+  "incidents.title": "IT障害・インシデント管理 (Incidents & RCA)",
+  "incidents.subtitle": "サービス停止の記録、復旧対応プロセスの追跡、根本原因分析 (RCA) レポート",
+  "incidents.create_btn": "障害インシデント起票",
+  "incidents.search_placeholder": "インシデント、影響システム、RCAで検索...",
+  "incidents.col_title": "障害名・影響システム",
+  "incidents.col_severity": "重大度レベル",
+  "incidents.col_status": "復旧進捗",
+  "incidents.col_downtime": "ダウンタイム時間",
+  "incidents.col_lead": "対応責任者",
+  "incidents.col_actions": "操作",
+  "incidents.severity_critical": "P1 - 致命的 (全社影響)",
+  "incidents.severity_high": "P2 - 高 (部門影響)",
+  "incidents.severity_medium": "P3 - 中 (チーム影響)",
+  "incidents.severity_low": "P4 - 低 (個別影響)"
+}

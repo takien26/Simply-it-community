@@ -11,6 +11,18 @@ export interface ConvertToKbModalProps {
 }
 
 export function ConvertToKbModal({ isOpen, onClose, ticket }: ConvertToKbModalProps) {
+  // ESC key listener to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const { language } = useLanguage();
   const isEn = language === 'en';
 

@@ -1,0 +1,23 @@
+{
+  "documents.title": "Kho Lưu Trữ Hóa Đơn, Hợp Đồng & Hồ Sơ IT",
+  "documents.subtitle": "Quản lý tập trung hóa đơn VAT điện tử, biên bản bàn giao, phiếu bảo hành và hợp đồng mua sắm",
+  "documents.upload_btn": "Tải Lên Chứng Từ",
+  "documents.search_placeholder": "Tìm kiếm theo số hóa đơn, số hợp đồng, nhà cung cấp, mã thiết bị...",
+  "documents.tab_all": "Tất cả hồ sơ",
+  "documents.tab_invoices": "Hóa đơn VAT",
+  "documents.tab_contracts": "Hợp đồng mua sắm",
+  "documents.tab_warranties": "Phiếu bảo hành",
+  "documents.tab_handovers": "Biên bản bàn giao",
+  "documents.col_file": "TÊN HỒ SƠ / TÀI LIỆU",
+  "documents.col_type": "LOẠI CHỨNG TỪ",
+  "documents.col_ref": "SỐ HIỆU / SỐ HÓA ĐƠN",
+  "documents.col_entity": "TÀI SẢN / DỊCH VỤ LIÊN KẾT",
+  "documents.col_date": "NGÀY BAN HÀNH",
+  "documents.col_size": "KÍCH THƯỚC",
+  "documents.col_actions": "THAO TÁC",
+  "documents.preview_btn": "Xem nhanh",
+  "documents.download_btn": "Tải về",
+  "documents.delete_confirm": "Bạn có chắc muốn xóa chứng từ này khỏi kho lưu trữ?",
+  "documents.quick_view_title": "Xem Nhanh Hồ Sơ & Chứng Từ",
+  "documents.link_online": "Mở link hóa đơn gốc"
+}
