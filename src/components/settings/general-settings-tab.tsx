@@ -54,6 +54,7 @@ export function GeneralSettingsTab({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderBrowserRef = useRef<HTMLInputElement>(null);
   const backupInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
 
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [sampleDataStats, setSampleDataStats] = useState<any>(null);
@@ -62,6 +63,7 @@ export function GeneralSettingsTab({
 
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isRestoringZip, setIsRestoringZip] = useState(false);
   const [backupToast, setBackupToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [testingPath, setTestingPath] = useState(false);
   const [pathTestResult, setPathTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -290,9 +292,55 @@ export function GeneralSettingsTab({
     }
   };
 
+  const handleRestoreZipFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm(isEn
+      ? 'Are you sure you want to import this .ZIP archive into the system? Photos, invoices, contracts and attachments will be extracted directly into public/uploads.'
+      : 'XÁC NHẬN: Bạn có chắc chắn muốn nhập gói .ZIP này vào hệ thống? Toàn bộ file ảnh hiện trạng, hóa đơn VAT, hợp đồng và chứng từ sẽ được giải nén trực tiếp vào thư mục lưu trữ máy chủ (public/uploads).'
+    )) {
+      if (zipInputRef.current) zipInputRef.current.value = '';
+      if (backupInputRef.current) backupInputRef.current.value = '';
+      return;
+    }
+
+    setIsRestoringZip(true);
+    setBackupToast({ message: isEn ? '⏳ Uploading and extracting .ZIP archive...' : '⏳ Đang tải lên và giải nén gói file .ZIP vào máy chủ...', type: 'success' });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/system/backup/restore-zip', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setBackupToast({ message: data.message || 'Nhập kho dữ liệu .ZIP thành công!', type: 'success' });
+        loadZipBackupStatus();
+      } else {
+        setBackupToast({ message: data.error || 'Lỗi nhập gói file .ZIP', type: 'error' });
+      }
+    } catch {
+      setBackupToast({ message: 'Lỗi kết nối hoặc file ZIP không hợp lệ', type: 'error' });
+    } finally {
+      setIsRestoringZip(false);
+      if (zipInputRef.current) zipInputRef.current.value = '';
+      if (backupInputRef.current) backupInputRef.current.value = '';
+      setTimeout(() => setBackupToast(null), 6000);
+    }
+  };
+
   const handleRestoreFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.name.endsWith('.zip')) {
+      return handleRestoreZipFile(e);
+    }
 
     if (!confirm('CẢNH BÁO: Bạn có chắc chắn muốn phục hồi dữ liệu từ file này? Thao tác này sẽ ghi đè và cập nhật cấu hình hệ thống.')) {
       if (backupInputRef.current) backupInputRef.current.value = '';
@@ -830,7 +878,7 @@ export function GeneralSettingsTab({
             <input
               ref={backupInputRef}
               type="file"
-              accept=".json"
+              accept=".json,.zip"
               onChange={handleRestoreFile}
               className="hidden"
             />
@@ -838,12 +886,12 @@ export function GeneralSettingsTab({
             <button
               type="button"
               onClick={() => backupInputRef.current?.click()}
-              disabled={isRestoring}
+              disabled={isRestoring || isRestoringZip}
               className="px-3.5 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Phục hồi cơ sở dữ liệu từ file backup"
+              title="Phục hồi cơ sở dữ liệu từ file backup (JSON) hoặc kho file (ZIP)"
             >
-              {isRestoring ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5 text-slate-600" />}
-              <span>{isRestoring ? (isEn ? 'Restoring...' : 'Đang phục hồi...') : (isEn ? '📤 Restore Snapshot' : '📤 Phục Hồi')}</span>
+              {(isRestoring || isRestoringZip) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5 text-slate-600" />}
+              <span>{(isRestoring || isRestoringZip) ? (isEn ? 'Restoring...' : 'Đang phục hồi...') : (isEn ? '📤 Restore (JSON / ZIP)' : '📤 Phục Hồi')}</span>
             </button>
           </div>
         </div>
@@ -1094,25 +1142,55 @@ export function GeneralSettingsTab({
               : '💡 Gói file .ZIP có thể lưu trữ an toàn định kỳ vào Google Drive, ổ cứng ngoài hoặc dùng khôi phục hệ thống khi cần.'}
           </p>
 
-          <button
-            type="button"
-            onClick={handleDownloadZipBackup}
-            disabled={isDownloadingZip}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
-            title="Tải gói nén .ZIP gồm toàn bộ cơ sở dữ liệu và thư mục ảnh hiện trạng"
-          >
-            {isDownloadingZip ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{isEn ? 'Compressing & preparing ZIP...' : 'Đang nén & chuẩn bị gói ZIP...'}</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                <span>{isEn ? 'Download Full Backup (.ZIP)' : 'Tải Gói Sao Lưu Toàn Bộ (.ZIP)'}</span>
-              </>
-            )}
-          </button>
+          <input
+            ref={zipInputRef}
+            type="file"
+            accept=".zip"
+            onChange={handleRestoreZipFile}
+            className="hidden"
+          />
+
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => zipInputRef.current?.click()}
+              disabled={isRestoringZip || isDownloadingZip}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
+              title="Nhập và giải nén gói file .ZIP (kho ảnh, hóa đơn, hợp đồng) trực tiếp lên máy chủ"
+            >
+              {isRestoringZip ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                  <span>{isEn ? 'Extracting ZIP...' : 'Đang giải nén...'}</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 text-indigo-300" />
+                  <span>{isEn ? 'Import Archive (.ZIP)' : '📤 Phục Hồi Gói (.ZIP)'}</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadZipBackup}
+              disabled={isDownloadingZip || isRestoringZip}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
+              title="Tải gói nén .ZIP gồm toàn bộ cơ sở dữ liệu và thư mục ảnh hiện trạng"
+            >
+              {isDownloadingZip ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{isEn ? 'Compressing & preparing ZIP...' : 'Đang nén & chuẩn bị gói ZIP...'}</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>{isEn ? 'Download Full Backup (.ZIP)' : '📥 Tải Gói Sao Lưu Toàn Bộ (.ZIP)'}</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
