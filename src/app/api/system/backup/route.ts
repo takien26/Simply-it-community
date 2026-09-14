@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { createAuditLog } from '@/lib/audit';
-import { generateDatabaseBackupData, restoreDatabaseFromJson } from '@/lib/backup-engine';
+import { generateDatabaseBackupData, restoreDatabaseFromJson, restoreZipBackupBuffer } from '@/lib/backup-engine';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -46,8 +46,7 @@ export async function GET() {
   }
 }
 
-
-// POST /api/system/backup - Restore complete database from backup JSON
+// POST /api/system/backup - Restore complete system from backup ZIP or JSON
 export async function POST(req: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
@@ -60,13 +59,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: Missing admin permissions' }, { status: 403 });
     }
 
-    const body = await req.json();
-    const backupData = body.data || body;
+    const contentType = req.headers.get('content-type') || '';
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData();
+      const file = formData.get('file') as File | null;
+      if (!file) {
+        return NextResponse.json({ error: 'Vui lòng chọn tệp (.ZIP hoặc .JSON) để phục hồi' }, { status: 400 });
+      }
 
-    const result = await restoreDatabaseFromJson(backupData, currentUser);
-    return NextResponse.json(result);
+      if (file.name.endsWith('.zip')) {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const result = await restoreZipBackupBuffer(buffer, currentUser);
+        return NextResponse.json(result);
+      } else {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const backupData = parsed.data || parsed;
+        const result = await restoreDatabaseFromJson(backupData, currentUser);
+        return NextResponse.json(result);
+      }
+    } else {
+      const body = await req.json();
+      const backupData = body.data || body;
+      const result = await restoreDatabaseFromJson(backupData, currentUser);
+      return NextResponse.json(result);
+    }
   } catch (error: any) {
     console.error('Restore system error:', error);
     return NextResponse.json({ error: 'Lỗi phục hồi dữ liệu từ file backup: ' + (error?.message || error) }, { status: 500 });
   }
 }
+

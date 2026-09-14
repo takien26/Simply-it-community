@@ -271,24 +271,23 @@ export function GeneralSettingsTab({
   const handleDownloadBackup = async () => {
     setIsBackingUp(true);
     try {
-      const res = await fetch('/api/system/backup');
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `ITSM_Backup_${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        setBackupToast({ message: 'Đã xuất file sao lưu hệ thống thành công!', type: 'success' });
-      } else {
-        setBackupToast({ message: 'Không thể tạo bản sao lưu dữ liệu', type: 'error' });
-      }
+      const link = document.createElement('a');
+      link.href = '/api/system/backup/download';
+      link.setAttribute('download', '');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setBackupToast({ message: isEn ? 'Downloading full system backup archive (.ZIP)...' : 'Đang tải xuống gói sao lưu hệ thống toàn bộ (.ZIP)...', type: 'success' });
+      setTimeout(() => {
+        setIsBackingUp(false);
+        loadZipBackupStatus();
+      }, 4000);
     } catch {
       setBackupToast({ message: 'Lỗi kết nối khi sao lưu dữ liệu', type: 'error' });
-    } finally {
       setIsBackingUp(false);
-      setTimeout(() => setBackupToast(null), 4000);
+    } finally {
+      setTimeout(() => setBackupToast(null), 5000);
     }
   };
 
@@ -861,8 +860,8 @@ export function GeneralSettingsTab({
               <Database className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">{isEn ? 'Automated Backup & Directory Sync' : 'Sao Lưu & Phục Hồi Dữ Liệu Tự Động (Auto-Backup & Sync)'}</h3>
-              <p className="text-xs text-slate-500">{isEn ? 'Scheduled automated backups (Daily/Weekly/Monthly), custom directory storage, and file replication' : 'Tự động sao lưu định kỳ (Ngày/Tuần/Tháng), chỉ định thư mục lưu trữ và tự động đồng bộ file Hóa đơn / Hợp đồng mới'}</p>
+              <h3 className="text-base font-bold text-slate-900">{isEn ? 'Full System Backup & Restore (Database & Files)' : 'Sao Lưu & Phục Hồi Toàn Bộ Hệ Thống (CSDL & Ảnh / Hợp Đồng)'}</h3>
+              <p className="text-xs text-slate-500">{isEn ? 'All-in-One .ZIP package includes all 35 database tables and complete attachment vault (contracts, invoices, photos). 1-click full restore.' : 'Gói sao lưu nén .ZIP All-in-One chứa CSDL 35 bảng và toàn bộ kho hợp đồng, hóa đơn, ảnh hiện trạng. Phục hồi 1-click kéo trọn vẹn cả chữ và ảnh về máy chủ.'}</p>
             </div>
           </div>
 
@@ -870,18 +869,18 @@ export function GeneralSettingsTab({
             <button
               type="button"
               onClick={handleDownloadBackup}
-              disabled={isBackingUp}
-              className="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
-              title="Tải ngay file snapshot JSON về máy tính"
+              disabled={isBackingUp || isDownloadingZip}
+              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+              title="Tải gói sao lưu toàn bộ (.ZIP) gồm CSDL 35 bảng và tất cả file ảnh/hợp đồng"
             >
-              <Save className="w-3.5 h-3.5 text-purple-600" />
-              <span>{isEn ? '📥 Download Snapshot' : '📥 Tải Snapshot'}</span>
+              {(isBackingUp || isDownloadingZip) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              <span>{isEn ? '📥 Download Full Backup (.ZIP)' : '📥 Tải Sao Lưu Toàn Bộ (.ZIP)'}</span>
             </button>
 
             <input
               ref={backupInputRef}
               type="file"
-              accept=".json,.zip"
+              accept=".zip,.json"
               onChange={handleRestoreFile}
               className="hidden"
             />
@@ -890,11 +889,11 @@ export function GeneralSettingsTab({
               type="button"
               onClick={() => backupInputRef.current?.click()}
               disabled={isRestoring || isRestoringZip}
-              className="px-3.5 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Phục hồi cơ sở dữ liệu từ file backup (JSON) hoặc kho file (ZIP)"
+              className="px-4 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+              title="Phục hồi toàn bộ CSDL và toàn bộ file ảnh, hợp đồng từ gói .ZIP (hoặc .JSON)"
             >
-              {(isRestoring || isRestoringZip) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5 text-slate-600" />}
-              <span>{(isRestoring || isRestoringZip) ? (isEn ? 'Restoring...' : 'Đang phục hồi...') : (isEn ? '📤 Restore (JSON / ZIP)' : '📤 Phục Hồi')}</span>
+              {(isRestoring || isRestoringZip) ? <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600" /> : <Upload className="w-3.5 h-3.5 text-slate-600" />}
+              <span>{(isRestoring || isRestoringZip) ? (isEn ? 'Restoring...' : 'Đang phục hồi...') : (isEn ? '📤 Restore Full (.ZIP / JSON)' : '📤 Phục Hồi Dữ Liệu')}</span>
             </button>
           </div>
         </div>
