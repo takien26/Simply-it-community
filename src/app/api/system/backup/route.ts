@@ -600,34 +600,61 @@ export async function POST(req: NextRequest) {
             // Map the backup ID to this existing category to prevent constraint collision
             categoryIdMap.set(c.id, existingByNameAndParent.id);
             // Safe to update non-unique metadata without changing name/parentId
-            await prisma.assetCategory.update({
-              where: { id: existingByNameAndParent.id },
-              data: {
-                description: c.description || existingByNameAndParent.description,
-                icon: c.icon || existingByNameAndParent.icon,
-                sortOrder: typeof c.sortOrder === 'number' ? c.sortOrder : existingByNameAndParent.sortOrder,
-                isActive: c.isActive !== undefined ? Boolean(c.isActive) : existingByNameAndParent.isActive,
-                ...(c.customFields ? { customFields: c.customFields } : {}),
-              },
-            });
+            try {
+              await prisma.assetCategory.update({
+                where: { id: existingByNameAndParent.id },
+                data: {
+                  description: c.description || existingByNameAndParent.description,
+                  icon: c.icon || existingByNameAndParent.icon,
+                  sortOrder: typeof c.sortOrder === 'number' ? c.sortOrder : existingByNameAndParent.sortOrder,
+                  isActive: c.isActive !== undefined ? Boolean(c.isActive) : existingByNameAndParent.isActive,
+                  ...(c.customFields ? { customFields: c.customFields } : {}),
+                },
+              });
+            } catch (err: any) {
+              console.warn(`[Backup Restore] AssetCategory metadata update notice:`, err?.message);
+            }
           } else if (existingById) {
-            // ID matches and no (name, parentId) conflict exists in DB
             categoryIdMap.set(c.id, existingById.id);
-            await prisma.assetCategory.update({
-              where: { id: existingById.id },
-              data: cPayload,
-            });
+            try {
+              await prisma.assetCategory.update({
+                where: { id: existingById.id },
+                data: cPayload,
+              });
+            } catch (updErr: any) {
+              console.warn(`[Backup Restore] Category ${c.name} update collision, updating safe metadata:`, updErr?.message);
+              try {
+                await prisma.assetCategory.update({
+                  where: { id: existingById.id },
+                  data: {
+                    description: c.description || undefined,
+                    icon: c.icon || undefined,
+                    sortOrder: typeof c.sortOrder === 'number' ? c.sortOrder : undefined,
+                    isActive: c.isActive !== undefined ? Boolean(c.isActive) : undefined,
+                    ...(c.customFields ? { customFields: c.customFields } : {}),
+                  },
+                });
+              } catch {}
+            }
           } else {
-            // Neither ID nor (name, parentId) exists: Create brand new record
-            const created = await prisma.assetCategory.create({
-              data: { id: c.id, ...cPayload },
-            });
-            categoryIdMap.set(c.id, created.id);
+            try {
+              const created = await prisma.assetCategory.create({
+                data: { id: c.id, ...cPayload },
+              });
+              categoryIdMap.set(c.id, created.id);
+            } catch (createErr: any) {
+              console.warn(`[Backup Restore] Category ${c.name} create collision:`, createErr?.message);
+              const fallback = await prisma.assetCategory.findFirst({
+                where: { OR: [{ id: c.id }, { name: c.name }] },
+              });
+              if (fallback) {
+                categoryIdMap.set(c.id, fallback.id);
+              }
+            }
           }
           restoredCounts.categories++;
         } catch (catErr: any) {
           console.warn(`[Backup Restore] Category ${c.name} (${c.id}) notice:`, catErr?.message);
-          // Resilient fallback: find any existing category by name or ID to map reference
           const fallback = await prisma.assetCategory.findFirst({
             where: { OR: [{ id: c.id }, { name: c.name }] },
           });
