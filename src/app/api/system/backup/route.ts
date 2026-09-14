@@ -375,27 +375,31 @@ export async function POST(req: NextRequest) {
     // 6. Vendors
     if (Array.isArray(backupData.vendors)) {
       for (const v of backupData.vendors) {
-        const existing = await prisma.vendor.findFirst({
-          where: { OR: [{ id: v.id }, { name: v.name }] },
-        });
-        const vPayload = {
-          name: v.name,
-          contactName: v.contactName,
-          email: v.email,
-          phone: v.phone,
-          address: v.address,
-          website: v.website,
-          taxCode: v.taxCode,
-          notes: v.notes,
-        };
-        if (existing) {
-          vendorIdMap.set(v.id, existing.id);
-          await prisma.vendor.update({ where: { id: existing.id }, data: vPayload });
-        } else {
-          const created = await prisma.vendor.create({ data: { id: v.id, ...vPayload } });
-          vendorIdMap.set(v.id, created.id);
+        try {
+          const existing = await prisma.vendor.findFirst({
+            where: { OR: [{ id: v.id }, { name: v.name }] },
+          });
+          const vPayload = {
+            name: v.name,
+            contactPerson: v.contactPerson || v.contactName || null,
+            email: v.email || null,
+            phone: v.phone || null,
+            address: v.address || null,
+            website: v.website || null,
+            notes: v.notes || null,
+            isActive: v.isActive !== undefined ? Boolean(v.isActive) : true,
+          };
+          if (existing) {
+            vendorIdMap.set(v.id, existing.id);
+            await prisma.vendor.update({ where: { id: existing.id }, data: vPayload });
+          } else {
+            const created = await prisma.vendor.create({ data: { id: v.id, ...vPayload } });
+            vendorIdMap.set(v.id, created.id);
+          }
+          restoredCounts.vendors++;
+        } catch (vErr: any) {
+          console.warn(`[Backup Restore] Vendor ${v.name} notice:`, vErr?.message);
         }
-        restoredCounts.vendors++;
       }
     }
 
@@ -928,307 +932,343 @@ export async function POST(req: NextRequest) {
     // 17. Asset Assignments
     if (Array.isArray(backupData.assetAssignments)) {
       for (const asg of backupData.assetAssignments) {
-        const targetAssetId = assetIdMap.get(asg.assetId) || asg.assetId;
-        const aExists = await prisma.asset.findUnique({ where: { id: targetAssetId } });
-        if (!aExists) continue;
+        try {
+          const targetAssetId = assetIdMap.get(asg.assetId) || asg.assetId;
+          const aExists = await prisma.asset.findUnique({ where: { id: targetAssetId } });
+          if (!aExists) continue;
 
-        const targetUserId = userIdMap.get(asg.userId) || asg.userId;
-        const uExists = await prisma.user.findUnique({ where: { id: targetUserId } });
-        if (!uExists) continue;
+          const targetUserId = userIdMap.get(asg.userId) || asg.userId;
+          const uExists = await prisma.user.findUnique({ where: { id: targetUserId } });
+          if (!uExists) continue;
 
-        const targetAssignedById = userIdMap.get(asg.assignedById) || currentUser.userId;
-        const abExists = await prisma.user.findUnique({ where: { id: targetAssignedById } });
+          const targetAssignedById = userIdMap.get(asg.assignedById) || currentUser.userId;
+          const abExists = await prisma.user.findUnique({ where: { id: targetAssignedById } });
 
-        const targetReturnedToId = asg.returnedToId ? (userIdMap.get(asg.returnedToId) || asg.returnedToId) : null;
-        const rtExists = targetReturnedToId ? await prisma.user.findUnique({ where: { id: targetReturnedToId } }) : null;
+          const assignedDateVal = asg.assignedAt || asg.assignedDate;
+          const returnedDateVal = asg.returnedAt || asg.returnedDate;
 
-        const payload = {
-          assetId: targetAssetId,
-          userId: targetUserId,
-          assignedDate: asg.assignedDate ? new Date(asg.assignedDate) : new Date(),
-          returnedDate: asg.returnedDate ? new Date(asg.returnedDate) : null,
-          status: asg.status,
-          assignedById: abExists ? targetAssignedById : currentUser.userId,
-          returnedToId: rtExists ? targetReturnedToId : null,
-          notes: asg.notes,
-        };
+          const payload = {
+            assetId: targetAssetId,
+            userId: targetUserId,
+            assignedAt: assignedDateVal ? new Date(assignedDateVal) : new Date(),
+            returnedAt: returnedDateVal ? new Date(returnedDateVal) : null,
+            assignedById: abExists ? targetAssignedById : currentUser.userId,
+            notes: asg.notes || null,
+          };
 
-        const existing = await prisma.assetAssignment.findUnique({ where: { id: asg.id } });
-        if (existing) {
-          await prisma.assetAssignment.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.assetAssignment.create({ data: { id: asg.id, ...payload } });
+          const existing = await prisma.assetAssignment.findUnique({ where: { id: asg.id } });
+          if (existing) {
+            await prisma.assetAssignment.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.assetAssignment.create({ data: { id: asg.id, ...payload } });
+          }
+          restoredCounts.assetAssignments++;
+        } catch (asgErr: any) {
+          console.warn(`[Backup Restore] AssetAssignment ${asg.id} notice:`, asgErr?.message);
         }
-        restoredCounts.assetAssignments++;
       }
     }
 
     // 18. Asset Maintenance Logs
     if (Array.isArray(backupData.assetMaintenanceLogs)) {
       for (const log of backupData.assetMaintenanceLogs) {
-        const targetAssetId = assetIdMap.get(log.assetId) || log.assetId;
-        const aExists = await prisma.asset.findUnique({ where: { id: targetAssetId } });
-        if (!aExists) continue;
+        try {
+          const targetAssetId = assetIdMap.get(log.assetId) || log.assetId;
+          const aExists = await prisma.asset.findUnique({ where: { id: targetAssetId } });
+          if (!aExists) continue;
 
-        const targetVendorId = log.vendorId ? (vendorIdMap.get(log.vendorId) || log.vendorId) : null;
-        const vExists = targetVendorId ? await prisma.vendor.findUnique({ where: { id: targetVendorId } }) : null;
+          const targetVendorId = log.vendorId ? (vendorIdMap.get(log.vendorId) || log.vendorId) : null;
+          const vExists = targetVendorId ? await prisma.vendor.findUnique({ where: { id: targetVendorId } }) : null;
 
-        const targetPerfId = log.performedById ? (userIdMap.get(log.performedById) || log.performedById) : null;
-        const pExists = targetPerfId ? await prisma.user.findUnique({ where: { id: targetPerfId } }) : null;
+          const targetPerfId = log.performedById ? (userIdMap.get(log.performedById) || log.performedById) : null;
+          const pExists = targetPerfId ? await prisma.user.findUnique({ where: { id: targetPerfId } }) : null;
 
-        const payload = {
-          assetId: targetAssetId,
-          type: log.type || 'REPAIR',
-          title: log.title || 'Bảo trì tài sản',
-          description: log.description,
-          performedById: pExists ? targetPerfId : null,
-          vendorId: vExists ? targetVendorId : null,
-          cost: log.cost,
-          costCurrency: log.costCurrency || 'VND',
-          performedAt: log.performedAt ? new Date(log.performedAt) : (log.startDate ? new Date(log.startDate) : new Date()),
-          completedAt: log.completedAt ? new Date(log.completedAt) : (log.endDate ? new Date(log.endDate) : null),
-          attachmentUrls: log.attachmentUrls,
-          notes: log.notes,
-        };
+          const payload = {
+            assetId: targetAssetId,
+            type: log.type || 'REPAIR',
+            title: log.title || 'Bảo trì tài sản',
+            description: log.description || null,
+            performedById: pExists ? targetPerfId : null,
+            vendorId: vExists ? targetVendorId : null,
+            cost: log.cost !== undefined ? log.cost : null,
+            costCurrency: log.costCurrency || 'VND',
+            performedAt: log.performedAt ? new Date(log.performedAt) : (log.startDate ? new Date(log.startDate) : new Date()),
+            completedAt: log.completedAt ? new Date(log.completedAt) : (log.endDate ? new Date(log.endDate) : null),
+            attachmentUrls: log.attachmentUrls || [],
+            notes: log.notes || null,
+          };
 
-        const existing = await prisma.assetMaintenanceLog.findUnique({ where: { id: log.id } });
-        if (existing) {
-          await prisma.assetMaintenanceLog.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.assetMaintenanceLog.create({ data: { id: log.id, ...payload } });
+          const existing = await prisma.assetMaintenanceLog.findUnique({ where: { id: log.id } });
+          if (existing) {
+            await prisma.assetMaintenanceLog.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.assetMaintenanceLog.create({ data: { id: log.id, ...payload } });
+          }
+          restoredCounts.maintenanceLogs++;
+        } catch (mLogErr: any) {
+          console.warn(`[Backup Restore] AssetMaintenanceLog ${log.id} notice:`, mLogErr?.message);
         }
-        restoredCounts.maintenanceLogs++;
       }
     }
 
     // 19. Licenses
     if (Array.isArray(backupData.licenses)) {
       for (const lic of backupData.licenses) {
-        const targetVendorId = lic.vendorId ? (vendorIdMap.get(lic.vendorId) || lic.vendorId) : null;
-        const vExists = targetVendorId ? await prisma.vendor.findUnique({ where: { id: targetVendorId } }) : null;
+        try {
+          const targetVendorId = lic.vendorId ? (vendorIdMap.get(lic.vendorId) || lic.vendorId) : null;
+          const vExists = targetVendorId ? await prisma.vendor.findUnique({ where: { id: targetVendorId } }) : null;
 
-        const payload = {
-          name: lic.name,
-          licenseKey: lic.licenseKey,
-          licenseType: lic.licenseType,
-          totalSeats: lic.totalSeats || 1,
-          vendorId: vExists ? targetVendorId : null,
-          purchaseDate: lic.purchaseDate ? new Date(lic.purchaseDate) : null,
-          expiryDate: lic.expiryDate ? new Date(lic.expiryDate) : null,
-          purchasePrice: lic.purchasePrice,
-          purchaseCurrency: lic.purchaseCurrency || 'VND',
-          companyName: lic.companyName,
-          contractNumber: lic.contractNumber,
-          invoiceNumber: lic.invoiceNumber,
-          invoiceUrl: lic.invoiceUrl,
-          notes: lic.notes,
-        };
+          const payload = {
+            name: lic.name,
+            licenseKey: lic.licenseKey,
+            licenseType: lic.licenseType || 'SUBSCRIPTION',
+            totalSeats: typeof lic.totalSeats === 'number' ? lic.totalSeats : 1,
+            vendorId: vExists ? targetVendorId : null,
+            purchaseDate: lic.purchaseDate ? new Date(lic.purchaseDate) : null,
+            expiryDate: lic.expiryDate ? new Date(lic.expiryDate) : null,
+            purchasePrice: lic.purchasePrice !== undefined ? lic.purchasePrice : null,
+            purchaseCurrency: lic.purchaseCurrency || 'VND',
+            companyName: lic.companyName || null,
+            contractNumber: lic.contractNumber || null,
+            invoiceNumber: lic.invoiceNumber || null,
+            contractUrl: lic.contractUrl || lic.invoiceUrl || null,
+            notes: lic.notes || null,
+          };
 
-        const existing = await prisma.license.findUnique({ where: { id: lic.id } });
-        if (existing) {
-          licenseIdMap.set(lic.id, existing.id);
-          await prisma.license.update({ where: { id: existing.id }, data: payload });
-        } else {
-          const created = await prisma.license.create({ data: { id: lic.id, ...payload } });
-          licenseIdMap.set(lic.id, created.id);
+          const existing = await prisma.license.findUnique({ where: { id: lic.id } });
+          if (existing) {
+            licenseIdMap.set(lic.id, existing.id);
+            await prisma.license.update({ where: { id: existing.id }, data: payload });
+          } else {
+            const created = await prisma.license.create({ data: { id: lic.id, ...payload } });
+            licenseIdMap.set(lic.id, created.id);
+          }
+          restoredCounts.licenses++;
+        } catch (licErr: any) {
+          console.warn(`[Backup Restore] License ${lic.name} notice:`, licErr?.message);
+          const fallback = await prisma.license.findFirst({ where: { id: lic.id } });
+          if (fallback) licenseIdMap.set(lic.id, fallback.id);
         }
-        restoredCounts.licenses++;
       }
     }
 
     // 20. License Assignments
     if (Array.isArray(backupData.licenseAssignments)) {
       for (const la of backupData.licenseAssignments) {
-        const targetLicId = licenseIdMap.get(la.licenseId) || la.licenseId;
-        const lExists = await prisma.license.findUnique({ where: { id: targetLicId } });
-        if (!lExists) continue;
+        try {
+          const targetLicId = licenseIdMap.get(la.licenseId) || la.licenseId;
+          const lExists = await prisma.license.findUnique({ where: { id: targetLicId } });
+          if (!lExists) continue;
 
-        const targetUserId = la.userId ? (userIdMap.get(la.userId) || la.userId) : null;
-        const uExists = targetUserId ? await prisma.user.findUnique({ where: { id: targetUserId } }) : null;
+          const targetUserId = la.userId ? (userIdMap.get(la.userId) || la.userId) : null;
+          const uExists = targetUserId ? await prisma.user.findUnique({ where: { id: targetUserId } }) : null;
 
-        const targetAssetId = la.assetId ? (assetIdMap.get(la.assetId) || la.assetId) : null;
-        const aExists = targetAssetId ? await prisma.asset.findUnique({ where: { id: targetAssetId } }) : null;
+          const targetAssetId = la.assetId ? (assetIdMap.get(la.assetId) || la.assetId) : null;
+          const aExists = targetAssetId ? await prisma.asset.findUnique({ where: { id: targetAssetId } }) : null;
 
-        const targetAssignedById = userIdMap.get(la.assignedById) || currentUser.userId;
-        const abExists = await prisma.user.findUnique({ where: { id: targetAssignedById } });
+          const targetAssignedById = userIdMap.get(la.assignedById) || currentUser.userId;
+          const abExists = await prisma.user.findUnique({ where: { id: targetAssignedById } });
 
-        const payload = {
-          licenseId: targetLicId,
-          userId: uExists ? targetUserId : null,
-          assetId: aExists ? targetAssetId : null,
-          assignedDate: la.assignedDate ? new Date(la.assignedDate) : new Date(),
-          assignedById: abExists ? targetAssignedById : currentUser.userId,
-          notes: la.notes,
-        };
+          const assignedDateVal = la.assignedAt || la.assignedDate;
+          const revokedDateVal = la.revokedAt;
 
-        const existing = await prisma.licenseAssignment.findUnique({ where: { id: la.id } });
-        if (existing) {
-          await prisma.licenseAssignment.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.licenseAssignment.create({ data: { id: la.id, ...payload } });
+          const payload = {
+            licenseId: targetLicId,
+            userId: uExists ? targetUserId : null,
+            assetId: aExists ? targetAssetId : null,
+            assignedAt: assignedDateVal ? new Date(assignedDateVal) : new Date(),
+            revokedAt: revokedDateVal ? new Date(revokedDateVal) : null,
+            assignedById: abExists ? targetAssignedById : currentUser.userId,
+            notes: la.notes || null,
+          };
+
+          const existing = await prisma.licenseAssignment.findUnique({ where: { id: la.id } });
+          if (existing) {
+            await prisma.licenseAssignment.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.licenseAssignment.create({ data: { id: la.id, ...payload } });
+          }
+          restoredCounts.licenseAssignments++;
+        } catch (laErr: any) {
+          console.warn(`[Backup Restore] LicenseAssignment ${la.id} notice:`, laErr?.message);
         }
-        restoredCounts.licenseAssignments++;
       }
     }
 
     // 21. Passwords (KeePass)
     if (Array.isArray(backupData.passwordEntries)) {
       for (const p of backupData.passwordEntries) {
-        const targetAssetId = p.assetId ? (assetIdMap.get(p.assetId) || p.assetId) : null;
-        const aExists = targetAssetId ? await prisma.asset.findUnique({ where: { id: targetAssetId } }) : null;
+        try {
+          const targetAssetId = p.assetId ? (assetIdMap.get(p.assetId) || p.assetId) : null;
+          const aExists = targetAssetId ? await prisma.asset.findUnique({ where: { id: targetAssetId } }) : null;
 
-        const targetVendorId = p.vendorId ? (vendorIdMap.get(p.vendorId) || p.vendorId) : null;
-        const vExists = targetVendorId ? await prisma.vendor.findUnique({ where: { id: targetVendorId } }) : null;
+          const targetVendorId = p.vendorId ? (vendorIdMap.get(p.vendorId) || p.vendorId) : null;
+          const vExists = targetVendorId ? await prisma.vendor.findUnique({ where: { id: targetVendorId } }) : null;
 
-        const targetSrvId = p.serviceId ? (serviceIdMap.get(p.serviceId) || p.serviceId) : null;
-        const sExists = targetSrvId ? await prisma.iTService.findUnique({ where: { id: targetSrvId } }) : null;
+          const targetSrvId = p.serviceId ? (serviceIdMap.get(p.serviceId) || p.serviceId) : null;
+          const sExists = targetSrvId ? await prisma.iTService.findUnique({ where: { id: targetSrvId } }) : null;
 
-        const targetUserId = p.createdById ? (userIdMap.get(p.createdById) || p.createdById) : currentUser.userId;
-        const uExists = await prisma.user.findUnique({ where: { id: targetUserId } });
+          const targetUserId = p.createdById ? (userIdMap.get(p.createdById) || p.createdById) : currentUser.userId;
+          const uExists = await prisma.user.findUnique({ where: { id: targetUserId } });
 
-        const payload = {
-          title: p.title,
-          username: p.username,
-          password: p.password || p.encryptedPassword || '',
-          url: p.url,
-          category: p.category || 'GENERAL',
-          groupName: p.groupName,
-          companyName: p.companyName,
-          isFavorite: Boolean(p.isFavorite),
-          totpSecret: p.totpSecret,
-          notes: p.notes,
-          assetId: aExists ? targetAssetId : null,
-          vendorId: vExists ? targetVendorId : null,
-          serviceId: sExists ? targetSrvId : null,
-          createdById: uExists ? targetUserId : currentUser.userId,
-        };
+          const payload = {
+            title: p.title,
+            username: p.username || null,
+            password: p.password || p.encryptedPassword || '',
+            url: p.url || null,
+            category: p.category || 'GENERAL',
+            groupName: p.groupName || null,
+            companyName: p.companyName || null,
+            isFavorite: Boolean(p.isFavorite),
+            totpSecret: p.totpSecret || null,
+            notes: p.notes || null,
+            assetId: aExists ? targetAssetId : null,
+            vendorId: vExists ? targetVendorId : null,
+            serviceId: sExists ? targetSrvId : null,
+            createdById: uExists ? targetUserId : currentUser.userId,
+          };
 
-        const existing = await prisma.passwordEntry.findUnique({ where: { id: p.id } });
-        if (existing) {
-          await prisma.passwordEntry.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.passwordEntry.create({ data: { id: p.id, ...payload } });
+          const existing = await prisma.passwordEntry.findUnique({ where: { id: p.id } });
+          if (existing) {
+            await prisma.passwordEntry.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.passwordEntry.create({ data: { id: p.id, ...payload } });
+          }
+          restoredCounts.passwords++;
+        } catch (pErr: any) {
+          console.warn(`[Backup Restore] PasswordEntry ${p.title} notice:`, pErr?.message);
         }
-        restoredCounts.passwords++;
       }
     }
 
     // 22. Problems
     if (Array.isArray(backupData.problems)) {
       for (const prb of backupData.problems) {
-        const targetCreatedById = prb.createdById ? (userIdMap.get(prb.createdById) || prb.createdById) : currentUser.userId;
-        const uExists = await prisma.user.findUnique({ where: { id: targetCreatedById } });
+        try {
+          const targetCreatedById = prb.createdById ? (userIdMap.get(prb.createdById) || prb.createdById) : currentUser.userId;
+          const uExists = await prisma.user.findUnique({ where: { id: targetCreatedById } });
 
-        const targetAssignedToId = prb.assignedToId ? (userIdMap.get(prb.assignedToId) || prb.assignedToId) : null;
-        const aExists = targetAssignedToId ? await prisma.user.findUnique({ where: { id: targetAssignedToId } }) : null;
+          const targetAssignedToId = prb.assignedToId ? (userIdMap.get(prb.assignedToId) || prb.assignedToId) : null;
+          const aExists = targetAssignedToId ? await prisma.user.findUnique({ where: { id: targetAssignedToId } }) : null;
 
-        const existing = await prisma.problem.findFirst({
-          where: { OR: [{ id: prb.id }, { problemNumber: prb.problemNumber }] },
-        });
+          const existing = await prisma.problem.findFirst({
+            where: { OR: [{ id: prb.id }, { problemNumber: prb.problemNumber }] },
+          });
 
-        const payload = {
-          problemNumber: prb.problemNumber,
-          title: prb.title,
-          description: prb.description,
-          priority: prb.priority,
-          status: prb.status,
-          rootCause: prb.rootCause,
-          workaround: prb.workaround,
-          resolution: prb.resolution,
-          createdById: uExists ? targetCreatedById : currentUser.userId,
-          assignedToId: aExists ? targetAssignedToId : null,
-        };
+          const payload = {
+            problemNumber: prb.problemNumber,
+            title: prb.title,
+            description: prb.description,
+            priority: prb.priority || 'MEDIUM',
+            status: prb.status || 'OPEN',
+            rootCause: prb.rootCause || null,
+            workaround: prb.workaround || null,
+            permanentSolution: prb.permanentSolution || prb.resolution || null,
+            createdById: uExists ? targetCreatedById : currentUser.userId,
+            assignedToId: aExists ? targetAssignedToId : null,
+            resolvedAt: prb.resolvedAt ? new Date(prb.resolvedAt) : null,
+          };
 
-        if (existing) {
-          problemIdMap.set(prb.id, existing.id);
-          await prisma.problem.update({ where: { id: existing.id }, data: payload });
-        } else {
-          const created = await prisma.problem.create({ data: { id: prb.id, ...payload } });
-          problemIdMap.set(prb.id, created.id);
+          if (existing) {
+            problemIdMap.set(prb.id, existing.id);
+            await prisma.problem.update({ where: { id: existing.id }, data: payload });
+          } else {
+            const created = await prisma.problem.create({ data: { id: prb.id, ...payload } });
+            problemIdMap.set(prb.id, created.id);
+          }
+          restoredCounts.problems++;
+        } catch (prbErr: any) {
+          console.warn(`[Backup Restore] Problem ${prb.problemNumber} notice:`, prbErr?.message);
         }
-        restoredCounts.problems++;
       }
     }
 
     // 23. Incidents
     if (Array.isArray(backupData.incidents)) {
       for (const inc of backupData.incidents) {
-        const targetCreatedById = inc.createdById ? (userIdMap.get(inc.createdById) || inc.createdById) : currentUser.userId;
-        const uExists = await prisma.user.findUnique({ where: { id: targetCreatedById } });
+        try {
+          const targetCreatedById = inc.createdById ? (userIdMap.get(inc.createdById) || inc.createdById) : currentUser.userId;
+          const uExists = await prisma.user.findUnique({ where: { id: targetCreatedById } });
 
-        const targetAssignedToId = inc.assignedToId ? (userIdMap.get(inc.assignedToId) || inc.assignedToId) : null;
-        const aExists = targetAssignedToId ? await prisma.user.findUnique({ where: { id: targetAssignedToId } }) : null;
+          const targetAssignedToId = inc.assignedToId ? (userIdMap.get(inc.assignedToId) || inc.assignedToId) : null;
+          const aExists = targetAssignedToId ? await prisma.user.findUnique({ where: { id: targetAssignedToId } }) : null;
 
-        const targetTeamId = inc.teamId ? (teamIdMap.get(inc.teamId) || inc.teamId) : null;
-        const tExists = targetTeamId ? await prisma.supportTeam.findUnique({ where: { id: targetTeamId } }) : null;
+          const targetTeamId = inc.teamId ? (teamIdMap.get(inc.teamId) || inc.teamId) : null;
+          const tExists = targetTeamId ? await prisma.supportTeam.findUnique({ where: { id: targetTeamId } }) : null;
 
-        const targetProblemId = inc.problemId ? (problemIdMap.get(inc.problemId) || inc.problemId) : null;
-        const pExists = targetProblemId ? await prisma.problem.findUnique({ where: { id: targetProblemId } }) : null;
+          const targetProblemId = inc.problemId ? (problemIdMap.get(inc.problemId) || inc.problemId) : null;
+          const pExists = targetProblemId ? await prisma.problem.findUnique({ where: { id: targetProblemId } }) : null;
 
-        const existing = await prisma.incident.findFirst({
-          where: { OR: [{ id: inc.id }, { incidentNumber: inc.incidentNumber }] },
-        });
+          const existing = await prisma.incident.findFirst({
+            where: { OR: [{ id: inc.id }, { incidentNumber: inc.incidentNumber }] },
+          });
 
-        const payload = {
-          incidentNumber: inc.incidentNumber,
-          title: inc.title,
-          description: inc.description,
-          severity: inc.severity,
-          status: inc.status,
-          impact: inc.impact,
-          affectedServices: Array.isArray(inc.affectedServices) ? inc.affectedServices : [],
-          affectedLocations: Array.isArray(inc.affectedLocations) ? inc.affectedLocations : [],
-          workaround: inc.workaround,
-          resolutionNotes: inc.resolutionNotes,
-          teamId: tExists ? targetTeamId : null,
-          createdById: uExists ? targetCreatedById : currentUser.userId,
-          assignedToId: aExists ? targetAssignedToId : null,
-          problemId: pExists ? targetProblemId : null,
-          startedAt: inc.startedAt ? new Date(inc.startedAt) : new Date(),
-          identifiedAt: inc.identifiedAt ? new Date(inc.identifiedAt) : null,
-          resolvedAt: inc.resolvedAt ? new Date(inc.resolvedAt) : null,
-          closedAt: inc.closedAt ? new Date(inc.closedAt) : null,
-        };
+          const payload = {
+            incidentNumber: inc.incidentNumber,
+            title: inc.title,
+            description: inc.description,
+            severity: inc.severity || 'SEV3_MEDIUM',
+            status: inc.status || 'OPEN',
+            impact: inc.impact || null,
+            affectedServices: Array.isArray(inc.affectedServices) ? inc.affectedServices : [],
+            affectedLocations: Array.isArray(inc.affectedLocations) ? inc.affectedLocations : [],
+            workaround: inc.workaround || null,
+            resolutionNotes: inc.resolutionNotes || null,
+            teamId: tExists ? targetTeamId : null,
+            createdById: uExists ? targetCreatedById : currentUser.userId,
+            assignedToId: aExists ? targetAssignedToId : null,
+            problemId: pExists ? targetProblemId : null,
+            startedAt: inc.startedAt ? new Date(inc.startedAt) : new Date(),
+            identifiedAt: inc.identifiedAt ? new Date(inc.identifiedAt) : null,
+            resolvedAt: inc.resolvedAt ? new Date(inc.resolvedAt) : null,
+            closedAt: inc.closedAt ? new Date(inc.closedAt) : null,
+          };
 
-        if (existing) {
-          incidentIdMap.set(inc.id, existing.id);
-          await prisma.incident.update({ where: { id: existing.id }, data: payload });
-        } else {
-          const created = await prisma.incident.create({ data: { id: inc.id, ...payload } });
-          incidentIdMap.set(inc.id, created.id);
+          if (existing) {
+            incidentIdMap.set(inc.id, existing.id);
+            await prisma.incident.update({ where: { id: existing.id }, data: payload });
+          } else {
+            const created = await prisma.incident.create({ data: { id: inc.id, ...payload } });
+            incidentIdMap.set(inc.id, created.id);
+          }
+          restoredCounts.incidents++;
+        } catch (incErr: any) {
+          console.warn(`[Backup Restore] Incident ${inc.incidentNumber} notice:`, incErr?.message);
         }
-        restoredCounts.incidents++;
       }
     }
 
     // 24. Incident Updates
     if (Array.isArray(backupData.incidentUpdates)) {
       for (const upd of backupData.incidentUpdates) {
-        const targetIncId = incidentIdMap.get(upd.incidentId) || upd.incidentId;
-        const incExists = await prisma.incident.findUnique({ where: { id: targetIncId } });
-        if (!incExists) continue;
+        try {
+          const targetIncId = incidentIdMap.get(upd.incidentId) || upd.incidentId;
+          const incExists = await prisma.incident.findUnique({ where: { id: targetIncId } });
+          if (!incExists) continue;
 
-        const targetUserId = upd.userId ? (userIdMap.get(upd.userId) || upd.userId) : (upd.createdById ? (userIdMap.get(upd.createdById) || upd.createdById) : currentUser.userId);
-        const uExists = await prisma.user.findUnique({ where: { id: targetUserId } });
+          const targetUserId = upd.userId ? (userIdMap.get(upd.userId) || upd.userId) : (upd.createdById ? (userIdMap.get(upd.createdById) || upd.createdById) : currentUser.userId);
+          const uExists = await prisma.user.findUnique({ where: { id: targetUserId } });
 
-        const payload = {
-          incidentId: targetIncId,
-          userId: uExists ? targetUserId : currentUser.userId,
-          content: upd.content || upd.message || '',
-          statusChange: upd.statusChange,
-          isPublic: upd.isPublic !== undefined ? Boolean(upd.isPublic) : true,
-        };
+          const payload = {
+            incidentId: targetIncId,
+            userId: uExists ? targetUserId : currentUser.userId,
+            content: upd.content || upd.message || '',
+            statusChange: upd.statusChange || null,
+            isPublic: upd.isPublic !== undefined ? Boolean(upd.isPublic) : true,
+          };
 
-        const existing = await prisma.incidentUpdate.findUnique({ where: { id: upd.id } });
-        if (existing) {
-          await prisma.incidentUpdate.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.incidentUpdate.create({ data: { id: upd.id, ...payload } });
+          const existing = await prisma.incidentUpdate.findUnique({ where: { id: upd.id } });
+          if (existing) {
+            await prisma.incidentUpdate.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.incidentUpdate.create({ data: { id: upd.id, ...payload } });
+          }
+          restoredCounts.incidentUpdates++;
+        } catch (iuErr: any) {
+          console.warn(`[Backup Restore] IncidentUpdate ${upd.id} notice:`, iuErr?.message);
         }
-        restoredCounts.incidentUpdates++;
       }
     }
-
     // 25. Tickets
     if (Array.isArray(backupData.tickets)) {
       for (const t of backupData.tickets) {
@@ -1330,331 +1370,377 @@ export async function POST(req: NextRequest) {
     // 26. Ticket Comments
     if (Array.isArray(backupData.ticketComments)) {
       for (const tc of backupData.ticketComments) {
-        const targetTicketId = ticketIdMap.get(tc.ticketId) || tc.ticketId;
-        const ticketExists = await prisma.ticket.findUnique({ where: { id: targetTicketId } });
-        if (!ticketExists) continue;
+        try {
+          const targetTicketId = ticketIdMap.get(tc.ticketId) || tc.ticketId;
+          const ticketExists = await prisma.ticket.findUnique({ where: { id: targetTicketId } });
+          if (!ticketExists) continue;
 
-        const targetUserId = tc.userId ? (userIdMap.get(tc.userId) || tc.userId) : (tc.authorId ? (userIdMap.get(tc.authorId) || tc.authorId) : currentUser.userId);
-        let authorExists = await prisma.user.findUnique({ where: { id: targetUserId } });
-        if (!authorExists) {
-          authorExists = await prisma.user.findUnique({ where: { id: currentUser.userId } });
+          const targetUserId = tc.userId ? (userIdMap.get(tc.userId) || tc.userId) : (tc.authorId ? (userIdMap.get(tc.authorId) || tc.authorId) : currentUser.userId);
+          let authorExists = await prisma.user.findUnique({ where: { id: targetUserId } });
+          if (!authorExists) {
+            authorExists = await prisma.user.findUnique({ where: { id: currentUser.userId } });
+          }
+          if (!authorExists) continue;
+
+          const payload = {
+            ticketId: targetTicketId,
+            userId: authorExists.id,
+            content: tc.content || '',
+            isInternal: Boolean(tc.isInternal),
+            attachmentUrls: tc.attachmentUrls || [],
+            spentMinutes: tc.spentMinutes || 0,
+            createdAt: tc.createdAt ? new Date(tc.createdAt) : new Date(),
+          };
+
+          const existing = await prisma.ticketComment.findUnique({ where: { id: tc.id } });
+          if (existing) {
+            await prisma.ticketComment.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.ticketComment.create({ data: { id: tc.id, ...payload } });
+          }
+          restoredCounts.ticketComments++;
+        } catch (tcErr: any) {
+          console.warn(`[Backup Restore] TicketComment ${tc.id} notice:`, tcErr?.message);
         }
-        if (!authorExists) continue;
-
-        const payload = {
-          ticketId: targetTicketId,
-          userId: authorExists.id,
-          content: tc.content,
-          isInternal: Boolean(tc.isInternal),
-          attachmentUrls: tc.attachmentUrls,
-          spentMinutes: tc.spentMinutes,
-          createdAt: tc.createdAt ? new Date(tc.createdAt) : new Date(),
-        };
-
-        const existing = await prisma.ticketComment.findUnique({ where: { id: tc.id } });
-        if (existing) {
-          await prisma.ticketComment.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.ticketComment.create({ data: { id: tc.id, ...payload } });
-        }
-        restoredCounts.ticketComments++;
       }
     }
 
     // 27. Canned Responses
     if (Array.isArray(backupData.cannedResponses)) {
       for (const cr of backupData.cannedResponses) {
-        const targetCreatedById = cr.createdById ? (userIdMap.get(cr.createdById) || cr.createdById) : currentUser.userId;
-        const uExists = await prisma.user.findUnique({ where: { id: targetCreatedById } });
+        try {
+          const payload = {
+            title: cr.title,
+            shortcut: cr.shortcut || null,
+            content: cr.content,
+            category: cr.category || 'General',
+          };
 
-        const payload = {
-          title: cr.title,
-          shortcut: cr.shortcut,
-          content: cr.content,
-          category: cr.category,
-          isShared: cr.isShared !== undefined ? Boolean(cr.isShared) : true,
-          createdById: uExists ? targetCreatedById : currentUser.userId,
-        };
-
-        const existing = await prisma.cannedResponse.findUnique({ where: { id: cr.id } });
-        if (existing) {
-          await prisma.cannedResponse.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.cannedResponse.create({ data: { id: cr.id, ...payload } });
+          const existing = await prisma.cannedResponse.findUnique({ where: { id: cr.id } });
+          if (existing) {
+            await prisma.cannedResponse.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.cannedResponse.create({ data: { id: cr.id, ...payload } });
+          }
+          restoredCounts.cannedResponses++;
+        } catch (crErr: any) {
+          console.warn(`[Backup Restore] CannedResponse ${cr.title} notice:`, crErr?.message);
         }
-        restoredCounts.cannedResponses++;
       }
     }
 
     // 28. Documents
     if (Array.isArray(backupData.documents)) {
       for (const d of backupData.documents) {
-        const targetAssetId = d.assetId ? (assetIdMap.get(d.assetId) || d.assetId) : null;
-        const aExists = targetAssetId ? await prisma.asset.findUnique({ where: { id: targetAssetId } }) : null;
+        try {
+          const targetAssetId = d.assetId ? (assetIdMap.get(d.assetId) || d.assetId) : null;
+          const aExists = targetAssetId ? await prisma.asset.findUnique({ where: { id: targetAssetId } }) : null;
 
-        const targetVendorId = d.vendorId ? (vendorIdMap.get(d.vendorId) || d.vendorId) : null;
-        const vExists = targetVendorId ? await prisma.vendor.findUnique({ where: { id: targetVendorId } }) : null;
+          const targetVendorId = d.vendorId ? (vendorIdMap.get(d.vendorId) || d.vendorId) : null;
+          const vExists = targetVendorId ? await prisma.vendor.findUnique({ where: { id: targetVendorId } }) : null;
 
-        const targetLicId = d.licenseId ? (licenseIdMap.get(d.licenseId) || d.licenseId) : null;
-        const licExists = targetLicId ? await prisma.license.findUnique({ where: { id: targetLicId } }) : null;
+          const targetLicId = d.licenseId ? (licenseIdMap.get(d.licenseId) || d.licenseId) : null;
+          const licExists = targetLicId ? await prisma.license.findUnique({ where: { id: targetLicId } }) : null;
 
-        const targetSrvId = d.serviceId ? (serviceIdMap.get(d.serviceId) || d.serviceId) : null;
-        const sExists = targetSrvId ? await prisma.iTService.findUnique({ where: { id: targetSrvId } }) : null;
+          const targetSrvId = d.serviceId ? (serviceIdMap.get(d.serviceId) || d.serviceId) : null;
+          const sExists = targetSrvId ? await prisma.iTService.findUnique({ where: { id: targetSrvId } }) : null;
 
-        const targetUserId = d.createdById ? (userIdMap.get(d.createdById) || d.createdById) : null;
-        const uExists = targetUserId ? await prisma.user.findUnique({ where: { id: targetUserId } }) : null;
+          const targetUserId = d.createdById ? (userIdMap.get(d.createdById) || d.createdById) : null;
+          const uExists = targetUserId ? await prisma.user.findUnique({ where: { id: targetUserId } }) : null;
 
-        const payload = {
-          title: d.title,
-          fileName: d.fileName,
-          fileUrl: d.fileUrl,
-          fileType: d.fileType,
-          fileSize: d.fileSize,
-          category: d.category || 'OTHER',
-          notes: d.notes,
-          assetId: aExists ? targetAssetId : null,
-          vendorId: vExists ? targetVendorId : null,
-          licenseId: licExists ? targetLicId : null,
-          serviceId: sExists ? targetSrvId : null,
-          createdById: uExists ? targetUserId : null,
-        };
+          const payload = {
+            title: d.title,
+            type: d.type || d.category || 'OTHER',
+            projectName: d.projectName || null,
+            projectCode: d.projectCode || null,
+            contractNumber: d.contractNumber || null,
+            invoiceNumber: d.invoiceNumber || null,
+            companyName: d.companyName || null,
+            vendorName: d.vendorName || null,
+            documentDate: d.documentDate ? new Date(d.documentDate) : null,
+            amount: d.amount !== undefined ? d.amount : null,
+            amountCurrency: d.amountCurrency || 'VND',
+            fileName: d.fileName || 'document',
+            fileUrl: d.fileUrl || '',
+            fileType: d.fileType || 'application/octet-stream',
+            fileSize: d.fileSize || 0,
+            attachments: d.attachments || [],
+            notes: d.notes || null,
+            assetId: aExists ? targetAssetId : null,
+            vendorId: vExists ? targetVendorId : null,
+            licenseId: licExists ? targetLicId : null,
+            serviceId: sExists ? targetSrvId : null,
+            createdById: uExists ? targetUserId : null,
+          };
 
-        const existing = await prisma.document.findUnique({ where: { id: d.id } });
-        if (existing) {
-          await prisma.document.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.document.create({ data: { id: d.id, ...payload } });
+          const existing = await prisma.document.findUnique({ where: { id: d.id } });
+          if (existing) {
+            await prisma.document.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.document.create({ data: { id: d.id, ...payload } });
+          }
+          restoredCounts.documents++;
+        } catch (dErr: any) {
+          console.warn(`[Backup Restore] Document ${d.title} notice:`, dErr?.message);
         }
-        restoredCounts.documents++;
       }
     }
 
     // 29. Approval Requests
     if (Array.isArray(backupData.approvalRequests)) {
       for (const ar of backupData.approvalRequests) {
-        const targetReqId = ar.requesterId ? (userIdMap.get(ar.requesterId) || ar.requesterId) : currentUser.userId;
-        const rExists = await prisma.user.findUnique({ where: { id: targetReqId } });
+        try {
+          const targetReqId = ar.requesterId ? (userIdMap.get(ar.requesterId) || ar.requesterId) : currentUser.userId;
+          const rExists = await prisma.user.findUnique({ where: { id: targetReqId } });
 
-        const targetMgrId = ar.managerId ? (userIdMap.get(ar.managerId) || ar.managerId) : null;
-        const mExists = targetMgrId ? await prisma.user.findUnique({ where: { id: targetMgrId } }) : null;
+          const targetMgrId = ar.managerId ? (userIdMap.get(ar.managerId) || ar.managerId) : null;
+          const mExists = targetMgrId ? await prisma.user.findUnique({ where: { id: targetMgrId } }) : null;
 
-        const targetItId = ar.itApproverId ? (userIdMap.get(ar.itApproverId) || ar.itApproverId) : null;
-        const itExists = targetItId ? await prisma.user.findUnique({ where: { id: targetItId } }) : null;
+          const targetItId = ar.itApproverId ? (userIdMap.get(ar.itApproverId) || ar.itApproverId) : null;
+          const itExists = targetItId ? await prisma.user.findUnique({ where: { id: targetItId } }) : null;
 
-        const existing = await prisma.approvalRequest.findFirst({
-          where: { OR: [{ id: ar.id }, { code: ar.code }] },
-        });
+          const existing = await prisma.approvalRequest.findFirst({
+            where: { OR: [{ id: ar.id }, { code: ar.code }] },
+          });
 
-        const payload = {
-          code: ar.code,
-          type: ar.type,
-          status: ar.status,
-          title: ar.title,
-          description: ar.description,
-          requesterId: rExists ? targetReqId : currentUser.userId,
-          department: ar.department,
-          companyName: ar.companyName,
-          urgency: ar.urgency,
-          costEstimate: ar.costEstimate,
-          currency: ar.currency || 'VND',
-          managerId: mExists ? targetMgrId : null,
-          managerDecision: ar.managerDecision,
-          managerNote: ar.managerNote,
-          managerDecisionAt: ar.managerDecisionAt ? new Date(ar.managerDecisionAt) : null,
-          itApproverId: itExists ? targetItId : null,
-          itDecision: ar.itDecision,
-          itNote: ar.itNote,
-          itDecisionAt: ar.itDecisionAt ? new Date(ar.itDecisionAt) : null,
-          details: ar.details,
-          rejectionReason: ar.rejectionReason,
-        };
+          const payload = {
+            code: ar.code,
+            type: ar.type || 'PURCHASE',
+            status: ar.status || 'PENDING',
+            title: ar.title,
+            description: ar.description || null,
+            justification: ar.justification || ar.details || null,
+            estimatedCost: ar.estimatedCost !== undefined ? ar.estimatedCost : (ar.costEstimate !== undefined ? ar.costEstimate : null),
+            currency: ar.currency || 'VND',
+            quantity: typeof ar.quantity === 'number' ? ar.quantity : 1,
+            requesterId: rExists ? targetReqId : currentUser.userId,
+            managerId: mExists ? targetMgrId : null,
+            managerApprovedAt: ar.managerApprovedAt ? new Date(ar.managerApprovedAt) : (ar.managerDecisionAt ? new Date(ar.managerDecisionAt) : null),
+            managerNote: ar.managerNote || null,
+            itApproverId: itExists ? targetItId : null,
+            itApprovedAt: ar.itApprovedAt ? new Date(ar.itApprovedAt) : (ar.itDecisionAt ? new Date(ar.itDecisionAt) : null),
+            itNote: ar.itNote || null,
+            rejectedBy: ar.rejectedBy || null,
+            rejectedAt: ar.rejectedAt ? new Date(ar.rejectedAt) : null,
+            rejectedReason: ar.rejectedReason || ar.rejectionReason || null,
+            deliveredAt: ar.deliveredAt ? new Date(ar.deliveredAt) : null,
+            linkedAssetId: ar.linkedAssetId || null,
+            linkedLicenseId: ar.linkedLicenseId || null,
+          };
 
-        if (existing) {
-          await prisma.approvalRequest.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.approvalRequest.create({ data: { id: ar.id, ...payload } });
+          if (existing) {
+            await prisma.approvalRequest.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.approvalRequest.create({ data: { id: ar.id, ...payload } });
+          }
+          restoredCounts.approvals++;
+        } catch (arErr: any) {
+          console.warn(`[Backup Restore] ApprovalRequest ${ar.code} notice:`, arErr?.message);
         }
-        restoredCounts.approvals++;
       }
     }
 
     // 30. Maintenance Schedules
     if (Array.isArray(backupData.maintenanceSchedules)) {
       for (const ms of backupData.maintenanceSchedules) {
-        const targetAssetId = ms.assetId ? (assetIdMap.get(ms.assetId) || ms.assetId) : null;
-        const aExists = targetAssetId ? await prisma.asset.findUnique({ where: { id: targetAssetId } }) : null;
+        try {
+          const targetAssetId = ms.assetId ? (assetIdMap.get(ms.assetId) || ms.assetId) : null;
+          const aExists = targetAssetId ? await prisma.asset.findUnique({ where: { id: targetAssetId } }) : null;
 
-        const targetCatId = ms.categoryId ? (categoryIdMap.get(ms.categoryId) || ms.categoryId) : null;
-        const catExists = targetCatId ? await prisma.assetCategory.findUnique({ where: { id: targetCatId } }) : null;
+          const targetCatId = ms.categoryId ? (categoryIdMap.get(ms.categoryId) || ms.categoryId) : null;
+          const catExists = targetCatId ? await prisma.assetCategory.findUnique({ where: { id: targetCatId } }) : null;
 
-        const targetAssignToId = ms.assignToId ? (userIdMap.get(ms.assignToId) || ms.assignToId) : (ms.assignedToId ? (userIdMap.get(ms.assignedToId) || ms.assignedToId) : null);
-        const uExists = targetAssignToId ? await prisma.user.findUnique({ where: { id: targetAssignToId } }) : null;
+          const targetAssignToId = ms.assignToId ? (userIdMap.get(ms.assignToId) || ms.assignToId) : (ms.assignedToId ? (userIdMap.get(ms.assignedToId) || ms.assignedToId) : null);
+          const uExists = targetAssignToId ? await prisma.user.findUnique({ where: { id: targetAssignToId } }) : null;
 
-        const payload = {
-          name: ms.name,
-          description: ms.description,
-          frequency: ms.frequency || 'MONTHLY',
-          maintenanceType: ms.maintenanceType || 'PREVENTIVE',
-          assetId: aExists ? targetAssetId : null,
-          categoryId: catExists ? targetCatId : null,
-          lastRunAt: ms.lastRunAt ? new Date(ms.lastRunAt) : (ms.lastRunDate ? new Date(ms.lastRunDate) : null),
-          nextRunAt: ms.nextRunAt ? new Date(ms.nextRunAt) : (ms.nextRunDate ? new Date(ms.nextRunDate) : new Date()),
-          isActive: ms.isActive !== undefined ? Boolean(ms.isActive) : true,
-          autoCreateTicket: ms.autoCreateTicket !== undefined ? Boolean(ms.autoCreateTicket) : true,
-          ticketPriority: ms.ticketPriority || 'MEDIUM',
-          assignToId: uExists ? targetAssignToId : null,
-        };
+          const payload = {
+            name: ms.name,
+            description: ms.description || null,
+            frequency: ms.frequency || 'MONTHLY',
+            maintenanceType: ms.maintenanceType || 'PREVENTIVE',
+            assetId: aExists ? targetAssetId : null,
+            categoryId: catExists ? targetCatId : null,
+            lastRunAt: ms.lastRunAt ? new Date(ms.lastRunAt) : (ms.lastRunDate ? new Date(ms.lastRunDate) : null),
+            nextRunAt: ms.nextRunAt ? new Date(ms.nextRunAt) : (ms.nextRunDate ? new Date(ms.nextRunDate) : new Date()),
+            isActive: ms.isActive !== undefined ? Boolean(ms.isActive) : true,
+            autoCreateTicket: ms.autoCreateTicket !== undefined ? Boolean(ms.autoCreateTicket) : true,
+            ticketPriority: ms.ticketPriority || 'MEDIUM',
+            assignToId: uExists ? targetAssignToId : null,
+          };
 
-        const existing = await prisma.maintenanceSchedule.findUnique({ where: { id: ms.id } });
-        if (existing) {
-          await prisma.maintenanceSchedule.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.maintenanceSchedule.create({ data: { id: ms.id, ...payload } });
+          const existing = await prisma.maintenanceSchedule.findUnique({ where: { id: ms.id } });
+          if (existing) {
+            await prisma.maintenanceSchedule.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.maintenanceSchedule.create({ data: { id: ms.id, ...payload } });
+          }
+          restoredCounts.maintenanceSchedules++;
+        } catch (msErr: any) {
+          console.warn(`[Backup Restore] MaintenanceSchedule ${ms.name} notice:`, msErr?.message);
         }
-        restoredCounts.maintenanceSchedules++;
       }
     }
 
     // 31. Spare Parts
     if (Array.isArray(backupData.spareParts)) {
       for (const sp of backupData.spareParts) {
-        const targetCatId = sp.categoryId ? (categoryIdMap.get(sp.categoryId) || sp.categoryId) : null;
-        const catExists = targetCatId ? await prisma.assetCategory.findUnique({ where: { id: targetCatId } }) : null;
+        try {
+          const targetCatId = sp.categoryId ? (categoryIdMap.get(sp.categoryId) || sp.categoryId) : null;
+          const catExists = targetCatId ? await prisma.assetCategory.findUnique({ where: { id: targetCatId } }) : null;
 
-        const targetVendorId = sp.vendorId ? (vendorIdMap.get(sp.vendorId) || sp.vendorId) : null;
-        const vExists = targetVendorId ? await prisma.vendor.findUnique({ where: { id: targetVendorId } }) : null;
+          const targetVendorId = sp.vendorId ? (vendorIdMap.get(sp.vendorId) || sp.vendorId) : null;
+          const vExists = targetVendorId ? await prisma.vendor.findUnique({ where: { id: targetVendorId } }) : null;
 
-        const targetLocId = sp.locationId ? (locationIdMap.get(sp.locationId) || sp.locationId) : null;
-        const locExists = targetLocId ? await prisma.location.findUnique({ where: { id: targetLocId } }) : null;
+          const targetLocId = sp.locationId ? (locationIdMap.get(sp.locationId) || sp.locationId) : null;
+          const locExists = targetLocId ? await prisma.location.findUnique({ where: { id: targetLocId } }) : null;
 
-        const existing = await prisma.sparePart.findFirst({
-          where: { OR: [{ id: sp.id }, ...(sp.sku ? [{ sku: sp.sku }] : [])] },
-        });
+          const existing = await prisma.sparePart.findFirst({
+            where: { OR: [{ id: sp.id }, ...(sp.sku ? [{ sku: sp.sku }] : [])] },
+          });
 
-        const payload = {
-          name: sp.name,
-          sku: sp.sku,
-          categoryId: catExists ? targetCatId : null,
-          quantity: sp.quantity || 0,
-          minStock: sp.minStock || 5,
-          unit: sp.unit || 'cái',
-          unitPrice: sp.unitPrice,
-          currency: sp.currency || 'VND',
-          vendorId: vExists ? targetVendorId : null,
-          locationId: locExists ? targetLocId : null,
-          notes: sp.notes,
-        };
+          const payload = {
+            name: sp.name,
+            sku: sp.sku || null,
+            categoryId: catExists ? targetCatId : null,
+            quantity: typeof sp.quantity === 'number' ? sp.quantity : 0,
+            minStock: typeof sp.minStock === 'number' ? sp.minStock : 5,
+            unit: sp.unit || 'cái',
+            unitPrice: sp.unitPrice !== undefined ? sp.unitPrice : null,
+            currency: sp.currency || 'VND',
+            vendorId: vExists ? targetVendorId : null,
+            locationId: locExists ? targetLocId : null,
+            notes: sp.notes || null,
+          };
 
-        if (existing) {
-          sparePartIdMap.set(sp.id, existing.id);
-          await prisma.sparePart.update({ where: { id: existing.id }, data: payload });
-        } else {
-          const created = await prisma.sparePart.create({ data: { id: sp.id, ...payload } });
-          sparePartIdMap.set(sp.id, created.id);
+          if (existing) {
+            sparePartIdMap.set(sp.id, existing.id);
+            await prisma.sparePart.update({ where: { id: existing.id }, data: payload });
+          } else {
+            const created = await prisma.sparePart.create({ data: { id: sp.id, ...payload } });
+            sparePartIdMap.set(sp.id, created.id);
+          }
+          restoredCounts.spareParts++;
+        } catch (spErr: any) {
+          console.warn(`[Backup Restore] SparePart ${sp.name} notice:`, spErr?.message);
         }
-        restoredCounts.spareParts++;
       }
     }
 
     // 32. Spare Part Transactions
     if (Array.isArray(backupData.sparePartTransactions)) {
       for (const spt of backupData.sparePartTransactions) {
-        const targetSpId = sparePartIdMap.get(spt.sparePartId) || spt.sparePartId;
-        const spExists = await prisma.sparePart.findUnique({ where: { id: targetSpId } });
-        if (!spExists) continue;
+        try {
+          const targetSpId = sparePartIdMap.get(spt.sparePartId) || spt.sparePartId;
+          const spExists = await prisma.sparePart.findUnique({ where: { id: targetSpId } });
+          if (!spExists) continue;
 
-        const targetPerfId = spt.performedById ? (userIdMap.get(spt.performedById) || spt.performedById) : currentUser.userId;
-        const pExists = await prisma.user.findUnique({ where: { id: targetPerfId } });
+          const targetPerfId = spt.performedById ? (userIdMap.get(spt.performedById) || spt.performedById) : currentUser.userId;
+          const pExists = await prisma.user.findUnique({ where: { id: targetPerfId } });
 
-        const targetAssetId = spt.assetId ? (assetIdMap.get(spt.assetId) || spt.assetId) : null;
-        const aExists = targetAssetId ? await prisma.asset.findUnique({ where: { id: targetAssetId } }) : null;
+          const targetAssetId = spt.assetId ? (assetIdMap.get(spt.assetId) || spt.assetId) : null;
+          const aExists = targetAssetId ? await prisma.asset.findUnique({ where: { id: targetAssetId } }) : null;
 
-        const payload = {
-          sparePartId: targetSpId,
-          type: spt.type,
-          quantity: spt.quantity,
-          note: spt.note,
-          maintenanceLogId: spt.maintenanceLogId,
-          assetId: aExists ? targetAssetId : null,
-          performedById: pExists ? targetPerfId : currentUser.userId,
-          createdAt: spt.createdAt ? new Date(spt.createdAt) : new Date(),
-        };
+          const payload = {
+            sparePartId: targetSpId,
+            type: spt.type,
+            quantity: typeof spt.quantity === 'number' ? spt.quantity : 1,
+            note: spt.note || null,
+            maintenanceLogId: spt.maintenanceLogId || null,
+            assetId: aExists ? targetAssetId : null,
+            performedById: pExists ? targetPerfId : currentUser.userId,
+            createdAt: spt.createdAt ? new Date(spt.createdAt) : new Date(),
+          };
 
-        const existing = await prisma.sparePartTransaction.findUnique({ where: { id: spt.id } });
-        if (existing) {
-          await prisma.sparePartTransaction.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.sparePartTransaction.create({ data: { id: spt.id, ...payload } });
+          const existing = await prisma.sparePartTransaction.findUnique({ where: { id: spt.id } });
+          if (existing) {
+            await prisma.sparePartTransaction.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.sparePartTransaction.create({ data: { id: spt.id, ...payload } });
+          }
+          restoredCounts.sparePartTransactions++;
+        } catch (sptErr: any) {
+          console.warn(`[Backup Restore] SparePartTransaction ${spt.id} notice:`, sptErr?.message);
         }
-        restoredCounts.sparePartTransactions++;
       }
     }
 
     // 33. Floor Maps
     if (Array.isArray(backupData.floorMaps)) {
       for (const fm of backupData.floorMaps) {
-        const targetLocId = locationIdMap.get(fm.locationId) || fm.locationId;
-        const locExists = await prisma.location.findUnique({ where: { id: targetLocId } });
-        if (!locExists) continue;
+        try {
+          const targetLocId = locationIdMap.get(fm.locationId) || fm.locationId;
+          const locExists = await prisma.location.findUnique({ where: { id: targetLocId } });
+          if (!locExists) continue;
 
-        const payload = {
-          locationId: targetLocId,
-          name: fm.name,
-          imageUrl: fm.imageUrl,
-          markers: fm.markers || [],
-        };
+          const payload = {
+            locationId: targetLocId,
+            name: fm.name,
+            imageUrl: fm.imageUrl,
+            markers: fm.markers || [],
+          };
 
-        const existing = await prisma.floorMap.findUnique({ where: { id: fm.id } });
-        if (existing) {
-          await prisma.floorMap.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.floorMap.create({ data: { id: fm.id, ...payload } });
+          const existing = await prisma.floorMap.findUnique({ where: { id: fm.id } });
+          if (existing) {
+            await prisma.floorMap.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.floorMap.create({ data: { id: fm.id, ...payload } });
+          }
+          restoredCounts.floorMaps++;
+        } catch (fmErr: any) {
+          console.warn(`[Backup Restore] FloorMap ${fm.name} notice:`, fmErr?.message);
         }
-        restoredCounts.floorMaps++;
       }
     }
 
     // 34. Webhook Configs
     if (Array.isArray(backupData.webhookConfigs)) {
       for (const wh of backupData.webhookConfigs) {
-        const payload = {
-          name: wh.name,
-          provider: wh.provider,
-          webhookUrl: wh.webhookUrl,
-          events: wh.events || [],
-          isActive: wh.isActive !== undefined ? Boolean(wh.isActive) : true,
-        };
+        try {
+          const payload = {
+            name: wh.name,
+            provider: wh.provider,
+            webhookUrl: wh.webhookUrl,
+            events: wh.events || [],
+            isActive: wh.isActive !== undefined ? Boolean(wh.isActive) : true,
+          };
 
-        const existing = await prisma.webhookConfig.findUnique({ where: { id: wh.id } });
-        if (existing) {
-          await prisma.webhookConfig.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.webhookConfig.create({ data: { id: wh.id, ...payload } });
+          const existing = await prisma.webhookConfig.findUnique({ where: { id: wh.id } });
+          if (existing) {
+            await prisma.webhookConfig.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.webhookConfig.create({ data: { id: wh.id, ...payload } });
+          }
+          restoredCounts.webhooks++;
+        } catch (whErr: any) {
+          console.warn(`[Backup Restore] WebhookConfig ${wh.name} notice:`, whErr?.message);
         }
-        restoredCounts.webhooks++;
       }
     }
 
     // 35. Email Templates
     if (Array.isArray(backupData.emailTemplates)) {
       for (const et of backupData.emailTemplates) {
-        const payload = {
-          code: et.code,
-          name: et.name,
-          subject: et.subject,
-          bodyHtml: et.bodyHtml || et.htmlBody || '',
-          isActive: et.isActive !== undefined ? Boolean(et.isActive) : true,
-        };
+        try {
+          const payload = {
+            code: et.code,
+            name: et.name,
+            subject: et.subject,
+            bodyHtml: et.bodyHtml || et.htmlBody || '',
+            isActive: et.isActive !== undefined ? Boolean(et.isActive) : true,
+          };
 
-        const existing = await prisma.emailTemplate.findFirst({
-          where: { OR: [{ id: et.id }, { code: et.code }] },
-        });
-        if (existing) {
-          await prisma.emailTemplate.update({ where: { id: existing.id }, data: payload });
-        } else {
-          await prisma.emailTemplate.create({ data: { id: et.id, ...payload } });
+          const existing = await prisma.emailTemplate.findFirst({
+            where: { OR: [{ id: et.id }, { code: et.code }] },
+          });
+          if (existing) {
+            await prisma.emailTemplate.update({ where: { id: existing.id }, data: payload });
+          } else {
+            await prisma.emailTemplate.create({ data: { id: et.id, ...payload } });
+          }
+          restoredCounts.emailTemplates++;
+        } catch (etErr: any) {
+          console.warn(`[Backup Restore] EmailTemplate ${et.code} notice:`, etErr?.message);
         }
-        restoredCounts.emailTemplates++;
       }
     }
 
