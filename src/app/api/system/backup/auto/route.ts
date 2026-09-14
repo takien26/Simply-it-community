@@ -367,14 +367,23 @@ export async function POST(req: NextRequest) {
 
       if (fs.existsSync(uploadsSrc)) {
         if (!fs.existsSync(uploadsDest)) fs.mkdirSync(uploadsDest, { recursive: true });
-        const files = fs.readdirSync(uploadsSrc);
-        for (const f of files) {
-          const sPath = path.join(uploadsSrc, f);
-          const dPath = path.join(uploadsDest, f);
-          if (fs.statSync(sPath).isFile()) {
-            fs.copyFileSync(sPath, dPath);
-            syncedFilesCount++;
-          }
+        try {
+          fs.cpSync(uploadsSrc, uploadsDest, { recursive: true });
+          const countFiles = (dir: string): number => {
+            let count = 0;
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+              if (entry.isDirectory()) {
+                count += countFiles(path.join(dir, entry.name));
+              } else if (entry.isFile()) {
+                count++;
+              }
+            }
+            return count;
+          };
+          syncedFilesCount = countFiles(uploadsDest);
+        } catch (copyErr: any) {
+          console.warn('[Auto Backup] Failed to recursively sync uploads:', copyErr?.message);
         }
       }
 
