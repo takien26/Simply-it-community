@@ -521,39 +521,114 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 10. Asset Categories (Tree-structure)
+    // 10. Asset Categories (Tree-structure with @@unique([name, parentId]))
     if (Array.isArray(backupData.assetCategories)) {
-      // Pass 1: create/update without parentId
-      for (const c of backupData.assetCategories) {
-        const existing = await prisma.assetCategory.findFirst({
-          where: { OR: [{ id: c.id }, { name: c.name }] },
-        });
-        const cPayload = {
-          name: c.name,
-          description: c.description,
-          icon: c.icon,
-          codePrefix: c.codePrefix,
-        };
-        if (existing) {
-          categoryIdMap.set(c.id, existing.id);
-          await prisma.assetCategory.update({ where: { id: existing.id }, data: cPayload });
-        } else {
-          const created = await prisma.assetCategory.create({ data: { id: c.id, ...cPayload } });
-          categoryIdMap.set(c.id, created.id);
+      // Sort categories so parents (root nodes) are processed before children
+      const sortedCategories: any[] = [];
+      const remaining: any[] = [...backupData.assetCategories];
+
+      // Pass A: Roots first (parentId is null, empty or undefined)
+      for (let i = remaining.length - 1; i >= 0; i--) {
+        if (!remaining[i].parentId) {
+          sortedCategories.push(remaining[i]);
+          remaining.splice(i, 1);
         }
-        restoredCounts.categories++;
       }
 
-      // Pass 2: link parentId
-      for (const c of backupData.assetCategories) {
-        if (c.parentId) {
-          const curId = categoryIdMap.get(c.id) || c.id;
-          const parId = categoryIdMap.get(c.parentId) || c.parentId;
-          if (curId !== parId) {
-            const pExists = await prisma.assetCategory.findUnique({ where: { id: parId } });
-            if (pExists) {
-              await prisma.assetCategory.update({ where: { id: curId }, data: { parentId: parId } });
+      // Pass B: Breadth-first / multi-level children
+      let progress = true;
+      while (remaining.length > 0 && progress) {
+        progress = false;
+        for (let i = remaining.length - 1; i >= 0; i--) {
+          const item = remaining[i];
+          const parentProcessed = sortedCategories.some((s) => s.id === item.parentId);
+          if (parentProcessed) {
+            sortedCategories.push(item);
+            remaining.splice(i, 1);
+            progress = true;
+          }
+        }
+      }
+      // Any remaining items (orphaned / cycles) pushed at the end
+      if (remaining.length > 0) {
+        sortedCategories.push(...remaining);
+      }
+
+      for (const c of sortedCategories) {
+        try {
+          // Resolve target parentId
+          let targetParentId: string | null = null;
+          if (c.parentId) {
+            const mappedParentId = categoryIdMap.get(c.parentId) || c.parentId;
+            const parentInDb = await prisma.assetCategory.findUnique({ where: { id: mappedParentId } });
+            if (parentInDb && parentInDb.id !== c.id) {
+              targetParentId = parentInDb.id;
             }
+          }
+
+          // 1. Check if category already exists by ID
+          const existingById = await prisma.assetCategory.findUnique({
+            where: { id: c.id },
+          });
+
+          // 2. Check if a category with the SAME (name, parentId) already exists
+          const existingByNameAndParent = await prisma.assetCategory.findFirst({
+            where: {
+              name: c.name,
+              parentId: targetParentId,
+            },
+          });
+
+          const cPayload: any = {
+            name: c.name,
+            description: c.description || null,
+            icon: c.icon || null,
+            parentId: targetParentId,
+            sortOrder: typeof c.sortOrder === 'number' ? c.sortOrder : 0,
+            isActive: c.isActive !== undefined ? Boolean(c.isActive) : true,
+          };
+          if (c.customFields) {
+            cPayload.customFields = c.customFields;
+          }
+
+          if (existingByNameAndParent) {
+            // Already has exact (name, parentId) match!
+            // Map the backup ID to this existing category to prevent constraint collision
+            categoryIdMap.set(c.id, existingByNameAndParent.id);
+            // Safe to update non-unique metadata without changing name/parentId
+            await prisma.assetCategory.update({
+              where: { id: existingByNameAndParent.id },
+              data: {
+                description: c.description || existingByNameAndParent.description,
+                icon: c.icon || existingByNameAndParent.icon,
+                sortOrder: typeof c.sortOrder === 'number' ? c.sortOrder : existingByNameAndParent.sortOrder,
+                isActive: c.isActive !== undefined ? Boolean(c.isActive) : existingByNameAndParent.isActive,
+                ...(c.customFields ? { customFields: c.customFields } : {}),
+              },
+            });
+          } else if (existingById) {
+            // ID matches and no (name, parentId) conflict exists in DB
+            categoryIdMap.set(c.id, existingById.id);
+            await prisma.assetCategory.update({
+              where: { id: existingById.id },
+              data: cPayload,
+            });
+          } else {
+            // Neither ID nor (name, parentId) exists: Create brand new record
+            const created = await prisma.assetCategory.create({
+              data: { id: c.id, ...cPayload },
+            });
+            categoryIdMap.set(c.id, created.id);
+          }
+          restoredCounts.categories++;
+        } catch (catErr: any) {
+          console.warn(`[Backup Restore] Category ${c.name} (${c.id}) notice:`, catErr?.message);
+          // Resilient fallback: find any existing category by name or ID to map reference
+          const fallback = await prisma.assetCategory.findFirst({
+            where: { OR: [{ id: c.id }, { name: c.name }] },
+          });
+          if (fallback) {
+            categoryIdMap.set(c.id, fallback.id);
           }
         }
       }
@@ -562,39 +637,47 @@ export async function POST(req: NextRequest) {
     // 11. Support Teams (Tree-structure)
     if (Array.isArray(backupData.supportTeams)) {
       for (const st of backupData.supportTeams) {
-        const existing = await prisma.supportTeam.findFirst({
-          where: { OR: [{ id: st.id }, { code: st.code }] },
-        });
-        const payload = {
-          name: st.name,
-          code: st.code,
-          description: st.description,
-          companyScope: st.companyScope,
-          locationScope: st.locationScope,
-          isActive: st.isActive !== undefined ? Boolean(st.isActive) : true,
-          sortOrder: st.sortOrder || 0,
-        };
-        if (existing) {
-          teamIdMap.set(st.id, existing.id);
-          await prisma.supportTeam.update({ where: { id: existing.id }, data: payload });
-        } else {
-          const created = await prisma.supportTeam.create({ data: { id: st.id, ...payload } });
-          teamIdMap.set(st.id, created.id);
+        try {
+          const existing = await prisma.supportTeam.findFirst({
+            where: { OR: [{ id: st.id }, { code: st.code }] },
+          });
+          const payload = {
+            name: st.name,
+            code: st.code,
+            description: st.description,
+            companyScope: st.companyScope,
+            locationScope: st.locationScope,
+            isActive: st.isActive !== undefined ? Boolean(st.isActive) : true,
+            sortOrder: st.sortOrder || 0,
+          };
+          if (existing) {
+            teamIdMap.set(st.id, existing.id);
+            await prisma.supportTeam.update({ where: { id: existing.id }, data: payload });
+          } else {
+            const created = await prisma.supportTeam.create({ data: { id: st.id, ...payload } });
+            teamIdMap.set(st.id, created.id);
+          }
+          restoredCounts.supportTeams++;
+        } catch (stErr: any) {
+          console.warn(`[Backup Restore] Support team ${st.name} notice:`, stErr?.message);
         }
-        restoredCounts.supportTeams++;
       }
 
       // Pass 2: parentId
       for (const st of backupData.supportTeams) {
-        if (st.parentId) {
-          const curId = teamIdMap.get(st.id) || st.id;
-          const parId = teamIdMap.get(st.parentId) || st.parentId;
-          if (curId !== parId) {
-            const pExists = await prisma.supportTeam.findUnique({ where: { id: parId } });
-            if (pExists) {
-              await prisma.supportTeam.update({ where: { id: curId }, data: { parentId: parId } });
+        try {
+          if (st.parentId) {
+            const curId = teamIdMap.get(st.id) || st.id;
+            const parId = teamIdMap.get(st.parentId) || st.parentId;
+            if (curId !== parId) {
+              const pExists = await prisma.supportTeam.findUnique({ where: { id: parId } });
+              if (pExists) {
+                await prisma.supportTeam.update({ where: { id: curId }, data: { parentId: parId } });
+              }
             }
           }
+        } catch (stParErr: any) {
+          console.warn(`[Backup Restore] Support team parentId notice:`, stParErr?.message);
         }
       }
     }
