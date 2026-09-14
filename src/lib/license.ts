@@ -78,10 +78,13 @@ export function verifyLicenseKey(keyString: string): { valid: boolean; payload?:
     const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf8');
     const payload: LicensePayload = JSON.parse(payloadJson);
 
-    // Check expiration
-    const expiresDate = new Date(payload.expiresAt);
-    if (expiresDate.getTime() < Date.now()) {
-      return { valid: false, error: `Bản quyền đã hết hạn vào ngày ${expiresDate.toLocaleDateString('vi-VN')}` };
+    // Check expiration (Bypass if license is marked lifetime or perpetual)
+    const isPerpetual = Boolean(payload.isLifetime) || payload.expiresAt === 'PERPETUAL' || (payload.expiresAt ? new Date(payload.expiresAt).getFullYear() >= 2099 : false);
+    if (!isPerpetual && payload.expiresAt) {
+      const expiresDate = new Date(payload.expiresAt);
+      if (expiresDate.getTime() < Date.now()) {
+        return { valid: false, error: `Bản quyền đã hết hạn vào ngày ${expiresDate.toLocaleDateString('vi-VN')}` };
+      }
     }
 
     // Check hardware binding (Machine ID) if specified in license
@@ -133,20 +136,21 @@ export async function getActiveLicense(): Promise<LicenseStatus> {
     }
 
     const payload = result.payload;
-    const expiresDate = new Date(payload.expiresAt);
-    const msRemaining = expiresDate.getTime() - Date.now();
-    const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
-    const isLifetime = Boolean((payload as any).isLifetime) || daysRemaining > 3650;
+    const isPerpetual = Boolean((payload as any).isLifetime) || payload.expiresAt === 'PERPETUAL' || (payload.expiresAt ? new Date(payload.expiresAt).getFullYear() >= 2099 : false);
+    const expiresDate = payload.expiresAt && payload.expiresAt !== 'PERPETUAL' ? new Date(payload.expiresAt) : null;
+    const msRemaining = expiresDate ? expiresDate.getTime() - Date.now() : 0;
+    const daysRemaining = expiresDate ? Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24))) : undefined;
+    const isLifetime = isPerpetual || (daysRemaining !== undefined && daysRemaining > 3650);
     const isHardwareLocked = Boolean(payload.machineId && payload.machineId.trim() !== '' && payload.machineId.trim() !== '*');
 
     return {
       isEnterprise: true,
       tier: (payload.tier as any) || 'ENTERPRISE',
       customer: payload.customer,
-      expiresAt: payload.expiresAt,
-      daysRemaining,
+      expiresAt: isLifetime ? undefined : payload.expiresAt,
+      daysRemaining: isLifetime ? undefined : daysRemaining,
       isLifetime,
-      maxAssets: payload.maxAssets,
+      maxAssets: (payload.maxAssets && payload.maxAssets >= 99999) ? undefined : payload.maxAssets,
       modules: payload.modules || [],
       machineId: payload.machineId,
       currentMachineId,
