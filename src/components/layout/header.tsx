@@ -185,6 +185,7 @@ export function Header({
     customer?: string;
     expiresAt?: string;
     daysRemaining?: number;
+    isLifetime?: boolean;
     maxAssets?: number;
     modules: string[];
   } | null>(null);
@@ -911,15 +912,19 @@ export function Header({
                             <div className="flex items-center justify-between text-[11px]">
                               <span className="text-slate-500">{language === 'en' ? 'Device Limit:' : 'Hạn mức tài sản:'}</span>
                               <span className="font-bold text-slate-800">
-                                {licenseInfo.maxAssets ? `${licenseInfo.maxAssets} thiết bị` : (language === 'en' ? 'Unlimited' : 'Không giới hạn')}
+                                {licenseInfo.maxAssets && licenseInfo.maxAssets < 99999
+                                  ? `${licenseInfo.maxAssets} thiết bị`
+                                  : (language === 'en' ? 'Unlimited' : 'Không giới hạn')}
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-[11px]">
                               <span className="text-slate-500">{language === 'en' ? 'Expiry:' : 'Hạn bản quyền:'}</span>
                               <span className="font-bold text-slate-800">
-                                {licenseInfo.expiresAt
-                                  ? `${new Date(licenseInfo.expiresAt).toLocaleDateString('vi-VN')} (${licenseInfo.daysRemaining ?? 0} ngày)`
-                                  : (language === 'en' ? 'Lifetime (Perpetual)' : 'Vĩnh viễn (Không giới hạn)')}
+                                {licenseInfo.isLifetime || (licenseInfo.daysRemaining && licenseInfo.daysRemaining > 3650)
+                                  ? (language === 'en' ? 'Lifetime (Perpetual)' : 'Vĩnh viễn (Không giới hạn)')
+                                  : licenseInfo.expiresAt
+                                    ? `${new Date(licenseInfo.expiresAt).toLocaleDateString('vi-VN')} (${licenseInfo.daysRemaining ?? 0} ngày)`
+                                    : (language === 'en' ? 'Lifetime (Perpetual)' : 'Vĩnh viễn (Không giới hạn)')}
                               </span>
                             </div>
                           </div>
@@ -1039,15 +1044,19 @@ export function Header({
                             <div className="flex justify-between">
                               <span className="text-slate-400">{language === 'en' ? 'Max Assets:' : 'Quy mô thiết bị:'}</span>
                               <span className="text-emerald-400 font-bold font-mono">
-                                {licenseInfo.maxAssets ? `${licenseInfo.maxAssets} thiết bị` : (language === 'en' ? 'Unlimited' : 'Không giới hạn')}
+                                {licenseInfo.maxAssets && licenseInfo.maxAssets < 99999
+                                  ? `${licenseInfo.maxAssets} thiết bị`
+                                  : (language === 'en' ? 'Unlimited' : 'Không giới hạn')}
                               </span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-400">{language === 'en' ? 'Expires:' : 'Hạn dùng:'}</span>
                               <span className="text-amber-300 font-bold font-mono">
-                                {licenseInfo.expiresAt
-                                  ? `${new Date(licenseInfo.expiresAt).toLocaleDateString('vi-VN')} (còn ${licenseInfo.daysRemaining ?? 0} ngày)`
-                                  : (language === 'en' ? 'Perpetual (Lifetime)' : 'Vĩnh viễn (Lifetime)')}
+                                {licenseInfo.isLifetime || (licenseInfo.daysRemaining && licenseInfo.daysRemaining > 3650)
+                                  ? (language === 'en' ? 'Perpetual (Lifetime)' : 'Vĩnh viễn (Lifetime)')
+                                  : licenseInfo.expiresAt
+                                    ? `${new Date(licenseInfo.expiresAt).toLocaleDateString('vi-VN')} (còn ${licenseInfo.daysRemaining ?? 0} ngày)`
+                                    : (language === 'en' ? 'Perpetual (Lifetime)' : 'Vĩnh viễn (Lifetime)')}
                               </span>
                             </div>
                           </div>
