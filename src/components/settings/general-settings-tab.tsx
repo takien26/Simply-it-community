@@ -308,12 +308,13 @@ export function GeneralSettingsTab({
     setBackupToast({ message: isEn ? '⏳ Uploading, extracting and restoring system from .ZIP package...' : '⏳ Đang tải lên, khôi phục CSDL và giải nén kho tài liệu từ gói .ZIP...', type: 'success' });
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
       const res = await fetch('/api/system/backup/restore-zip', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-File-Name': encodeURIComponent(file.name),
+        },
+        body: file,
       });
 
       const data = await res.json();
