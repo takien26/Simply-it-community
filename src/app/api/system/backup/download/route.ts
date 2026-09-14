@@ -6,6 +6,7 @@ import path from 'path';
 import os from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { generateDatabaseBackupData } from '@/lib/backup-engine';
 
 const execAsync = promisify(exec);
 
@@ -87,7 +88,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 2. Fetch counts & manifest info
+    // 2. Fetch full database snapshot (35 tables) and counts
+    const { backupData, totalRecords } = await generateDatabaseBackupData(currentUser.email);
+
     const [assetCount, licenseCount, serviceCount, ticketCount, userCount, vendorCount] =
       await Promise.all([
         prisma.asset.count(),
@@ -110,6 +113,7 @@ export async function GET(request: NextRequest) {
           assets: assetCount,
           licenses: licenseCount,
           tickets: ticketCount,
+          totalDatabaseRecords: totalRecords,
           hasSqlDump,
         },
       },
@@ -117,7 +121,7 @@ export async function GET(request: NextRequest) {
 
     const manifest = {
       appName: 'SIMPLY IT - Quản Trị Tài Sản & Dịch Vụ IT',
-      version: '1.0.1',
+      version: '2.1.0',
       backupTime: new Date().toISOString(),
       performedBy: {
         name: user?.fullName || currentUser.email,
@@ -128,6 +132,8 @@ export async function GET(request: NextRequest) {
         engine: 'PostgreSQL 18',
         dbName: 'it_asset_db',
         sqlDumpIncluded: hasSqlDump,
+        jsonSnapshotIncluded: true,
+        totalRecords,
       },
       statistics: {
         totalAssets: assetCount,
@@ -138,8 +144,9 @@ export async function GET(request: NextRequest) {
         totalVendors: vendorCount,
       },
       contents: [
-        hasSqlDump ? 'database_backup.sql (PostgreSQL Clean Dump)' : 'database_backup.sql (Not available)',
-        'uploads/ (Tất cả ảnh hiện trạng thiết bị, hóa đơn, biên bản kiểm kê, tài liệu đính kèm)',
+        'database.json (Ảnh chụp CSDL toàn diện 35 bảng, tương thích 100% mọi môi trường Docker/Linux/Windows)',
+        hasSqlDump ? 'database_backup.sql (PostgreSQL Clean Dump)' : 'database_backup.sql (Không kích hoạt)',
+        'uploads/ (Tất cả ảnh hiện trạng thiết bị, hợp đồng, hóa đơn, biên bản kiểm kê, tài liệu đính kèm)',
         'manifest.json (Thông tin chi tiết gói sao lưu)',
       ],
     };
@@ -162,7 +169,10 @@ export async function GET(request: NextRequest) {
 
       archive.pipe(output);
 
-      // Append SQL dump
+      // Append database.json (Full snapshot of 35 tables)
+      archive.append(JSON.stringify(backupData, null, 2), { name: 'database.json' });
+
+      // Append SQL dump if available
       if (hasSqlDump && fs.existsSync(tempSqlFile)) {
         archive.file(tempSqlFile, { name: 'database_backup.sql' });
       }

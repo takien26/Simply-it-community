@@ -297,8 +297,8 @@ export function GeneralSettingsTab({
     if (!file) return;
 
     if (!confirm(isEn
-      ? 'Are you sure you want to import this .ZIP archive into the system? Photos, invoices, contracts and attachments will be extracted directly into public/uploads.'
-      : 'XÁC NHẬN: Bạn có chắc chắn muốn nhập gói .ZIP này vào hệ thống? Toàn bộ file ảnh hiện trạng, hóa đơn VAT, hợp đồng và chứng từ sẽ được giải nén trực tiếp vào thư mục lưu trữ máy chủ (public/uploads).'
+      ? 'Are you sure you want to restore from this .ZIP package? Database tables and all attachments/invoices/contracts will be synchronized into the system.'
+      : 'XÁC NHẬN PHỤC HỒI TOÀN BỘ: Bạn có chắc chắn muốn phục hồi từ gói .ZIP này? Hệ thống sẽ khôi phục toàn bộ Cơ Sở Dữ Liệu (35 bảng) và đồng bộ tất cả tệp tin ảnh/hóa đơn/hợp đồng vào máy chủ.'
     )) {
       if (zipInputRef.current) zipInputRef.current.value = '';
       if (backupInputRef.current) backupInputRef.current.value = '';
@@ -306,7 +306,7 @@ export function GeneralSettingsTab({
     }
 
     setIsRestoringZip(true);
-    setBackupToast({ message: isEn ? '⏳ Uploading and extracting .ZIP archive...' : '⏳ Đang tải lên và giải nén gói file .ZIP vào máy chủ...', type: 'success' });
+    setBackupToast({ message: isEn ? '⏳ Uploading, extracting and restoring system from .ZIP package...' : '⏳ Đang tải lên, khôi phục CSDL và giải nén kho tài liệu từ gói .ZIP...', type: 'success' });
 
     try {
       const formData = new FormData();
@@ -319,8 +319,11 @@ export function GeneralSettingsTab({
 
       const data = await res.json();
       if (res.ok) {
-        setBackupToast({ message: data.message || 'Nhập kho dữ liệu .ZIP thành công!', type: 'success' });
+        setBackupToast({ message: data.message || 'Phục hồi gói dữ liệu .ZIP thành công!', type: 'success' });
         loadZipBackupStatus();
+        if (data.dbRestored > 0) {
+          setTimeout(() => window.location.reload(), 2000);
+        }
       } else {
         setBackupToast({ message: data.error || 'Lỗi nhập gói file .ZIP', type: 'error' });
       }
@@ -1105,8 +1108,8 @@ export function GeneralSettingsTab({
               </h3>
               <p className="text-xs text-slate-300">
                 {isEn
-                  ? 'Download a compressed .ZIP archive containing clean PostgreSQL dump and complete photo/attachments directory (public/uploads)'
-                  : 'Tải ngay gói file nén .ZIP chứa toàn bộ cơ sở dữ liệu (PostgreSQL Clean Dump) và toàn bộ kho ảnh hiện trạng, hóa đơn (public/uploads) về máy tính'}
+                  ? 'Download a unified .ZIP archive containing full database snapshot (35 tables) and complete photo/contract/invoice vault (public/uploads)'
+                  : 'Tải ngay gói file nén .ZIP thống nhất chứa toàn bộ cơ sở dữ liệu (35 bảng CSDL) và toàn bộ kho ảnh hiện trạng, hợp đồng, hóa đơn (public/uploads)'}
               </p>
             </div>
           </div>
@@ -1114,15 +1117,15 @@ export function GeneralSettingsTab({
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
-            <p className="text-xs text-slate-400 font-medium">{isEn ? 'Photo & Attachment Vault:' : 'Kho ảnh & Tài liệu đính kèm:'}</p>
+            <p className="text-xs text-slate-400 font-medium">{isEn ? 'Photo & Attachment Vault:' : 'Kho ảnh & Hợp đồng đính kèm:'}</p>
             <p className="text-sm font-bold text-indigo-300 mt-0.5">
-              {zipBackupStatus?.uploadsSizeFormatted || '35.8 MB'} ({zipBackupStatus?.uploadsCount || 20} tệp tin)
+              {zipBackupStatus?.uploadsSizeFormatted || '37.4 MB'} ({zipBackupStatus?.uploadsCount || 55} tệp tin)
             </p>
           </div>
           <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
-            <p className="text-xs text-slate-400 font-medium">{isEn ? 'Database:' : 'Cơ sở dữ liệu:'}</p>
+            <p className="text-xs text-slate-400 font-medium">{isEn ? 'Database Snapshot:' : 'Cơ sở dữ liệu toàn diện:'}</p>
             <p className="text-sm font-bold text-emerald-400 mt-0.5">
-              PostgreSQL 18 (Clean SQL Dump)
+              35 Bảng CSDL + SQL Dump
             </p>
           </div>
           <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
