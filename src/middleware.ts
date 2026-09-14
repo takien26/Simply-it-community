@@ -78,6 +78,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/portal', request.url));
   }
 
+  // For backup and restore streams, bypass header rewriting so Next.js does not buffer/truncate request body at 10MB
+  if (pathname.startsWith('/api/system/backup')) {
+    return NextResponse.next();
+  }
+
   // Add user info to headers for downstream use
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-user-id', payload.userId);

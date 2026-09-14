@@ -14,8 +14,9 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: '200mb',
+      bodySizeLimit: '500mb',
     },
+    middlewareClientMaxBodySize: '500mb',
     optimizePackageImports: ['lucide-react', 'recharts', 'date-fns'],
   },
   async headers() {

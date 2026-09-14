@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     let buffer: Buffer;
 
     if (contentType.includes('multipart/form-data')) {
+      const cloned = req.clone();
       try {
         const formData = await req.formData();
         const file = formData.get('file') as File | null;
@@ -29,12 +30,12 @@ export async function POST(req: NextRequest) {
           const arrayBuffer = await file.arrayBuffer();
           buffer = Buffer.from(arrayBuffer);
         } else {
-          const arrayBuffer = await req.arrayBuffer();
+          const arrayBuffer = await cloned.arrayBuffer();
           buffer = Buffer.from(arrayBuffer);
         }
       } catch (formErr) {
-        console.warn('req.formData() failed, falling back to req.arrayBuffer():', formErr);
-        const arrayBuffer = await req.arrayBuffer();
+        console.warn('req.formData() failed, reading from cloned stream:', formErr);
+        const arrayBuffer = await cloned.arrayBuffer();
         buffer = Buffer.from(arrayBuffer);
       }
     } else {
