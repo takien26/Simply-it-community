@@ -926,7 +926,7 @@ export default function TicketReportsPage() {
       {/* ==================== 4. NAVIGATION TABS ==================== */}
       <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2 overflow-x-auto pb-1">
         {[
-          { id: 'executive', labelVi: '👑 Báo Cáo & KPI Lãnh Đạo', labelEn: '👑 Executive Briefing & KPI', labelJa: '👑 エグゼクティブKPIサマリー', icon: Sparkles },
+          { id: 'executive', labelVi: 'Báo Cáo & KPI Lãnh Đạo', labelEn: 'Executive Briefing & KPI', labelJa: 'エグゼクティブKPIサマリー', icon: Sparkles },
           { id: 'overview', labelVi: '📊 Tổng Quan & Phân Loại', labelEn: '📊 Overview & Breakdown', labelJa: '📊 概要＆カテゴリ分析', icon: BarChart3 },
           { id: 'company', labelVi: '🏢 Báo Cáo Theo Công Ty & Nhân Sự', labelEn: '🏢 By Company & Staff', labelJa: '🏢 会社・社員別レポート', icon: Building, badge: data?.companyStats.length },
           { id: 'team', labelVi: '👥 Báo Cáo Theo Team IT & Nhân Viên', labelEn: '👥 By IT Team & Tech', labelJa: '👥 ITチーム・技術員別', icon: Users, badge: data?.teamStats.length },
@@ -966,15 +966,13 @@ export default function TicketReportsPage() {
             <div className="flex items-center justify-between flex-wrap gap-4 border-b border-indigo-800/50 pb-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="p-2 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white font-black text-sm shadow-md">👑</span>
+                  <span className="p-2 rounded-xl bg-indigo-600 text-white font-black text-sm shadow-md">📊</span>
                   <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-xs">
                     {isJa
                       ? 'IT運用サマリー＆SLAパフォーマンス分析'
                       : (isEn ? 'Executive IT Operations & SLA Briefing' : 'Báo Cáo Tóm Tắt Vận Hành IT & Đánh Giá KPI')}
                   </h2>
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[10px] font-extrabold uppercase tracking-wider">
-                    Enterprise
-                  </span>
+                  
                 </div>
                 <p className="text-xs sm:text-sm text-indigo-200 font-medium max-w-3xl leading-relaxed">
                   {isJa

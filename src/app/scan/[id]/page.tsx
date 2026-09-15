@@ -372,9 +372,7 @@ export default function AssetScanPage() {
                 <div>
                   <h3 className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                     <span>Thao Tác Kỹ Thuật Viên Tại Chỗ</span>
-                    <span className="px-1.5 py-0.2 rounded-sm bg-indigo-100 text-indigo-700 font-extrabold text-[9px] border border-indigo-200">
-                      👑 On-site
-                    </span>
+                    
                   </h3>
                 </div>
               </div>

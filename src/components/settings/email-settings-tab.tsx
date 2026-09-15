@@ -703,9 +703,6 @@ export function EmailSettingsTab() {
         >
           <Server className="w-4 h-4" />
           <span>{isEn ? 'Outbound SMTP' : 'Gửi Thư Tự Động (SMTP)'}</span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-200 uppercase tracking-wider">
-            {isEn ? 'Free' : 'Miễn phí'}
-          </span>
         </button>
 
         <button
@@ -719,9 +716,6 @@ export function EmailSettingsTab() {
         >
           <Inbox className="w-4 h-4" />
           <span>{isEn ? 'Email-to-Ticket (IMAP)' : 'Tiếp Nhận Ticket Qua Email (IMAP)'}</span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-2xs uppercase tracking-wider flex items-center gap-0.5">
-            👑 Enterprise
-          </span>
           {imapConfig.enabled && isEnterprise && (
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           )}
@@ -942,28 +936,25 @@ export function EmailSettingsTab() {
         <div className="space-y-6">
           {/* Enterprise License Banner if Community Edition */}
           {!isEnterprise && (
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-lg shadow-md shrink-0">
-                  👑
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 flex items-center justify-center shrink-0">
+                  <Inbox className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    {isEn ? 'Enterprise Feature (Paid Edition)' : 'Tính Năng Thuộc Phiên Bản Trả Phí (Enterprise Edition)'}
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white uppercase">
-                      Pro / Enterprise
-                    </span>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    {isEn ? 'Automated Inbound Processing' : 'Tính Năng Tiếp Nhận Tự Động (IMAP)'}
                   </h4>
-                  <p className="text-xs text-slate-600 mt-0.5">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     {isEn
-                      ? 'Inbound Email-to-Ticket via IMAP, auto-routing, and threading are exclusively available in Simply IT Enterprise Edition. Please activate your license to enable automated email processing.'
-                      : 'Tự động quét hộp thư (IMAP), bóc tách nội dung, phân luồng IT tự động và chuỗi hội thoại (Conversation Threading) là tính năng thuộc phiên bản Simply IT Enterprise. Bạn có thể cấu hình và kiểm tra kết nối, nhưng cần mã bản quyền để hệ thống tự động tiếp nhận.'}
+                      ? 'Inbound Email-to-Ticket via IMAP, auto-routing, and threading are available in Simply IT Enterprise Edition. Please activate your license to enable automated email processing.'
+                      : 'Tự động quét hộp thư (IMAP), bóc tách nội dung, phân luồng IT tự động và chuỗi hội thoại là tính năng thuộc phiên bản Enterprise. Bạn có thể cấu hình và kiểm tra kết nối, nhưng cần mã bản quyền để kích hoạt.'}
                   </p>
                 </div>
               </div>
               <a
                 href="/settings?tab=license"
-                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl text-xs font-bold transition-all shrink-0 shadow-md shadow-orange-500/20 flex items-center gap-1.5"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>{isEn ? 'Activate Enterprise' : 'Kích Hoạt Bản Quyền'}</span>

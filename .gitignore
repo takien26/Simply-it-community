@@ -19,9 +19,6 @@
 /build
 /dist/
 *.zip
-*.tar.gz
-*.tar
-*.log
 
 # binaries
 *.exe
@@ -63,3 +60,9 @@ public/uploads/*
 
 # Private License Key (Keep Secret)
 scripts/license_private_key.pem
+
+# Logs & backups
+*.log
+backups/
+scripts/scripts/
+

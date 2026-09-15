@@ -287,10 +287,10 @@ namespace SimplyITCommunityLauncher
 
         private void LocateAppDir()
         {
-            string userRepo = @"F:\OneDrive - GELEX\Documents\GitHub\Simply-it-community";
-            if (Directory.Exists(userRepo) && File.Exists(Path.Combine(userRepo, "package.json")))
+            string scratch = @"C:\Users\kien.ta-trung\.gemini\antigravity\scratch\simply-it-community";
+            if (Directory.Exists(scratch) && File.Exists(Path.Combine(scratch, "package.json")))
             {
-                appDir = userRepo;
+                appDir = scratch;
                 return;
             }
 
@@ -301,10 +301,10 @@ namespace SimplyITCommunityLauncher
                 return;
             }
 
-            string scratch = @"C:\Users\kien.ta-trung\.gemini\antigravity\scratch\simply-it-community";
-            if (Directory.Exists(scratch) && File.Exists(Path.Combine(scratch, "package.json")))
+            string userRepo = @"F:\OneDrive - GELEX\Documents\GitHub\Simply-it-community";
+            if (Directory.Exists(userRepo) && File.Exists(Path.Combine(userRepo, "package.json")))
             {
-                appDir = scratch;
+                appDir = userRepo;
                 return;
             }
 

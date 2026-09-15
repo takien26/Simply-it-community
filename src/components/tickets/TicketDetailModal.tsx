@@ -766,12 +766,12 @@ export function TicketDetailModal({
                   <button
                     type="button"
                     onClick={() => setIsMergeModalOpen(true)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs border border-amber-300 transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-300 transition-colors cursor-pointer"
                     title={txt('Gộp ticket trùng lặp này vào ticket chính', 'Merge this duplicate ticket into a main ticket', '重複チケットを親チケットに統合')}
                   >
-                    <GitMerge className="w-3.5 h-3.5 text-amber-600" />
+                    <GitMerge className="w-3.5 h-3.5 text-slate-600" />
                     <span className="hidden sm:inline">{txt('Gộp Ticket', 'Merge', '統合')}</span>
-                    <span className="text-[10px] bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-black">👑</span>
+                    
                   </button>
                 )}
 
@@ -794,14 +794,14 @@ export function TicketDetailModal({
                           ? selectedTicket.incident.incidentNumber
                           : (!isVi ? 'Link Incident' : 'Sự cố')}
                       </span>
-                      <span className="text-[10px] bg-rose-200 text-rose-900 px-1 py-0.2 rounded font-black">👑</span>
+                      
                     </button>
 
                     {isIncidentMenuOpen && (
                       <div className="absolute right-0 mt-1.5 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 space-y-1">
                         <div className="px-2 py-1 font-bold text-slate-800 text-xs border-b border-slate-100 flex items-center justify-between">
                           <span>{txt('Liên kết với Sự cố', 'Link to Major Incident', '重大インシデントに関連付け')}</span>
-                          <span className="text-[10px] text-slate-400">👑 Enterprise</span>
+                          
                         </div>
                         {selectedTicket.incidentId && (
                           <button
@@ -854,7 +854,7 @@ export function TicketDetailModal({
                 >
                   <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
                   <span className="hidden sm:inline">{txt('Lưu vào KB', 'Save to KB', 'ナレッジ化')}</span>
-                  <span className="text-[10px] bg-indigo-200/80 text-indigo-900 px-1 py-0.2 rounded font-black">👑</span>
+                  
                 </button>
                 <button
                   type="button"
@@ -905,7 +905,7 @@ export function TicketDetailModal({
                       <GitMerge className="w-4 h-4 text-indigo-600 shrink-0" />
                       <span>{(!isVi ? `🔗 Merged child tickets (${selectedTicket.mergedTickets.length}):` : `🔗 Đã gộp ${selectedTicket.mergedTickets.length} ticket con liên quan:`)}</span>
                     </div>
-                    <span className="text-[10px] bg-indigo-200/80 text-indigo-900 px-1.5 py-0.5 rounded font-black">👑 Enterprise Broadcast</span>
+                    
                   </div>
                   <div className="flex items-center gap-2 flex-wrap pt-0.5">
                     {selectedTicket.mergedTickets.map((child: any) => (
@@ -1024,7 +1024,7 @@ export function TicketDetailModal({
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1">
                     <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">{(!isVi ? 'Logged Time' : 'Thời gian xử lý')}</span>
-                    <span className="text-[9px] bg-amber-100 text-amber-900 px-1 py-0.2 rounded font-black">👑</span>
+                    
                   </div>
                   <div className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -1282,7 +1282,7 @@ export function TicketDetailModal({
 
               {/* ⭐ ĐÁNH GIÁ CHẤT LƯỢNG CSAT (1-Click CSAT Feedback - 👑 Enterprise - FULL WIDTH) */}
               {(selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED') && (
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-slate-50 border border-amber-200/90 space-y-3">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xs font-black shadow-xs">
@@ -1297,9 +1297,7 @@ export function TicketDetailModal({
                         </p>
                       </div>
                     </div>
-                    <span className="text-[10px] bg-amber-200/80 text-amber-900 font-extrabold px-2 py-0.5 rounded-md border border-amber-300">
-                      👑 Enterprise
-                    </span>
+                    
                   </div>
 
                   {selectedTicket.rating ? (
@@ -1585,7 +1583,7 @@ export function TicketDetailModal({
                               className="w-14 px-1.5 py-0.5 bg-white border border-slate-300 rounded-lg text-xs font-extrabold text-slate-900 text-center outline-none focus:ring-1 focus:ring-blue-500"
                             />
                             <span className="text-[10.5px] text-slate-500">{(!isVi ? 'min' : 'phút')}</span>
-                            <span className="text-[9px] bg-amber-100 text-amber-900 px-1 py-0.2 rounded font-black">👑</span>
+                            
                           </div>
                         )}
 
@@ -1611,12 +1609,12 @@ export function TicketDetailModal({
                                 setIsCannedMenuOpen(!isCannedMenuOpen);
                                 fetchCannedResponses();
                               }}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-colors cursor-pointer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-colors cursor-pointer"
                               title={(!isVi ? 'Canned Templates (Quick Reply)' : 'Mẫu câu trả lời nhanh (Canned Response)')}
                             >
-                              <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+                              <Zap className="w-3.5 h-3.5 text-slate-600" />
                               <span>{(!isVi ? 'Quick Reply' : 'Mẫu câu trả lời')}</span>
-                              <span className="text-[9.5px] bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-black">👑</span>
+                              
                             </button>
 
                             {isCannedMenuOpen && (

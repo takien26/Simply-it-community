@@ -1349,12 +1349,11 @@ export default function TicketsPage() {
             <button
               type="button"
               onClick={() => setIsRecurringModalOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 shadow-2xs hover:scale-[1.02] active:scale-[0.98]"
-              title={isEn ? 'Manage Recurring Maintenance Schedules & Auto-Ticket Engine (Enterprise)' : 'Quản lý lịch bảo trì định kỳ & tự động sinh Ticket (Enterprise)'}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 border border-slate-300 dark:border-slate-700"
+              title={isEn ? 'Manage Recurring Maintenance Schedules & Auto-Ticket Engine' : 'Quản lý lịch bảo trì định kỳ & tự động sinh Ticket'}
             >
-              <Calendar className="w-3.5 h-3.5 text-amber-600" />
+              <Calendar className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
               <span>{isEn ? 'Recurring Tasks' : 'Lịch định kỳ'}</span>
-              <span className="text-[9.5px] bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-black">👑</span>
             </button>
           )}
 
@@ -1938,22 +1937,19 @@ export default function TicketsPage() {
         </div>
       )}
 
-      {/* RECURRING MAINTENANCE SCHEDULES MODAL (👑 Enterprise) */}
+      {/* RECURRING MAINTENANCE SCHEDULES MODAL */}
       {isRecurringModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in">
           <div className="relative w-full max-w-5xl my-8 bg-slate-50 rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
             <div className="p-4 sm:p-5 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
-                <span className="p-2 rounded-xl bg-amber-500 text-white font-black text-sm">📅</span>
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <Calendar className="w-5 h-5" />
+                </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-slate-900 text-base">
-                      {isEn ? 'Recurring Maintenance & Automatic Task Engine' : 'Lịch Tác Vụ & Ticket Bảo Trì Định Kỳ'}
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[10px]">
-                      👑 Enterprise
-                    </span>
-                  </div>
+                  <h3 className="font-extrabold text-slate-900 text-base">
+                    {isEn ? 'Recurring Maintenance & Automatic Task Engine' : 'Lịch Tác Vụ & Ticket Bảo Trì Định Kỳ'}
+                  </h3>
                   <p className="text-xs text-slate-500">
                     {isEn ? 'Automatically generate IT helpdesk tickets for periodic maintenance, checkups, and servicing' : 'Hệ thống tự động sinh Ticket theo chu kỳ (Hàng tháng / Quý / Năm) phân công cho IT'}
                   </p>

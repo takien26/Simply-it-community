@@ -1,7 +1,7 @@
 'use client';
 
 import { useState , useEffect} from 'react';
-import { X, Check, Crown, Sparkles, Shield, Building2, Phone, Mail, Send, CheckCircle2 } from 'lucide-react';
+import { X, Check, ShieldCheck, Sparkles, Shield, Building2, Phone, Mail, Send, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 
 interface EnterpriseUpgradeModalProps {
@@ -60,8 +60,8 @@ export function EnterpriseUpgradeModal({ isOpen, onClose, featureRequested }: En
         <div className="p-8 pb-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-br from-indigo-900 via-blue-900 to-slate-900 text-white rounded-t-3xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-bold uppercase tracking-wider mb-3">
-              <Crown className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold uppercase tracking-wider mb-3">
+              <ShieldCheck className="w-3.5 h-3.5" />
               <span>SIMPLY IT — Enterprise Edition</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
@@ -133,7 +133,7 @@ export function EnterpriseUpgradeModal({ isOpen, onClose, featureRequested }: En
                 <div>
                   <h3 className="text-lg font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
                     <span>Enterprise Edition</span>
-                    <Crown className="w-4 h-4 text-amber-500 fill-amber-500" />
+                    <ShieldCheck className="w-4 h-4 text-indigo-600" />
                   </h3>
                   <p className="text-xs text-indigo-700/80 dark:text-indigo-400">{isEn ? 'Complete Enterprise IT Operations' : 'Doanh nghiệp & Tập đoàn đa chi nhánh'}</p>
                 </div>

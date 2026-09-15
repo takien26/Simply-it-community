@@ -2421,7 +2421,7 @@ export function SupportOrgSettingsTab() {
                     <option value="HIGH">⚡ HIGH (Mức cao)</option>
                     <option value="MEDIUM">🟡 MEDIUM (Trung bình)</option>
                     <option value="LOW">🟢 LOW (Mức thấp)</option>
-                    <option value="CUSTOM">👑 CUSTOM (Chuyên biệt)</option>
+                    <option value="CUSTOM">CUSTOM (Chuyên biệt)</option>
                   </select>
                 </div>
 

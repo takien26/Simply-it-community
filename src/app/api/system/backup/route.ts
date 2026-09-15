@@ -60,59 +60,31 @@ export async function POST(req: NextRequest) {
     }
 
     const contentType = req.headers.get('content-type') || '';
-    let buffer: Buffer;
-
     if (contentType.includes('multipart/form-data')) {
-      const cloned = req.clone();
-      try {
-        const formData = await req.formData();
-        const file = formData.get('file') as File | null;
-        if (file) {
-          const arrayBuffer = await file.arrayBuffer();
-          buffer = Buffer.from(arrayBuffer);
-        } else {
-          const arrayBuffer = await cloned.arrayBuffer();
-          buffer = Buffer.from(arrayBuffer);
-        }
-      } catch (formErr) {
-        console.warn('req.formData() failed, reading from cloned stream:', formErr);
-        const arrayBuffer = await cloned.arrayBuffer();
-        buffer = Buffer.from(arrayBuffer);
+      const formData = await req.formData();
+      const file = formData.get('file') as File | null;
+      if (!file) {
+        return NextResponse.json({ error: 'Vui lòng chọn tệp (.ZIP hoặc .JSON) để phục hồi' }, { status: 400 });
       }
-    } else if (contentType.includes('application/json')) {
+
+      if (file.name.endsWith('.zip')) {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const result = await restoreZipBackupBuffer(buffer, currentUser);
+        return NextResponse.json(result);
+      } else {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const backupData = parsed.data || parsed;
+        const result = await restoreDatabaseFromJson(backupData, currentUser);
+        return NextResponse.json(result);
+      }
+    } else {
       const body = await req.json();
       const backupData = body.data || body;
       const result = await restoreDatabaseFromJson(backupData, currentUser);
       return NextResponse.json(result);
-    } else {
-      const arrayBuffer = await req.arrayBuffer();
-      buffer = Buffer.from(arrayBuffer);
     }
-
-    if (!buffer || buffer.length === 0) {
-      return NextResponse.json({ error: 'Tệp tải lên rỗng hoặc không hợp lệ' }, { status: 400 });
-    }
-
-    // Check magic bytes: ZIP starts with PK (0x50, 0x4B)
-    if (buffer.length >= 2 && buffer[0] === 0x50 && buffer[1] === 0x4B) {
-      const result = await restoreZipBackupBuffer(buffer, currentUser);
-      return NextResponse.json(result);
-    }
-
-    // Check if JSON file format
-    try {
-      const text = buffer.toString('utf-8');
-      const parsed = JSON.parse(text);
-      const backupData = parsed.data || parsed;
-      if (backupData && (backupData.users || backupData.assets || backupData.assetCategories || parsed.meta)) {
-        const result = await restoreDatabaseFromJson(backupData, currentUser);
-        return NextResponse.json(result);
-      }
-    } catch {}
-
-    // Fallback to ZIP restore
-    const result = await restoreZipBackupBuffer(buffer, currentUser);
-    return NextResponse.json(result);
   } catch (error: any) {
     console.error('Restore system error:', error);
     return NextResponse.json({ error: 'Lỗi phục hồi dữ liệu từ file backup: ' + (error?.message || error) }, { status: 500 });

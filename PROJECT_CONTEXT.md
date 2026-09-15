@@ -48,21 +48,9 @@ Hệ thống vừa hoàn thành nâng cấp lớn từ v1.0.0 lên **v1.0.1** v�
 ### E. Tự động Nhận diện & Cập nhật Danh mục Thiết bị (Laptop / Desktop / Server)
 - **Agent thu thập**: Kiểm tra `Win32_Battery` (nếu có pin -> Laptop) và `Win32_SystemEnclosure.ChassisTypes` (8..14, 30..32 -> Laptop; 17, 23, 28, 29 -> Server).
 - **Backend API (`/api/v1/auto-scan/collect` & `/api/auto-scan/collect`)**:
-  - Sử dụng module `src/lib/device-detection.ts` nhận diện đa tầng (pin, chassis, model Lenovo `21S6...`, `ThinkPad`, `Latitude`...).
+  - Sử dụng module [src/lib/device-detection.ts](file:///F:/OneDrive%20-%20GELEX/Documents/GitHub/Simply-it-community/src/lib/device-detection.ts) nhận diện đa tầng (pin, chassis, model Lenovo `21S6...`, `ThinkPad`, `Latitude`...).
   - Gán chuẩn danh mục `Laptop` / `PC / Máy tính để bàn` / `Máy chủ`.
   - **Cập nhật cả thiết bị cũ**: Khi máy quét lại, nếu danh mục trước đó là chung chung (`Thiết bị văn phòng`, `Khác`, trống), hệ thống tự động đổi sang đúng danh mục thực tế (`Laptop`).
-
-### F. Hệ thống Tiếp nhận Ticket Qua Email (Inbound Email-to-Ticket & Auto-Routing)
-Chuẩn hoá theo mô hình ITSM doanh nghiệp lớn (ServiceNow, Jira Service Management, Zendesk):
-- **Giao thức Ingestion (IMAP / SSL)**: Tương thích hoàn toàn với Gmail, Microsoft 365, Zimbra, Exchange, mail server riêng (`imapflow` + `mailparser`).
-- **Phân tách & Tối ưu Nội dung**: Bóc tách tự động Header, Subject, Text/Clean HTML và lưu trữ toàn bộ file đính kèm/ảnh chụp màn hình đính kèm vào `public/uploads/tickets/email/`.
-- **Tự động định danh Người gửi (Requester Resolution)**: Khớp email người gửi với User trong hệ thống; nếu là người dùng mới, tự động khởi tạo tài khoản cơ bản với role `EMPLOYEE`.
-- **Hội thoại thông minh (Conversation Threading)**: Nhận diện mã ticket `[TK-2026-xxxx]` hoặc `[#TIC-xxxx]` trong tiêu đề/References/In-Reply-To để chuyển tiếp vào Ticket hiện hữu dưới dạng trao đổi bình luận (Comment), đồng thời tự động kích hoạt mở lại ticket nếu đang ở trạng thái `WAITING` hoặc `RESOLVED`.
-- **Chống Lặp Vô Tận & Lọc Thư Tự Động (Anti-Loop & Anti-Spam)**: Kiểm tra chuẩn RFC 3834 (`Auto-Submitted`, `X-Auto-Response-Suppress`), bỏ qua email Out of Office, Mail Delivery System, và chặn gửi thông báo ngược lại chính hộp thư ticket.
-- **Tích hợp Tự động Điều phối (Routing Engine)**: Gọi trực tiếp `routeTicket(ticket.id)` để tự động gán Nhóm IT chuyên trách, Hàng đợi (Queue) và Kỹ thuật viên (Technician) phù hợp theo phân loại và SLA.
-- **Thư xác nhận tự động (Auto-responder)**: Phản hồi tức thì email kèm mã Ticket tiếp nhận và cam kết thời gian SLA giải quyết.
-- **Quản trị & Giám sát Trực quan**: Giao diện Cài đặt Email chia 3 phân hệ: `Gửi Thư Tự Động (SMTP)`, `Tiếp Nhận Ticket Qua Email (IMAP)`, và `Mẫu Email Thông Báo`. Hỗ trợ nút "Sao chép từ SMTP", "Kiểm Tra Kết Nối", "Quét Hộp Thư Ngay (Sync Now)", cùng bảng nhật ký đồng bộ chi tiết.
-- **Worker chạy nền**: Tự động kích hoạt quét hộp thư ngầm mỗi 2 phút trong `server.js` (`/api/cron/email-inbound?run=true`).
 
 ---
 
@@ -104,22 +92,7 @@ Simply-it-community/
 
 ---
 
-## 👑 4. Quy Tắc Phân Chia Tính Năng Free (Community) vs Trả Phí (Enterprise / Pro)
-
-> **QUY TẮC BẮT BUỘC DÀNH CHO AI TRONG MỌI PHIÊN LÀM VIỆC**:
-> 1. **Gửi email thông báo tự động (Outbound SMTP)**: Luôn là tính năng **Miễn phí (Community Edition)**.
-> 2. **TẤT CẢ CÁC TÍNH NĂNG MỚI THÊM VÀO HỆ THỐNG MẶC ĐỊNH TỰ ĐỘNG THUỘC BẢN TRẢ PHÍ (ENTERPRISE / PRO)**, trừ khi User có yêu cầu rõ ràng cụ thể là đưa tính năng đó vào bản Free/Community.
-> 3. **Tính năng Tiếp nhận Ticket qua Email (Inbound Email-to-Ticket qua IMAP & Auto-routing)**: Thuộc **bản Trả phí (Enterprise)**.
->    - Bắt buộc kiểm tra `getActiveLicense().isEnterprise` ở API backend (`/api/cron/email-inbound`, `/api/email/inbound/sync`, `processInboundEmails()`).
->    - Trên giao diện `email-settings-tab.tsx`, sub-tab IMAP có huy hiệu `👑 Enterprise` và hiển thị Banner nhắc nhở nâng cấp bản quyền khi đang ở bản Community.
-> 4. Khi phát triển bất kỳ tính năng mở rộng/nâng cao mới nào tiếp theo, AI phải tự động:
->    - Gắn license check `isEnterprise`.
->    - Đặt huy hiệu / lock view trên frontend cho người dùng Community.
->    - Hướng dẫn người dùng nâng cấp qua tab Bản quyền (`/settings?tab=license`).
-
----
-
-## ⚡ 5. Hướng Dẫn Bắt Đầu Nhanh Khi Chuyển Sang Máy Tính Mới
+## ⚡ 4. Hướng Dẫn Bắt Đầu Nhanh Khi Chuyển Sang Máy Tính Mới
 
 Khi bạn mở dự án trên máy tính mới hoặc mở một cửa sổ chat AI mới, bạn chỉ cần gửi câu lệnh ngắn gọn:
 
@@ -129,5 +102,4 @@ AI sẽ ngay lập tức:
 1. Đọc toàn bộ kiến trúc và các tính năng vừa thực hiện.
 2. Nắm rõ quy tắc kiểm tra `npm run build` trước khi hoàn tất.
 3. Luôn đồng bộ mã nguồn sang cả 2 repository (`Simply-it-community` và `Simply IT`).
-4. Tuân thủ nghiêm ngặt **Quy tắc phân chia bản Free vs Trả phí** (mọi tính năng mới tự động thuộc bản Enterprise trừ khi được yêu cầu ngược lại).
-5. Tuân theo nguyên tắc phát triển tối giản, hiệu quả (Lazy Senior Dev / Ponytail rule).
+4. Tuân theo nguyên tắc phát triển tối giản, hiệu quả (Lazy Senior Dev / Ponytail rule).

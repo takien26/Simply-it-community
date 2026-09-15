@@ -20,8 +20,6 @@ npx prisma db push --skip-generate
 echo "🌱 Đang kiểm tra và khởi tạo dữ liệu ban đầu (Seed data)..."
 node prisma/seed.cjs || true
 
-# Khởi chạy Next.js Production Server (HTTP & HTTPS)
-echo "🌐 Khởi chạy máy chủ HTTP tại http://0.0.0.0:${PORT:-3000}..."
-echo "🔒 Khởi chạy máy chủ HTTPS tại https://0.0.0.0:${HTTPS_PORT:-3443}..."
-exec node --max-old-space-size=4096 server.js
-
+# Khởi chạy Next.js Production Server
+echo "🌐 Khởi chạy máy chủ ứng dụng tại http://0.0.0.0:3000..."
+exec npm run start -- -p 3000 -H 0.0.0.0

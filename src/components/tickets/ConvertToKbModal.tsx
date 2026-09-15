@@ -100,7 +100,7 @@ export function ConvertToKbModal({ isOpen, onClose, ticket }: ConvertToKbModalPr
             <div>
               <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
                 <span>{isEn ? 'Convert Ticket to Knowledge Base Article' : 'Đóng Góp Giải Pháp Vào Thư Viện Hướng Dẫn (KB)'}</span>
-                <span className="text-[10px] bg-indigo-100 text-indigo-800 font-black px-1.5 py-0.5 rounded">👑 Enterprise</span>
+                
               </h3>
               <p className="text-xs text-slate-500">
                 {isEn

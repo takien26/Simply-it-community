@@ -203,13 +203,13 @@ export function LicenseActivationModal({ isOpen, onClose, onSuccess }: LicenseAc
                     {isEn ? 'Current Edition' : 'Phiên bản hiện tại'}
                   </span>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider ${
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
                       license?.isEnterprise
-                        ? 'bg-amber-500 text-slate-950 shadow-xs'
-                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                     }`}
                   >
-                    {license?.isEnterprise ? '👑 ENTERPRISE' : 'COMMUNITY FREE'}
+                    {license?.isEnterprise ? 'ENTERPRISE' : 'COMMUNITY FREE'}
                   </span>
                 </div>
 

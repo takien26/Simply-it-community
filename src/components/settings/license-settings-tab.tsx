@@ -158,11 +158,11 @@ export function LicenseSettingsTab() {
           <span
             className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
               license?.isEnterprise
-                ? 'bg-amber-500 text-slate-950 shadow-xs'
-                : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                ? 'bg-blue-600 text-white shadow-xs font-bold'
+                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
             }`}
           >
-            {license?.isEnterprise ? '👑 ENTERPRISE EDITION' : 'COMMUNITY EDITION'}
+            {license?.isEnterprise ? 'ENTERPRISE EDITION' : 'COMMUNITY EDITION'}
           </span>
         </div>
 

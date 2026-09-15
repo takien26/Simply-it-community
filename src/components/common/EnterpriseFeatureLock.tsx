@@ -47,8 +47,8 @@ export function EnterpriseFeatureLock({
 
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-bold uppercase tracking-wider">
-              <Crown className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold uppercase tracking-wider">
+              <ShieldCheck className="w-3.5 h-3.5" />
               <span>{tier === 'ENTERPRISE' ? 'SIMPLY IT Enterprise Feature' : 'SIMPLY IT Pro Feature'}</span>
             </div>
 
@@ -75,9 +75,9 @@ export function EnterpriseFeatureLock({
             <button
               type="button"
               onClick={() => setShowModal(true)}
-              className="w-full md:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+              className="w-full md:w-auto px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 cursor-pointer"
             >
-              <Crown className="w-4 h-4" />
+              <ShieldCheck className="w-4 h-4" />
               <span>{isEn ? 'Unlock Enterprise' : 'Mở Khóa Bản Enterprise'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>

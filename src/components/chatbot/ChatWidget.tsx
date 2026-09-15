@@ -442,7 +442,7 @@ export function ChatWidget() {
           <span className="absolute -top-1 -right-1 flex h-4 w-4 pointer-events-none">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-[9px] font-bold text-white items-center justify-center">
-              {isAdmin ? '👑' : 'AI'}
+              {isAdmin ? 'AD' : 'AI'}
             </span>
           </span>
         </button>
@@ -468,7 +468,7 @@ export function ChatWidget() {
                   {isAdmin ? (
                     <span className="text-[10px] px-2 py-0.2 rounded-full border font-bold flex items-center gap-1 bg-amber-400/30 text-amber-200 border-amber-300/40">
                       <Shield className="w-2.5 h-2.5" />
-                      <span>👑 Admin</span>
+                      <span>Admin</span>
                     </span>
                   ) : userRole && userRole !== 'Staff' && userRole !== 'User' && userRole !== 'Nhân viên' ? (
                     <span className="text-[10px] px-2 py-0.2 rounded-full border font-semibold flex items-center gap-1 bg-blue-400/30 text-blue-200 border-blue-300/40">

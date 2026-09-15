@@ -1027,10 +1027,10 @@ export function Header({
 
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
                           licenseInfo?.isEnterprise
-                            ? 'bg-amber-400 text-slate-950 font-black'
-                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            ? 'bg-blue-600 text-white font-bold'
+                            : 'bg-slate-700 text-slate-200'
                         }`}>
-                          {licenseInfo?.isEnterprise ? '👑 ENTERPRISE' : 'COMMUNITY'}
+                          {licenseInfo?.isEnterprise ? 'ENTERPRISE' : 'COMMUNITY'}
                         </span>
                       </div>
 
