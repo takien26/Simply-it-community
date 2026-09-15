@@ -14,6 +14,16 @@ namespace SimplyITCommunityLauncher
         [STAThread]
         static void Main()
         {
+            string logFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launcher_diag.log");
+            try { File.AppendAllText(logFile, "=== Launcher started at " + DateTime.Now + " ===\r\n"); } catch {}
+
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => {
+                try { File.AppendAllText(logFile, "Unhandled: " + e.ExceptionObject + "\r\n"); } catch {}
+            };
+            Application.ThreadException += (s, e) => {
+                try { File.AppendAllText(logFile, "ThreadEx: " + e.Exception + "\r\n"); } catch {}
+            };
+
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainForm());
@@ -22,16 +32,6 @@ namespace SimplyITCommunityLauncher
 
     public class MainForm : Form
     {
-        private static void LogTrace(string msg)
-        {
-            try
-            {
-                string p = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launcher_trace.log");
-                File.AppendAllText(p, DateTime.Now.ToString("HH:mm:ss.fff") + " " + msg + "\r\n");
-            }
-            catch {}
-        }
-
         private Label lblTitle;
         private Label lblSubtitle;
         private Panel pnlHeader;
@@ -46,7 +46,6 @@ namespace SimplyITCommunityLauncher
         private NotifyIcon trayIcon;
         private Process serverProcess;
         private System.Windows.Forms.Timer pollTimer;
-        private System.Windows.Forms.Timer autoHideTimer;
         private string appDir;
         private string targetUrl = "http://localhost:3001";
         private int targetPort = 3001;
@@ -63,8 +62,8 @@ namespace SimplyITCommunityLauncher
 
         private void InitializeComponent()
         {
-            this.Text = "SIMPLY IT - One platform. Simple IT. (Community Edition)";
-            this.Size = new Size(580, 570);
+            this.Text = "SIMPLY IT - Community Edition (Máy Chủ Tự Động)";
+            this.Size = new Size(580, 560);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
@@ -77,6 +76,10 @@ namespace SimplyITCommunityLauncher
             {
                 icoPath = @"F:\OneDrive - GELEX\Documents\GitHub\Simply-it-community\app.ico";
             }
+            if (!File.Exists(icoPath))
+            {
+                icoPath = @"C:\Users\kien.ta-trung\.gemini\antigravity\scratch\simply-it-community\app.ico";
+            }
             if (File.Exists(icoPath))
             {
                 try { this.Icon = new Icon(icoPath); } catch {}
@@ -85,76 +88,45 @@ namespace SimplyITCommunityLauncher
             // Header Panel with Dark Navy #0A1A2F
             pnlHeader = new Panel();
             pnlHeader.Location = new Point(0, 0);
-            pnlHeader.Size = new Size(580, 84);
+            pnlHeader.Size = new Size(580, 80);
             pnlHeader.BackColor = Color.FromArgb(10, 26, 47);
             this.Controls.Add(pnlHeader);
 
-            // Logo PictureBox
-            PictureBox picIcon = new PictureBox();
-            picIcon.Location = new Point(20, 14);
-            picIcon.Size = new Size(56, 56);
-            picIcon.SizeMode = PictureBoxSizeMode.Zoom;
-            picIcon.BackColor = Color.Transparent;
-
-            string logoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "public", "logo.png");
-            if (!File.Exists(logoPath))
-            {
-                logoPath = @"F:\OneDrive - GELEX\Documents\GitHub\Simply-it-community\public\logo.png";
-            }
-
-            if (File.Exists(logoPath))
-            {
-                try {
-                    byte[] bytes = File.ReadAllBytes(logoPath);
-                    using (MemoryStream ms = new MemoryStream(bytes))
-                    {
-                        picIcon.Image = Image.FromStream(ms);
-                    }
-                }
-                catch { picIcon.Image = SystemIcons.Shield.ToBitmap(); }
-            }
-            else
-            {
-                picIcon.Image = SystemIcons.Shield.ToBitmap();
-            }
-            pnlHeader.Controls.Add(picIcon);
-
+            // Header Titles
             lblTitle = new Label();
-            lblTitle.Text = "SIMPLY IT";
-            lblTitle.Font = new Font("Segoe UI", 15F, FontStyle.Bold);
-            lblTitle.ForeColor = Color.White;
-            lblTitle.Location = new Point(86, 14);
+            lblTitle.Text = "SIMPLY IT — COMMUNITY EDITION";
+            lblTitle.Font = new Font("Segoe UI", 13.5F, FontStyle.Bold);
+            lblTitle.ForeColor = Color.FromArgb(0, 184, 212); // Cyan
+            lblTitle.Location = new Point(20, 14);
             lblTitle.AutoSize = true;
             pnlHeader.Controls.Add(lblTitle);
 
             lblSubtitle = new Label();
-            lblSubtitle.Text = "Do Less – Achieve More (Community Edition Server)";
-            lblSubtitle.Font = new Font("Segoe UI", 8.5F);
-            lblSubtitle.ForeColor = Color.FromArgb(0, 184, 212);
-            lblSubtitle.Location = new Point(88, 44);
+            lblSubtitle.Text = "Hệ thống Quản lý Dịch vụ & Tài sản IT • Bản Miễn Phí Vĩnh Viễn";
+            lblSubtitle.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular);
+            lblSubtitle.ForeColor = Color.FromArgb(203, 213, 225);
+            lblSubtitle.Location = new Point(22, 44);
             lblSubtitle.AutoSize = true;
             pnlHeader.Controls.Add(lblSubtitle);
 
-            // Status Panel with Soft Blue #E3F2FD
+            // Status Card Panel
             pnlStatus = new Panel();
-            pnlStatus.Location = new Point(20, 98);
-            pnlStatus.Size = new Size(525, 72);
-            pnlStatus.BackColor = Color.FromArgb(227, 242, 253);
-            pnlStatus.Paint += (s, e) => {
-                ControlPaint.DrawBorder(e.Graphics, pnlStatus.ClientRectangle, Color.FromArgb(144, 202, 249), ButtonBorderStyle.Solid);
-            };
+            pnlStatus.Location = new Point(20, 96);
+            pnlStatus.Size = new Size(525, 68);
+            pnlStatus.BackColor = Color.FromArgb(254, 243, 199); // Light Amber
+            pnlStatus.BorderStyle = BorderStyle.FixedSingle;
             this.Controls.Add(pnlStatus);
 
             lblStatus = new Label();
-            lblStatus.Text = "⏳ Đang giải phóng cổng & nạp cơ sở dữ liệu PostgreSQL...";
+            lblStatus.Text = "⏳ Đang khởi động hệ thống SIMPLY IT...";
             lblStatus.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
-            lblStatus.ForeColor = Color.FromArgb(13, 71, 161);
-            lblStatus.Location = new Point(15, 12);
-            lblStatus.Size = new Size(495, 24);
+            lblStatus.ForeColor = Color.FromArgb(180, 83, 9);
+            lblStatus.Location = new Point(14, 10);
+            lblStatus.Size = new Size(495, 22);
             pnlStatus.Controls.Add(lblStatus);
 
             progressBar = new ProgressBar();
-            progressBar.Location = new Point(15, 42);
+            progressBar.Location = new Point(14, 38);
             progressBar.Size = new Size(495, 14);
             progressBar.Style = ProgressBarStyle.Marquee;
             progressBar.MarqueeAnimationSpeed = 30;
@@ -162,16 +134,16 @@ namespace SimplyITCommunityLauncher
 
             // Log Label
             Label lblLogTitle = new Label();
-            lblLogTitle.Text = "Nhật ký tiến trình máy chủ (Realtime Logs):";
+            lblLogTitle.Text = "Nhật ký tiến trình máy chủ (Logs):";
             lblLogTitle.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
             lblLogTitle.ForeColor = Color.FromArgb(71, 85, 105);
-            lblLogTitle.Location = new Point(20, 180);
+            lblLogTitle.Location = new Point(20, 174);
             lblLogTitle.AutoSize = true;
             this.Controls.Add(lblLogTitle);
 
             txtLogs = new TextBox();
-            txtLogs.Location = new Point(20, 202);
-            txtLogs.Size = new Size(525, 195);
+            txtLogs.Location = new Point(20, 196);
+            txtLogs.Size = new Size(525, 190);
             txtLogs.Multiline = true;
             txtLogs.ReadOnly = true;
             txtLogs.ScrollBars = ScrollBars.Vertical;
@@ -183,7 +155,7 @@ namespace SimplyITCommunityLauncher
             // Action Buttons
             btnLaunchBrowser = new Button();
             btnLaunchBrowser.Text = "🌐 Mở Giao Diện SIMPLY IT (http://localhost:3001)";
-            btnLaunchBrowser.Location = new Point(20, 408);
+            btnLaunchBrowser.Location = new Point(20, 398);
             btnLaunchBrowser.Size = new Size(525, 42);
             btnLaunchBrowser.BackColor = Color.FromArgb(25, 118, 210);
             btnLaunchBrowser.ForeColor = Color.White;
@@ -200,13 +172,13 @@ namespace SimplyITCommunityLauncher
             // Hide to Tray Button
             btnHideToTray = new Button();
             btnHideToTray.Text = "📥 Ẩn Xuống Khay";
-            btnHideToTray.Location = new Point(20, 458);
+            btnHideToTray.Location = new Point(20, 448);
             btnHideToTray.Size = new Size(165, 36);
-            btnHideToTray.BackColor = Color.FromArgb(224, 242, 254);
-            btnHideToTray.ForeColor = Color.FromArgb(3, 105, 161);
-            btnHideToTray.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            btnHideToTray.BackColor = Color.White;
+            btnHideToTray.ForeColor = Color.FromArgb(71, 85, 105);
+            btnHideToTray.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
             btnHideToTray.FlatStyle = FlatStyle.Flat;
-            btnHideToTray.FlatAppearance.BorderColor = Color.FromArgb(186, 230, 253);
+            btnHideToTray.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
             btnHideToTray.Cursor = Cursors.Hand;
             btnHideToTray.Click += (s, e) => HideToTray();
             this.Controls.Add(btnHideToTray);
@@ -214,17 +186,17 @@ namespace SimplyITCommunityLauncher
             // Restart Button
             btnRestart = new Button();
             btnRestart.Text = "🔄 Khởi Động Lại";
-            btnRestart.Location = new Point(195, 458);
+            btnRestart.Location = new Point(195, 448);
             btnRestart.Size = new Size(170, 36);
-            btnRestart.BackColor = Color.FromArgb(241, 245, 249);
-            btnRestart.ForeColor = Color.FromArgb(51, 65, 85);
-            btnRestart.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            btnRestart.BackColor = Color.White;
+            btnRestart.ForeColor = Color.FromArgb(71, 85, 105);
+            btnRestart.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
             btnRestart.FlatStyle = FlatStyle.Flat;
             btnRestart.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
             btnRestart.Cursor = Cursors.Hand;
             btnRestart.Click += (s, e) => {
                 StopServer();
-                AppendLog("Khởi động lại toàn bộ hệ thống...");
+                AppendLog("Đang khởi động lại hệ thống...");
                 StartCompleteStack();
             };
             this.Controls.Add(btnRestart);
@@ -232,7 +204,7 @@ namespace SimplyITCommunityLauncher
             // Stop / Exit Button
             btnStopExit = new Button();
             btnStopExit.Text = "🛑 Dừng & Thoát";
-            btnStopExit.Location = new Point(375, 458);
+            btnStopExit.Location = new Point(375, 448);
             btnStopExit.Size = new Size(170, 36);
             btnStopExit.BackColor = Color.FromArgb(254, 226, 226);
             btnStopExit.ForeColor = Color.FromArgb(153, 27, 27);
@@ -242,26 +214,26 @@ namespace SimplyITCommunityLauncher
             btnStopExit.Cursor = Cursors.Hand;
             btnStopExit.Click += (s, e) => {
                 isExplicitExit = true;
+                StopServer();
+                trayIcon.Visible = false;
                 this.Close();
+                Application.Exit();
             };
             this.Controls.Add(btnStopExit);
 
             // System Tray Icon
             trayIcon = new NotifyIcon();
-            trayIcon.Text = "SIMPLY IT Community (Đang Chạy Ngầm)";
+            trayIcon.Text = "SIMPLY IT Community Edition";
             if (this.Icon != null) trayIcon.Icon = this.Icon;
             else trayIcon.Icon = SystemIcons.Shield;
             trayIcon.Visible = true;
             trayIcon.DoubleClick += (s, e) => RestoreFromTray();
 
             ContextMenu trayMenu = new ContextMenu();
-            trayMenu.MenuItems.Add("🌐 Mở Giao Diện HTTP (Cổng 3001)", (s, e) => {
+            trayMenu.MenuItems.Add("🌐 Mở Giao Diện SIMPLY IT", (s, e) => {
                 try { Process.Start(new ProcessStartInfo(targetUrl) { UseShellExecute = true }); } catch {}
             });
-            trayMenu.MenuItems.Add("🔒 Mở Giao Diện HTTPS (Cổng 3443)", (s, e) => {
-                try { Process.Start(new ProcessStartInfo("https://localhost:3443") { UseShellExecute = true }); } catch {}
-            });
-            trayMenu.MenuItems.Add("🖥️ Hiện Cửa Sổ Máy Chủ", (s, e) => RestoreFromTray());
+            trayMenu.MenuItems.Add("🖥️ Bảng Điều Khiển Máy Chủ", (s, e) => RestoreFromTray());
             trayMenu.MenuItems.Add("🔄 Khởi Động Lại Hệ Thống", (s, e) => {
                 StopServer();
                 AppendLog("Khởi động lại toàn bộ hệ thống...");
@@ -270,13 +242,15 @@ namespace SimplyITCommunityLauncher
             trayMenu.MenuItems.Add("-");
             trayMenu.MenuItems.Add("🛑 Dừng & Thoát Hoàn Toàn", (s, e) => {
                 isExplicitExit = true;
+                StopServer();
+                trayIcon.Visible = false;
                 this.Close();
+                Application.Exit();
             });
             trayIcon.ContextMenu = trayMenu;
 
-            // Intercept close button [X]: minimize to tray instead of quitting unexpectedly
+            // Intercept close button [X]: hide to tray instead of quitting
             this.FormClosing += (s, e) => {
-                LogTrace("FormClosing: reason=" + e.CloseReason + ", isExplicitExit=" + isExplicitExit);
                 if (!isExplicitExit && e.CloseReason == CloseReason.UserClosing)
                 {
                     e.Cancel = true;
@@ -289,25 +263,23 @@ namespace SimplyITCommunityLauncher
                 }
             };
 
-            // Polling timer
+            // Polling timer to detect when web server is responding
             pollTimer = new System.Windows.Forms.Timer();
             pollTimer.Interval = 1000;
             pollTimer.Tick += (s, e) => CheckServerStatus();
+            pollTimer.Start();
         }
 
         private void HideToTray()
         {
-            this.Hide();
-            try
-            {
-                trayIcon.ShowBalloonTip(2000, "SIMPLY IT", "Máy chủ đang chạy ngầm. Double-click icon chữ S ở góc phải thanh Taskbar để mở lại bất kỳ lúc nào.", ToolTipIcon.Info);
-            }
-            catch {}
+            this.ShowInTaskbar = false;
+            this.WindowState = FormWindowState.Minimized;
+            trayIcon.ShowBalloonTip(2000, "SIMPLY IT", "Máy chủ đang chạy ngầm dưới khay hệ thống. Double-click icon để mở lại bất kỳ lúc nào.", ToolTipIcon.Info);
         }
 
         private void RestoreFromTray()
         {
-            this.Show();
+            this.ShowInTaskbar = true;
             this.WindowState = FormWindowState.Normal;
             this.BringToFront();
             this.Activate();
@@ -315,17 +287,17 @@ namespace SimplyITCommunityLauncher
 
         private void LocateAppDir()
         {
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            if (File.Exists(Path.Combine(baseDir, "package.json")))
-            {
-                appDir = baseDir;
-                return;
-            }
-
             string userRepo = @"F:\OneDrive - GELEX\Documents\GitHub\Simply-it-community";
             if (Directory.Exists(userRepo) && File.Exists(Path.Combine(userRepo, "package.json")))
             {
                 appDir = userRepo;
+                return;
+            }
+
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            if (File.Exists(Path.Combine(baseDir, "package.json")))
+            {
+                appDir = baseDir;
                 return;
             }
 
@@ -349,7 +321,7 @@ namespace SimplyITCommunityLauncher
             }
             string time = DateTime.Now.ToString("HH:mm:ss");
 
-            // Prevent UI freeze caused by rich text buffer overflow
+            // Prevent text buffer overflow and memory freeze
             if (txtLogs.TextLength > 25000)
             {
                 txtLogs.Text = txtLogs.Text.Substring(10000);
@@ -374,9 +346,13 @@ namespace SimplyITCommunityLauncher
             {
                 using (TcpClient client = new TcpClient())
                 {
-                    var result = client.BeginConnect("127.0.0.1", port, null, null);
-                    bool success = result.AsyncWaitHandle.WaitOne(300);
-                    if (!success) return false;
+                    IAsyncResult result = client.BeginConnect("127.0.0.1", port, null, null);
+                    bool success = result.AsyncWaitHandle.WaitOne(200);
+                    if (!success)
+                    {
+                        client.Close();
+                        return false;
+                    }
                     client.EndConnect(result);
                     return true;
                 }
@@ -399,42 +375,23 @@ namespace SimplyITCommunityLauncher
             catch {}
         }
 
-        private void ResetUiToStarting()
-        {
-            if (this.InvokeRequired)
-            {
-                try { this.BeginInvoke(new Action(ResetUiToStarting)); } catch {}
-                return;
-            }
-            pnlStatus.BackColor = Color.FromArgb(227, 242, 253);
-            lblStatus.Text = "⏳ Đang giải phóng cổng & nạp cơ sở dữ liệu PostgreSQL...";
-            lblStatus.ForeColor = Color.FromArgb(13, 71, 161);
-            progressBar.Style = ProgressBarStyle.Marquee;
-            btnLaunchBrowser.Enabled = false;
-            btnLaunchBrowser.BackColor = Color.FromArgb(25, 118, 210);
-            btnLaunchBrowser.ForeColor = Color.White;
-            btnLaunchBrowser.Text = "🌐 Mở Giao Diện SIMPLY IT (http://localhost:3001)";
-        }
-
         private void StartCompleteStack()
         {
             if (isStarting) return;
             isStarting = true;
-            isServerRunning = false;
-            ResetUiToStarting();
 
             Thread t = new Thread(() => {
                 try
                 {
-                    AppendLog("Bắt đầu quy trình kiểm tra và nạp hệ thống SIMPLY IT...");
+                    AppendLog("Bắt đầu kiểm tra hệ thống SIMPLY IT Community...");
 
-                    // 1. Clean conflicting port 3001
-                    AppendLog("1/3 Đang kiểm tra và giải phóng cổng " + targetPort + "...");
+                    // 1. Clean conflicting port 3001 if any
+                    AppendLog("1/3 Kiểm tra và giải phóng cổng " + targetPort + "...");
                     CleanupPortProcess(targetPort);
 
                     // 2. Ensure PostgreSQL service
-                    UpdateStatusText("⏳ [1/3] Đang kiểm tra dịch vụ CSDL PostgreSQL...");
-                    AppendLog("2/3 Kiểm tra dịch vụ CSDL PostgreSQL trên cổng 5432...");
+                    UpdateStatusText("⏳ [1/3] Đang kiểm tra kết nối PostgreSQL (Port 5432)...");
+                    AppendLog("2/3 Kiểm tra kết nối PostgreSQL trên cổng 5432...");
                     EnsurePostgreSql();
 
                     // 3. Launch Next.js production server
@@ -459,42 +416,34 @@ namespace SimplyITCommunityLauncher
                     return;
                 }
 
+                // Try starting common service names
                 string[] serviceNames = new string[] { "postgresql-x64-18", "postgresql-x64-16", "postgresql-x64-15", "postgresql" };
                 foreach (string svc in serviceNames)
                 {
                     try
                     {
-                        AppendLog("Khởi động dịch vụ " + svc + "...");
                         Process p = Process.Start(new ProcessStartInfo("net", "start " + svc) {
                             CreateNoWindow = true,
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true
+                            UseShellExecute = false
                         });
-                        if (p != null) p.WaitForExit(3000);
+                        if (p != null) p.WaitForExit(2000);
                         if (IsPortOpen(5432)) break;
                     }
                     catch {}
                 }
 
-                int attempts = 0;
-                while (!IsPortOpen(5432) && attempts < 8)
-                {
-                    Thread.Sleep(500);
-                    attempts++;
-                }
-
                 if (IsPortOpen(5432))
                 {
-                    AppendLog("✅ Kết nối PostgreSQL thành công!");
+                    AppendLog("✅ Đã khởi động dịch vụ PostgreSQL thành công!");
                 }
                 else
                 {
-                    AppendLog("⚠️ Chưa thấy PostgreSQL phản hồi trên port 5432, tiếp tục chạy Web Server...");
+                    AppendLog("ℹ️ Chưa phát hiện cổng 5432. Vẫn tiếp tục khởi động Web Server...");
                 }
             }
             catch (Exception ex)
             {
-                AppendLog("Lỗi kiểm tra PostgreSQL: " + ex.Message);
+                AppendLog("Kiểm tra PostgreSQL: " + ex.Message);
             }
         }
 
@@ -502,30 +451,25 @@ namespace SimplyITCommunityLauncher
         {
             try
             {
-                UpdateStatusText("⏳ [2/3] Đang khởi động Web Server SIMPLY IT (Chế độ Production Siêu Tốc)...");
+                UpdateStatusText("⏳ [2/3] Đang khởi động Web Server SIMPLY IT (Chế độ Production)...");
                 AppendLog("🚀 [2/3] Bắt đầu chạy Web Server Production...");
 
                 ProcessStartInfo psi = new ProcessStartInfo();
-                string nodeExe = @"C:\Program Files\nodejs\node.exe";
-                if (!File.Exists(nodeExe))
+                string nodePath = @"C:\Program Files\nodejs\node.exe";
+                if (File.Exists(nodePath))
                 {
-                    nodeExe = "node";
+                    psi.FileName = nodePath;
                 }
-                psi.FileName = nodeExe;
+                else
+                {
+                    psi.FileName = "node";
+                }
                 psi.Arguments = "--max-old-space-size=4096 server.js";
                 psi.WorkingDirectory = appDir;
                 psi.UseShellExecute = false;
                 psi.CreateNoWindow = true;
                 psi.RedirectStandardOutput = true;
                 psi.RedirectStandardError = true;
-
-                // Ensure PATH has common node directories
-                string currentPath = Environment.GetEnvironmentVariable("PATH") ?? "";
-                string nodeDir = @"C:\Program Files\nodejs";
-                if (!currentPath.Contains(nodeDir) && Directory.Exists(nodeDir))
-                {
-                    psi.EnvironmentVariables["PATH"] = nodeDir + ";" + currentPath;
-                }
 
                 serverProcess = new Process();
                 serverProcess.StartInfo = psi;
@@ -547,16 +491,6 @@ namespace SimplyITCommunityLauncher
                 serverProcess.Start();
                 serverProcess.BeginOutputReadLine();
                 serverProcess.BeginErrorReadLine();
-
-                // Start polling timer now that process is running
-                if (this.InvokeRequired)
-                {
-                    this.BeginInvoke(new Action(() => pollTimer.Start()));
-                }
-                else
-                {
-                    pollTimer.Start();
-                }
             }
             catch (Exception ex)
             {
@@ -586,29 +520,12 @@ namespace SimplyITCommunityLauncher
         {
             if (isServerRunning) return;
 
-            if (serverProcess != null && serverProcess.HasExited)
-            {
-                AppendLog("❌ Máy chủ Node.js đã dừng (Mã lỗi: " + serverProcess.ExitCode + ").");
-                pollTimer.Stop();
-                return;
-            }
-
-            bool isSqlUp = IsPortOpen(5432);
             bool isWebUp = IsPortOpen(targetPort);
 
-            if (isSqlUp && isWebUp)
+            if (isWebUp)
             {
                 isServerRunning = true;
-                pollTimer.Stop();
                 OnServerReady();
-            }
-            else if (!isSqlUp && isWebUp)
-            {
-                UpdateStatusText("⚠️ Web đã chạy nhưng SQL (Port 5432) chưa kết nối!");
-            }
-            else if (isSqlUp && !isWebUp)
-            {
-                UpdateStatusText("⏳ [2/3] SQL OK. Đang nạp Web Server (Port " + targetPort + ")...");
             }
         }
 
@@ -621,8 +538,9 @@ namespace SimplyITCommunityLauncher
                 return;
             }
 
-            pnlStatus.BackColor = Color.FromArgb(227, 242, 253);
-            lblStatus.Text = "✅ [3/3] Toàn bộ hệ thống SIMPLY IT đã sẵn sàng (" + targetUrl + ")!";
+            pnlStatus.BackColor = Color.FromArgb(227, 242, 253); // Light Blue
+            pnlStatus.BorderStyle = BorderStyle.FixedSingle;
+            lblStatus.Text = "✅ [3/3] SIMPLY IT đã sẵn sàng hoạt động (" + targetUrl + ")!";
             lblStatus.ForeColor = Color.FromArgb(13, 71, 161);
             progressBar.Style = ProgressBarStyle.Blocks;
             progressBar.Value = 100;
@@ -632,10 +550,13 @@ namespace SimplyITCommunityLauncher
             btnLaunchBrowser.ForeColor = Color.FromArgb(10, 26, 47);
             btnLaunchBrowser.Text = "🚀 MỞ GIAO DIỆN SIMPLY IT (" + targetUrl + ")";
 
-            AppendLog("🎉 [3/3] SIMPLY IT ĐÃ SẴN SÀNG! HTTP: " + targetUrl + " | HTTPS: https://localhost:3443");
+            AppendLog("🎉 [3/3] SIMPLY IT ĐÃ SẴN SÀNG! Đang tự động mở trình duyệt...");
             try
             {
-                trayIcon.ShowBalloonTip(3000, "SIMPLY IT Sẵn Sàng", "Hệ thống đã hoạt động tại " + targetUrl + ". Cửa sổ sẽ tự ẩn xuống khay sau 3 giây.", ToolTipIcon.Info);
+                if (trayIcon != null && trayIcon.Visible)
+                {
+                    trayIcon.ShowBalloonTip(3000, "SIMPLY IT Sẵn Sàng", "Hệ thống đã hoạt động tại " + targetUrl + ".", ToolTipIcon.Info);
+                }
             }
             catch {}
 
@@ -644,18 +565,6 @@ namespace SimplyITCommunityLauncher
                 Process.Start(new ProcessStartInfo(targetUrl) { UseShellExecute = true });
             }
             catch {}
-
-            // Auto-hide window after 3 seconds so it does not obstruct the user
-            autoHideTimer = new System.Windows.Forms.Timer();
-            autoHideTimer.Interval = 3000;
-            autoHideTimer.Tick += (s, e) => {
-                try {
-                    autoHideTimer.Stop();
-                    autoHideTimer.Dispose();
-                    HideToTray();
-                } catch {}
-            };
-            autoHideTimer.Start();
         }
 
         private void StopServer()
@@ -663,23 +572,19 @@ namespace SimplyITCommunityLauncher
             try
             {
                 isServerRunning = false;
-                if (pollTimer != null) pollTimer.Stop();
-                if (autoHideTimer != null) { autoHideTimer.Stop(); autoHideTimer.Dispose(); }
-
                 if (serverProcess != null && !serverProcess.HasExited)
                 {
                     try
                     {
-                        Process p = Process.Start(new ProcessStartInfo("taskkill", "/F /T /PID " + serverProcess.Id) {
+                        Process kp = Process.Start(new ProcessStartInfo("taskkill", "/F /T /PID " + serverProcess.Id) {
                             CreateNoWindow = true,
                             UseShellExecute = false
                         });
-                        if (p != null) p.WaitForExit(2000);
+                        if (kp != null) kp.WaitForExit(2000);
                     }
                     catch {}
                     serverProcess = null;
                 }
-
                 CleanupPortProcess(targetPort);
             }
             catch {}

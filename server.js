@@ -13,7 +13,9 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('🔥 [Server Error] Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-const dev = false;
+const hasBuild = fs.existsSync(path.join(__dirname, '.next', 'BUILD_ID'));
+const dev = process.env.NODE_ENV === 'development' || !hasBuild;
+console.log(`ℹ️ [Server Mode] Running in ${dev ? 'DEVELOPMENT (Hot-reload / On-demand compile)' : 'PRODUCTION'} mode...`);
 const app = next({ dev, dir: __dirname });
 const handle = app.getRequestHandler();
 
