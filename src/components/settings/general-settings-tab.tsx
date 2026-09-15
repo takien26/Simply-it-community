@@ -246,13 +246,46 @@ export function GeneralSettingsTab({
     }
   };
 
+  const handleSaveBackupConfigOnly = async () => {
+    try {
+      const res = await fetch('/api/system/backup/auto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'SAVE_CONFIG', config: autoBackupConfig }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBackupToast({
+          message: isEn ? '✅ Backup directory & configuration saved successfully!' : '✅ Đã lưu đường dẫn và cấu hình sao lưu thành công!',
+          type: 'success',
+        });
+        loadAutoBackupData();
+      } else {
+        setBackupToast({ message: data.error || 'Lỗi lưu cấu hình', type: 'error' });
+      }
+    } catch {
+      setBackupToast({ message: 'Lỗi kết nối khi lưu cấu hình', type: 'error' });
+    } finally {
+      setTimeout(() => setBackupToast(null), 4000);
+    }
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleSaveSettings(e);
+    await handleSaveBackupConfigOnly();
+  };
+
   const handleRunBackupNowToDir = async () => {
     setIsBackingUp(true);
     try {
       const res = await fetch('/api/system/backup/auto', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'RUN_NOW' }),
+        body: JSON.stringify({
+          action: 'RUN_NOW',
+          directory: autoBackupConfig.directory?.trim(),
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -498,7 +531,7 @@ export function GeneralSettingsTab({
   const currentPrimaryColor = getSettingValue('app.primary_color') || '#2563EB';
 
   return (
-    <form onSubmit={handleSaveSettings} className="space-y-6">
+    <form onSubmit={handleFormSubmit} className="space-y-6">
       {saved && (
         <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold rounded-2xl flex items-center space-x-2 animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -1081,6 +1114,17 @@ export function GeneralSettingsTab({
               >
                 {testingPath ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />}
                 <span>{isEn ? 'Test Path' : 'Kiểm tra đường dẫn'}</span>
+              </button>
+
+              {/* Save Path Button */}
+              <button
+                type="button"
+                onClick={handleSaveBackupConfigOnly}
+                className="px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs"
+                title="Lưu ngay đường dẫn thư mục sao lưu này vào hệ thống"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isEn ? 'Save Path' : 'Lưu Đường Dẫn'}</span>
               </button>
             </div>
 

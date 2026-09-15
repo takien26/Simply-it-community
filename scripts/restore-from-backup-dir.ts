@@ -13,6 +13,15 @@ async function main() {
   let targetDir = process.argv[2] || process.env.BACKUP_DIR;
   
   if (!targetDir) {
+    try {
+      const dbSetting = await prisma.systemSetting.findUnique({ where: { key: 'backup.directory' } });
+      if (dbSetting?.value && fs.existsSync(dbSetting.value.trim())) {
+        targetDir = dbSetting.value.trim();
+      }
+    } catch {}
+  }
+
+  if (!targetDir) {
     const candidates = [
       'C:\\IT_Backups',
       path.join(process.cwd(), 'backups'),

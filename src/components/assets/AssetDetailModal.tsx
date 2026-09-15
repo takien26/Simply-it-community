@@ -30,6 +30,11 @@ import {
   QrCode,
   Edit,
   X,
+  Calculator,
+  RefreshCw,
+  TrendingUp,
+  Building,
+  Barcode,
 } from 'lucide-react';
 import {
   formatCurrency,
@@ -94,6 +99,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const [detailSoftwareSearch, setDetailSoftwareSearch] = useState('');
   const [detailSoftwareFilter, setDetailSoftwareFilter] = useState<'ALL' | 'MATCHED' | 'UNMANAGED' | 'CRACK' | 'OTHER'>('ALL');
   const [detailMaintenanceLogs, setDetailMaintenanceLogs] = useState<any[]>([]);
+  const [isUpdatingDepreciation, setIsUpdatingDepreciation] = useState(false);
 
   const { language: ctxLang } = useLanguage();
   const activeLang = language || ctxLang || 'vi';
@@ -139,6 +145,33 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
     const toRate = exchangeRatesMap[toCurr] || 1;
     const inVnd = amount * fromRate;
     return inVnd / toRate;
+  };
+
+  const handleUpdateDepreciationMonths = async (newMonths: number) => {
+    if (!selectedDetailAsset?.id) return;
+    try {
+      setIsUpdatingDepreciation(true);
+      const currentSpecs = (selectedDetailAsset.specs || {}) as Record<string, any>;
+      const res = await fetch(`/api/assets/${selectedDetailAsset.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          specs: {
+            ...currentSpecs,
+            depreciationMonths: newMonths,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.data) {
+        setSelectedDetailAsset(data.data);
+        onReload?.();
+      }
+    } catch (err) {
+      console.error('Failed to update depreciation months:', err);
+    } finally {
+      setIsUpdatingDepreciation(false);
+    }
   };
 
   const handleQuickCreateAndAssignLicenseForDetail = async (name: string, key?: string, type?: string) => {
@@ -215,21 +248,38 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
             <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full flex flex-col max-h-[92vh] border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
               {/* Modal Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-t-3xl shrink-0">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-2.5 py-0.5 bg-blue-500/30 text-blue-200 border border-blue-400/30 rounded-lg text-xs font-mono font-bold">
                       [{selectedDetailAsset.assetTag}]
                     </span>
                     <h3 className="font-bold text-base text-white truncate max-w-lg">
                       {selectedDetailAsset.name}
                     </h3>
-                  </div>
-                  <p className="text-xs text-blue-200 flex items-center gap-2">
-                    <span>{selectedDetailAsset.brand} {selectedDetailAsset.model || ''}</span>
-                    {selectedDetailAsset.serialNumber && (
-                      <span className="font-mono text-slate-300">• SN: {selectedDetailAsset.serialNumber}</span>
+                    {selectedDetailAsset.category?.name && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/20">
+                        {selectedDetailAsset.category.name}
+                      </span>
                     )}
-                  </p>
+                  </div>
+                  <div className="text-xs text-blue-200 flex items-center gap-2 flex-wrap">
+                    <span>{selectedDetailAsset.brand} {selectedDetailAsset.model || ''}</span>
+                    {selectedDetailAsset.serialNumber ? (
+                      <span className="font-mono text-slate-200 bg-white/10 px-2 py-0.5 rounded border border-white/20 text-[11px] flex items-center gap-1">
+                        <Barcode className="w-3 h-3 text-blue-300" />
+                        <span>SN: {selectedDetailAsset.serialNumber}</span>
+                      </span>
+                    ) : (
+                      <span className="font-mono text-amber-200 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-400/30 text-[11px] font-medium">
+                        SN: {txt('Chưa thiết lập', 'Not configured', '未設定')}
+                      </span>
+                    )}
+                    {selectedDetailAsset.companyName && (
+                      <span className="text-[11px] text-slate-300">
+                        • 🏢 {selectedDetailAsset.companyName}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => onClose()}
@@ -294,7 +344,7 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                     )}
                   </div>
 
-                  {/* {txt('Công ty & Vị trí', 'Company & Location', '会社・設置場所')} */}
+                  {/* Công ty & Vị trí */}
                   <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1.5 flex flex-col justify-between">
                     <div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
@@ -304,32 +354,65 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                         🏢 {selectedDetailAsset.companyName || txt('Công ty chung', 'General Company', '共通企業')}
                       </p>
                     </div>
-                    <p className="text-[10.5px] text-slate-500 whitespace-normal break-words leading-tight flex items-start gap-1 pt-1 border-t border-slate-200/60">
-                      <span>📍</span>
-                      <span className="font-medium">{selectedDetailAsset.location?.name || txt('Kho thiết bị IT', 'IT Storage / Inventory', 'IT機器倉庫')}</span>
-                    </p>
+                    <div className="space-y-1 pt-1 border-t border-slate-200/60">
+                      <p className="text-[10.5px] text-slate-500 whitespace-normal break-words leading-tight flex items-start gap-1">
+                        <span>📍</span>
+                        <span className="font-medium">{selectedDetailAsset.location?.name || txt('Kho thiết bị IT', 'IT Storage / Inventory', 'IT機器倉庫')}</span>
+                      </p>
+                      {(selectedDetailAsset.vendor?.name || selectedDetailAsset.specs?.vendorName) && (
+                        <p className="text-[10px] text-blue-700 dark:text-blue-400 whitespace-normal break-words leading-tight flex items-center gap-1 font-medium">
+                          <span>🏷️</span>
+                          <span className="truncate">{txt('NCC:', 'Vendor:', '仕入先:')} {selectedDetailAsset.vendor?.name || selectedDetailAsset.specs?.vendorName}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Chi phí mua sắm */}
+                  {/* Chi phí mua sắm & Khấu hao tóm tắt */}
                   {(() => {
                     const rawPrice = Number(selectedDetailAsset.purchasePrice) || 0;
                     const rawCurr = (selectedDetailAsset.purchaseCurrency || 'VND').toUpperCase();
                     const convertedPrice = convertCurrency(rawPrice, rawCurr, selectedCurrency);
                     const isDual = rawPrice > 0 && rawCurr !== selectedCurrency.toUpperCase();
 
+                    const catName = (selectedDetailAsset.category?.name || '').toLowerCase();
+                    const defaultMonths =
+                      catName.includes('server') || catName.includes('máy chủ') || catName.includes('switch') || catName.includes('router') || catName.includes('mạng')
+                        ? 60
+                        : 36;
+                    const totalMonths = Number(selectedDetailAsset.specs?.depreciationMonths) || defaultMonths;
+                    const pDate = selectedDetailAsset.purchaseDate ? new Date(selectedDetailAsset.purchaseDate) : (selectedDetailAsset.createdAt ? new Date(selectedDetailAsset.createdAt) : new Date());
+                    const now = new Date();
+                    const diffM = Math.max(0, (now.getFullYear() - pDate.getFullYear()) * 12 + (now.getMonth() - pDate.getMonth()));
+                    const depRatio = Math.min(1, Math.max(0, diffM / totalMonths));
+                    const remainingValue = Math.max(0, convertedPrice * (1 - depRatio));
+                    const depPercent = Math.min(100, Math.round(depRatio * 100));
+
                     return (
                       <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl space-y-1 flex flex-col justify-between">
                         <div>
-                          <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider block mb-0.5">
-                            {txt('Chi phí mua sắm', 'Purchase Cost', '購入費用')}
-                          </span>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider block">
+                              {txt('Chi phí mua sắm', 'Purchase Cost', '購入費用')}
+                            </span>
+                            {rawPrice > 0 && (
+                              <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded ${depPercent >= 100 ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'}`}>
+                                KH {depPercent}%
+                              </span>
+                            )}
+                          </div>
                           {rawPrice > 0 ? (
                             <div className="space-y-0.5">
                               <p className="text-sm font-black text-blue-950 dark:text-blue-200 font-mono">
                                 {formatPrice(convertedPrice, selectedCurrency)}
                               </p>
+                              <div className="flex items-center justify-between text-[10px] font-medium">
+                                <span className="text-emerald-700 dark:text-emerald-400 font-mono">
+                                  {txt('Còn lại:', 'Net Val:', '残存:')} {formatPrice(remainingValue, selectedCurrency)}
+                                </span>
+                              </div>
                               {isDual && (
-                                <p className="text-[10.5px] font-bold text-emerald-700 dark:text-emerald-400 block font-mono">
+                                <p className="text-[9.5px] font-bold text-slate-500 block font-mono">
                                   {txt('Gốc:', 'Orig:', '原価:')} {formatPrice(rawPrice, rawCurr)}
                                 </p>
                               )}
@@ -391,6 +474,273 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                     </div>
                   </div>
                 </div>
+
+                {/* ======================================================================== */}
+                {/* THEO DÕI KHẤU HAO RIÊNG THIẾT BỊ NÀY (INDIVIDUAL ASSET DEPRECIATION) */}
+                {/* ======================================================================== */}
+                {(() => {
+                  const rawPrice = Number(selectedDetailAsset.purchasePrice) || 0;
+                  const rawCurr = (selectedDetailAsset.purchaseCurrency || 'VND').toUpperCase();
+                  const rate = selectedDetailAsset.exchangeRate || exchangeRatesMap[rawCurr] || 1;
+                  const convertedPrice = convertCurrency(rawPrice, rawCurr, selectedCurrency);
+                  const isDual = rawPrice > 0 && rawCurr !== selectedCurrency.toUpperCase();
+
+                  const catName = (selectedDetailAsset.category?.name || '').toLowerCase();
+                  const defaultMonths =
+                    catName.includes('server') || catName.includes('máy chủ') || catName.includes('switch') || catName.includes('router') || catName.includes('mạng')
+                      ? 60
+                      : 36;
+                  const totalMonths = Number(selectedDetailAsset.specs?.depreciationMonths) || defaultMonths;
+
+                  const purchaseDate = selectedDetailAsset.purchaseDate
+                    ? new Date(selectedDetailAsset.purchaseDate)
+                    : (selectedDetailAsset.createdAt ? new Date(selectedDetailAsset.createdAt) : new Date());
+                  const now = new Date();
+                  const elapsedMonths = Math.max(0, (now.getFullYear() - purchaseDate.getFullYear()) * 12 + (now.getMonth() - purchaseDate.getMonth()));
+                  const depRatio = Math.min(1, Math.max(0, elapsedMonths / totalMonths));
+                  const accumulatedDepreciation = convertedPrice * depRatio;
+                  const remainingValue = Math.max(0, convertedPrice - accumulatedDepreciation);
+                  const monthlyDepreciation = totalMonths > 0 ? convertedPrice / totalMonths : 0;
+                  const depPercent = Math.min(100, Math.round(depRatio * 100));
+                  const remainingMonths = Math.max(0, totalMonths - elapsedMonths);
+
+                  const projectedEndDate = new Date(purchaseDate);
+                  projectedEndDate.setMonth(projectedEndDate.getMonth() + totalMonths);
+
+                  const isFullyDepreciated = elapsedMonths >= totalMonths && rawPrice > 0;
+
+                  return (
+                    <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 shadow-xl border border-indigo-800/60 relative overflow-hidden">
+                      {/* Background glowing accent */}
+                      <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+
+                      <div className="relative z-10 space-y-4">
+                        {/* Header: Title + Period Selector */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-2xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300">
+                              <Calculator className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-extrabold text-sm text-white tracking-wide">
+                                  {txt('Khấu Hao Riêng Máy Này', 'Individual Asset Depreciation', '個別資産減価償却')}
+                                </h4>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  isFullyDepreciated
+                                    ? 'bg-rose-500/30 text-rose-300 border border-rose-500/40'
+                                    : depPercent >= 75
+                                    ? 'bg-amber-500/30 text-amber-300 border border-amber-500/40'
+                                    : 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/40'
+                                }`}>
+                                  {isFullyDepreciated
+                                    ? txt('Đã hết khấu hao', 'Fully Depreciated', '償却完了')
+                                    : txt(`Đang khấu hao (${depPercent}%)`, `Depreciating (${depPercent}%)`, `償却中 (${depPercent}%)`)}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-300">
+                                {txt(
+                                  `Phương pháp đường thẳng (TT 45/2013/TT-BTC) • Chu kỳ ${totalMonths} tháng`,
+                                  `Straight-line method • Period: ${totalMonths} months`,
+                                  `定額法 • 償却期間 ${totalMonths}ヶ月`
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Dynamic Period Dropdown for this individual machine */}
+                          <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-2xl border border-white/15 backdrop-blur-xs">
+                            <span className="text-[11px] font-bold text-slate-300 whitespace-nowrap">
+                              {txt('Khung khấu hao:', 'Period:', '償却枠:')}
+                            </span>
+                            <select
+                              value={totalMonths}
+                              disabled={isUpdatingDepreciation}
+                              onChange={(e) => handleUpdateDepreciationMonths(Number(e.target.value))}
+                              className="bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded-xl border border-white/20 outline-none cursor-pointer hover:bg-slate-700 transition-colors"
+                              title={txt('Thay đổi số tháng khấu hao riêng cho thiết bị này', 'Change depreciation period for this machine', 'この端末の減価償却月数を変更')}
+                            >
+                              <option value={12}>12 {txt('tháng (1 năm)', 'months (1 yr)', 'ヶ月 (1年)')}</option>
+                              <option value={24}>24 {txt('tháng (2 năm)', 'months (2 yrs)', 'ヶ月 (2年)')}</option>
+                              <option value={36}>36 {txt('tháng (3 năm - Mặc định)', 'months (3 yrs - Default)', 'ヶ月 (3年 - 標準)')}</option>
+                              <option value={48}>48 {txt('tháng (4 năm)', 'months (4 yrs)', 'ヶ月 (4年)')}</option>
+                              <option value={60}>60 {txt('tháng (5 năm)', 'months (5 yrs)', 'ヶ月 (5年)')}</option>
+                            </select>
+                            {isUpdatingDepreciation && (
+                              <RefreshCw className="w-3.5 h-3.5 text-blue-300 animate-spin" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Visual Progress Bar */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                              <span>{txt('Tiến độ khấu hao theo thời gian:', 'Time Depreciation Progress:', '償却進捗状況:')}</span>
+                              <strong className="text-white font-mono">{elapsedMonths} / {totalMonths} {txt('tháng', 'months', 'ヶ月')}</strong>
+                              <span className="text-slate-400">({remainingMonths > 0 ? txt(`còn ${remainingMonths} tháng`, `${remainingMonths} mos left`, `残り${remainingMonths}ヶ月`) : txt('đã trích hết', 'finished', '償却完了')})</span>
+                            </span>
+                            <span className={`font-black font-mono text-sm ${
+                              depPercent >= 100 ? 'text-rose-400' : depPercent >= 75 ? 'text-amber-400' : 'text-emerald-400'
+                            }`}>
+                              {depPercent}%
+                            </span>
+                          </div>
+
+                          <div className="w-full bg-white/15 h-3.5 rounded-full overflow-hidden p-0.5 border border-white/20 relative shadow-inner">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 shadow-sm ${
+                                depPercent >= 100
+                                  ? 'bg-gradient-to-r from-amber-500 to-rose-500'
+                                  : depPercent >= 75
+                                  ? 'bg-gradient-to-r from-blue-500 to-amber-500'
+                                  : 'bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400'
+                              }`}
+                              style={{ width: `${Math.min(100, Math.max(depPercent, 2))}%` }}
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-0.5">
+                            <span>{txt('Bắt đầu:', 'Start:', '開始:')} {formatDate(purchaseDate)}</span>
+                            <span>{txt('Dự kiến hoàn thành:', 'Projected End:', '完了予定:')} {formatDate(projectedEndDate)}</span>
+                          </div>
+                        </div>
+
+                        {/* 5 Financial Metric Cards for this Individual Machine */}
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                          {/* Card 1: Nguyên giá */}
+                          <div className="p-3 bg-white/10 hover:bg-white/15 transition-colors rounded-2xl border border-white/10 backdrop-blur-xs">
+                            <span className="text-[9.5px] font-bold text-slate-300 uppercase block tracking-wider">
+                              {txt('1. Nguyên giá mua', '1. Original Cost', '1. 取得原価')}
+                            </span>
+                            {rawPrice > 0 ? (
+                              <div className="mt-1">
+                                <span className="text-sm font-black text-white font-mono block truncate">
+                                  {formatPrice(convertedPrice, selectedCurrency)}
+                                </span>
+                                {isDual && (
+                                  <span className="text-[10px] text-emerald-300 block font-mono">
+                                    Gốc: {formatPrice(rawPrice, rawCurr)}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400 italic mt-1 block">{txt('Chưa có giá', 'No price set', '未設定')}</span>
+                            )}
+                          </div>
+
+                          {/* Card 2: Mức trích / tháng */}
+                          <div className="p-3 bg-white/10 hover:bg-white/15 transition-colors rounded-2xl border border-white/10 backdrop-blur-xs">
+                            <span className="text-[9.5px] font-bold text-blue-300 uppercase block tracking-wider">
+                              {txt('2. Trích mỗi tháng', '2. Monthly Rate', '2. 月次償却額')}
+                            </span>
+                            <div className="mt-1">
+                              <span className="text-sm font-black text-blue-200 font-mono block truncate">
+                                {rawPrice > 0 ? formatPrice(monthlyDepreciation, selectedCurrency) : '—'}
+                              </span>
+                              <span className="text-[10px] text-slate-300 block font-mono">
+                                {totalMonths > 0 ? `1/${totalMonths} ${txt('giá trị', 'value', '額')}` : '—'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Card 3: Lũy kế đã khấu hao */}
+                          <div className="p-3 bg-white/10 hover:bg-white/15 transition-colors rounded-2xl border border-white/10 backdrop-blur-xs">
+                            <span className="text-[9.5px] font-bold text-amber-300 uppercase block tracking-wider">
+                              {txt('3. Đã khấu hao', '3. Accumulated', '3. 累積償却額')}
+                            </span>
+                            <div className="mt-1">
+                              <span className="text-sm font-black text-amber-300 font-mono block truncate">
+                                {rawPrice > 0 ? formatPrice(accumulatedDepreciation, selectedCurrency) : '—'}
+                              </span>
+                              <span className="text-[10px] text-amber-200/80 block font-mono">
+                                {depPercent}% {txt('nguyên giá', 'of cost', '原価比')}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Card 4: Giá trị còn lại (Sổ sách) */}
+                          <div className="p-3 bg-emerald-500/20 hover:bg-emerald-500/25 transition-colors rounded-2xl border border-emerald-400/30 backdrop-blur-xs">
+                            <span className="text-[9.5px] font-bold text-emerald-300 uppercase block tracking-wider">
+                              {txt('4. Giá trị còn lại', '4. Net Book Value', '4. 残存簿価')}
+                            </span>
+                            <div className="mt-1">
+                              <span className="text-sm font-black text-emerald-200 font-mono block truncate">
+                                {rawPrice > 0 ? formatPrice(remainingValue, selectedCurrency) : '—'}
+                              </span>
+                              <span className="text-[10px] text-emerald-300/90 block font-mono">
+                                {Math.max(0, 100 - depPercent)}% {txt('còn lại', 'remaining', '残額')}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Card 5: Tỷ giá hạch toán */}
+                          <div className="col-span-2 sm:col-span-1 p-3 bg-white/10 hover:bg-white/15 transition-colors rounded-2xl border border-white/10 backdrop-blur-xs">
+                            <span className="text-[9.5px] font-bold text-slate-300 uppercase block tracking-wider">
+                              {txt('5. Tỷ giá / Tiền tệ', '5. FX Rate / Curr', '5. 為替・通貨')}
+                            </span>
+                            <div className="mt-1">
+                              <span className="text-xs font-bold text-slate-200 font-mono block truncate">
+                                1 {rawCurr} = {new Intl.NumberFormat(isJa ? 'ja-JP' : (isEn ? 'en-US' : 'vi-VN')).format(rate)}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block truncate">
+                                {txt('Tiền tệ xem:', 'Display:', '表示:')} {selectedCurrency}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actionable lifecycle guidance banner */}
+                        <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-2.5 text-xs">
+                          <div className="shrink-0 mt-0.5">
+                            {isFullyDepreciated ? (
+                              <span className="text-base">🔔</span>
+                            ) : depPercent >= 75 ? (
+                              <span className="text-base">⏳</span>
+                            ) : (
+                              <span className="text-base">💡</span>
+                            )}
+                          </div>
+                          <div className="space-y-0.5 flex-1">
+                            {rawPrice <= 0 ? (
+                              <p className="text-slate-300">
+                                {txt(
+                                  'Thiết bị chưa được nhập giá mua. Hãy nhấp nút "Sửa tài sản" để cập nhật giá và hóa đơn mua sắm để tự động kích hoạt số liệu khấu hao.',
+                                  'This asset does not have a purchase price. Click "Edit Asset" to enter purchase price and invoice details to enable depreciation metrics.',
+                                  'この機器には購入価格が設定されていません。「編集」をクリックして購入額を入力すると、減価償却データが有効になります。'
+                                )}
+                              </p>
+                            ) : isFullyDepreciated ? (
+                              <p className="text-amber-200 font-medium">
+                                {txt(
+                                  `Máy tính đã hoàn tất chu kỳ khấu hao kỹ thuật (${elapsedMonths}/${totalMonths} tháng). Thiết bị đã hết giá trị sổ sách kế toán. Khuyến nghị bộ phận IT lập kế hoạch kiểm định phần cứng để gia hạn sử dụng hoặc lập tờ trình thanh lý / thay thế máy mới.`,
+                                  `This device has reached the end of its depreciation lifecycle (${elapsedMonths}/${totalMonths} months). Net book value is zero. IT department is recommended to evaluate performance for extension or schedule replacement/disposal.`,
+                                  `この端末は償却期間(${elapsedMonths}/${totalMonths}ヶ月)を満了しました。残存簿価は0です。継続利用の点検または新規更新・除籍の計画を推奨します。`
+                                )}
+                              </p>
+                            ) : depPercent >= 75 ? (
+                              <p className="text-amber-100">
+                                {txt(
+                                  `Thiết bị đã trích khấu hao ${depPercent}%. Chỉ còn ${remainingMonths} tháng nữa là hết chu kỳ. Chuẩn bị kế hoạch dự trù ngân sách thiết bị thay thế cho nhân sự nếu cần.`,
+                                  `Asset is ${depPercent}% depreciated with ${remainingMonths} months remaining in its lifecycle. Prepare future replacement budget if needed.`,
+                                  `減価償却が${depPercent}%進行しており、残り${remainingMonths}ヶ月です。必要に応じて更新予算の準備をご検討ください。`
+                                )}
+                              </p>
+                            ) : (
+                              <p className="text-emerald-200">
+                                {txt(
+                                  `Thiết bị đang hoạt động ổn định trong vòng đời hữu ích (đã khấu hao ${depPercent}% sau ${elapsedMonths} tháng). Dự kiến hoàn thành khấu hao vào ngày ${formatDate(projectedEndDate)}.`,
+                                  `Asset is operating within its optimal useful life (${depPercent}% depreciated over ${elapsedMonths} months). Projected depreciation completion date: ${formatDate(projectedEndDate)}.`,
+                                  `資産は標準耐用期間内で正常稼働中です (${elapsedMonths}ヶ月で${depPercent}%償却)。償却完了予定日: ${formatDate(projectedEndDate)}。`
+                                )}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Thông số kỹ thuật & Cấu hình chi tiết (Đồng bộ nhãn với Form Thêm/Sửa) */}
                 {/* THÔNG SỐ KỸ THUẬT CHI TIẾT */}
@@ -1158,77 +1508,6 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                 </div>
 
 
-                {/* THANH CHỈ SỐ TÀI CHÍNH & KHẤU HAO DỒN TÍCH */}
-                {(() => {
-                  const rawPrice = Number(selectedDetailAsset.purchasePrice) || 0;
-                  const rawCurr = (selectedDetailAsset.purchaseCurrency || 'VND').toUpperCase();
-                  const rate = selectedDetailAsset.exchangeRate || exchangeRatesMap[rawCurr] || 1;
-                  const priceInVnd = rawPrice * rate;
-                  const convertedPrice = convertCurrency(rawPrice, rawCurr, selectedCurrency);
-
-                  if (rawPrice <= 0) return null;
-
-                  // Tính khấu hao đường thẳng (Giả định 36 tháng cho thiết bị CNTT)
-                  const purchaseDate = selectedDetailAsset.purchaseDate ? new Date(selectedDetailAsset.purchaseDate) : new Date();
-                  const now = new Date();
-                  const diffMonths = Math.max(0, (now.getFullYear() - purchaseDate.getFullYear()) * 12 + (now.getMonth() - purchaseDate.getMonth()));
-                  const totalMonths = 36;
-                  const depRatio = Math.min(1, Math.max(0, diffMonths / totalMonths));
-                  const accumulatedDepreciation = convertedPrice * depRatio;
-                  const remainingValue = Math.max(0, convertedPrice - accumulatedDepreciation);
-
-                  return (
-                    <div className="p-4 bg-gradient-to-r from-blue-50/80 via-indigo-50/70 to-purple-50/80 dark:from-slate-800/80 dark:to-slate-800/50 border border-blue-200/80 dark:border-blue-900/60 rounded-2xl space-y-3">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <span className="text-xs font-extrabold text-blue-950 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
-                          <DollarSign className="w-4 h-4 text-blue-600" />
-                          <span>{txt('Chỉ Số Tài Chính & Khấu Hao Dồn Tích', 'Financial Metrics & Accrued Depreciation', '財務指標と累積減価償却')}</span>
-                        </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-200/80 text-blue-950 dark:bg-blue-900 dark:text-blue-200">
-                          {txt('Khung khấu hao 36 tháng', '36 Months Depreciation', '36ヶ月減価償却')}
-                        </span>
-                      </div>
-
-                      {/* 5-Step Pipeline Card Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-                        <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-blue-100 dark:border-slate-800 shadow-2xs">
-                          <span className="text-[9.5px] font-bold text-slate-400 uppercase block">{txt('1. Nguyên giá gốc', '1. Original Cost', '1. 取得原価')}</span>
-                          <span className="text-xs font-black text-slate-900 dark:text-white font-mono block mt-0.5 truncate">
-                            {formatPrice(rawPrice, rawCurr)}
-                          </span>
-                        </div>
-
-                        <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-blue-100 dark:border-slate-800 shadow-2xs">
-                          <span className="text-[9.5px] font-bold text-slate-400 uppercase block">{txt('2. Tỷ giá hạch toán', '2. Accounting FX Rate', '2. 会計為替レート')}</span>
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono block mt-0.5 truncate">
-                            1 {rawCurr} = {new Intl.NumberFormat(isJa ? 'ja-JP' : (isEn ? 'en-US' : 'vi-VN')).format(rate)} {isVi ? 'đ' : 'VND'}
-                          </span>
-                        </div>
-
-                        <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-blue-100 dark:border-slate-800 shadow-2xs">
-                          <span className="text-[9.5px] font-bold text-blue-600 uppercase block">{txt('3. Giá quy đổi', '3. Converted Value', '3. 換算価額')} ({selectedCurrency})</span>
-                          <span className="text-xs font-black text-blue-900 dark:text-blue-300 font-mono block mt-0.5 truncate">
-                            {formatPrice(convertedPrice, selectedCurrency)}
-                          </span>
-                        </div>
-
-                        <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-amber-100 dark:border-slate-800 shadow-2xs">
-                          <span className="text-[9.5px] font-bold text-amber-600 uppercase block">{txt('4. Khấu hao', '4. Depreciation', '4. 減価償却')} ({Math.round(depRatio * 100)}%)</span>
-                          <span className="text-xs font-black text-amber-700 dark:text-amber-400 font-mono block mt-0.5 truncate">
-                            {formatPrice(accumulatedDepreciation, selectedCurrency)}
-                          </span>
-                        </div>
-
-                        <div className="col-span-2 sm:col-span-1 p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 shadow-2xs">
-                          <span className="text-[9.5px] font-bold text-emerald-700 uppercase block">{txt('5. Giá trị còn lại', '5. Remaining Value', '5. 残存簿価')}</span>
-                          <span className="text-xs font-black text-emerald-900 dark:text-emerald-300 font-mono block mt-0.5 truncate">
-                            {formatPrice(remainingValue, selectedCurrency)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
 
                 {/* Danh Sách Bản Quyền & License Đang Cài Đặt Trên Máy */}
                 {(() => {

@@ -2090,13 +2090,14 @@ export default function AssetsPage() {
       if (rawPrice > 0) {
         const catName = (asset.category?.name || '').toLowerCase();
         const usefulLifeMonths =
-          catName.includes('server') ||
+          Number((asset as any).specs?.depreciationMonths) ||
+          (catName.includes('server') ||
           catName.includes('máy chủ') ||
           catName.includes('switch') ||
           catName.includes('router') ||
           catName.includes('mạng')
             ? 60
-            : 36;
+            : 36);
 
         if (asset.purchaseDate) {
           const purchaseDate = new Date(asset.purchaseDate);
@@ -2762,18 +2763,44 @@ export default function AssetsPage() {
                             </div>
                           </td>
 
-                          {/* NGUYÊN GIÁ (DUAL-CURRENCY) */}
+                          {/* NGUYÊN GIÁ & KHẤU HAO (DUAL-CURRENCY & NET BOOK VALUE) */}
                           <td className="py-2 px-1.5">
                             {rawPrice > 0 ? (
                               <div className="space-y-0.5">
                                 <div className="font-black text-slate-900 dark:text-white text-[11px] font-mono leading-tight">
                                   {formatPrice(convertedPrice, selectedCurrency)}
                                 </div>
-                                {isDual && (
-                                  <div className="text-[8.5px] text-slate-400 font-mono leading-tight">
-                                    Gốc: {formatPrice(rawPrice, rawCurr)}
-                                  </div>
-                                )}
+                                {(() => {
+                                  const catName = (asset.category?.name || '').toLowerCase();
+                                  const usefulMonths = Number((asset as any).specs?.depreciationMonths) ||
+                                    (catName.includes('server') || catName.includes('máy chủ') || catName.includes('switch') || catName.includes('router') || catName.includes('mạng') ? 60 : 36);
+                                  let depRatio = 0;
+                                  const now = new Date();
+                                  if (asset.purchaseDate) {
+                                    const pDate = new Date(asset.purchaseDate);
+                                    const diff = Math.max(0, (now.getFullYear() - pDate.getFullYear()) * 12 + (now.getMonth() - pDate.getMonth()));
+                                    depRatio = Math.min(1, diff / usefulMonths);
+                                  } else {
+                                    depRatio = asset.condition === 'NEW' ? 0 : 0.25;
+                                  }
+                                  const remaining = Math.max(0, convertedPrice * (1 - depRatio));
+                                  const depPercent = Math.min(100, Math.round(depRatio * 100));
+                                  return (
+                                    <div className="text-[8.5px] leading-tight space-y-0.5" title={`${isEn ? 'Remaining Value' : 'Giá trị còn lại'}: ${formatPrice(remaining, selectedCurrency)} (${usefulMonths} ${isEn ? 'months' : 'tháng'} - ${depPercent}%)`}>
+                                      <div className="flex items-center gap-1">
+                                        <span className={`font-bold ${depPercent >= 100 ? 'text-rose-600 dark:text-rose-400' : depPercent >= 75 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                          CL: {formatPrice(remaining, selectedCurrency)}
+                                        </span>
+                                        <span className="text-[8px] text-slate-400 font-mono">({depPercent}%)</span>
+                                      </div>
+                                      {isDual && (
+                                        <div className="text-[8px] text-slate-400 font-mono">
+                                          Gốc: {formatPrice(rawPrice, rawCurr)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             ) : (
                               <span className="text-slate-400 italic text-[9.5px]">—</span>
