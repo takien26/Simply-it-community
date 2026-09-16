@@ -86,6 +86,29 @@ export function GeneralSettingsTab({
     lastRun: null as string | null,
   });
 
+  const [refreshInterval, setRefreshInterval] = useState<number>(60);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('app:auto-refresh-interval') || getSettingValue('app.auto_refresh_interval');
+      if (saved) {
+        const val = parseInt(saved, 10);
+        if (!isNaN(val)) setRefreshInterval(val);
+      }
+    } catch {}
+  }, [getSettingValue('app.auto_refresh_interval')]);
+
+  const handleRefreshIntervalChange = (sec: number) => {
+    setRefreshInterval(sec);
+    handleChange('app.auto_refresh_interval', String(sec));
+    try {
+      localStorage.setItem('app:auto-refresh-interval', String(sec));
+      window.dispatchEvent(
+        new CustomEvent('app:auto-refresh-config-changed', { detail: { intervalSec: sec } })
+      );
+    } catch {}
+  };
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (langDropdownRef.current && !langDropdownRef.current.contains(e.target as Node)) {
@@ -641,6 +664,32 @@ export function GeneralSettingsTab({
                   </>
                 );
               })()}
+            </div>
+          </div>
+
+          {/* BACKGROUND AUTO-REFRESH INTERVAL SETTING */}
+          <div className="md:col-span-2 pt-3 border-t border-slate-100">
+            <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+              <RotateCcw className="w-4 h-4 text-blue-600" />
+              <span>{isEn ? 'Background Auto-Refresh Interval' : 'Chu kỳ tự động làm mới dữ liệu ngầm'}</span>
+            </label>
+            <p className="text-[11px] text-slate-500 mb-2">
+              {isEn
+                ? 'Interval for automatically updating tickets, dashboard stats, and alerts in the background'
+                : 'Khoảng thời gian hệ thống tự động làm mới ticket, số liệu dashboard và cảnh báo ngầm'}
+            </p>
+            <div className="max-w-md">
+              <select
+                value={refreshInterval}
+                onChange={(e) => handleRefreshIntervalChange(Number(e.target.value))}
+                className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs cursor-pointer"
+              >
+                <option value={30}>{isEn ? 'Every 30 seconds (Fast)' : 'Mỗi 30 giây (Rất nhanh)'}</option>
+                <option value={60}>{isEn ? 'Every 60 seconds (Default - Recommended)' : 'Mỗi 60 giây (Mặc định - Khuyên dùng)'}</option>
+                <option value={120}>{isEn ? 'Every 2 minutes (Balanced)' : 'Mỗi 2 phút (Cân bằng)'}</option>
+                <option value={300}>{isEn ? 'Every 5 minutes (Save network)' : 'Mỗi 5 phút (Tiết kiệm băng thông)'}</option>
+                <option value={0}>{isEn ? 'Off (Manual refresh only)' : 'Tắt (Chỉ làm mới thủ công)'}</option>
+              </select>
             </div>
           </div>
         </div>
