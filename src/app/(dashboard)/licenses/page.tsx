@@ -2856,6 +2856,42 @@ export default function LicensesPage() {
                       }}
                       className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-purple-500"
                     />
+
+                    {/* Thêm nhanh thời hạn */}
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                      <span className="text-[10.5px] font-bold text-slate-400 dark:text-slate-500 mr-0.5">
+                        ⚡ Thêm nhanh:
+                      </span>
+                      {[
+                        { label: '1 tháng', months: 1 },
+                        { label: '3 tháng', months: 3 },
+                        { label: '6 tháng', months: 6 },
+                        { label: '1 năm', months: 12 },
+                        { label: '2 năm', months: 24 },
+                        { label: '3 năm', months: 36 },
+                      ].map((opt) => (
+                        <button
+                          key={opt.months}
+                          type="button"
+                          onClick={() => {
+                            const baseStr = paymentForm.periodStartDate || new Date().toISOString().split('T')[0];
+                            const d = new Date(baseStr);
+                            if (!isNaN(d.getTime())) {
+                              const origDay = d.getDate();
+                              d.setMonth(d.getMonth() + opt.months);
+                              if (d.getDate() < origDay) d.setDate(0);
+                              const end = d.toISOString().split('T')[0];
+                              const autoPeriod = `Kỳ từ ${new Date(baseStr).toLocaleDateString('vi-VN')} đến ${d.toLocaleDateString('vi-VN')}`;
+                              setPaymentForm({ ...paymentForm, periodEndDate: end, period: autoPeriod });
+                            }
+                          }}
+                          className="px-2 py-0.5 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded text-[11px] font-bold cursor-pointer transition-all active:scale-95"
+                          title={`Gia hạn +${opt.label}`}
+                        >
+                          +{opt.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

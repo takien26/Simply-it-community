@@ -547,15 +547,63 @@ export function LicenseFormModal({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          Hạn hết hạn (Để trống nếu Vô thời hạn):
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Hạn hết hạn (Để trống nếu Vô thời hạn):
+                          </label>
+                          {currentForm.expiryDate && (
+                            <button
+                              type="button"
+                              onClick={() => setCurrentForm({ ...currentForm, expiryDate: '' })}
+                              className="text-[11px] font-bold text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                              title="Xóa hạn (Bản quyền vô thời hạn)"
+                            >
+                              ✕ Đặt vô thời hạn
+                            </button>
+                          )}
+                        </div>
                         <input
                           type="date"
                           value={currentForm.expiryDate}
                           onChange={(e) => setCurrentForm({ ...currentForm, expiryDate: e.target.value })}
-                          className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none"
+                          className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500"
                         />
+
+                        {/* Thêm nhanh thời hạn bản quyền */}
+                        <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                          <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-0.5 mr-0.5">
+                            ⚡ Thêm nhanh:
+                          </span>
+                          {[
+                            { label: '1 tháng', months: 1 },
+                            { label: '3 tháng', months: 3 },
+                            { label: '6 tháng', months: 6 },
+                            { label: '1 năm', months: 12 },
+                            { label: '2 năm', months: 24 },
+                            { label: '3 năm', months: 36 },
+                          ].map((opt) => (
+                            <button
+                              key={opt.months}
+                              type="button"
+                              onClick={() => {
+                                const baseStr = currentForm.purchaseDate || new Date().toISOString().split('T')[0];
+                                const d = new Date(baseStr);
+                                if (!isNaN(d.getTime())) {
+                                  const origDay = d.getDate();
+                                  d.setMonth(d.getMonth() + opt.months);
+                                  if (d.getDate() < origDay) {
+                                    d.setDate(0);
+                                  }
+                                  setCurrentForm({ ...currentForm, expiryDate: d.toISOString().split('T')[0] });
+                                }
+                              }}
+                              className="px-2.5 py-1 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-lg text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-2xs"
+                              title={`Tự động tính ngày hết hạn: +${opt.label} tính từ ngày mua/kích hoạt`}
+                            >
+                              +{opt.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
