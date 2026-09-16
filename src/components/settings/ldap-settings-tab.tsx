@@ -260,18 +260,40 @@ export function LdapSettingsTab({
               </select>
             </div>
 
-            <div className="flex items-center gap-2 pt-6">
-              <input
-                type="checkbox"
-                id="autoCreateLdapUser"
-                checked={getSettingValue('ldap.auto_create_user') !== 'false'}
-                onChange={(e) => handleChange('ldap.auto_create_user', e.target.checked ? 'true' : 'false')}
-                className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-              />
-              <label htmlFor="autoCreateLdapUser" className="text-xs font-bold text-slate-700 cursor-pointer">
-                {isEn ? 'Automatically create system account upon first successful LDAP login' : 'Tự động tạo tài khoản trong hệ thống khi đăng nhập LDAP thành công lần đầu'}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isEn ? 'Automatic Background Sync Schedule' : 'Chu kỳ tự động đồng bộ ngầm (Background Sync)'}
               </label>
+              <select
+                value={getSettingValue('ldap.auto_sync_interval') || '60'}
+                onChange={(e) => handleChange('ldap.auto_sync_interval', e.target.value)}
+                className="w-full p-2.5 border border-emerald-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-emerald-50/40 text-emerald-900"
+              >
+                <option value="0">{isEn ? 'Off (Manual sync only via buttons)' : 'Tắt (Chỉ đồng bộ thủ công khi bấm nút)'}</option>
+                <option value="30">{isEn ? 'Every 30 minutes' : 'Mỗi 30 phút'}</option>
+                <option value="60">{isEn ? 'Every 1 hour (Recommended)' : 'Mỗi 1 giờ (Mặc định - Khuyên dùng)'}</option>
+                <option value="120">{isEn ? 'Every 2 hours' : 'Mỗi 2 giờ'}</option>
+                <option value="360">{isEn ? 'Every 6 hours' : 'Mỗi 6 giờ'}</option>
+                <option value="720">{isEn ? 'Every 12 hours' : 'Mỗi 12 giờ'}</option>
+                <option value="1440">{isEn ? 'Every 24 hours (Daily)' : 'Mỗi 24 giờ (1 lần/ngày)'}</option>
+              </select>
+              <p className="text-[10px] text-slate-400 mt-1">
+                {isEn ? 'Server automatically synchronizes directory, adds new employees and deactivates resigned staff' : 'Hệ thống tự động chạy ngầm: nạp nhân viên mới, cập nhật phòng ban và khóa tài khoản nghỉ việc'}
+              </p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <input
+              type="checkbox"
+              id="autoCreateLdapUser"
+              checked={getSettingValue('ldap.auto_create_user') !== 'false'}
+              onChange={(e) => handleChange('ldap.auto_create_user', e.target.checked ? 'true' : 'false')}
+              className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+            />
+            <label htmlFor="autoCreateLdapUser" className="text-xs font-bold text-slate-700 cursor-pointer">
+              {isEn ? 'Automatically create system account upon first successful LDAP login (JIT)' : 'Tự động tạo tài khoản trong hệ thống khi đăng nhập LDAP thành công lần đầu (JIT Provisioning)'}
+            </label>
           </div>
         </div>
 

@@ -228,6 +228,32 @@ async function initServer() {
   // Initial check 75s after startup, then check every 12 hours
   setTimeout(triggerMaintenanceCron, 75000);
   setInterval(triggerMaintenanceCron, 12 * 60 * 60 * 1000);
+
+  // 7. Automated Directory Sync Engine (LDAP / Active Directory & SSO - Checks every 10 minutes)
+  function triggerDirectorySyncCron() {
+    try {
+      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/directory-sync`, (res) => {
+        let body = '';
+        res.on('data', (chunk) => { body += chunk; });
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            try {
+              const data = JSON.parse(body);
+              if (data.executed) {
+                console.log(`🏢 [Directory Sync Engine] ${data.message}`);
+              }
+            } catch {}
+          }
+        });
+      });
+      req.on('error', () => {});
+      req.end();
+    } catch (e) {}
+  }
+
+  // Initial check 90s after startup, then check every 10 minutes
+  setTimeout(triggerDirectorySyncCron, 90000);
+  setInterval(triggerDirectorySyncCron, 10 * 60 * 1000);
 }
 
 initServer().catch((err) => {
