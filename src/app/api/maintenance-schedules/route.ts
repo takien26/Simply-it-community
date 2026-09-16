@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { calculateNextRunDate } from '@/lib/maintenance-cron';
+import {
+  calculateNextRunDate,
+  parseScheduleConfig,
+  encodeScheduleConfig,
+  ScheduleConfig,
+} from '@/lib/maintenance-cron';
 
 // GET /api/maintenance-schedules
 export async function GET(request: NextRequest) {
@@ -11,13 +16,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const schedules = await prisma.maintenanceSchedule.findMany({
+    const rawSchedules = await prisma.maintenanceSchedule.findMany({
       include: {
         asset: { select: { id: true, assetTag: true, name: true } },
-        category: { select: { id: true, name: true } },
-        assignTo: { select: { id: true, fullName: true, email: true } },
+        category: { select: { id: true, name: true, icon: true } },
+        assignTo: { select: { id: true, fullName: true, email: true, department: true } },
       },
       orderBy: { nextRunAt: 'asc' },
+    });
+
+    const schedules = rawSchedules.map((s) => {
+      const { cleanDesc, config } = parseScheduleConfig(s.description);
+      return {
+        ...s,
+        cleanDescription: cleanDesc,
+        scheduleConfig: config,
+      };
     });
 
     return NextResponse.json({ success: true, schedules });
@@ -46,18 +60,22 @@ export async function POST(request: NextRequest) {
       ticketPriority,
       assignToId,
       autoCreateTicket,
+      scheduleConfig,
     } = body;
 
     if (!name || !frequency || !maintenanceType) {
       return NextResponse.json({ error: 'Thiếu thông tin bắt buộc' }, { status: 400 });
     }
 
-    const startDate = nextRunAt ? new Date(nextRunAt) : calculateNextRunDate(new Date(), frequency);
+    const finalDescription = encodeScheduleConfig(description || '', scheduleConfig);
+    const startDate = nextRunAt
+      ? new Date(nextRunAt)
+      : calculateNextRunDate(new Date(), frequency, scheduleConfig);
 
     const schedule = await prisma.maintenanceSchedule.create({
       data: {
         name,
-        description: description || null,
+        description: finalDescription || null,
         frequency,
         maintenanceType,
         assetId: assetId || null,
@@ -69,12 +87,23 @@ export async function POST(request: NextRequest) {
       },
       include: {
         asset: { select: { id: true, assetTag: true, name: true } },
-        category: { select: { id: true, name: true } },
-        assignTo: { select: { id: true, fullName: true } },
+        category: { select: { id: true, name: true, icon: true } },
+        assignTo: { select: { id: true, fullName: true, email: true } },
       },
     });
 
-    return NextResponse.json({ success: true, schedule }, { status: 201 });
+    const { cleanDesc, config } = parseScheduleConfig(schedule.description);
+    return NextResponse.json(
+      {
+        success: true,
+        schedule: {
+          ...schedule,
+          cleanDescription: cleanDesc,
+          scheduleConfig: config,
+        },
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

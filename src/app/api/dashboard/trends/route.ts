@@ -65,21 +65,37 @@ export async function GET() {
       .slice(0, 5);
 
     // 3. SLA Compliance
-    const totalClosedTickets = await prisma.ticket.count({
+    const closedTickets = await prisma.ticket.findMany({
       where: {
         status: { in: ['RESOLVED', 'CLOSED'] },
       },
-    });
-
-    const onTimeTickets = await prisma.ticket.count({
-      where: {
-        status: { in: ['RESOLVED', 'CLOSED'] },
-        resolvedAt: { not: null },
-        slaDeadline: { not: null },
+      select: {
+        priority: true,
+        createdAt: true,
+        updatedAt: true,
+        resolvedAt: true,
+        slaDeadline: true,
       },
     });
 
-    const slaComplianceRate = totalClosedTickets > 0 ? Math.round((onTimeTickets / totalClosedTickets) * 100) : 95;
+    let onTimeTickets = 0;
+    closedTickets.forEach((t) => {
+      const slaHours =
+        t.priority === 'URGENT' ? 4 :
+        t.priority === 'HIGH' ? 24 :
+        t.priority === 'MEDIUM' ? 48 : 72;
+      const deadline = t.slaDeadline
+        ? new Date(t.slaDeadline)
+        : new Date(new Date(t.createdAt).getTime() + slaHours * 60 * 60 * 1000);
+      const effectiveDone = t.resolvedAt
+        ? new Date(t.resolvedAt)
+        : new Date(t.updatedAt || t.createdAt);
+      if (effectiveDone <= deadline) {
+        onTimeTickets++;
+      }
+    });
+
+    const slaComplianceRate = closedTickets.length > 0 ? Math.round((onTimeTickets / closedTickets.length) * 100) : 0;
 
     // 4. IT Cost Summary (Licenses + Services)
     const [licenses, services] = await Promise.all([

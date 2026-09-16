@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import {
+  parseScheduleConfig,
+  encodeScheduleConfig,
+  calculateNextRunDate,
+} from '@/lib/maintenance-cron';
 
 export async function PUT(
   request: NextRequest,
@@ -26,26 +31,59 @@ export async function PUT(
       assignToId,
       isActive,
       autoCreateTicket,
+      scheduleConfig,
     } = body;
+
+    // If description or scheduleConfig are provided, merge them properly
+    let finalDescription: string | undefined = undefined;
+    if (description !== undefined || scheduleConfig !== undefined) {
+      const existing = await prisma.maintenanceSchedule.findUnique({
+        where: { id },
+        select: { description: true, frequency: true },
+      });
+      const existingParsed = parseScheduleConfig(existing?.description);
+      const cleanDesc = description !== undefined ? description : existingParsed.cleanDesc;
+      const finalConfig = scheduleConfig !== undefined ? scheduleConfig : existingParsed.config;
+      finalDescription = encodeScheduleConfig(cleanDesc, finalConfig);
+    }
+
+    let calculatedNextRunAt: Date | undefined = undefined;
+    if (nextRunAt) {
+      calculatedNextRunAt = new Date(nextRunAt);
+    }
 
     const updated = await prisma.maintenanceSchedule.update({
       where: { id },
       data: {
         ...(name && { name }),
-        ...(description !== undefined && { description }),
+        ...(finalDescription !== undefined && { description: finalDescription }),
         ...(frequency && { frequency }),
         ...(maintenanceType && { maintenanceType }),
         ...(assetId !== undefined && { assetId: assetId || null }),
         ...(categoryId !== undefined && { categoryId: categoryId || null }),
-        ...(nextRunAt && { nextRunAt: new Date(nextRunAt) }),
+        ...(calculatedNextRunAt && { nextRunAt: calculatedNextRunAt }),
         ...(ticketPriority && { ticketPriority }),
         ...(assignToId !== undefined && { assignToId: assignToId || null }),
         ...(isActive !== undefined && { isActive: Boolean(isActive) }),
         ...(autoCreateTicket !== undefined && { autoCreateTicket: Boolean(autoCreateTicket) }),
       },
+      include: {
+        asset: { select: { id: true, assetTag: true, name: true } },
+        category: { select: { id: true, name: true, icon: true } },
+        assignTo: { select: { id: true, fullName: true, email: true, department: true } },
+      },
     });
 
-    return NextResponse.json({ success: true, schedule: updated });
+    const { cleanDesc, config } = parseScheduleConfig(updated.description);
+
+    return NextResponse.json({
+      success: true,
+      schedule: {
+        ...updated,
+        cleanDescription: cleanDesc,
+        scheduleConfig: config,
+      },
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

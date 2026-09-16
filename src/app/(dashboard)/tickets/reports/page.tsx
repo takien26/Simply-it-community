@@ -271,7 +271,7 @@ export default function TicketReportsPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'executive' | 'company' | 'team' | 'incidents' | 'tickets'>('executive');
 
   // Filter States
-  const [timeRange, setTimeRange] = useState<string>('this_month');
+  const [timeRange, setTimeRange] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [selectedCompany, setSelectedCompany] = useState<string>('ALL');
@@ -632,12 +632,13 @@ export default function TicketReportsPage() {
             <Calendar className="w-3.5 h-3.5" /> {isJa ? '集計期間:' : (isEn ? 'Time range:' : 'Thời gian:')}
           </span>
           {[
-            { id: 'today', labelVi: 'Hôm nay', labelEn: 'Today', labelJa: '今日' },
-            { id: 'this_week', labelVi: 'Tuần này', labelEn: 'This Week', labelJa: '今週' },
+            { id: 'all', labelVi: 'Tất cả', labelEn: 'All Time', labelJa: '全期間' },
+            { id: 'last_30_days', labelVi: '30 ngày qua', labelEn: 'Last 30 Days', labelJa: '直近30日間' },
             { id: 'this_month', labelVi: 'Tháng này', labelEn: 'This Month', labelJa: '今月' },
             { id: 'this_quarter', labelVi: 'Quý này', labelEn: 'This Quarter', labelJa: '今四半期' },
             { id: 'this_year', labelVi: 'Năm nay', labelEn: 'This Year', labelJa: '今年' },
-            { id: 'all', labelVi: 'Tất cả', labelEn: 'All Time', labelJa: '全期間' },
+            { id: 'this_week', labelVi: 'Tuần này', labelEn: 'This Week', labelJa: '今週' },
+            { id: 'today', labelVi: 'Hôm nay', labelEn: 'Today', labelJa: '今日' },
             { id: 'custom', labelVi: 'Tùy chỉnh', labelEn: 'Custom', labelJa: 'カスタム' },
           ].map((item) => (
             <button
@@ -858,11 +859,15 @@ export default function TicketReportsPage() {
               <TrendingUp className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="text-xl font-black text-purple-600 dark:text-purple-400 font-mono">
-            {data?.summary.slaComplianceRate || 100}%
+          <div className={`text-xl font-black font-mono ${
+            (data?.summary?.slaComplianceRate ?? 0) >= 95 ? 'text-purple-600 dark:text-purple-400' :
+            (data?.summary?.slaComplianceRate ?? 0) >= 80 ? 'text-amber-600 dark:text-amber-400' :
+            'text-rose-600 dark:text-rose-400'
+          }`}>
+            {data?.summary?.slaComplianceRate !== undefined ? `${data.summary.slaComplianceRate}%` : '—'}
           </div>
           <div className="text-[9px] text-rose-500 font-bold">
-            {data?.summary.breachedSlaCount || 0} {isJa ? '件 期限超過' : (isEn ? 'breached' : 'trễ hạn')}
+            {data?.summary?.breachedSlaCount || 0} {isJa ? '件 期限超過' : (isEn ? 'breached' : 'trễ hạn')}
           </div>
         </div>
 
@@ -875,7 +880,7 @@ export default function TicketReportsPage() {
             </div>
           </div>
           <div className="text-xl font-black text-cyan-600 dark:text-cyan-400 font-mono">
-            {data?.summary.avgResolutionHours || 0}h
+            {data?.summary?.avgResolutionHours || 0}h
           </div>
           <div className="text-[9px] text-slate-400 font-medium">{isJa ? '時間/件' : (isEn ? 'Hours/ticket' : 'Giờ/ticket')}</div>
         </div>
@@ -889,9 +894,9 @@ export default function TicketReportsPage() {
             </div>
           </div>
           <div className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono">
-            {data?.summary.totalActualSpentHours || 0}h
+            {data?.summary?.totalActualSpentHours || 0}h
           </div>
-          <div className="text-[9px] text-slate-400 font-medium">{data?.summary.totalActualSpentMinutes || 0} {isJa ? '分 記録' : (isEn ? 'mins logged' : 'phút ghi nhận')}</div>
+          <div className="text-[9px] text-slate-400 font-medium">{data?.summary?.totalActualSpentMinutes || 0} {isJa ? '分 記録' : (isEn ? 'mins logged' : 'phút ghi nhận')}</div>
         </div>
 
         {/* Tile 7: Đánh Giá CSAT */}
@@ -903,9 +908,15 @@ export default function TicketReportsPage() {
             </div>
           </div>
           <div className="text-xl font-black text-yellow-600 dark:text-yellow-400 font-mono">
-            {data?.summary.avgCsatRating || 5.0}★
+            {data?.summary?.totalRatedTickets && data.summary.totalRatedTickets > 0
+              ? `${data.summary.avgCsatRating}★`
+              : '—'}
           </div>
-          <div className="text-[9px] text-slate-400 font-medium">{data?.summary.csatSatisfactionRate || 100}% {isJa ? '満足' : (isEn ? 'satisfied' : 'hài lòng')}</div>
+          <div className="text-[9px] text-slate-400 font-medium">
+            {data?.summary?.totalRatedTickets && data.summary.totalRatedTickets > 0
+              ? `${data.summary.csatSatisfactionRate}% ${isJa ? '満足' : (isEn ? 'satisfied' : 'hài lòng')}`
+              : (isJa ? '評価なし' : (isEn ? 'No ratings' : 'Chưa có đánh giá'))}
+          </div>
         </div>
 
         {/* Tile 8: AI Auto-Routed */}
@@ -1003,8 +1014,12 @@ export default function TicketReportsPage() {
                     {isJa ? '目標 ≥95%' : (isEn ? 'Target ≥95%' : 'Mục tiêu ≥95%')}
                   </span>
                 </div>
-                <div className="text-3xl font-black font-mono text-emerald-400">
-                  {data?.summary.slaComplianceRate || 100}%
+                <div className={`text-3xl font-black font-mono ${
+                  (data?.summary?.slaComplianceRate ?? 0) >= 95 ? 'text-emerald-400' :
+                  (data?.summary?.slaComplianceRate ?? 0) >= 80 ? 'text-amber-400' :
+                  'text-rose-400'
+                }`}>
+                  {data?.summary?.slaComplianceRate !== undefined ? `${data.summary.slaComplianceRate}%` : '—'}
                 </div>
                 <div className="text-[11px] text-slate-200 font-medium">
                   {data?.summary.onTimeSlaCount || 0} {isJa ? '件 期限内' : (isEn ? 'on-time' : 'vé đúng hạn')} • <span className="text-rose-400 font-bold">{data?.summary.breachedSlaCount || 0} {isJa ? '件 期限超過' : (isEn ? 'breached' : 'vé trễ hạn')}</span>
@@ -1058,10 +1073,18 @@ export default function TicketReportsPage() {
                   </span>
                 </div>
                 <div className="text-3xl font-black font-mono text-yellow-300">
-                  {data?.summary.avgCsatRating || 5.0} <span className="text-base text-slate-200 font-normal">/ 5.0 ⭐</span>
+                  {data?.summary.totalRatedTickets && data.summary.totalRatedTickets > 0 ? (
+                    <>
+                      {data.summary.avgCsatRating} <span className="text-base text-slate-200 font-normal">/ 5.0 ⭐</span>
+                    </>
+                  ) : (
+                    <span className="text-xl text-slate-300 font-bold">{isEn ? 'No ratings' : 'Chưa có đánh giá'}</span>
+                  )}
                 </div>
                 <div className="text-[11px] text-slate-200 font-medium">
-                  {data?.summary.csatSatisfactionRate || 100}% {isJa ? '満足' : (isEn ? 'satisfied' : 'hài lòng')} ({data?.summary.totalRatedTickets || 0} {isJa ? '件の投票' : (isEn ? 'ratings' : 'lượt bầu')})
+                  {data?.summary.totalRatedTickets && data.summary.totalRatedTickets > 0
+                    ? `${data.summary.csatSatisfactionRate}% ${isJa ? '満足' : (isEn ? 'satisfied' : 'hài lòng')} (${data.summary.totalRatedTickets} ${isJa ? '件の投票' : (isEn ? 'ratings' : 'lượt bầu')})`
+                    : (isJa ? '投票なし (0件)' : (isEn ? '0 survey responses' : '0 lượt bầu chọn'))}
                 </div>
               </div>
             </div>

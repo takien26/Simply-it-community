@@ -36,6 +36,9 @@ export async function GET(req: NextRequest) {
       startOfWeek.setDate(now.getDate() - day + 1);
       startOfWeek.setHours(0, 0, 0, 0);
       dateFilter = { gte: startOfWeek };
+    } else if (timeRange === 'last_30_days') {
+      const past30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      dateFilter = { gte: past30 };
     } else if (timeRange === 'this_month') {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
       dateFilter = { gte: startOfMonth };
@@ -247,30 +250,46 @@ export async function GET(req: NextRequest) {
         priorityMap[t.priority]++;
       }
 
-      // SLA Compliance
+      // 1. SLA Deadline with accurate priority fallback
+      const slaHours =
+        t.priority === 'URGENT' ? 4 :
+        t.priority === 'HIGH' ? 24 :
+        t.priority === 'MEDIUM' ? 48 : 72;
+      const deadline = t.slaDeadline
+        ? new Date(t.slaDeadline)
+        : new Date(new Date(t.createdAt).getTime() + slaHours * 60 * 60 * 1000);
+
+      // 2. Determine if completed and effective done time
+      const isDone = t.status === 'RESOLVED' || t.status === 'CLOSED';
+      const effectiveDoneTime = t.resolvedAt
+        ? new Date(t.resolvedAt)
+        : isDone
+        ? new Date(t.updatedAt || t.createdAt)
+        : null;
+
+      // 3. SLA Compliance
       let isBreached = false;
-      if (t.slaDeadline) {
-        const deadline = new Date(t.slaDeadline);
-        if (t.resolvedAt) {
-          const resolvedTime = new Date(t.resolvedAt);
-          if (resolvedTime > deadline) {
-            isBreached = true;
-            breachedSlaCount++;
-          } else {
-            onTimeSlaCount++;
-          }
-        } else if (now > deadline && t.status !== 'CLOSED' && t.status !== 'RESOLVED') {
+      if (isDone && effectiveDoneTime) {
+        if (effectiveDoneTime.getTime() > deadline.getTime()) {
           isBreached = true;
           breachedSlaCount++;
+        } else {
+          onTimeSlaCount++;
+        }
+      } else if (!isDone) {
+        if (now.getTime() > deadline.getTime()) {
+          isBreached = true;
+          breachedSlaCount++;
+        } else {
+          onTimeSlaCount++;
         }
       }
 
-      // Resolution Time
+      // 4. Resolution Time (MTTR)
       let resolutionMinutes = 0;
-      if (t.resolvedAt) {
+      if (isDone && effectiveDoneTime) {
         const created = new Date(t.createdAt).getTime();
-        const resolved = new Date(t.resolvedAt).getTime();
-        resolutionMinutes = Math.max(1, Math.round((resolved - created) / (1000 * 60)));
+        resolutionMinutes = Math.max(1, Math.round((effectiveDoneTime.getTime() - created) / (1000 * 60)));
         totalResolutionMinutes += resolutionMinutes;
         resolvedTicketsCount++;
       }
@@ -364,10 +383,10 @@ export async function GET(req: NextRequest) {
         };
       }
       teamMap[tId].total++;
-      if (t.status === 'RESOLVED' || t.status === 'CLOSED') teamMap[tId].resolved++;
+      if (isDone) teamMap[tId].resolved++;
       if (isBreached) teamMap[tId].breachedSla++;
-      else if (t.resolvedAt) teamMap[tId].onTimeSla++;
-      if (t.resolvedAt) teamMap[tId].totalMinutes += resolutionMinutes;
+      else teamMap[tId].onTimeSla++;
+      if (isDone && resolutionMinutes > 0) teamMap[tId].totalMinutes += resolutionMinutes;
 
       // Technician Map
       if (t.assignedTo) {
@@ -394,10 +413,10 @@ export async function GET(req: NextRequest) {
           technicianMap[techId].sumRating += t.rating;
           technicianMap[techId].ratedCount++;
         }
-        if (t.status === 'RESOLVED' || t.status === 'CLOSED') technicianMap[techId].resolved++;
+        if (isDone) technicianMap[techId].resolved++;
         if (isBreached) technicianMap[techId].breachedSla++;
-        else if (t.resolvedAt) technicianMap[techId].onTimeSla++;
-        if (t.resolvedAt) technicianMap[techId].totalMinutes += resolutionMinutes;
+        else technicianMap[techId].onTimeSla++;
+        if (isDone && resolutionMinutes > 0) technicianMap[techId].totalMinutes += resolutionMinutes;
 
         // Sub-technician in team
         if (!teamMap[tId].technicians[techId]) {
@@ -411,8 +430,8 @@ export async function GET(req: NextRequest) {
           };
         }
         teamMap[tId].technicians[techId].total++;
-        if (t.status === 'RESOLVED' || t.status === 'CLOSED') teamMap[tId].technicians[techId].resolved++;
-        if (t.resolvedAt && !isBreached) teamMap[tId].technicians[techId].onTimeSla++;
+        if (isDone) teamMap[tId].technicians[techId].resolved++;
+        if (!isBreached) teamMap[tId].technicians[techId].onTimeSla++;
       }
 
       // Trend by Date
@@ -421,7 +440,7 @@ export async function GET(req: NextRequest) {
         trendDateMap[dateKey] = { date: dateKey, created: 0, resolved: 0, breached: 0 };
       }
       trendDateMap[dateKey].created++;
-      if (t.status === 'RESOLVED' || t.status === 'CLOSED') trendDateMap[dateKey].resolved++;
+      if (isDone) trendDateMap[dateKey].resolved++;
       if (isBreached) trendDateMap[dateKey].breached++;
     });
 
@@ -432,7 +451,7 @@ export async function GET(req: NextRequest) {
     const totalEvaluatedSla = onTimeSlaCount + breachedSlaCount;
     const slaComplianceRate = totalEvaluatedSla > 0
       ? Math.round((onTimeSlaCount / totalEvaluatedSla) * 100)
-      : 100;
+      : 0;
 
     const topFaultyAssets = Object.values(faultyAssetMap)
       .sort((a, b) => b.ticketCount - a.ticketCount)
@@ -440,8 +459,8 @@ export async function GET(req: NextRequest) {
 
     const chronicAssetsCount = Object.values(faultyAssetMap).filter((a) => a.ticketCount >= 2).length;
     const totalActualSpentHours = Number((totalActualSpentMinutes / 60).toFixed(1));
-    const avgCsatRating = totalRatedTickets > 0 ? Number((sumCsatScore / totalRatedTickets).toFixed(1)) : 5.0;
-    const csatSatisfactionRate = totalRatedTickets > 0 ? Math.round((satisfiedCount / totalRatedTickets) * 100) : 100;
+    const avgCsatRating = totalRatedTickets > 0 ? Number((sumCsatScore / totalRatedTickets).toFixed(1)) : 0;
+    const csatSatisfactionRate = totalRatedTickets > 0 ? Math.round((satisfiedCount / totalRatedTickets) * 100) : 0;
 
     const categoryStats = Object.keys(categoryMap).map((k) => ({
       category: k,
@@ -499,6 +518,31 @@ export async function GET(req: NextRequest) {
     });
     const uniqueCompanies = rawCompanies.map((c) => c.companyName).filter(Boolean) as string[];
 
+    const enrichedTickets = tickets.map((t) => {
+      const slaHours =
+        t.priority === 'URGENT' ? 4 :
+        t.priority === 'HIGH' ? 24 :
+        t.priority === 'MEDIUM' ? 48 : 72;
+      const deadline = t.slaDeadline
+        ? new Date(t.slaDeadline)
+        : new Date(new Date(t.createdAt).getTime() + slaHours * 60 * 60 * 1000);
+      const isDone = t.status === 'RESOLVED' || t.status === 'CLOSED';
+      const effectiveDone = t.resolvedAt
+        ? new Date(t.resolvedAt)
+        : isDone
+        ? new Date(t.updatedAt || t.createdAt)
+        : null;
+      const isBreached = isDone
+        ? (effectiveDone ? effectiveDone.getTime() > deadline.getTime() : false)
+        : now.getTime() > deadline.getTime();
+      return {
+        ...t,
+        slaDeadline: deadline.toISOString(),
+        resolvedAt: effectiveDone ? effectiveDone.toISOString() : null,
+        isBreached,
+      };
+    });
+
     return NextResponse.json({
       success: true,
       data: {
@@ -540,7 +584,7 @@ export async function GET(req: NextRequest) {
           technicians: allUsers.filter((u) => u.role?.name?.includes('Admin') || u.role?.name?.includes('Manager') || u.role?.name?.includes('Staff') || u.department?.includes('IT')),
           allUsers,
         },
-        tickets,
+        tickets: enrichedTickets,
       },
     });
   } catch (error: any) {

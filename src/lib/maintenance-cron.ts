@@ -2,8 +2,102 @@ import { prisma } from './db';
 import { MaintenanceFrequency, TicketPriority, TicketCategory } from '@prisma/client';
 import { sendEmail } from './email';
 
-export function calculateNextRunDate(fromDate: Date, frequency: MaintenanceFrequency): Date {
+export interface ScheduleConfig {
+  repeatMode?: 'EVERY_DAY' | 'WEEKDAYS' | 'SELECTED_DAYS' | 'MONTHLY_DAY';
+  selectedDays?: number[]; // 0 = Chủ nhật, 1 = Thứ 2, 2 = Thứ 3, 3 = Thứ 4, 4 = Thứ 5, 5 = Thứ 6, 6 = Thứ 7
+  monthlyDay?: number; // 1 - 31
+  runTime?: string; // "08:00"
+}
+
+export function parseScheduleConfig(description?: string | null): {
+  cleanDesc: string;
+  config: ScheduleConfig | null;
+} {
+  if (!description) return { cleanDesc: '', config: null };
+  const match = description.match(/<!--SCHEDULE_CONFIG:(.+?)-->/s);
+  if (match) {
+    try {
+      const config: ScheduleConfig = JSON.parse(match[1]);
+      const cleanDesc = description.replace(/<!--SCHEDULE_CONFIG:.+?-->/s, '').trim();
+      return { cleanDesc, config };
+    } catch {
+      return { cleanDesc: description, config: null };
+    }
+  }
+  return { cleanDesc: description, config: null };
+}
+
+export function encodeScheduleConfig(cleanDesc: string, config?: ScheduleConfig | null): string {
+  if (!config) return cleanDesc;
+  const tag = `<!--SCHEDULE_CONFIG:${JSON.stringify(config)}-->`;
+  return cleanDesc ? `${tag}\n${cleanDesc}` : tag;
+}
+
+export function calculateNextRunDate(
+  fromDate: Date,
+  frequency: MaintenanceFrequency,
+  config?: ScheduleConfig | null
+): Date {
   const next = new Date(fromDate);
+
+  // Parse target run time (HH:mm)
+  let hour = 8;
+  let minute = 0;
+  if (config?.runTime && config.runTime.includes(':')) {
+    const [h, m] = config.runTime.split(':').map((v) => parseInt(v, 10));
+    if (!isNaN(h) && !isNaN(m)) {
+      hour = h;
+      minute = m;
+    }
+  }
+
+  const isCandidateLater = (cand: Date): boolean => cand.getTime() > fromDate.getTime();
+
+  // 1. WEEKLY or DAILY with specific selectedDays (Veeam style)
+  const hasSpecificDays =
+    (frequency === 'WEEKLY' && config?.selectedDays && config.selectedDays.length > 0) ||
+    (frequency === 'DAILY' && config?.repeatMode === 'SELECTED_DAYS' && config?.selectedDays && config.selectedDays.length > 0);
+
+  if (hasSpecificDays && config?.selectedDays) {
+    for (let i = 0; i <= 14; i++) {
+      const candidate = new Date(fromDate);
+      candidate.setDate(candidate.getDate() + i);
+      candidate.setHours(hour, minute, 0, 0);
+      if (isCandidateLater(candidate) && config.selectedDays.includes(candidate.getDay())) {
+        return candidate;
+      }
+    }
+  }
+
+  // 2. DAILY with WEEKDAYS (Monday - Friday)
+  if (frequency === 'DAILY' && config?.repeatMode === 'WEEKDAYS') {
+    for (let i = 0; i <= 7; i++) {
+      const candidate = new Date(fromDate);
+      candidate.setDate(candidate.getDate() + i);
+      candidate.setHours(hour, minute, 0, 0);
+      const day = candidate.getDay();
+      if (isCandidateLater(candidate) && day >= 1 && day <= 5) {
+        return candidate;
+      }
+    }
+  }
+
+  // 3. MONTHLY with specific day of month
+  if (frequency === 'MONTHLY' && config?.monthlyDay) {
+    const candidateThisMonth = new Date(fromDate);
+    candidateThisMonth.setDate(Math.min(config.monthlyDay, 28));
+    candidateThisMonth.setHours(hour, minute, 0, 0);
+    if (isCandidateLater(candidateThisMonth)) {
+      return candidateThisMonth;
+    }
+    const candidateNextMonth = new Date(fromDate);
+    candidateNextMonth.setMonth(candidateNextMonth.getMonth() + 1);
+    candidateNextMonth.setDate(Math.min(config.monthlyDay, 28));
+    candidateNextMonth.setHours(hour, minute, 0, 0);
+    return candidateNextMonth;
+  }
+
+  // Standard fallback
   switch (frequency) {
     case 'DAILY':
       next.setDate(next.getDate() + 1);
@@ -24,6 +118,7 @@ export function calculateNextRunDate(fromDate: Date, frequency: MaintenanceFrequ
       next.setFullYear(next.getFullYear() + 1);
       break;
   }
+  next.setHours(hour, minute, 0, 0);
   return next;
 }
 
@@ -126,8 +221,9 @@ ${schedule.description ? 'Mô tả công việc:\n' + schedule.description : ''}
           }
         }
 
-        // Advance nextRunAt
-        const nextDate = calculateNextRunDate(schedule.nextRunAt, schedule.frequency);
+        // Advance nextRunAt using smart Veeam-style schedule config if present
+        const { config } = parseScheduleConfig(schedule.description);
+        const nextDate = calculateNextRunDate(schedule.nextRunAt, schedule.frequency, config);
         await prisma.maintenanceSchedule.update({
           where: { id: schedule.id },
           data: {
