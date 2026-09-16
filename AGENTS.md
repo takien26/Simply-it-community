@@ -23,3 +23,13 @@ Trước khi thực hiện bất kỳ thao tác nào, hãy tuân thủ các ch�
    - Tận dụng tối đa Standard Library và các helper đã có sẵn trong `src/lib/`.
 4. **Ngôn ngữ phản hồi**:
    - Luôn giao tiếp và giải thích với người dùng bằng Tiếng Việt rõ ràng, súc tích.
+5. **Quy ước Cổng Mạng Kép (Dual-Port HTTP 3000 & HTTPS 3443)**:
+   - Hệ thống luôn chạy đồng thời 2 cổng:
+     - **HTTP (Cổng 3000)**: Cho truy cập web nội bộ, API, và dashboard thông thường.
+     - **HTTPS (Cổng 3443)**: Chạy chứng chỉ SSL (tự ký `selfsigned`) bắt buộc để trình duyệt trên Mobile/Tablet cấp quyền Camera quét mã vạch và QR Code (`/scan`, `/assets/audit`).
+   - Mọi cấu hình liên quan đến server (`server.js`), Docker (`Dockerfile`, `docker-compose.yml`), script tự động cập nhật (`update.sh`, `update.bat`), script thu thập (`public/scripts/*.ps1`) và tài liệu hướng dẫn PHẢI LUÔN đồng bộ chuẩn 2 cổng này (`3000` và `3443`). Tuyệt đối không xóa hay thay đổi sang cổng khác mà không có yêu cầu.
+6. **Chuẩn Đóng Gói Docker & Chống Lỗi File Script (CRLF vs LF)**:
+   - Trong `Dockerfile` stage `runner`: Bắt buộc phải copy `server.js`, `next.config.ts`, `tsconfig.json` và mở cả 2 cổng `EXPOSE 3000` & `EXPOSE 3443`.
+   - Các file script Linux (`.sh`) phải luôn giữ định dạng kết thúc dòng `LF`. `Dockerfile` luôn có `sed -i 's/\r$//'` để loại bỏ ký tự `\r` của Windows tránh lỗi `bad interpreter`.
+   - Trong `docker-compose.yml`: Phải ánh xạ cả 2 cổng `"3000:3000"` và `"3443:3443"`, đồng thời truyền biến `PORT: 3000` và `HTTPS_PORT: 3443`.
+   - Luôn hướng dẫn người dùng mở tường lửa UFW trên Linux: `sudo ufw allow 3000/tcp && sudo ufw allow 3443/tcp`.

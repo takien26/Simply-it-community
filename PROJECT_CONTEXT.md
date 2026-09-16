@@ -52,6 +52,16 @@ Hệ thống vừa hoàn thành nâng cấp lớn từ v1.0.0 lên **v1.0.1** v�
   - Gán chuẩn danh mục `Laptop` / `PC / Máy tính để bàn` / `Máy chủ`.
   - **Cập nhật cả thiết bị cũ**: Khi máy quét lại, nếu danh mục trước đó là chung chung (`Thiết bị văn phòng`, `Khác`, trống), hệ thống tự động đổi sang đúng danh mục thực tế (`Laptop`).
 
+### F. Kiến Trúc Cổng Mạng Kép (Dual-Port HTTP 3000 & HTTPS 3443) & Chuẩn Docker
+- **2 Cổng cố định bắt buộc duy trì**:
+  - **HTTP (3000)**: Dành cho truy cập nội bộ, dashboard web, API, và script agent.
+  - **HTTPS (3443)**: Tích hợp SSL tự ký (`selfsigned`), bắt buộc cho camera điện thoại/tablet quét mã vạch và QR kiểm kê (`/scan`, `/assets/audit`).
+- **Đóng gói Docker chuẩn Production**:
+  - `Dockerfile`: Phải luôn copy `server.js`, `next.config.ts`, `tsconfig.json` trong runner stage; `EXPOSE 3000` và `EXPOSE 3443`.
+  - `docker-compose.yml`: Phải luôn ánh xạ `"3000:3000"` và `"3443:3443"`, đặt biến môi trường `PORT=3000` và `HTTPS_PORT=3443`.
+  - Chống lỗi định dạng Windows `CRLF`: Bắt buộc giữ định dạng dòng `LF` cho các file shell script (`.sh`), có cấu hình `.gitattributes` và lệnh `sed -i 's/\r$//'` trong `Dockerfile`.
+  - Hướng dẫn tường lửa Ubuntu UFW: `sudo ufw allow 3000/tcp && sudo ufw allow 3443/tcp`.
+
 ---
 
 ## 📂 3. Cấu Trúc Thư Mục & Các File Trọng Tâm
@@ -103,3 +113,5 @@ AI sẽ ngay lập tức:
 2. Nắm rõ quy tắc kiểm tra `npm run build` trước khi hoàn tất.
 3. Luôn đồng bộ mã nguồn sang cả 2 repository (`Simply-it-community` và `Simply IT`).
 4. Tuân theo nguyên tắc phát triển tối giản, hiệu quả (Lazy Senior Dev / Ponytail rule).
+5. Luôn bảo toàn kiến trúc 2 cổng mạng: HTTP (cổng 3000) và HTTPS (cổng 3443), đảm bảo Dockerfile luôn đóng gói đủ server.js và chống lỗi format dòng CRLF.
+
