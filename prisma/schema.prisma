@@ -550,15 +550,19 @@ model License {
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  vendor      Vendor?             @relation(fields: [vendorId], references: [id])
-  assignments LicenseAssignment[]
-  documents   Document[]
+  vendor          Vendor?             @relation(fields: [vendorId], references: [id])
+  assignments     LicenseAssignment[]
+  documents       Document[]
+  parentLicenseId String?             @map("parent_license_id") @db.Uuid
+  parentLicense   License?            @relation("LicenseBatches", fields: [parentLicenseId], references: [id], onDelete: Cascade)
+  batches         License[]           @relation("LicenseBatches")
 
   @@index([status])
   @@index([expiryDate])
   @@index([vendorId])
   @@index([companyName])
   @@index([createdAt])
+  @@index([parentLicenseId])
   @@map("licenses")
 }
 

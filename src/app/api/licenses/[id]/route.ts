@@ -20,6 +20,20 @@ export async function GET(
       where: { id },
       include: {
         vendor: true,
+        parentLicense: { select: { id: true, name: true } },
+        batches: {
+          include: {
+            vendor: true,
+            assignments: {
+              where: { revokedAt: null },
+              include: {
+                user: { select: { id: true, fullName: true, email: true, department: true } },
+                asset: { select: { id: true, assetTag: true, name: true } },
+              },
+            },
+          },
+          orderBy: { purchaseDate: 'asc' },
+        },
         documents: {
           select: {
             id: true,
@@ -120,12 +134,27 @@ export async function PUT(
         contractNumber: body.contractNumber !== undefined ? (body.contractNumber || null) : existing.contractNumber,
         invoiceNumber: body.invoiceNumber !== undefined ? (body.invoiceNumber || null) : existing.invoiceNumber,
         contractUrl: body.contractUrl !== undefined ? (body.contractUrl || null) : existing.contractUrl,
+        parentLicenseId: body.parentLicenseId !== undefined ? (body.parentLicenseId || null) : (existing as any).parentLicenseId,
         status: body.status ?? existing.status,
         specs: body.specs !== undefined ? body.specs : (existing as any).specs,
         notes: body.notes !== undefined ? (body.notes || null) : existing.notes,
       },
       include: {
         vendor: true,
+        parentLicense: { select: { id: true, name: true } },
+        batches: {
+          include: {
+            vendor: true,
+            assignments: {
+              where: { revokedAt: null },
+              include: {
+                user: { select: { id: true, fullName: true, email: true, department: true } },
+                asset: { select: { id: true, assetTag: true, name: true } },
+              },
+            },
+          },
+          orderBy: { purchaseDate: 'asc' },
+        },
         documents: {
           select: {
             id: true,

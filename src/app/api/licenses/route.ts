@@ -42,6 +42,34 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           vendor: { select: { id: true, name: true } },
+          parentLicense: { select: { id: true, name: true } },
+          batches: {
+            include: {
+              vendor: { select: { id: true, name: true } },
+              assignments: {
+                where: { revokedAt: null },
+                include: {
+                  user: { select: { id: true, fullName: true, email: true, department: true } },
+                  asset: { select: { id: true, assetTag: true, name: true } },
+                },
+              },
+              documents: {
+                select: {
+                  id: true,
+                  title: true,
+                  type: true,
+                  fileUrl: true,
+                  fileName: true,
+                  fileSize: true,
+                  fileType: true,
+                  attachments: true,
+                  invoiceNumber: true,
+                  contractNumber: true,
+                },
+              },
+            },
+            orderBy: { purchaseDate: 'asc' },
+          },
           assignments: {
             where: { revokedAt: null },
             include: {
@@ -114,6 +142,7 @@ export async function POST(request: NextRequest) {
       contractNumber,
       invoiceNumber,
       contractUrl,
+      parentLicenseId,
       pairs,
       assignedUserIds,
       assignedAssetIds,
@@ -161,6 +190,7 @@ export async function POST(request: NextRequest) {
         contractNumber: contractNumber || null,
         invoiceNumber: invoiceNumber || null,
         contractUrl: contractUrl || null,
+        parentLicenseId: parentLicenseId || null,
         status: 'ACTIVE',
         specs: body.specs || null,
         notes: notes || null,

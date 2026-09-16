@@ -52,10 +52,14 @@ export function LicenseAssignModal({
   const [assignNotes, setAssignNotes] = useState('');
   const [assignUserSearch, setAssignUserSearch] = useState('');
   const [assignAssetSearch, setAssignAssetSearch] = useState('');
+  const [selectedBatchId, setSelectedBatchId] = useState('');
   const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
   const [revokingAssignmentId, setRevokingAssignmentId] = useState<string | null>(null);
 
   if (!isOpen || !activeLicense) return null;
+
+  const batches = activeLicense.batches || [];
+  const hasBatches = batches.length > 1;
 
   const assignments = activeLicense.assignments?.filter((a: any) => !a.revokedAt) || [];
   const used = assignments.length;
@@ -83,6 +87,7 @@ export function LicenseAssignModal({
           userId: assignUserId || null,
           assetId: assignAssetId || null,
           notes: assignNotes,
+          batchId: selectedBatchId || undefined,
         }),
       });
 
@@ -180,6 +185,39 @@ export function LicenseAssignModal({
                     )}
 
                     <form id="assign-seat-form" onSubmit={handleAssignSeat} className="space-y-3">
+                      {/* Lựa chọn Đợt mua cấp phát (nếu có nhiều đợt) */}
+                      {hasBatches && (
+                        <div className="space-y-1.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-2xl">
+                          <label className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <span>📦 Chọn Đợt Cấp Phát:</span>
+                            </span>
+                            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal">
+                              ({batches.length} đợt mua khả dụng)
+                            </span>
+                          </label>
+                          <select
+                            value={selectedBatchId}
+                            onChange={(e) => setSelectedBatchId(e.target.value)}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs cursor-pointer"
+                          >
+                            <option value="">✨ Tự động (FIFO) - Ưu tiên đợt sắp hết hạn trước</option>
+                            {batches.map((b: any, idx: number) => {
+                              const bActive = b.assignments?.filter((a: any) => !a.revokedAt)?.length || 0;
+                              const bTotal = b.totalSeats || 1;
+                              const bRem = Math.max(0, bTotal - bActive);
+                              const expStr = b.expiryDate ? formatDate(b.expiryDate) : 'Vĩnh viễn';
+                              const label = b.contractNumber || b.invoiceNumber || `HĐ-${idx + 1}`;
+                              return (
+                                <option key={b.id} value={b.id}>
+                                  Đợt {idx + 1}: {label} · Trống {bRem}/{bTotal} seats · Hạn: {expStr}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+                      )}
+
                       {/* Hướng dẫn gán linh hoạt */}
                       <div className="p-2 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl text-[11px] text-purple-900 dark:text-purple-200">
                         <span>💡 Cho phép gán cho <b>Nhân viên</b>, gán vào <b>Máy tính</b>, hoặc gán cả hai.</span>

@@ -4,6 +4,7 @@ import {
   LicenseAssignModal,
   LicenseFormModal,
 } from '@/components/licenses';
+import { LicenseGroup, groupLicenses } from '@/components/licenses/types';
 
 
 import { QuickLink } from '@/components/common/QuickLink';
@@ -44,7 +45,9 @@ import {
   Layers,
   Calendar,
   DollarSign,
-  Crown,
+  PackagePlus,
+  Package,
+  ChevronRight,
   Zap,
   MoreVertical,
   ExternalLink,
@@ -220,6 +223,17 @@ export default function LicensesPage() {
 
   // Active Dropdown Action Menu
   const [activeDropdownLicenseId, setActiveDropdownLicenseId] = useState<string | null>(null);
+
+  // Multi-batch Expandable Groups
+  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(new Set());
+  const toggleGroupExpand = (groupId: string) => {
+    setExpandedGroupIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  };
 
   // Modals & Sheets
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -525,11 +539,16 @@ export default function LicensesPage() {
     setCurrentPage(1);
   }, [search, selectedType, selectedStatus, selectedCompany, selectedVendor, selectedExpiryFilter]);
 
-  const totalFilteredLicenses = filteredLicenses.length;
+  // Multi-batch Intelligent Grouping
+  const groupedLicenses = useMemo(() => {
+    return groupLicenses(filteredLicenses, convertCurrency, selectedCurrency);
+  }, [filteredLicenses, convertCurrency, selectedCurrency]);
+
+  const totalFilteredLicenses = groupedLicenses.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredLicenses / pageSize));
-  const paginatedLicenses = useMemo(() => {
-    return filteredLicenses.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  }, [filteredLicenses, currentPage, pageSize]);
+  const paginatedGroups = useMemo(() => {
+    return groupedLicenses.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [groupedLicenses, currentPage, pageSize]);
 
   // ==================== ACTION HANDLERS ====================
   const handleCopyKey = (key: string, id: string) => {
@@ -596,6 +615,31 @@ export default function LicensesPage() {
     });
     setModalActiveTab('general');
     setIsEditModalOpen(true);
+  };
+
+  const handleOpenAddBatch = (group: LicenseGroup) => {
+    const master = group.masterLicense;
+    const nextBatchNum = group.batches.length + 1;
+    setFormData({
+      name: group.name,
+      licenseKey: '',
+      licenseType: group.licenseType || 'SUBSCRIPTION',
+      totalSeats: 10,
+      purchaseDate: new Date().toISOString().split('T')[0],
+      expiryDate: master.expiryDate ? new Date(master.expiryDate).toISOString().split('T')[0] : '',
+      purchasePrice: '',
+      purchaseCurrency: master.purchaseCurrency || selectedCurrency,
+      exchangeRate: exchangeRatesMap[master.purchaseCurrency || selectedCurrency] || 1,
+      companyName: group.companyName || companies[0] || '',
+      vendorId: master.vendorId || '',
+      contractNumber: '',
+      invoiceNumber: '',
+      contractUrl: '',
+      notes: `Mua bổ sung Đợt ${nextBatchNum} cho gói ${group.name}`,
+      pairs: [],
+      parentLicenseId: group.id,
+    });
+    setIsAddModalOpen(true);
   };
 
   const handleOpenAssign = (lic: any) => {
@@ -1434,222 +1478,499 @@ export default function LicensesPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedLicenses.map((lic) => {
-                  const used = lic.usedSeats || lic.assignments?.filter((a: any) => !a.revokedAt)?.length || 0;
-                  const total = lic.totalSeats || 1;
-                  const seatPercent = Math.min(100, Math.round((used / total) * 100));
-
-                  const rawPrice = Number(lic.purchasePrice) || 0;
-                  const origCurr = lic.purchaseCurrency || 'VND';
-                  const convertedDisplayPrice = convertCurrency(rawPrice, origCurr, selectedCurrency);
-
-                  const isExpired = lic.expiryDate && new Date(lic.expiryDate) < new Date();
+                paginatedGroups.map((group) => {
+                  const masterLic = group.masterLicense;
+                  const isExpanded = expandedGroupIds.has(group.id);
+                  const hasBatches = group.hasMultipleBatches;
+                  const total = group.totalSeats;
+                  const used = group.usedSeats;
+                  const remaining = group.remainingSeats;
+                  const seatPercent = group.seatPercent;
+                  const isExpired = group.earliestExpiry && new Date(group.earliestExpiry) < new Date();
                   const isExpiring =
-                    lic.expiryDate &&
+                    group.earliestExpiry &&
                     !isExpired &&
-                    new Date(lic.expiryDate) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+                    new Date(group.earliestExpiry) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
                   return (
-                    <tr
-                      key={lic.id}
-                      onClick={() => {
-                        setSelectedDetailLicense(lic);
-                        setIsDetailModalOpen(true);
-                      }}
-                      className="hover:bg-purple-50/40 dark:hover:bg-purple-950/30 transition-all group cursor-pointer"
-                      title="Nhấp vào dòng để xem nhanh chi tiết bản quyền"
-                    >
-                      {/* Name & Key (Sticky Left - 2 lines) */}
-                      <td className="py-2 px-2.5 sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-purple-50/90 dark:group-hover:bg-slate-800/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors min-w-[155px]">
-                        <div className="flex items-start gap-1.5">
-                          <span className="font-extrabold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors text-[11px] leading-snug line-clamp-2">
-                            {lic.name}
+                    <React.Fragment key={group.id}>
+                      {/* Master Row */}
+                      <tr
+                        onClick={() => {
+                          if (hasBatches) {
+                            toggleGroupExpand(group.id);
+                          } else {
+                            setSelectedDetailLicense(masterLic);
+                            setIsDetailModalOpen(true);
+                          }
+                        }}
+                        className={`transition-all group cursor-pointer ${
+                          hasBatches
+                            ? isExpanded
+                              ? 'bg-purple-50/60 dark:bg-purple-950/40 font-semibold'
+                              : 'hover:bg-purple-50/40 dark:hover:bg-purple-950/30'
+                            : 'hover:bg-purple-50/40 dark:hover:bg-purple-950/30'
+                        }`}
+                        title={hasBatches ? (isExpanded ? 'Bấm để thu gọn các đợt mua' : 'Bấm để mở rộng chi tiết các đợt mua') : 'Bấm để xem chi tiết bản quyền'}
+                      >
+                        {/* Cột 1: Tên & Đợt mua (Sticky Left) */}
+                        <td className="py-2.5 px-2.5 sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-purple-50/90 dark:group-hover:bg-slate-800/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors min-w-[170px]">
+                          <div className="flex items-start gap-2">
+                            {hasBatches ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleGroupExpand(group.id);
+                                }}
+                                className="mt-0.5 p-1 rounded-lg bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/60 dark:hover:bg-purple-800 text-purple-700 dark:text-purple-300 transition-transform cursor-pointer shrink-0"
+                                title={isExpanded ? 'Thu gọn đợt mua' : 'Mở rộng đợt mua'}
+                              >
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                              </button>
+                            ) : (
+                              <div className="w-5 h-5 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center shrink-0 mt-0.5">
+                                <Key className="w-3 h-3" />
+                              </div>
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-extrabold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors text-[11.5px] leading-snug">
+                                  {group.name}
+                                </span>
+                                {hasBatches && (
+                                  <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-extrabold text-[10px] border border-purple-200 dark:border-purple-800 shadow-2xs inline-flex items-center gap-1">
+                                    <Package className="w-2.8 h-2.8 text-purple-600" />
+                                    <span>{group.batches.length} đợt mua</span>
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Subtext: License Key or Batch Summary */}
+                              {hasBatches ? (
+                                <div className="mt-1 flex items-center gap-2 text-[10px]">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleGroupExpand(group.id);
+                                    }}
+                                    className="font-bold text-purple-600 dark:text-purple-400 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+                                  >
+                                    <span>{isExpanded ? '▲ Thu gọn danh sách đợt' : `▼ Bấm xem chi tiết ${group.batches.length} đợt mua`}</span>
+                                  </button>
+                                </div>
+                              ) : masterLic.licenseKey ? (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <code className="px-1 py-0.2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono text-[9.5px] rounded border border-slate-200 dark:border-slate-700 truncate max-w-[120px]">
+                                    {masterLic.licenseKey}
+                                  </code>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopyKey(masterLic.licenseKey, masterLic.id);
+                                    }}
+                                    className="text-slate-400 hover:text-purple-600 p-0.5 rounded cursor-pointer shrink-0"
+                                    title="Sao chép key"
+                                  >
+                                    {copiedKeyId === masterLic.id ? (
+                                      <Check className="w-2.8 h-2.8 text-emerald-600 stroke-[3]" />
+                                    ) : (
+                                      <Copy className="w-2.8 h-2.8" />
+                                    )}
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[9px] text-slate-400 italic block mt-0.5">1 đợt mua duy nhất</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Cột 2: Loại License & Công ty */}
+                        <td className="py-2.5 px-2 min-w-[110px]">
+                          <span className="px-1.5 py-0.2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[9px] rounded border border-slate-200 dark:border-slate-700 inline-block leading-tight">
+                            {group.licenseType}
                           </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedDetailLicense(lic);
-                              setIsDetailModalOpen(true);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded cursor-pointer shrink-0 mt-0.5"
-                            title="Xem nhanh chi tiết"
-                          >
-                            <Eye className="w-3 h-3" />
-                          </button>
-                        </div>
-                        {lic.licenseKey ? (
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <code className="px-1 py-0.2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono text-[9.5px] rounded border border-slate-200 dark:border-slate-700 truncate max-w-[120px]">
-                              {lic.licenseKey}
-                            </code>
+                          <span className="text-[9.5px] text-slate-500 block mt-0.5 leading-tight line-clamp-2 font-medium" title={group.companyName || 'Toàn tập đoàn'}>
+                            🏢 {group.companyName || 'Toàn tập đoàn'}
+                          </span>
+                        </td>
+
+                        {/* Cột 3: Phân bố Seats (Tổng hợp toàn bộ các đợt) */}
+                        <td className="py-2.5 px-2 min-w-[115px]">
+                          <div className="flex items-center justify-between text-[10px] font-bold mb-0.5">
+                            <span className={used >= total ? 'text-rose-600' : 'text-slate-800 dark:text-slate-200'}>
+                              {used}/{total} <span className="text-[9px] font-normal text-slate-400">seats</span>
+                            </span>
+                            <span className="text-[9px] font-mono text-slate-400">{seatPercent}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                seatPercent >= 100
+                                  ? 'bg-rose-500'
+                                  : seatPercent >= 80
+                                  ? 'bg-amber-500'
+                                  : 'bg-emerald-500'
+                              }`}
+                              style={{ width: `${seatPercent}%` }}
+                            />
+                          </div>
+                          <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium block mt-0.5">
+                            Còn trống: <b>{remaining}</b> seats
+                          </span>
+                        </td>
+
+                        {/* Cột 4: Tổng chi phí đầu tư */}
+                        <td className="py-2.5 px-2 min-w-[100px]">
+                          {group.totalCostInSelectedCurrency > 0 ? (
+                            <div className="space-y-0.5">
+                              <span className="font-extrabold text-slate-900 dark:text-white font-mono text-[11px] block leading-tight">
+                                {formatPrice(group.totalCostInSelectedCurrency, selectedCurrency)}
+                              </span>
+                              {hasBatches && (
+                                <span className="text-[8.5px] text-slate-400 block font-mono leading-tight">
+                                  ({group.batches.length} đợt cộng dồn)
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic text-[9.5px]">Miễn phí</span>
+                          )}
+                        </td>
+
+                        {/* Cột 5: Hạn dùng gần nhất */}
+                        <td className="py-2.5 px-2 min-w-[105px]">
+                          {group.earliestExpiry ? (
+                            <div className="space-y-0.5">
+                              <span
+                                className={`px-1.5 py-0.2 rounded font-bold text-[9px] border inline-flex items-center gap-0.5 ${
+                                  isExpired
+                                    ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                    : isExpiring
+                                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                }`}
+                              >
+                                <Calendar className="w-2.5 h-2.5" />
+                                <span>{formatDate(group.earliestExpiry)}</span>
+                              </span>
+                              <span className="text-[8.5px] text-slate-400 block font-mono">
+                                {hasBatches ? 'Đợt gần nhất: ' : ''}{getRemainingTimeText(group.earliestExpiry).text}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded font-bold text-[9px]">
+                              ♾️ Vô hạn
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Cột 6: Nhà cung cấp */}
+                        <td className="py-2.5 px-2 min-w-[120px] max-w-[200px] text-slate-700 dark:text-slate-300 font-medium text-[10px] leading-snug" onClick={(e) => e.stopPropagation()}>
+                          {group.vendor ? (
+                            <QuickLink
+                              type="vendor"
+                              id={group.vendor.id || group.vendor.name}
+                              label={group.vendor.name}
+                              icon="🏢"
+                              showIcon={false}
+                              multiline
+                              maxLines={3}
+                              className="font-medium text-slate-700 dark:text-slate-300 text-[10px] leading-snug line-clamp-3 break-words"
+                            />
+                          ) : (
+                            <span className="text-slate-400 italic font-normal">—</span>
+                          )}
+                        </td>
+
+                        {/* Cột 7: Thao tác Master */}
+                        <td
+                          className="py-2.5 px-1.5 text-right sticky right-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-purple-50/90 dark:group-hover:bg-slate-800/90 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors min-w-[120px]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-end gap-1 shrink-0">
+                            {/* Nút: Mua thêm đợt mới */}
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCopyKey(lic.licenseKey, lic.id);
-                              }}
-                              className="text-slate-400 hover:text-purple-600 p-0.5 rounded cursor-pointer shrink-0"
-                              title="Sao chép key"
+                              onClick={() => handleOpenAddBatch(group)}
+                              title="Mua bổ sung đợt mới cho gói này"
+                              className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100/70 dark:hover:bg-emerald-950 rounded-md transition-colors cursor-pointer"
                             >
-                              {copiedKeyId === lic.id ? (
-                                <Check className="w-2.8 h-2.8 text-emerald-600 stroke-[3]" />
-                              ) : (
-                                <Copy className="w-2.8 h-2.8" />
-                              )}
+                              <PackagePlus className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Cấp phát */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAssign({ ...masterLic, batches: group.batches })}
+                              title="Cấp phát & phân bổ seats cho nhân sự"
+                              className="p-1 text-purple-600 dark:text-purple-400 hover:bg-purple-100/70 dark:hover:bg-purple-950 rounded-md transition-colors cursor-pointer"
+                            >
+                              <Users className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Xem chi tiết */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedDetailLicense({ ...masterLic, batches: group.batches });
+                                setIsDetailModalOpen(true);
+                              }}
+                              title="Xem chi tiết tổng quan gói bản quyền"
+                              className="p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100/70 dark:hover:bg-indigo-950 rounded-md transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Sửa (chỉ hiện khi 1 đợt) */}
+                            {!hasBatches && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(masterLic)}
+                                title="Chỉnh sửa bản quyền"
+                                className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100/70 dark:hover:bg-blue-950 rounded-md transition-colors cursor-pointer"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {/* Xóa */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLicense(group.id, group.name)}
+                              title="Xóa gói bản quyền này"
+                              className="p-1 text-rose-500 dark:text-rose-400 hover:bg-rose-100/70 dark:hover:bg-rose-950 rounded-md transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                        ) : (
-                          <span className="text-[9px] text-slate-400 italic block mt-0.5">Không có Key</span>
-                        )}
-                      </td>
+                        </td>
+                      </tr>
 
-                      {/* Type & Company (2 lines) */}
-                      <td className="py-2 px-2 min-w-[110px]">
-                        <span className="px-1.5 py-0.2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[9px] rounded border border-slate-200 dark:border-slate-700 inline-block leading-tight">
-                          {lic.licenseType || 'PERPETUAL'}
-                        </span>
-                        <span className="text-[9.5px] text-slate-500 block mt-0.5 leading-tight line-clamp-2 font-medium" title={lic.companyName || 'Toàn tập đoàn'}>
-                          🏢 {lic.companyName || 'Toàn tập đoàn'}
-                        </span>
-                      </td>
+                      {/* Expanded Sub-table: Chi tiết từng đợt mua */}
+                      {hasBatches && isExpanded && (
+                        <tr className="bg-slate-50/70 dark:bg-slate-900/80 border-y border-purple-200 dark:border-purple-800/80 animate-in fade-in duration-200">
+                          <td colSpan={7} className="p-3.5 pl-6 sm:pl-10">
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-purple-200 dark:border-purple-800/80 shadow-xs overflow-hidden">
+                              {/* Sub-table Header */}
+                              <div className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/40 dark:to-indigo-950/40 border-b border-purple-100 dark:border-purple-800">
+                                <div className="flex items-center gap-2">
+                                  <Package className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                  <h4 className="font-extrabold text-xs text-purple-950 dark:text-purple-200 uppercase tracking-wider">
+                                    Chi Tiết Các Đợt Mua Hàng ({group.batches.length} đợt)
+                                  </h4>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenAddBatch(group)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>+ Mua thêm đợt mới</span>
+                                </button>
+                              </div>
 
-                      {/* Seats Progress Bar */}
-                      <td className="py-2 px-2 min-w-[100px]">
-                        <div className="flex items-center justify-between text-[10px] font-bold mb-0.5">
-                          <span className={used >= total ? 'text-rose-600' : 'text-slate-800 dark:text-slate-200'}>
-                            {used}/{total}
-                          </span>
-                          <span className="text-[9px] font-mono text-slate-400">{seatPercent}%</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              seatPercent >= 100
-                                ? 'bg-rose-500'
-                                : seatPercent >= 80
-                                ? 'bg-amber-500'
-                                : 'bg-emerald-500'
-                            }`}
-                            style={{ width: `${seatPercent}%` }}
-                          />
-                        </div>
-                      </td>
+                              {/* Bảng con chi tiết các đợt */}
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs border-collapse">
+                                  <thead className="bg-slate-100/80 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 uppercase">
+                                    <tr>
+                                      <th className="py-2 px-3">ĐỢT MUA & HỢP ĐỒNG</th>
+                                      <th className="py-2 px-2.5">LICENSE KEY</th>
+                                      <th className="py-2 px-2.5">THỜI HẠN SỬ DỤNG</th>
+                                      <th className="py-2 px-2.5">SEATS CỦA ĐỢT</th>
+                                      <th className="py-2 px-2.5">CHI PHÍ ĐỢT</th>
+                                      <th className="py-2 px-2.5">NHÀ CUNG CẤP</th>
+                                      <th className="py-2 px-3 text-right">THAO TÁC</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                                    {group.batches.map((batch: any, bIdx: number) => {
+                                      const bAssignments = batch.assignments?.filter((a: any) => !a.revokedAt) || [];
+                                      const bUsed = batch.usedSeats !== undefined && batch.usedSeats !== null ? batch.usedSeats : bAssignments.length;
+                                      const bTotal = batch.totalSeats || 1;
+                                      const bRemaining = Math.max(0, bTotal - bUsed);
+                                      const bPercent = Math.min(100, Math.round((bUsed / bTotal) * 100));
 
-                      {/* Dual-Currency Pricing */}
-                      <td className="py-2 px-2 min-w-[95px]">
-                        {rawPrice > 0 ? (
-                          <div className="space-y-0.5">
-                            <span className="font-extrabold text-slate-900 dark:text-white font-mono text-[11px] block leading-tight">
-                              {formatPrice(convertedDisplayPrice, selectedCurrency)}
-                            </span>
-                            {origCurr !== selectedCurrency && (
-                              <span className="text-[8.5px] text-slate-400 block font-mono leading-tight">
-                                Gốc: {formatPrice(rawPrice, origCurr)}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic text-[9.5px]">Miễn phí</span>
-                        )}
-                      </td>
+                                      const bPrice = Number(batch.purchasePrice) || 0;
+                                      const bCur = batch.purchaseCurrency || 'VND';
+                                      const bPriceConverted = convertCurrency(bPrice, bCur, selectedCurrency);
 
-                      {/* Expiry Date */}
-                      <td className="py-2 px-2 min-w-[90px]">
-                        {lic.expiryDate ? (
-                          <div className="space-y-0.5">
-                            <span
-                              className={`px-1.5 py-0.2 rounded font-bold text-[9px] border inline-flex items-center gap-0.5 ${
-                                isExpired
-                                  ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
-                                  : isExpiring
-                                  ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                                  : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                              }`}
-                            >
-                              <Calendar className="w-2.5 h-2.5" />
-                              <span>{formatDate(lic.expiryDate)}</span>
-                            </span>
-                            <span className="text-[8.5px] text-slate-400 block font-mono">
-                              {getRemainingTimeText(lic.expiryDate).text}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded font-bold text-[9px]">
-                            ♾️ Vô hạn
-                          </span>
-                        )}
-                      </td>
+                                      const bIsExpired = batch.expiryDate && new Date(batch.expiryDate) < new Date();
+                                      const bIsExpiring =
+                                        batch.expiryDate &&
+                                        !bIsExpired &&
+                                        new Date(batch.expiryDate) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-                      {/* Vendor (2-3 lines) */}
-                      <td className="py-2 px-2 min-w-[120px] max-w-[200px] text-slate-700 dark:text-slate-300 font-medium text-[10px] leading-snug" onClick={(e) => e.stopPropagation()}>
-                        {lic.vendor ? (
-                          <QuickLink
-                            type="vendor"
-                            id={lic.vendor.id || lic.vendor.name}
-                            label={lic.vendor.name}
-                            icon="🏢"
-                            showIcon={false}
-                            multiline
-                            maxLines={3}
-                            className="font-medium text-slate-700 dark:text-slate-300 text-[10px] leading-snug line-clamp-3 break-words"
-                          />
-                        ) : (
-                          <span className="text-slate-400 italic font-normal">—</span>
-                        )}
-                      </td>
+                                      return (
+                                        <tr key={batch.id} className="hover:bg-purple-50/30 dark:hover:bg-purple-950/20 transition-colors">
+                                          {/* Tên đợt & Hợp đồng */}
+                                          <td className="py-2.5 px-3">
+                                            <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                              Đợt {bIdx + 1}
+                                            </div>
+                                            <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
+                                              {batch.contractNumber && <span>HĐ: {batch.contractNumber}</span>}
+                                              {batch.invoiceNumber && <span>• HĐĐ: {batch.invoiceNumber}</span>}
+                                              {!batch.contractNumber && !batch.invoiceNumber && <span className="italic">Chưa có số HĐ</span>}
+                                            </div>
+                                          </td>
 
-                      {/* Actions (Sticky Right - All Icons Direct) */}
-                      <td
-                        className="py-2 px-1.5 text-right sticky right-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-purple-50/90 dark:group-hover:bg-slate-800/90 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors min-w-[110px]"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="flex items-center justify-end gap-1 shrink-0">
-                          {/* 1. Sửa */}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(lic)}
-                            title="Chỉnh sửa hồ sơ bản quyền"
-                            className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100/70 dark:hover:bg-blue-950 rounded-md transition-colors cursor-pointer"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
+                                          {/* Key */}
+                                          <td className="py-2.5 px-2.5">
+                                            {batch.licenseKey ? (
+                                              <div className="flex items-center gap-1">
+                                                <code className="px-1 py-0.2 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-mono text-[9.5px] rounded border border-slate-200 dark:border-slate-700 truncate max-w-[130px]">
+                                                  {batch.licenseKey}
+                                                </code>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleCopyKey(batch.licenseKey, batch.id)}
+                                                  className="text-slate-400 hover:text-purple-600 p-0.5 rounded cursor-pointer"
+                                                  title="Sao chép key"
+                                                >
+                                                  {copiedKeyId === batch.id ? (
+                                                    <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                                                  ) : (
+                                                    <Copy className="w-3 h-3" />
+                                                  )}
+                                                </button>
+                                              </div>
+                                            ) : (
+                                              <span className="text-[9.5px] text-slate-400 italic">Không có Key</span>
+                                            )}
+                                          </td>
 
-                          {/* 2. Cấp phát */}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenAssign(lic)}
-                            title="Cấp phát & quản lý phân bổ seats"
-                            className="p-1 text-purple-600 dark:text-purple-400 hover:bg-purple-100/70 dark:hover:bg-purple-950 rounded-md transition-colors cursor-pointer"
-                          >
-                            <Users className="w-3.5 h-3.5" />
-                          </button>
+                                          {/* Thời hạn */}
+                                          <td className="py-2.5 px-2.5">
+                                            {batch.expiryDate ? (
+                                              <div className="space-y-0.5">
+                                                <span
+                                                  className={`px-1.5 py-0.2 rounded font-bold text-[9px] border inline-flex items-center gap-1 ${
+                                                    bIsExpired
+                                                      ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                                      : bIsExpiring
+                                                      ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                                                      : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200'
+                                                  }`}
+                                                >
+                                                  <Calendar className="w-2.5 h-2.5" />
+                                                  <span>{formatDate(batch.expiryDate)}</span>
+                                                </span>
+                                                <span className="text-[9px] text-slate-400 block font-mono">
+                                                  {getRemainingTimeText(batch.expiryDate).text}
+                                                </span>
+                                              </div>
+                                            ) : (
+                                              <span className="text-[9.5px] text-emerald-600 font-bold">♾️ Vô hạn</span>
+                                            )}
+                                          </td>
 
-                          {/* 3. Xem chi tiết */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedDetailLicense(lic);
-                              setIsDetailModalOpen(true);
-                            }}
-                            title="Xem chi tiết bản quyền"
-                            className="p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100/70 dark:hover:bg-indigo-950 rounded-md transition-colors cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
+                                          {/* Seats của đợt */}
+                                          <td className="py-2.5 px-2.5">
+                                            <div className="flex items-center gap-1.5 text-xs font-bold">
+                                              <span className={bUsed >= bTotal ? 'text-rose-600' : 'text-slate-800 dark:text-slate-200'}>
+                                                {bUsed}/{bTotal}
+                                              </span>
+                                              <span className="text-[9.5px] font-normal text-slate-400">
+                                                ({bRemaining > 0 ? `Trống ${bRemaining}` : 'Hết'})
+                                              </span>
+                                            </div>
+                                            <div className="w-24 h-1 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mt-1">
+                                              <div
+                                                className={`h-full rounded-full ${
+                                                  bPercent >= 100 ? 'bg-rose-500' : bPercent >= 80 ? 'bg-amber-500' : 'bg-emerald-500'
+                                                }`}
+                                                style={{ width: `${bPercent}%` }}
+                                              />
+                                            </div>
+                                          </td>
 
-                          {/* 4. Xóa */}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteLicense(lic.id, lic.name)}
-                            title="Xóa bản quyền này"
-                            className="p-1 text-rose-500 dark:text-rose-400 hover:bg-rose-100/70 dark:hover:bg-rose-950 rounded-md transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                                          {/* Chi phí đợt */}
+                                          <td className="py-2.5 px-2.5">
+                                            {bPrice > 0 ? (
+                                              <div>
+                                                <span className="font-extrabold text-slate-800 dark:text-slate-200 font-mono text-[11px] block">
+                                                  {formatPrice(bPriceConverted, selectedCurrency)}
+                                                </span>
+                                                {bCur !== selectedCurrency && (
+                                                  <span className="text-[8.5px] text-slate-400 block font-mono">
+                                                    Gốc: {formatPrice(bPrice, bCur)}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <span className="text-slate-400 italic text-[9.5px]">—</span>
+                                            )}
+                                          </td>
+
+                                          {/* Nhà cung cấp đợt */}
+                                          <td className="py-2.5 px-2.5 text-slate-700 dark:text-slate-300 text-[10px]">
+                                            {batch.vendor?.name || '—'}
+                                          </td>
+
+                                          {/* Thao tác đợt */}
+                                          <td className="py-2.5 px-3 text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                              {/* Cấp seat riêng đợt này */}
+                                              <button
+                                                type="button"
+                                                onClick={() => handleOpenAssign({ ...batch, name: `${group.name} (Đợt ${bIdx + 1})` })}
+                                                title={`Cấp phát seat thuộc Đợt ${bIdx + 1}`}
+                                                className="p-1 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-950 rounded-md transition-colors cursor-pointer"
+                                              >
+                                                <Users className="w-3 h-3" />
+                                              </button>
+
+                                              {/* Xem chi tiết đợt này */}
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setSelectedDetailLicense(batch);
+                                                  setIsDetailModalOpen(true);
+                                                }}
+                                                title={`Xem chi tiết Đợt ${bIdx + 1}`}
+                                                className="p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950 rounded-md transition-colors cursor-pointer"
+                                              >
+                                                <Eye className="w-3 h-3" />
+                                              </button>
+
+                                              {/* Sửa đợt này */}
+                                              <button
+                                                type="button"
+                                                onClick={() => handleOpenEdit(batch)}
+                                                title={`Chỉnh sửa thông tin Đợt ${bIdx + 1}`}
+                                                className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-950 rounded-md transition-colors cursor-pointer"
+                                              >
+                                                <Edit2 className="w-3 h-3" />
+                                              </button>
+
+                                              {/* Xóa đợt này */}
+                                              <button
+                                                type="button"
+                                                onClick={() => handleDeleteLicense(batch.id, `${group.name} - Đợt ${bIdx + 1}`)}
+                                                title={`Xóa Đợt ${bIdx + 1}`}
+                                                className="p-1 text-rose-500 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950 rounded-md transition-colors cursor-pointer"
+                                              >
+                                                <Trash2 className="w-3 h-3" />
+                                              </button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })
               )}

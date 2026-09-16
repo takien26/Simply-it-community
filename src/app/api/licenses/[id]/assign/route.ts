@@ -16,7 +16,7 @@ export async function POST(
 
     const { id: licenseId } = await params;
     const body = await request.json();
-    const { userId, assetId, userIds, assetIds, pairs, notes } = body;
+    const { userId, assetId, userIds, assetIds, pairs, notes, batchId } = body;
 
     // Build unified target list of { userId, assetId }
     let targets: Array<{ userId?: string | null; assetId?: string | null }> = [];
@@ -53,6 +53,15 @@ export async function POST(
       where: { id: licenseId },
       include: {
         assignments: { where: { revokedAt: null } },
+        batches: {
+          include: {
+            assignments: { where: { revokedAt: null } },
+          },
+          orderBy: [
+            { expiryDate: 'asc' },
+            { purchaseDate: 'asc' },
+          ],
+        },
       },
     });
 
@@ -60,12 +69,36 @@ export async function POST(
       return NextResponse.json({ error: 'Không tìm thấy license' }, { status: 404 });
     }
 
-    const availableSeats = Math.max(0, license.totalSeats - license.assignments.length);
-    const isOverAllocated = targets.length > availableSeats;
+    // Candidate batches for FIFO allocation
+    const candidateBatches =
+      license.batches && license.batches.length > 0
+        ? license.batches.map((b) => ({
+            id: b.id,
+            name: b.name,
+            totalSeats: b.totalSeats,
+            usedCount: b.assignments.length,
+          }))
+        : [];
 
     const createdAssignments = [];
 
     for (const target of targets) {
+      // Determine which batch / license ID receives this assignment
+      let effectiveLicenseId = licenseId;
+      if (batchId) {
+        effectiveLicenseId = batchId;
+      } else if (candidateBatches.length > 0) {
+        // FIFO: pick the earliest expiring batch that still has available seats
+        const availableBatch = candidateBatches.find((b) => b.usedCount < b.totalSeats);
+        if (availableBatch) {
+          effectiveLicenseId = availableBatch.id;
+          availableBatch.usedCount += 1;
+        } else {
+          // If all batches are full, allocate to the latest batch
+          effectiveLicenseId = candidateBatches[candidateBatches.length - 1].id;
+        }
+      }
+
       // If assetId is provided but no userId, try to lookup who is currently using this asset
       let finalUserId = target.userId;
       if (!finalUserId && target.assetId) {
@@ -78,12 +111,12 @@ export async function POST(
         }
       }
 
-      // Check if this specific asset or user-only assignment already exists actively
+      // Check if this specific asset or user-only assignment already exists actively on this effective license
       let isAlreadyAssigned = false;
       if (target.assetId) {
         const existingAsset = await prisma.licenseAssignment.findFirst({
           where: {
-            licenseId,
+            licenseId: effectiveLicenseId,
             assetId: target.assetId,
             revokedAt: null,
           },
@@ -92,7 +125,7 @@ export async function POST(
       } else if (finalUserId) {
         const existingUserOnly = await prisma.licenseAssignment.findFirst({
           where: {
-            licenseId,
+            licenseId: effectiveLicenseId,
             userId: finalUserId,
             assetId: null,
             revokedAt: null,
@@ -104,7 +137,7 @@ export async function POST(
       if (!isAlreadyAssigned) {
         const a = await prisma.licenseAssignment.create({
           data: {
-            licenseId,
+            licenseId: effectiveLicenseId,
             userId: finalUserId || null,
             assetId: target.assetId || null,
             assignedById: currentUser.userId,
@@ -119,15 +152,17 @@ export async function POST(
       }
     }
 
-    // Recalculate and update total used seats
-    const newUsedCount = await prisma.licenseAssignment.count({
-      where: { licenseId, revokedAt: null },
-    });
-
-    await prisma.license.update({
-      where: { id: licenseId },
-      data: { usedSeats: newUsedCount },
-    });
+    // Recalculate and update total used seats for all affected license IDs
+    const affectedIds = new Set([licenseId, ...createdAssignments.map((a) => a.licenseId)]);
+    for (const affId of affectedIds) {
+      const cnt = await prisma.licenseAssignment.count({
+        where: { licenseId: affId, revokedAt: null },
+      });
+      await prisma.license.update({
+        where: { id: affId },
+        data: { usedSeats: cnt },
+      });
+    }
 
     await createAuditLog({
       action: 'ASSIGN',

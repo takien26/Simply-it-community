@@ -114,3 +114,166 @@ export const formatPrice = (amount: number, currency: string = 'VND'): string =>
   }
   return new Intl.NumberFormat('vi-VN').format(amount) + ` ${currency}`;
 };
+
+export interface LicenseGroup {
+  id: string;
+  name: string;
+  companyName: string | null;
+  vendor: any;
+  licenseType: string;
+  masterLicense: any;
+  batches: any[];
+  totalSeats: number;
+  usedSeats: number;
+  remainingSeats: number;
+  seatPercent: number;
+  earliestExpiry: string | null;
+  earliestBatch: any | null;
+  hasMultipleBatches: boolean;
+  totalCostInSelectedCurrency: number;
+  allAssignments: any[];
+}
+
+export function groupLicenses(
+  licenses: any[],
+  convertCurrencyFn: (amount: number, from: string, to: string) => number,
+  selectedCurrency: string = 'VND'
+): LicenseGroup[] {
+  if (!Array.isArray(licenses) || licenses.length === 0) return [];
+
+  // Map to hold groups keyed by normalized name + company (or explicit parentLicenseId)
+  const groupMap = new Map<string, any[]>();
+
+  // Helper to normalize product key
+  const getGroupKey = (lic: any): string => {
+    if (lic.parentLicenseId) {
+      return `parent:${lic.parentLicenseId}`;
+    }
+    const normName = (lic.name || '').trim().toLowerCase();
+    const normComp = (lic.companyName || '').trim().toLowerCase();
+    return `name:${normName}__${normComp}`;
+  };
+
+  // Step 1: Collect all child batches that have parentLicenseId
+  const explicitChildrenByParent = new Map<string, any[]>();
+  const explicitParents = new Set<string>();
+
+  licenses.forEach((lic) => {
+    if (lic.parentLicenseId) {
+      if (!explicitChildrenByParent.has(lic.parentLicenseId)) {
+        explicitChildrenByParent.set(lic.parentLicenseId, []);
+      }
+      explicitChildrenByParent.get(lic.parentLicenseId)!.push(lic);
+      explicitParents.add(lic.parentLicenseId);
+    }
+  });
+
+  // Step 2: Group top-level licenses (exclude those that are already child batches of another license)
+  licenses.forEach((lic) => {
+    if (lic.parentLicenseId) return; // Will be attached to their parent
+
+    const key = `name:${(lic.name || '').trim().toLowerCase()}__${(lic.companyName || '').trim().toLowerCase()}`;
+    if (!groupMap.has(key)) {
+      groupMap.set(key, []);
+    }
+    groupMap.get(key)!.push(lic);
+  });
+
+  // Step 3: Build consolidated LicenseGroup objects
+  const result: LicenseGroup[] = [];
+
+  groupMap.forEach((matchedLicenses) => {
+    if (!matchedLicenses || matchedLicenses.length === 0) return;
+
+    // Pick the primary master license (first created or most seats)
+    const sortedMasters = [...matchedLicenses].sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateA - dateB;
+    });
+    const masterLicense = sortedMasters[0];
+
+    // Combine all batches:
+    // 1. All matched licenses under this name group
+    // 2. Plus any explicit child batches attached via parentLicenseId
+    const allBatchItems: any[] = [];
+    const seenBatchIds = new Set<string>();
+
+    matchedLicenses.forEach((m) => {
+      if (!seenBatchIds.has(m.id)) {
+        seenBatchIds.add(m.id);
+        allBatchItems.push(m);
+      }
+      // Check if this license has explicit children in DB
+      const children = explicitChildrenByParent.get(m.id) || m.batches || [];
+      children.forEach((c: any) => {
+        if (!seenBatchIds.has(c.id)) {
+          seenBatchIds.add(c.id);
+          allBatchItems.push(c);
+        }
+      });
+    });
+
+    // Sort batches chronologically by purchaseDate or createdAt
+    allBatchItems.sort((a, b) => {
+      const pA = new Date(a.purchaseDate || a.createdAt || 0).getTime();
+      const pB = new Date(b.purchaseDate || b.createdAt || 0).getTime();
+      return pA - pB;
+    });
+
+    // Aggregate metrics
+    let totalSeats = 0;
+    let usedSeats = 0;
+    let totalCostInSelectedCurrency = 0;
+    let earliestExpiryDate: Date | null = null;
+    let earliestBatch: any | null = null;
+    const allAssignments: any[] = [];
+
+    allBatchItems.forEach((b, idx) => {
+      const bSeats = b.totalSeats || 1;
+      const bActiveAssignments = b.assignments?.filter((a: any) => !a.revokedAt) || [];
+      const bUsed = b.usedSeats !== undefined && b.usedSeats !== null ? b.usedSeats : bActiveAssignments.length;
+
+      totalSeats += bSeats;
+      usedSeats += bUsed;
+
+      bActiveAssignments.forEach((a: any) => allAssignments.push({ ...a, batchId: b.id, batchNumber: idx + 1 }));
+
+      const rawPrice = Number(b.purchasePrice) || 0;
+      const cur = b.purchaseCurrency || 'VND';
+      totalCostInSelectedCurrency += convertCurrencyFn(rawPrice, cur, selectedCurrency);
+
+      if (b.expiryDate) {
+        const exp = new Date(b.expiryDate);
+        if (!earliestExpiryDate || exp < earliestExpiryDate) {
+          earliestExpiryDate = exp;
+          earliestBatch = b;
+        }
+      }
+    });
+
+    const remainingSeats = Math.max(0, totalSeats - usedSeats);
+    const seatPercent = totalSeats > 0 ? Math.min(100, Math.round((usedSeats / totalSeats) * 100)) : 0;
+
+    result.push({
+      id: masterLicense.id,
+      name: masterLicense.name,
+      companyName: masterLicense.companyName || null,
+      vendor: masterLicense.vendor || (allBatchItems.find((b) => b.vendor)?.vendor) || null,
+      licenseType: masterLicense.licenseType || 'PERPETUAL',
+      masterLicense,
+      batches: allBatchItems,
+      totalSeats,
+      usedSeats,
+      remainingSeats,
+      seatPercent,
+      earliestExpiry: earliestExpiryDate ? (earliestExpiryDate as Date).toISOString() : null,
+      earliestBatch,
+      hasMultipleBatches: allBatchItems.length > 1,
+      totalCostInSelectedCurrency,
+      allAssignments,
+    });
+  });
+
+  return result;
+}
