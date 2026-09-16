@@ -46,6 +46,6 @@ COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN sed -i 's/\r$//' ./docker-entrypoint.sh && chmod +x ./docker-entrypoint.sh
 
 EXPOSE 3000
-EXPOSE 3444
+EXPOSE 3443
 
 ENTRYPOINT ["./docker-entrypoint.sh"]

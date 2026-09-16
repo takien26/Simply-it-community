@@ -25,7 +25,7 @@ $ProgressPreference = 'SilentlyContinue'
 
 # Auto-detect local port only if ServerUrl was not explicitly provided (still has default value)
 if ($ServerUrl -eq "__AUTO__") {
-    $candidatePorts = @(3001, 3000, 3444)
+    $candidatePorts = @(3001, 3000, 3443, 3444)
     foreach ($p in $candidatePorts) {
         try {
             $tcp = Test-NetConnection -ComputerName "127.0.0.1" -Port $p -WarningAction SilentlyContinue
