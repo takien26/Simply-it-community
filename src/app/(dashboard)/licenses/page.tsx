@@ -5,6 +5,7 @@ import {
   LicenseFormModal,
 } from '@/components/licenses';
 import { LicenseGroup, groupLicenses } from '@/components/licenses/types';
+import { exportConglomerateExcel, exportSingleLicenseExcel } from '@/components/licenses/license-excel-export';
 
 
 import { QuickLink } from '@/components/common/QuickLink';
@@ -654,6 +655,39 @@ export default function LicensesPage() {
     return groupLicenses(filteredLicenses, convertCurrency, selectedCurrency);
   }, [filteredLicenses, convertCurrency, selectedCurrency]);
 
+  // List of active companies across conglomerate for Quick Filter Chips (SAM Conglomerate Edition)
+  const conglomerateCompanies = useMemo(() => {
+    const map = new Map<string, number>();
+    licenses.forEach((lic) => {
+      const related = new Set<string>();
+      if (lic.companyName) related.add(lic.companyName.trim());
+      if (Array.isArray(lic.batches)) {
+        lic.batches.forEach((b: any) => {
+          if (b.companyName) related.add(b.companyName.trim());
+        });
+      }
+      if (Array.isArray(lic.assignments)) {
+        lic.assignments.forEach((a: any) => {
+          if (a.user?.companyName) related.add(a.user.companyName.trim());
+          if (a.asset?.companyName) related.add(a.asset.companyName.trim());
+        });
+      }
+      related.forEach((c) => {
+        map.set(c, (map.get(c) || 0) + 1);
+      });
+    });
+
+    companies.forEach((c) => {
+      if (c && !map.has(c.trim())) {
+        map.set(c.trim(), 0);
+      }
+    });
+
+    return Array.from(map.entries())
+      .filter(([name]) => Boolean(name))
+      .sort((a, b) => b[1] - a[1]);
+  }, [licenses, companies]);
+
   const totalFilteredLicenses = groupedLicenses.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredLicenses / pageSize));
   const paginatedGroups = useMemo(() => {
@@ -1170,147 +1204,36 @@ export default function LicensesPage() {
     }
   };
 
-    // Export filtered licenses to rich Excel
+  // Export conglomerate license matrix to multi-sheet Excel (ServiceNow SAM Pro / Flexera One standard)
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
   const handleExportExcel = async () => {
-    if (filteredLicenses.length === 0) {
-      alert('Không có bản quyền nào trong danh sách lọc để xuất');
+    if (groupedLicenses.length === 0) {
+      alert(language === 'en' ? 'No licenses to export' : 'Không có bản quyền nào trong danh sách lọc để xuất');
       return;
     }
+    setIsExportingExcel(true);
     try {
-      const ExcelJS = await import('exceljs');
-      const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet('Danh Sách Bản Quyền License', {
-        views: [{ showGridLines: true }],
+      await exportConglomerateExcel({
+        groupedLicenses,
+        selectedCompany,
+        selectedCurrency,
+        companiesList: conglomerateCompanies.map(([cName]) => cName),
       });
-
-      sheet.mergeCells('A1:L1');
-      const titleCell = sheet.getCell('A1');
-      titleCell.value = 'DANH SÁCH BẢN QUYỀN PHẦN MỀM & LICENSE IT';
-      titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
-      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6B21A8' } };
-      titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-      sheet.getRow(1).height = 35;
-
-      sheet.mergeCells('A2:L2');
-      const subCell = sheet.getCell('A2');
-      const filterCompanyText = selectedCompany ? ` | Công ty: ${selectedCompany}` : '';
-      subCell.value = `Thời gian xuất: ${new Date().toLocaleString('vi-VN')} | Tổng số lượng: ${filteredLicenses.length} gói bản quyền lọc${filterCompanyText}`;
-      subCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF475569' } };
-      subCell.alignment = { vertical: 'middle', horizontal: 'center' };
-      sheet.getRow(2).height = 20;
-
-      sheet.addRow([]);
-
-      const headers = [
-        'STT',
-        'Tên Phần Mềm / Bản Quyền',
-        'License Key / Mã Bản Quyền',
-        'Loại License',
-        'Trạng Thái',
-        'Tổng Seats',
-        'Đã Cấp',
-        'Còn Trống',
-        'Công Ty Quản Lý',
-        'Người / Thiết Bị Sử Dụng (Kèm Phòng Ban)',
-        'Hạn Sử Dụng',
-        'Nhà Cung Cấp / Đối Tác',
-      ];
-
-      const headerRow = sheet.addRow(headers);
-      headerRow.height = 26;
-      headerRow.eachCell((cell) => {
-        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF9333EA' } };
-        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-          bottom: { style: 'medium', color: { argb: 'FF581C87' } },
-        };
-      });
-
-      filteredLicenses.forEach((lic, index) => {
-        const activeAssignments = lic.assignments?.filter((a: any) => !a.revokedAt) || [];
-        const used = lic.usedSeats || activeAssignments.length || 0;
-        const remainingSeats = Math.max(0, (lic.totalSeats || 1) - used);
-
-        const assignedTargets = activeAssignments
-          .map((a: any) => {
-            if (a.user) {
-              const dept = a.user.department ? ` (${a.user.department})` : '';
-              return `${a.user.fullName}${dept}`;
-            }
-            if (a.asset) {
-              return `[Thiết bị: ${a.asset.assetTag} - ${a.asset.name}]`;
-            }
-            return '';
-          })
-          .filter(Boolean)
-          .join('; ');
-
-        let expiryText = 'Vĩnh viễn (Perpetual)';
-        if (lic.expiryDate) {
-          const isExp = new Date(lic.expiryDate).getTime() < Date.now();
-          expiryText = `${new Date(lic.expiryDate).toLocaleDateString('vi-VN')}${isExp ? ' [ĐÃ HẾT HẠN]' : ''}`;
-        }
-
-        const row = sheet.addRow([
-          index + 1,
-          lic.name,
-          lic.licenseKey || '—',
-          lic.licenseType || 'PERPETUAL',
-          lic.status === 'ACTIVE' ? 'Đang hoạt động' : lic.status === 'EXPIRED' ? 'Hết hạn' : lic.status,
-          lic.totalSeats || 1,
-          used,
-          remainingSeats,
-          lic.companyName || 'Toàn tập đoàn',
-          assignedTargets || 'Chưa gán',
-          expiryText,
-          lic.vendor?.name || '—',
-        ]);
-
-        row.height = 24;
-        row.alignment = { vertical: 'middle' };
-        row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(11).alignment = { vertical: 'middle', horizontal: 'center' };
-
-        if (index % 2 === 1) {
-          row.eachCell((c) => {
-            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAF5FF' } };
-          });
-        }
-      });
-
-      sheet.columns = [
-        { width: 6 },
-        { width: 32 },
-        { width: 28 },
-        { width: 16 },
-        { width: 16 },
-        { width: 12 },
-        { width: 12 },
-        { width: 12 },
-        { width: 25 },
-        { width: 38 },
-        { width: 20 },
-        { width: 25 },
-      ];
-
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Danh_Sach_License_IT_${new Date().toISOString().split('T')[0]}.xlsx`;
-      a.click();
-      window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export licenses error:', err);
-      alert('Xuất file Excel thất bại');
+      console.error('Export Excel error:', err);
+      alert(language === 'en' ? 'Excel export failed' : 'Xuất file Excel thất bại');
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
+  // Export single software package matrix & assigned users
+  const handleExportSingleLicense = async (group: LicenseGroup) => {
+    try {
+      await exportSingleLicenseExcel(group, selectedCurrency);
+    } catch (err) {
+      console.error('Export Single License Excel error:', err);
+      alert(language === 'en' ? 'Excel export failed for this license' : 'Xuất file Excel cho gói này thất bại');
     }
   };
 
@@ -1340,11 +1263,23 @@ export default function LicensesPage() {
 
           <button
             type="button"
+            disabled={isExportingExcel}
             onClick={handleExportExcel}
-            className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 cursor-pointer transition-all"
+            className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-60"
+            title="Xuất Báo cáo Ma trận Cân đối 3 Sheet chuẩn SAM quốc tế"
           >
-            <Download className="w-4 h-4 text-emerald-600" />
-            <span className="hidden sm:inline">{t('assets.export_excel', 'Xuất Excel')}</span>
+            {isExportingExcel ? (
+              <Loader2 className="w-4 h-4 text-purple-600 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            )}
+            <span className="hidden sm:inline font-extrabold">
+              {isExportingExcel
+                ? 'Đang xuất...'
+                : selectedCompany
+                ? `Xuất Excel (${selectedCompany})`
+                : 'Xuất Ma Trận Excel'}
+            </span>
           </button>
 
 
@@ -1443,6 +1378,60 @@ export default function LicensesPage() {
 
       {/* ==================== 3. BỘ LỌC MICROCOPY TINH GỌN ==================== */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+        {/* Quick Company Filter Chips (Chuẩn SAM Quốc Tế ServiceNow & Flexera One) */}
+        <div className="flex items-center gap-1.5 flex-wrap pb-2.5 border-b border-slate-100 dark:border-slate-800">
+          <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-1">
+            <Building2 className="w-3.5 h-3.5 text-purple-600" />
+            <span>{isEn ? 'Conglomerate View:' : 'Lọc nhanh công ty:'}</span>
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setSelectedCompany('')}
+            className={`px-3 py-1 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 border ${
+              !selectedCompany
+                ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
+                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+            }`}
+          >
+            <span>{isEn ? '🏢 All Conglomerate' : '🏢 Toàn tập đoàn'}</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                !selectedCompany ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              {licenses.length}
+            </span>
+          </button>
+
+          {conglomerateCompanies.map(([cName, count]) => {
+            const isSelected = selectedCompany === cName;
+            return (
+              <button
+                key={cName}
+                type="button"
+                onClick={() => setSelectedCompany(isSelected ? '' : cName)}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                  isSelected
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
+              >
+                <span className="truncate max-w-[140px] sm:max-w-[200px]">🏢 {cName}</span>
+                {count > 0 && (
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
           {/* Ô Tìm Kiếm */}
           <div className="lg:col-span-2 relative">
@@ -1959,14 +1948,26 @@ export default function LicensesPage() {
                                   </button>
                                 </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenAddBatch(group)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                  <span>+ Mua thêm đợt mới</span>
-                                </button>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExportSingleLicense(group)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs border border-purple-200 dark:border-slate-600 shadow-2xs transition-all cursor-pointer"
+                                    title="Xuất ma trận cân đối và danh sách người dùng của riêng gói này"
+                                  >
+                                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Xuất Excel gói này</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenAddBatch(group)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>+ Mua thêm đợt mới</span>
+                                  </button>
+                                </div>
                               </div>
 
                               {/* TAB 1: CÂN ĐỐI THEO CÔNG TY THÀNH VIÊN */}
