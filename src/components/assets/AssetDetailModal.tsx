@@ -524,7 +524,7 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                             <div>
                               <div className="flex items-center gap-2">
                                 <h4 className="font-extrabold text-sm text-white tracking-wide">
-                                  {txt('Khấu Hao Riêng Máy Này', 'Individual Asset Depreciation', '個別資産減価償却')}
+                                  {txt('Khấu Hao', 'Depreciation', '減価償却')}
                                 </h4>
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                                   isFullyDepreciated
