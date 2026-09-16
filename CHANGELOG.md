@@ -1,5 +1,45 @@
 # 📋 NHẬT KÝ CẬP NHẬT PHIÊN BẢN (CHANGELOG)
 
+## [v1.0.3] - 16/09/2026
+
+Bản cập nhật **v1.0.3** tập trung khắc phục lỗi quét tự động (Auto-Scan Agent), tăng tốc độ và độ thông minh của AI, bổ sung quản lý đơn vị/nhà cung cấp đa chiều, cùng cơ chế đồng bộ dữ liệu phản ứng nhanh (Reactive Data Sync) cho toàn hệ thống.
+
+---
+
+### 🌟 1. Khắc Phục Lỗi & Nâng Cấp Quét Tự Động (Auto-Scan Agent)
+- **Khắc phục lỗi HTTP 500 khi máy tính gửi Serial Number mặc định ("Default string")**:
+  - Mainboard lắp ráp / Gigabyte (`B450 AORUS M`, `B550`, v.v.) thường trả về chuỗi `"Default string"` hoặc `"To be filled by O.E.M."`.
+  - Bổ sung hàm lọc `isGenericSerial()` để chặn các serial mặc định rác ghi đè hoặc xung đột ràng buộc duy nhất (`@unique`) trong PostgreSQL.
+  - Tự động chuyển `serialNumber` rác về `null` và sử dụng `Hostname` máy trạm làm khóa định danh, tránh tình trạng các máy clone ghi đè cấu hình của nhau.
+- **Tối ưu nhận diện chủng loại thiết bị (Device Detection)**:
+  - Tự động nhận diện chuẩn các dòng chipset / mainboard Desktop (`B450`, `B550`, `B650`, `H610`, `B760`, `Z790`, `AORUS`, `Tomahawk`...).
+  - Ngăn chặn lỗi nhận diện nhầm máy bàn thành `Laptop` do thiết bị cắm bộ lưu điện UPS USB hoặc mã chassis BIOS trả về không chuẩn.
+  - Thu thập và lưu trữ đầy đủ thông số VGA / cạc đồ họa rời trên cả máy bàn và laptop.
+- **Nâng cấp Agent PowerShell (`simply-it-collector.ps1`)**:
+  - Bổ sung hàm `Remove-NullCharacters`: Đệ quy làm sạch các ký tự rỗng NUL (`\0`) từ Windows Registry/WMI trước khi tuần tự hóa JSON gửi về server.
+  - Tích hợp đọc luồng lỗi `ResponseStream`: Khi server trả về mã lỗi HTTP 4xx/5xx, Agent trích xuất thông điệp chi tiết từ server để kỹ thuật viên IT dễ dàng chẩn đoán.
+- **Cơ chế sinh mã tài sản (`assetTag`) an toàn**:
+  - Thay thế cách tính `count() + 1` bằng thuật toán truy vấn mã `AST-xxxx` lớn nhất hiện có và tự động tăng dần đến khi không còn trùng lặp, đảm bảo an toàn tuyệt đối khi có tài sản bị xóa.
+
+---
+
+### 🚀 2. Tối Ưu Tốc Độ AI & Quản Lý Đơn Vị / Nhà Cung Cấp
+- **Tăng tốc AI Gemini**:
+  - Nâng cấp sử dụng mô hình thế hệ mới `gemini-3.5-flash-lite`, giảm độ trễ phản hồi khi trích xuất hóa đơn, phân tích hợp đồng và chatbot hỗ trợ.
+- **Bổ sung trường Công ty quản lý & Nhà cung cấp**:
+  - Bổ sung trường Công ty quản lý (`companyName`) và Nhà cung cấp (`vendorId` / `vendor`) vào chi tiết tài sản, giấy phép dịch vụ CNTT và hợp đồng bảo trì.
+  - Đồng bộ hiển thị nhất quán trên các thẻ thông tin và danh sách kiểm kê.
+
+---
+
+### ⚡ 3. Cơ Chế Đồng Bộ Dữ Liệu Phản Ứng Nhanh (Reactive Data Sync)
+- **Tự động làm mới dữ liệu tức thì (Instant Mutation Revalidation)**:
+  - Cập nhật, tạo mới hoặc xóa bất kỳ tài sản, bản quyền, dịch vụ, kho phụ tùng đều tự động revalidate SWR cache ngay lập tức mà không cần F5/reload trang thủ công.
+- **Smart Background Polling & Focus Refresh**:
+  - Tự động đồng bộ ngầm định kỳ và làm mới dữ liệu khi người dùng quay lại tab trình duyệt, bảo đảm dữ liệu luôn mới nhất giữa nhiều kỹ thuật viên IT cùng thao tác.
+
+---
+
 ## [v1.0.1] - 12/09/2026
 
 Bản cập nhật **v1.0.1** tập trung nâng cấp trải nghiệm người dùng, bổ sung quản lý vòng đời nhân sự (nghỉ việc), tăng cường bảo mật đăng nhập, nâng cấp khả năng tương tác bảng dữ liệu và khắc phục triệt để các lỗi cấu hình gửi email SMTP.
