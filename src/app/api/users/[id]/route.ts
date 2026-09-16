@@ -19,6 +19,9 @@ export async function GET(
       where: { id },
       include: {
         role: true,
+        manager: { select: { id: true, fullName: true, email: true, position: true, phone: true, department: true } },
+        directReports: { select: { id: true, fullName: true, email: true, position: true, phone: true, department: true } },
+        location: { select: { id: true, name: true, building: true, floor: true } },
         assetAssignments: {
           where: { returnedAt: null },
           include: { asset: true },

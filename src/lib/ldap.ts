@@ -24,6 +24,8 @@ export interface LdapUserEntry {
   phone?: string;
   officeLocation?: string;
   company?: string;
+  managerRaw?: string;
+  managerEmail?: string;
   isDisabled?: boolean;
 }
 
@@ -251,6 +253,7 @@ export async function syncUsersFromLdap(customConfig?: LdapConfig): Promise<{
         'physicalDeliveryOfficeName',
         'l',
         'streetAddress',
+        'manager',
         'userAccountControl',
       ],
       sizeLimit: 1000,
@@ -268,7 +271,10 @@ export async function syncUsersFromLdap(customConfig?: LdapConfig): Promise<{
     }
     if (!domainFallback) domainFallback = 'company.local';
 
+    const dnToEmail = new Map<string, string>();
+    const cnToEmail = new Map<string, string>();
     const users: LdapUserEntry[] = [];
+
     for (const entry of searchEntries) {
       const username = getAttr(entry.sAMAccountName || entry.cn || '').trim();
       if (!username || username.endsWith('$')) continue;
@@ -290,6 +296,15 @@ export async function syncUsersFromLdap(customConfig?: LdapConfig): Promise<{
       const phone = getAttr(entry.telephoneNumber || entry.mobile).trim() || undefined;
       const company = getAttr(entry.company).trim() || undefined;
       const officeLocation = getAttr(entry.physicalDeliveryOfficeName || entry.l || entry.streetAddress).trim() || undefined;
+      const managerRaw = getAttr(entry.manager).trim() || undefined;
+
+      // Indexing for manager resolution
+      const entryDn = String(entry.dn || '').toLowerCase().trim();
+      if (entryDn) dnToEmail.set(entryDn, email);
+      if (username) cnToEmail.set(username.toLowerCase(), email);
+      const entryCn = getAttr(entry.cn || '').toLowerCase().trim();
+      if (entryCn) cnToEmail.set(entryCn, email);
+      if (fullName) cnToEmail.set(fullName.toLowerCase(), email);
 
       // In Active Directory: Bit 2 (0x0002) of userAccountControl indicates ACCOUNTDISABLE
       const isDisabled = (uac & 2) !== 0;
@@ -303,8 +318,26 @@ export async function syncUsersFromLdap(customConfig?: LdapConfig): Promise<{
         phone,
         company,
         officeLocation,
+        managerRaw,
         isDisabled,
       });
+    }
+
+    // Second pass: resolve direct manager email
+    for (const u of users) {
+      if (u.managerRaw) {
+        const raw = u.managerRaw.trim();
+        let matched = dnToEmail.get(raw.toLowerCase());
+        if (!matched) {
+          const cnMatch = raw.match(/^CN=([^,]+)/i);
+          if (cnMatch && cnMatch[1]) {
+            matched = cnToEmail.get(cnMatch[1].toLowerCase().trim());
+          }
+        }
+        if (matched && matched !== u.email) {
+          u.managerEmail = matched;
+        }
+      }
     }
 
     return {
@@ -342,6 +375,7 @@ export async function authenticateWithLdap(
     position?: string;
     companyName?: string;
     officeLocation?: string;
+    managerName?: string;
   };
   error?: string;
   isAccountDisabled?: boolean;
@@ -385,6 +419,7 @@ export async function authenticateWithLdap(
     let fetchedCompany = '';
     let fetchedPhone = '';
     let fetchedOffice = '';
+    let fetchedManagerName = '';
     let isAccountDisabled = false;
 
     // 1. If bindDn configured, search for user's DN first
@@ -410,6 +445,7 @@ export async function authenticateWithLdap(
           'physicalDeliveryOfficeName',
           'l',
           'streetAddress',
+          'manager',
           'userAccountControl',
           'mail',
           'userPrincipalName',
@@ -425,6 +461,11 @@ export async function authenticateWithLdap(
         fetchedCompany = entry.company ? String(entry.company).trim() : '';
         fetchedPhone = String(entry.telephoneNumber || entry.mobile || '').trim();
         fetchedOffice = String(entry.physicalDeliveryOfficeName || entry.l || entry.streetAddress || '').trim();
+        const rawMgr = String(entry.manager || '').trim();
+        if (rawMgr) {
+          const cnMatch = rawMgr.match(/^CN=([^,]+)/i);
+          if (cnMatch && cnMatch[1]) fetchedManagerName = cnMatch[1].trim();
+        }
         const realMail = String(entry.mail || entry.userPrincipalName || '').trim().toLowerCase();
         if (realMail && realMail.includes('@')) {
           email = realMail;
@@ -492,6 +533,7 @@ export async function authenticateWithLdap(
         position: fetchedTitle || undefined,
         companyName: fetchedCompany || undefined,
         officeLocation: fetchedOffice || undefined,
+        managerName: fetchedManagerName || undefined,
       },
     };
   } catch (err: any) {

@@ -126,12 +126,22 @@ export async function POST(request: NextRequest) {
             ssoError = `Lỗi xác thực Microsoft Entra ID: ${tokenData.error_description || tokenData.error || 'Token request failed'}`;
           } else {
             // Fetch users with full profile attributes from Microsoft Graph
-            const graphUsersRes = await fetch(
-              'https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,userPrincipalName,accountEnabled,department,jobTitle,mobilePhone,businessPhones,officeLocation,companyName,city&$top=999',
+            let graphUsersRes = await fetch(
+              'https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,userPrincipalName,accountEnabled,department,jobTitle,mobilePhone,businessPhones,officeLocation,companyName,city&$expand=manager($select=id,displayName,mail,userPrincipalName)&$top=999',
               {
                 headers: { Authorization: `Bearer ${tokenData.access_token}` },
               }
             );
+
+            if (!graphUsersRes.ok) {
+              // Fallback if tenant does not support expand=manager
+              graphUsersRes = await fetch(
+                'https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,userPrincipalName,accountEnabled,department,jobTitle,mobilePhone,businessPhones,officeLocation,companyName,city&$top=999',
+                {
+                  headers: { Authorization: `Bearer ${tokenData.access_token}` },
+                }
+              );
+            }
 
             if (!graphUsersRes.ok) {
               const graphErr = await graphUsersRes.json().catch(() => ({}));
@@ -149,6 +159,7 @@ export async function POST(request: NextRequest) {
                   phone?: string;
                   officeLocation?: string;
                   companyName?: string;
+                  managerEmail?: string;
                 }
               >();
 
@@ -157,6 +168,7 @@ export async function POST(request: NextRequest) {
                 if (email) {
                   const phone = gu.mobilePhone || (Array.isArray(gu.businessPhones) && gu.businessPhones.length > 0 ? gu.businessPhones[0] : undefined);
                   const officeLocation = gu.officeLocation || gu.city || undefined;
+                  const managerEmail = (gu.manager?.mail || gu.manager?.userPrincipalName || '').toLowerCase().trim() || undefined;
                   graphMap.set(email, {
                     accountEnabled: gu.accountEnabled !== false,
                     displayName: gu.displayName || email.split('@')[0],
@@ -165,6 +177,7 @@ export async function POST(request: NextRequest) {
                     phone: phone ? String(phone).trim() : undefined,
                     officeLocation: officeLocation ? String(officeLocation).trim() : undefined,
                     companyName: gu.companyName ? String(gu.companyName).trim() : undefined,
+                    managerEmail,
                   });
                 }
               }
@@ -213,6 +226,20 @@ export async function POST(request: NextRequest) {
                         data: updates,
                       });
                       updatedCount++;
+                    }
+                  }
+                }
+
+                // Pass 2: Link direct managers for M365 users
+                for (const [email, gInfo] of graphMap.entries()) {
+                  if (gInfo.managerEmail) {
+                    const u = await prisma.user.findUnique({ where: { email } });
+                    const mgr = await prisma.user.findUnique({ where: { email: gInfo.managerEmail } });
+                    if (u && mgr && u.id !== mgr.id && u.managerId !== mgr.id) {
+                      await prisma.user.update({
+                        where: { id: u.id },
+                        data: { managerId: mgr.id },
+                      });
                     }
                   }
                 }
@@ -410,6 +437,21 @@ export async function POST(request: NextRequest) {
                     });
                     updatedCount++;
                   }
+                }
+              }
+            }
+
+            // Pass 2: Link direct managers for LDAP users
+            for (const lu of ldapUsers) {
+              if (lu.managerEmail) {
+                const uEmail = lu.email.toLowerCase().trim();
+                const u = await prisma.user.findUnique({ where: { email: uEmail } });
+                const mgr = await prisma.user.findUnique({ where: { email: lu.managerEmail.toLowerCase().trim() } });
+                if (u && mgr && u.id !== mgr.id && u.managerId !== mgr.id) {
+                  await prisma.user.update({
+                    where: { id: u.id },
+                    data: { managerId: mgr.id },
+                  });
                 }
               }
             }

@@ -116,6 +116,19 @@ export async function authenticate(
             locationId = loc.id;
           }
 
+          let managerId: string | null = null;
+          if (ldapRes.user.managerName) {
+            const mgr = await prisma.user.findFirst({
+              where: {
+                OR: [
+                  { fullName: { equals: ldapRes.user.managerName, mode: 'insensitive' } },
+                  { email: { startsWith: ldapRes.user.managerName.toLowerCase() } },
+                ],
+              },
+            });
+            if (mgr) managerId = mgr.id;
+          }
+
           userInDb = await prisma.user.create({
             data: {
               email: ldapRes.user.email,
@@ -125,6 +138,7 @@ export async function authenticate(
               companyName: ldapRes.user.companyName || null,
               phone: ldapRes.user.phone || null,
               locationId,
+              managerId,
               roleId: targetRole.id,
               passwordHash: defaultPasswordHash,
               isActive: true,
@@ -152,6 +166,18 @@ export async function authenticate(
               });
             }
             updates.locationId = loc.id;
+          }
+          if (!userInDb.managerId && ldapRes.user.managerName) {
+            const mgr = await prisma.user.findFirst({
+              where: {
+                OR: [
+                  { fullName: { equals: ldapRes.user.managerName, mode: 'insensitive' } },
+                  { email: { startsWith: ldapRes.user.managerName.toLowerCase() } },
+                ],
+                id: { not: userInDb.id },
+              },
+            });
+            if (mgr) updates.managerId = mgr.id;
           }
           if (Object.keys(updates).length > 0) {
             userInDb = await prisma.user.update({

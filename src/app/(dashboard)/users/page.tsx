@@ -800,6 +800,9 @@ export default function UsersPage() {
     (u) => (!u.assetAssignments || u.assetAssignments.length === 0) && (!u.licenseAssignments || u.licenseAssignments.length === 0)
   ).length;
   const adminCount = activeUsers.filter((u) => u.role?.name === 'Admin').length;
+  const managersCount = activeUsers.filter(
+    (u) => (u.directReports && u.directReports.length > 0) || users.some((x) => x.managerId === u.id)
+  ).length;
 
   // Smart Tree Filtering
   const filteredUsers = users.filter((u) => {
@@ -832,6 +835,7 @@ export default function UsersPage() {
     if (selectedFilter === 'WITH_ASSETS') return u.assetAssignments?.length > 0;
     if (selectedFilter === 'WITH_LICENSES') return u.licenseAssignments?.length > 0;
     if (selectedFilter === 'NO_ASSIGNMENTS') return (!u.assetAssignments || u.assetAssignments.length === 0) && (!u.licenseAssignments || u.licenseAssignments.length === 0);
+    if (selectedFilter === 'MANAGERS') return (u.directReports && u.directReports.length > 0) || users.some((x) => x.managerId === u.id);
     if (selectedFilter === 'ADMIN') return u.role?.name === 'Admin';
     return true;
   });
@@ -950,6 +954,17 @@ export default function UsersPage() {
           }`}
         >
           {language === 'en' ? '⚪ No Assignments' : '⚪ Chưa gán gì'} ({noAssignmentsCount})
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedFilter(selectedFilter === 'MANAGERS' ? 'ALL' : 'MANAGERS')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+            selectedFilter === 'MANAGERS'
+              ? 'bg-amber-600 border-amber-600 text-white shadow-2xs'
+              : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
+          }`}
+        >
+          👑 {language === 'en' ? 'Managers' : 'Cấp quản lý'} ({managersCount})
         </button>
         <button
           type="button"
@@ -1107,10 +1122,49 @@ export default function UsersPage() {
                                 {u.position || (isEn ? 'Staff' : 'Nhân viên')}
                               </div>
                               {u.manager && (
-                                <div className="text-[10px] text-amber-700 dark:text-amber-300 font-bold flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-md border border-amber-200/80 w-fit">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const mgr = users.find((item: any) => item.id === u.manager.id || item.email === u.manager.email);
+                                    if (mgr) {
+                                      setViewingUserDetail(mgr);
+                                      setIsUserDetailModalOpen(true);
+                                    } else {
+                                      fetch(`/api/users/${u.manager.id}`)
+                                        .then((r) => r.json())
+                                        .then((res) => {
+                                          const item = res.data || res.user || res;
+                                          if (item && item.id) {
+                                            setViewingUserDetail(item);
+                                            setIsUserDetailModalOpen(true);
+                                          }
+                                        });
+                                    }
+                                  }}
+                                  title={isEn ? `Click to view manager: ${u.manager.fullName}` : `Bấm để xem hồ sơ cấp trên: ${u.manager.fullName}`}
+                                  className="text-[10px] text-amber-800 dark:text-amber-200 font-bold flex items-center gap-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/70 px-2 py-0.5 rounded-lg border border-amber-200/80 hover:border-amber-400 transition-all w-fit cursor-pointer group shadow-2xs"
+                                >
                                   <Crown className="w-3 h-3 text-amber-600 shrink-0" />
-                                  <span>{isEn ? 'Manager: ' : 'Cấp trên: '}{u.manager.fullName}</span>
-                                </div>
+                                  <span className="group-hover:underline underline-offset-2">{isEn ? 'Manager: ' : 'Cấp trên: '}{u.manager.fullName}</span>
+                                  <ExternalLink className="w-2.5 h-2.5 text-amber-600 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                </button>
+                              )}
+                              {u.directReports && u.directReports.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewingUserDetail(u);
+                                    setIsUserDetailModalOpen(true);
+                                  }}
+                                  title={isEn ? `Manages ${u.directReports.length} team members (Click to view)` : `Quản lý trực tiếp ${u.directReports.length} nhân sự (Bấm để xem)`}
+                                  className="text-[10px] text-blue-800 dark:text-blue-200 font-bold flex items-center gap-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/70 px-2 py-0.5 rounded-lg border border-blue-200/80 hover:border-blue-400 transition-all w-fit cursor-pointer group shadow-2xs"
+                                >
+                                  <Users className="w-3 h-3 text-blue-600 shrink-0" />
+                                  <span className="group-hover:underline underline-offset-2">{u.directReports.length} {isEn ? 'reports' : 'nhân sự trực thuộc'}</span>
+                                  <ExternalLink className="w-2.5 h-2.5 text-blue-600 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                </button>
                               )}
                               {u.location && (
                                 <div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md border border-emerald-200/80 w-fit">
@@ -1355,6 +1409,37 @@ export default function UsersPage() {
                         )}
                       </div>
                       <span className="text-xs text-purple-700 font-semibold">{u.position || (isEn ? 'Staff' : 'Nhân viên')}</span>
+                      {u.manager && (
+                        <div className="pt-0.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const mgr = users.find((item: any) => item.id === u.manager.id || item.email === u.manager.email);
+                              if (mgr) {
+                                setViewingUserDetail(mgr);
+                                setIsUserDetailModalOpen(true);
+                              } else {
+                                fetch(`/api/users/${u.manager.id}`)
+                                  .then((r) => r.json())
+                                  .then((res) => {
+                                    const item = res.data || res.user || res;
+                                    if (item && item.id) {
+                                      setViewingUserDetail(item);
+                                      setIsUserDetailModalOpen(true);
+                                    }
+                                  });
+                              }
+                            }}
+                            title={isEn ? `Manager: ${u.manager.fullName}` : `Cấp trên: ${u.manager.fullName}`}
+                            className="text-[10px] text-amber-800 dark:text-amber-200 font-bold inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 px-1.5 py-0.5 rounded-md border border-amber-200/80 transition-all cursor-pointer group"
+                          >
+                            <Crown className="w-3 h-3 text-amber-600 shrink-0" />
+                            <span className="group-hover:underline">{isEn ? 'Manager: ' : 'Cấp trên: '}{u.manager.fullName}</span>
+                            <ExternalLink className="w-2.5 h-2.5 text-amber-600 opacity-60 group-hover:opacity-100" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -2266,12 +2351,107 @@ export default function UsersPage() {
                   </span>
                 </div>
                 <div>
-                  <span className="text-[11px] text-slate-400 font-semibold block">Quản lý trực tiếp:</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                    👤 {viewingUserDetail.manager?.fullName || '—'}
-                  </span>
+                  <span className="text-[11px] text-slate-400 font-semibold block mb-1">{isEn ? 'Direct Manager:' : 'Cấp trên trực tiếp:'}</span>
+                  {viewingUserDetail.manager ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const mgr = users.find((u: any) => u.id === viewingUserDetail.manager?.id || u.email === viewingUserDetail.manager?.email);
+                        if (mgr) {
+                          setViewingUserDetail(mgr);
+                        } else {
+                          fetch(`/api/users/${viewingUserDetail.manager.id}`)
+                            .then((r) => r.json())
+                            .then((res) => {
+                              const item = res.data || res.user || res;
+                              if (item && item.id) setViewingUserDetail(item);
+                            });
+                        }
+                      }}
+                      title={isEn ? `Click to view manager's profile: ${viewingUserDetail.manager.fullName}` : `Bấm để xem hồ sơ cấp trên: ${viewingUserDetail.manager.fullName}`}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/70 text-amber-800 dark:text-amber-200 font-bold border border-amber-200 dark:border-amber-800 transition-all cursor-pointer text-xs group shadow-2xs"
+                    >
+                      <Crown className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span className="group-hover:underline underline-offset-2">{viewingUserDetail.manager.fullName}</span>
+                      {viewingUserDetail.manager.position && (
+                        <span className="text-[10px] text-amber-600/80 font-normal">({viewingUserDetail.manager.position})</span>
+                      )}
+                      <ExternalLink className="w-3 h-3 text-amber-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                  ) : (
+                    <span className="text-slate-400 italic text-xs">{isEn ? 'Not assigned' : 'Chưa chỉ định'}</span>
+                  )}
                 </div>
               </div>
+
+              {/* Card 1.5: Đội ngũ nhân sự trực thuộc / Cấp dưới */}
+              {(() => {
+                const subReports = viewingUserDetail.directReports && viewingUserDetail.directReports.length > 0
+                  ? viewingUserDetail.directReports
+                  : users.filter((u: any) => u.managerId === viewingUserDetail.id || u.manager?.id === viewingUserDetail.id);
+
+                return (
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700">
+                      <h3 className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-purple-600" />
+                        <span>{isEn ? 'Direct Reports / Team Members' : 'Nhân Sự Cấp Dưới Trực Thuộc'} ({subReports.length})</span>
+                      </h3>
+                      {subReports.length > 0 && (
+                        <span className="text-[10.5px] text-purple-700 dark:text-purple-300 font-bold bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-200">
+                          {subReports.length} {isEn ? 'members' : 'thành viên'}
+                        </span>
+                      )}
+                    </div>
+
+                    {subReports.length === 0 ? (
+                      <div className="text-slate-400 italic text-xs py-1">
+                        {isEn ? 'This person currently does not directly manage any subordinates.' : 'Nhân sự này hiện chưa trực tiếp quản lý cấp dưới nào.'}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {subReports.map((sub: any) => (
+                          <button
+                            key={sub.id}
+                            type="button"
+                            onClick={() => {
+                              const fullSub = users.find((u: any) => u.id === sub.id) || sub;
+                              if (fullSub.assetAssignments) {
+                                setViewingUserDetail(fullSub);
+                              } else {
+                                fetch(`/api/users/${sub.id}`)
+                                  .then((r) => r.json())
+                                  .then((res) => {
+                                    const item = res.data || res.user || res;
+                                    if (item && item.id) setViewingUserDetail(item);
+                                    else setViewingUserDetail(fullSub);
+                                  });
+                              }
+                            }}
+                            title={isEn ? `View profile: ${sub.fullName}` : `Bấm xem hồ sơ nhân sự: ${sub.fullName}`}
+                            className="p-2.5 rounded-xl bg-slate-50 hover:bg-purple-50/80 dark:bg-slate-900/60 dark:hover:bg-purple-950/30 border border-slate-200 dark:border-slate-800 hover:border-purple-300 transition-all flex items-center justify-between text-left group cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-purple-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                                {sub.fullName?.charAt(0) || 'U'}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-bold text-slate-800 dark:text-slate-200 text-xs group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors truncate">
+                                  {sub.fullName}
+                                </div>
+                                <div className="text-[10px] text-slate-500 truncate">
+                                  {sub.position || (isEn ? 'Staff' : 'Nhân viên')} {sub.department ? `· ${sub.department}` : ''}
+                                </div>
+                              </div>
+                            </div>
+                            <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-purple-600 opacity-60 group-hover:opacity-100 shrink-0 ml-1 transition-all" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Card 2: Thiết bị CNTT đang bàn giao */}
               <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-3">

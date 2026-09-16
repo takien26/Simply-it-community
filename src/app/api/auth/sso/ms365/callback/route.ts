@@ -88,6 +88,22 @@ export async function GET(request: NextRequest) {
       locationId = loc.id;
     }
 
+    // Resolve Manager from Microsoft Graph
+    let managerId: string | null = null;
+    try {
+      const mgrRes = await fetch('https://graph.microsoft.com/v1.0/me/manager?$select=id,displayName,mail,userPrincipalName', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+      if (mgrRes.ok) {
+        const mgrData = await mgrRes.json();
+        const mgrEmail = (mgrData.mail || mgrData.userPrincipalName || '').toLowerCase().trim();
+        if (mgrEmail) {
+          const mgrUser = await prisma.user.findUnique({ where: { email: mgrEmail } });
+          if (mgrUser) managerId = mgrUser.id;
+        }
+      }
+    } catch {}
+
     // 3. Find or auto-create User in database
     let user = await prisma.user.findUnique({
       where: { email },
@@ -116,6 +132,7 @@ export async function GET(request: NextRequest) {
           companyName,
           phone,
           locationId,
+          managerId,
           isActive: isAccountEnabled,
         },
         include: { role: true },
@@ -135,6 +152,7 @@ export async function GET(request: NextRequest) {
       if (!user.companyName && companyName) updates.companyName = companyName;
       if (!user.department && department) updates.department = department;
       if (!user.locationId && locationId) updates.locationId = locationId;
+      if (!user.managerId && managerId && managerId !== user.id) updates.managerId = managerId;
 
       if (Object.keys(updates).length > 0) {
         user = await prisma.user.update({
