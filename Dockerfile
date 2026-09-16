@@ -2,7 +2,7 @@
 # 🐳 Production Dockerfile for IT Service Management (ITSM)
 # ==========================================
 
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 WORKDIR /app
 RUN apk add --no-cache python3 make g++ openssl libc6-compat netcat-openbsd
 
@@ -10,7 +10,7 @@ RUN apk add --no-cache python3 make g++ openssl libc6-compat netcat-openbsd
 FROM base AS deps
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
-RUN npm ci
+RUN npm ci || npm install
 
 # 2. Builder stage
 FROM base AS builder
