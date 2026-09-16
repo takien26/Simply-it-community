@@ -221,9 +221,16 @@ export async function syncUsersFromLdap(customConfig?: LdapConfig): Promise<{
       await client.bind('', '');
     }
 
-    // Default filter for active persons in AD / OpenLDAP
-    // Exclude disabled accounts in AD (userAccountControl:1.2.840.113556.1.4.803:=2)
-    const searchFilter = '(&(|(objectCategory=person)(objectClass=inetOrgPerson)(objectClass=user))(!(userAccountControl:1.2.840.113556.1.4.803:=2)))';
+    const getAttr = (val: any): string => {
+      if (val === undefined || val === null) return '';
+      if (Array.isArray(val)) return val[0] !== undefined ? String(val[0]) : '';
+      if (Buffer.isBuffer(val)) return val.toString('utf8');
+      return String(val);
+    };
+
+    // Universal filter for active person/user accounts across Active Directory and OpenLDAP/FreeIPA
+    // Exclude computer accounts to prevent machine accounts from being imported as employees
+    const searchFilter = '(&(|(objectClass=user)(objectClass=inetOrgPerson)(objectClass=person))(!(objectClass=computer)))';
 
     const { searchEntries } = await client.search(config.baseDn, {
       scope: 'sub',
@@ -242,25 +249,40 @@ export async function syncUsersFromLdap(customConfig?: LdapConfig): Promise<{
       sizeLimit: 1000,
     });
 
+    // Derive domain name from baseDn if domain is not explicitly configured (e.g. dc=company,dc=com -> company.com)
+    let domainFallback = config.domain ? config.domain.replace(/^@/, '') : '';
+    if (!domainFallback && config.baseDn) {
+      const dcParts = config.baseDn
+        .split(',')
+        .map((p) => p.trim())
+        .filter((p) => p.toLowerCase().startsWith('dc='))
+        .map((p) => p.substring(3));
+      if (dcParts.length > 0) domainFallback = dcParts.join('.');
+    }
+    if (!domainFallback) domainFallback = 'company.local';
+
     const users: LdapUserEntry[] = [];
     for (const entry of searchEntries) {
-      const username = String(entry.sAMAccountName || entry.cn || '').trim();
-      if (!username) continue;
+      const username = getAttr(entry.sAMAccountName || entry.cn || '').trim();
+      if (!username || username.endsWith('$')) continue;
 
-      let email = String(entry.mail || entry.userPrincipalName || '').trim();
+      const uac = Number(entry.userAccountControl || 0);
+      // Skip computer or domain trust accounts: 0x1000 (workstation), 0x2000 (server), 0x0800 (trust)
+      if ((uac & 0x1000) !== 0 || (uac & 0x2000) !== 0 || (uac & 0x0800) !== 0) continue;
+
+      let email = getAttr(entry.mail || entry.userPrincipalName || '').trim();
       if (!email || !email.includes('@')) {
-        const domain = config.domain ? config.domain.replace(/^@/, '') : 'company.local';
-        email = `${username.toLowerCase()}@${domain}`;
+        email = `${username.toLowerCase()}@${domainFallback}`;
       } else {
         email = email.toLowerCase();
       }
 
-      const fullName = String(entry.displayName || entry.cn || username).trim();
-      const department = entry.department ? String(entry.department).trim() : undefined;
-      const title = entry.title ? String(entry.title).trim() : undefined;
-      const phone = entry.telephoneNumber ? String(entry.telephoneNumber).trim() : undefined;
+      const fullName = getAttr(entry.displayName || entry.cn || username).trim();
+      const department = getAttr(entry.department).trim() || undefined;
+      const title = getAttr(entry.title).trim() || undefined;
+      const phone = getAttr(entry.telephoneNumber).trim() || undefined;
 
-      const uac = Number(entry.userAccountControl || 0);
+      // In Active Directory: Bit 2 (0x0002) of userAccountControl indicates ACCOUNTDISABLE
       const isDisabled = (uac & 2) !== 0;
 
       users.push({
@@ -311,11 +333,21 @@ export async function authenticateWithLdap(
 
   const cleanInput = usernameOrEmail.trim();
   const username = cleanInput.includes('@') ? cleanInput.split('@')[0] : cleanInput;
-  const email = cleanInput.includes('@')
+
+  let domainFallback = config.domain ? config.domain.replace(/^@/, '') : '';
+  if (!domainFallback && config.baseDn) {
+    const dcParts = config.baseDn
+      .split(',')
+      .map((p) => p.trim())
+      .filter((p) => p.toLowerCase().startsWith('dc='))
+      .map((p) => p.substring(3));
+    if (dcParts.length > 0) domainFallback = dcParts.join('.');
+  }
+  if (!domainFallback) domainFallback = 'company.local';
+
+  let email = cleanInput.includes('@')
     ? cleanInput.toLowerCase()
-    : config.domain
-    ? `${cleanInput.toLowerCase()}@${config.domain.replace(/^@/, '')}`
-    : `${cleanInput.toLowerCase()}@company.local`;
+    : `${cleanInput.toLowerCase()}@${domainFallback}`;
 
   // Try authenticating with LDAP client
   const client = new Client({
@@ -334,13 +366,15 @@ export async function authenticateWithLdap(
     // 1. If bindDn configured, search for user's DN first
     if (config.bindDn && config.bindPassword) {
       await client.bind(config.bindDn, config.bindPassword);
-      const searchFilter = (config.userSearchFilter || '(|(sAMAccountName={{username}})(mail={{username}})(userPrincipalName={{username}}))')
-        .replace(/{{username}}/g, username);
+      const filterTemplate = config.userSearchFilter || '(|(sAMAccountName={{username}})(sAMAccountName={{cleanInput}})(mail={{cleanInput}})(userPrincipalName={{cleanInput}}))';
+      const searchFilter = filterTemplate
+        .replace(/{{username}}/g, username)
+        .replace(/{{cleanInput}}/g, cleanInput);
 
       const { searchEntries } = await client.search(config.baseDn, {
         scope: 'sub',
         filter: searchFilter,
-        attributes: ['dn', 'displayName', 'cn', 'department', 'userAccountControl'],
+        attributes: ['dn', 'displayName', 'cn', 'department', 'userAccountControl', 'mail', 'userPrincipalName'],
       });
 
       if (searchEntries && searchEntries.length > 0) {
@@ -348,6 +382,10 @@ export async function authenticateWithLdap(
         userDn = entry.dn;
         fetchedDisplayName = String(entry.displayName || entry.cn || '');
         fetchedDepartment = entry.department ? String(entry.department) : '';
+        const realMail = String(entry.mail || entry.userPrincipalName || '').trim().toLowerCase();
+        if (realMail && realMail.includes('@')) {
+          email = realMail;
+        }
         const uac = Number(entry.userAccountControl || 0);
         if ((uac & 2) !== 0) {
           isAccountDisabled = true;

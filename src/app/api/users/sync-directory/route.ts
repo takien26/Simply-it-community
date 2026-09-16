@@ -15,9 +15,11 @@ export async function POST(request: NextRequest) {
     }
 
     let provider = 'all';
+    let passedConfig: any = null;
     try {
       const body = await request.json();
       if (body?.provider) provider = body.provider;
+      if (body?.config) passedConfig = body.config;
     } catch {}
 
     const offboardedUsers: Array<{ id: string; email: string; fullName: string; reason: string }> = [];
@@ -28,6 +30,17 @@ export async function POST(request: NextRequest) {
     let ssoImportedCount = 0;
     let ldapImportedCount = 0;
     let updatedCount = 0;
+    let ssoError = '';
+    let ldapError = '';
+
+    // Helper to persist setting to DB
+    const upsertSetting = async (key: string, value: string, group = 'general') => {
+      await prisma.systemSetting.upsert({
+        where: { key },
+        update: { value, group },
+        create: { key, value, label: key, group, type: 'STRING' },
+      });
+    };
 
     // Resolve default system role for new accounts
     let defaultRole = await prisma.role.findFirst({ where: { name: 'Staff' } });
@@ -39,17 +52,41 @@ export async function POST(request: NextRequest) {
     // 1. Microsoft 365 SSO Directory Sync & Inbound Pull
     // -------------------------------------------------------------------------
     if (provider === 'all' || provider === 'sso') {
-      const clientId = await prisma.systemSetting.findUnique({ where: { key: 'sso.ms365_client_id' } });
-      const clientSecret = await prisma.systemSetting.findUnique({ where: { key: 'sso.ms365_client_secret' } });
-      const tenantId = await prisma.systemSetting.findUnique({ where: { key: 'sso.ms365_tenant_id' } });
+      // Check if config was passed from form
+      if (passedConfig?.clientId && passedConfig?.clientSecret) {
+        await upsertSetting('sso.ms365_enabled', 'true', 'sso');
+        await upsertSetting('sso.ms365_client_id', passedConfig.clientId, 'sso');
+        await upsertSetting('sso.ms365_client_secret', passedConfig.clientSecret, 'sso');
+        await upsertSetting('sso.ms365_tenant_id', passedConfig.tenantId || 'common', 'sso');
+      }
 
-      if (clientId?.value && clientSecret?.value) {
+      const clientIdSetting = await prisma.systemSetting.findUnique({ where: { key: 'sso.ms365_client_id' } });
+      const clientSecretSetting = await prisma.systemSetting.findUnique({ where: { key: 'sso.ms365_client_secret' } });
+      const tenantIdSetting = await prisma.systemSetting.findUnique({ where: { key: 'sso.ms365_tenant_id' } });
+      const ssoEnabledSetting = await prisma.systemSetting.findUnique({ where: { key: 'sso.ms365_enabled' } });
+
+      const clientId = passedConfig?.clientId || clientIdSetting?.value;
+      const clientSecret = passedConfig?.clientSecret || clientSecretSetting?.value;
+      const tenantId = passedConfig?.tenantId || tenantIdSetting?.value || 'common';
+      const isSsoActive = passedConfig?.clientId || ssoEnabledSetting?.value === 'true';
+
+      if (provider === 'sso' && (!clientId || !clientSecret)) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Chưa cấu hình Application (Client) ID và Client Secret cho Microsoft 365 SSO. Vui lòng nhập thông tin trên Azure Portal trước khi đồng bộ.',
+          },
+          { status: 400 }
+        );
+      }
+
+      if (clientId && clientSecret && isSsoActive) {
         ssoScanned = true;
         try {
-          const tenant = tenantId?.value || 'common';
+          const tenant = tenantId || 'common';
           const tokenParams = new URLSearchParams({
-            client_id: clientId.value,
-            client_secret: clientSecret.value,
+            client_id: clientId,
+            client_secret: clientSecret,
             scope: 'https://graph.microsoft.com/.default',
             grant_type: 'client_credentials',
           });
@@ -61,7 +98,9 @@ export async function POST(request: NextRequest) {
           });
 
           const tokenData = await tokenRes.json();
-          if (tokenRes.ok && tokenData.access_token) {
+          if (!tokenRes.ok || !tokenData.access_token) {
+            ssoError = `Lỗi xác thực Microsoft Entra ID: ${tokenData.error_description || tokenData.error || 'Token request failed'}`;
+          } else {
             // Fetch users with full profile attributes from Microsoft Graph
             const graphUsersRes = await fetch(
               'https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,userPrincipalName,accountEnabled,department,jobTitle&$top=999',
@@ -70,7 +109,10 @@ export async function POST(request: NextRequest) {
               }
             );
 
-            if (graphUsersRes.ok) {
+            if (!graphUsersRes.ok) {
+              const graphErr = await graphUsersRes.json().catch(() => ({}));
+              ssoError = `Lỗi Microsoft Graph API: ${graphErr?.error?.message || 'Quyền hạn không đủ'}. Cần thêm quyền "User.Read.All" (Application permissions) và nhấn "Grant admin consent" trên Azure App Registration.`;
+            } else {
               const graphData = await graphUsersRes.json();
               const graphUsers = graphData.value || [];
               const graphMap = new Map<string, { accountEnabled: boolean; displayName: string; department?: string; jobTitle?: string }>();
@@ -182,8 +224,9 @@ export async function POST(request: NextRequest) {
               }
             }
           }
-        } catch (ssoErr) {
+        } catch (ssoErr: any) {
           console.error('SSO sync error:', ssoErr);
+          ssoError = ssoErr?.message || 'Lỗi ngoại lệ khi đồng bộ Microsoft 365';
         }
       }
     }
@@ -191,9 +234,46 @@ export async function POST(request: NextRequest) {
     // -------------------------------------------------------------------------
     // 2. LDAP / Active Directory Inbound Sync
     // -------------------------------------------------------------------------
-    let ldapError = '';
     if (provider === 'all' || provider === 'ldap') {
-      const ldapConfig = await getLdapConfig();
+      if (passedConfig?.serverUrl) {
+        await upsertSetting('ldap.enabled', 'true', 'ldap');
+        await upsertSetting('ldap.server_url', passedConfig.serverUrl, 'ldap');
+        if (passedConfig.baseDn) await upsertSetting('ldap.base_dn', passedConfig.baseDn, 'ldap');
+        if (passedConfig.bindDn !== undefined) await upsertSetting('ldap.bind_dn', passedConfig.bindDn, 'ldap');
+        if (passedConfig.bindPassword !== undefined) await upsertSetting('ldap.bind_password', passedConfig.bindPassword, 'ldap');
+        if (passedConfig.userSearchFilter) await upsertSetting('ldap.user_search_filter', passedConfig.userSearchFilter, 'ldap');
+        if (passedConfig.defaultRoleId !== undefined) await upsertSetting('ldap.default_role_id', passedConfig.defaultRoleId, 'ldap');
+        if (passedConfig.autoSyncInterval) await upsertSetting('ldap.auto_sync_interval', passedConfig.autoSyncInterval, 'ldap');
+        if (passedConfig.domain !== undefined) await upsertSetting('ldap.domain', passedConfig.domain, 'ldap');
+      }
+
+      let ldapConfig: LdapConfig;
+      if (passedConfig?.serverUrl) {
+        ldapConfig = {
+          enabled: true,
+          serverUrl: passedConfig.serverUrl,
+          baseDn: passedConfig.baseDn || 'dc=company,dc=com',
+          bindDn: passedConfig.bindDn || '',
+          bindPassword: passedConfig.bindPassword || '',
+          userSearchFilter: passedConfig.userSearchFilter || '(|(sAMAccountName={{username}})(mail={{username}})(userPrincipalName={{username}}))',
+          autoCreateUser: passedConfig.autoCreateUser !== false,
+          defaultRoleId: passedConfig.defaultRoleId || '',
+          domain: passedConfig.domain || '',
+        };
+      } else {
+        ldapConfig = await getLdapConfig();
+      }
+
+      if (provider === 'ldap' && !ldapConfig.enabled) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Dịch vụ LDAP chưa được BẬT hoặc chưa được cấu hình. Vui lòng bật công tắc LDAP và nhấn Lưu Cài Đặt LDAP / AD.',
+          },
+          { status: 400 }
+        );
+      }
+
       if (ldapConfig.enabled) {
         ldapScanned = true;
         try {
@@ -203,6 +283,10 @@ export async function POST(request: NextRequest) {
           } else {
             const ldapUsers = ldapResult.users;
             scannedCount += ldapUsers.length;
+
+            if (ldapUsers.length === 0) {
+              ldapError = `Đã kết nối máy chủ LDAP thành công nhưng không tìm thấy tài khoản nào trong Base DN (${ldapConfig.baseDn}). Vui lòng kiểm tra lại Base DN hoặc phân quyền của tài khoản Bind DN.`;
+            }
 
             let targetRoleId = ldapConfig.defaultRoleId || defaultRole?.id;
             if (!targetRoleId && defaultRole) targetRoleId = defaultRole.id;
@@ -285,12 +369,18 @@ export async function POST(request: NextRequest) {
       if (updatedCount > 0) parts.push(`Cập nhật thông tin ${updatedCount} tài khoản`);
       if (offboardedUsers.length > 0) parts.push(`Khóa/chuyển ${offboardedUsers.length} tài khoản nghỉ việc`);
       summaryMessage = `🎉 ${parts.join('. ')}.`;
-    } else if (ldapError) {
-      summaryMessage = `⚠️ Cảnh báo LDAP: ${ldapError}`;
+    } else if (ldapError || ssoError) {
+      summaryMessage = [ldapError, ssoError].filter(Boolean).join(' | ');
+    } else if (scannedCount > 0) {
+      summaryMessage = `✅ Danh bạ đã đồng nhất: Đã quét ${scannedCount} tài khoản từ thư mục, dữ liệu đều khớp và đã sẵn sàng trong hệ thống.`;
+    } else {
+      summaryMessage = 'Không có tài khoản nào được xử lý. Vui lòng kiểm tra lại cấu hình kết nối.';
     }
 
+    const isSuccess = (totalImported > 0 || offboardedUsers.length > 0 || updatedCount > 0 || (!ldapError && !ssoError));
+
     return NextResponse.json({
-      success: true,
+      success: isSuccess,
       message: summaryMessage,
       scannedCount,
       importedCount: totalImported,
@@ -303,7 +393,8 @@ export async function POST(request: NextRequest) {
       ssoScanned,
       ldapScanned,
       ldapError: ldapError || null,
-    });
+      ssoError: ssoError || null,
+    }, { status: (!isSuccess && (provider === 'ldap' || provider === 'sso')) ? 400 : 200 });
   } catch (error: any) {
     console.error('Directory sync error:', error);
     return NextResponse.json(

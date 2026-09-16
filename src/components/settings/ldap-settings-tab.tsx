@@ -33,16 +33,43 @@ export function LdapSettingsTab({
   const [ldapSyncResult, setLdapSyncResult] = React.useState<{ success: boolean; message: string; importedCount?: number } | null>(null);
 
   const handleSyncLdapNow = async () => {
+    const serverUrl = getSettingValue('ldap.server_url');
+    const baseDn = getSettingValue('ldap.base_dn');
+    if (!serverUrl || !baseDn) {
+      setLdapSyncResult({
+        success: false,
+        message: isEn
+          ? 'Please enter LDAP Server URL and Base DN before syncing.'
+          : 'Vui lòng nhập đầy đủ Địa chỉ máy chủ LDAP Server URL và Base DN trước khi đồng bộ.',
+      });
+      return;
+    }
+
     setSyncingLdap(true);
     setLdapSyncResult(null);
     try {
       const res = await fetch('/api/users/sync-directory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: 'ldap' }),
+        body: JSON.stringify({
+          provider: 'ldap',
+          config: {
+            enabled: true,
+            serverUrl,
+            baseDn,
+            bindDn: getSettingValue('ldap.bind_dn'),
+            bindPassword: getSettingValue('ldap.bind_password'),
+            userSearchFilter: getSettingValue('ldap.user_search_filter'),
+            defaultRoleId: getSettingValue('ldap.default_role_id'),
+            autoSyncInterval: getSettingValue('ldap.auto_sync_interval') || '60',
+            autoCreateUser: getSettingValue('ldap.auto_create_user') !== 'false',
+            domain: getSettingValue('ldap.domain'),
+          },
+        }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
+        handleChange('ldap.enabled', 'true');
         setLdapSyncResult({
           success: true,
           message: data.message,

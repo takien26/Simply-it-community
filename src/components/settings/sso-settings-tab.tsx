@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
-import { CheckCircle2, Save, Info, Copy } from 'lucide-react';
+import { CheckCircle2, Save, Info, Copy, AlertCircle, Loader2 } from 'lucide-react';
 import { EnterpriseFeatureLock } from '@/components/common/EnterpriseFeatureLock';
 
 interface SsoSettingsTabProps {
@@ -27,6 +27,98 @@ export function SsoSettingsTab({
   redirectUri,
   isModActive,
 }: SsoSettingsTabProps) {
+  const [testingSso, setTestingSso] = React.useState(false);
+  const [ssoTestResult, setSsoTestResult] = React.useState<{ success: boolean; message: string } | null>(null);
+  const [syncingSso, setSyncingSso] = React.useState(false);
+  const [ssoSyncResult, setSsoSyncResult] = React.useState<{ success: boolean; message: string } | null>(null);
+
+  const handleTestSso = async () => {
+    const clientId = getSettingValue('sso.ms365_client_id');
+    const clientSecret = getSettingValue('sso.ms365_client_secret');
+    if (!clientId || !clientSecret) {
+      setSsoTestResult({
+        success: false,
+        message: isEn
+          ? 'Please enter Application (Client) ID and Client Secret first.'
+          : 'Vui lòng nhập Application (Client) ID và Client Secret trước khi kiểm tra.',
+      });
+      return;
+    }
+
+    setTestingSso(true);
+    setSsoTestResult(null);
+    try {
+      const res = await fetch('/api/auth/sso/ms365/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          clientSecret,
+          tenantId: getSettingValue('sso.ms365_tenant_id') || 'common',
+        }),
+      });
+      const data = await res.json();
+      setSsoTestResult(data);
+    } catch (err: any) {
+      setSsoTestResult({
+        success: false,
+        message: err.message || (isEn ? 'Connection test failed' : 'Lỗi kiểm tra kết nối'),
+      });
+    } finally {
+      setTestingSso(false);
+    }
+  };
+
+  const handleSyncSsoNow = async () => {
+    const clientId = getSettingValue('sso.ms365_client_id');
+    const clientSecret = getSettingValue('sso.ms365_client_secret');
+    if (!clientId || !clientSecret) {
+      setSsoSyncResult({
+        success: false,
+        message: isEn
+          ? 'Please enter Application (Client) ID and Client Secret before syncing.'
+          : 'Vui lòng nhập đầy đủ Application (Client) ID và Client Secret trước khi đồng bộ.',
+      });
+      return;
+    }
+
+    setSyncingSso(true);
+    setSsoSyncResult(null);
+    try {
+      const res = await fetch('/api/users/sync-directory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'sso',
+          config: {
+            clientId,
+            clientSecret,
+            tenantId: getSettingValue('sso.ms365_tenant_id') || 'common',
+          },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        handleChange('sso.ms365_enabled', 'true');
+        setSsoSyncResult({
+          success: true,
+          message: data.message,
+        });
+      } else {
+        setSsoSyncResult({
+          success: false,
+          message: data.error || data.message || (isEn ? 'SSO sync failed' : 'Đồng bộ Microsoft 365 thất bại'),
+        });
+      }
+    } catch (err: any) {
+      setSsoSyncResult({
+        success: false,
+        message: err.message || (isEn ? 'API connection error' : 'Lỗi kết nối API'),
+      });
+    } finally {
+      setSyncingSso(false);
+    }
+  };
   if (!isModActive('SSO')) {
     return (
       <EnterpriseFeatureLock
@@ -93,6 +185,42 @@ export function SsoSettingsTab({
             </span>
           </label>
         </div>
+
+        {/* Test connection alert */}
+        {ssoTestResult && (
+          <div
+            className={`p-4 rounded-xl border text-xs font-semibold flex items-start gap-2 animate-in fade-in ${
+              ssoTestResult.success
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-rose-50 border-rose-200 text-rose-800'
+            }`}
+          >
+            {ssoTestResult.success ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            )}
+            <span>{ssoTestResult.message}</span>
+          </div>
+        )}
+
+        {/* Sync directory result alert */}
+        {ssoSyncResult && (
+          <div
+            className={`p-4 rounded-xl border text-xs font-semibold flex items-start gap-2 animate-in fade-in ${
+              ssoSyncResult.success
+                ? 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                : 'bg-rose-50 border-rose-200 text-rose-800'
+            }`}
+          >
+            {ssoSyncResult.success ? (
+              <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            )}
+            <span>{ssoSyncResult.message}</span>
+          </div>
+        )}
 
         {/* Redirect URI with Copy Button */}
         <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-xl space-y-2 text-xs">
@@ -185,7 +313,29 @@ export function SsoSettingsTab({
           </ol>
         </div>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100 flex-wrap gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              disabled={testingSso || syncingSso}
+              onClick={handleTestSso}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-300 cursor-pointer disabled:opacity-50"
+            >
+              {testingSso ? <Loader2 className="w-4 h-4 animate-spin text-indigo-600" /> : <span>⚡</span>}
+              <span>{testingSso ? (isEn ? 'Testing connection...' : 'Đang kiểm tra kết nối...') : (isEn ? 'Test Microsoft Entra ID' : 'Kiểm Tra Kết Nối Microsoft Entra ID')}</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={syncingSso || testingSso}
+              onClick={handleSyncSsoNow}
+              className="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {syncingSso ? <Loader2 className="w-4 h-4 animate-spin text-indigo-600" /> : <span>🔄</span>}
+              <span>{syncingSso ? (isEn ? 'Syncing users from M365...' : 'Đang đồng bộ User từ Microsoft 365...') : (isEn ? 'Sync All Users from M365 Now' : 'Đồng Bộ Toàn Bộ User Từ Microsoft 365 Ngay')}</span>
+            </button>
+          </div>
+
           <button
             type="submit"
             className="inline-flex items-center space-x-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-md transition-all text-xs cursor-pointer"
