@@ -2617,23 +2617,52 @@ export default function UsersPage() {
 
             {syncReport.success && (
               <div className="space-y-3 text-xs">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <span className="text-[11px] text-slate-500 block">{isEn ? 'Accounts Scanned' : 'Số tài khoản đã quét'}</span>
+                    <span className="text-[11px] text-slate-500 block">{isEn ? 'Scanned' : 'Đã quét'}</span>
                     <span className="text-lg font-bold text-slate-900 dark:text-white">{syncReport.scannedCount || 0}</span>
                   </div>
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-900">
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-300 block">{isEn ? 'New Imported' : 'Nạp mới'}</span>
+                    <span className="text-lg font-bold text-emerald-700 dark:text-emerald-400">+{syncReport.importedCount || 0}</span>
+                  </div>
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-900">
+                    <span className="text-[11px] text-blue-700 dark:text-blue-300 block">{isEn ? 'Updated' : 'Cập nhật'}</span>
+                    <span className="text-lg font-bold text-blue-700 dark:text-blue-400">{syncReport.updatedCount || 0}</span>
+                  </div>
                   <div className="p-3 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-900">
-                    <span className="text-[11px] text-rose-600 dark:text-rose-300 block">{isEn ? 'Offboarded / Resigned' : 'Chuyển sang Nghỉ việc'}</span>
+                    <span className="text-[11px] text-rose-600 dark:text-rose-300 block">{isEn ? 'Offboarded' : 'Nghỉ việc'}</span>
                     <span className="text-lg font-bold text-rose-700 dark:text-rose-400">{syncReport.offboardedCount || 0}</span>
                   </div>
                 </div>
 
+                {syncReport.importedUsers?.length > 0 && (
+                  <div className="space-y-1.5">
+                    <h4 className="font-bold text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-1.5">
+                      <span>📥</span>
+                      <span>{isEn ? `Newly Imported Users (${syncReport.importedUsers.length}):` : `Tài khoản vừa nạp mới thành công (${syncReport.importedUsers.length}):`}</span>
+                    </h4>
+                    <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                      {syncReport.importedUsers.map((u: any, idx: number) => (
+                        <div key={idx} className="p-2 rounded-lg bg-emerald-50/70 border border-emerald-200 text-[11px] flex items-center justify-between gap-2">
+                          <div className="truncate">
+                            <span className="font-bold text-emerald-950">{u.fullName}</span>
+                            <span className="text-slate-500 font-mono ml-1.5">({u.email})</span>
+                          </div>
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full shrink-0">{u.provider}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {syncReport.offboardedUsers?.length > 0 && (
                   <div className="space-y-1.5">
-                    <h4 className="font-bold text-slate-700 dark:text-slate-200 text-xs">
-                      {isEn ? 'Deactivated Accounts List:' : 'Danh sách tài khoản đã chuyển sang Nghỉ việc:'}
+                    <h4 className="font-bold text-slate-700 dark:text-slate-200 text-xs flex items-center gap-1.5">
+                      <span>🛑</span>
+                      <span>{isEn ? 'Deactivated Accounts List:' : 'Danh sách tài khoản chuyển sang Nghỉ việc:'}</span>
                     </h4>
-                    <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                    <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
                       {syncReport.offboardedUsers.map((u: any) => (
                         <div key={u.id} className="p-2 rounded-lg bg-rose-50/70 border border-rose-200 text-[11px] flex items-center justify-between gap-2">
                           <div className="truncate">

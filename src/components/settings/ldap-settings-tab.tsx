@@ -29,6 +29,41 @@ export function LdapSettingsTab({
   handleTestLdap,
   isModActive,
 }: LdapSettingsTabProps) {
+  const [syncingLdap, setSyncingLdap] = React.useState(false);
+  const [ldapSyncResult, setLdapSyncResult] = React.useState<{ success: boolean; message: string; importedCount?: number } | null>(null);
+
+  const handleSyncLdapNow = async () => {
+    setSyncingLdap(true);
+    setLdapSyncResult(null);
+    try {
+      const res = await fetch('/api/users/sync-directory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'ldap' }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setLdapSyncResult({
+          success: true,
+          message: data.message,
+          importedCount: data.ldapImportedCount || data.importedCount,
+        });
+      } else {
+        setLdapSyncResult({
+          success: false,
+          message: data.error || data.message || (isEn ? 'LDAP sync failed' : 'Đồng bộ thất bại'),
+        });
+      }
+    } catch (err: any) {
+      setLdapSyncResult({
+        success: false,
+        message: err.message || (isEn ? 'API connection error' : 'Lỗi kết nối API'),
+      });
+    } finally {
+      setSyncingLdap(false);
+    }
+  };
+
   if (!isModActive('LDAP')) {
     return (
       <EnterpriseFeatureLock
@@ -113,6 +148,24 @@ export function LdapSettingsTab({
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             )}
             <span>{ldapTestResult.message || (ldapTestResult as any).error}</span>
+          </div>
+        )}
+
+        {/* Sync directory result alert */}
+        {ldapSyncResult && (
+          <div
+            className={`p-4 rounded-xl border text-xs font-semibold flex items-start gap-2 animate-in fade-in ${
+              ldapSyncResult.success
+                ? 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                : 'bg-rose-50 border-rose-200 text-rose-800'
+            }`}
+          >
+            {ldapSyncResult.success ? (
+              <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            )}
+            <span>{ldapSyncResult.message}</span>
           </div>
         )}
 
@@ -222,17 +275,29 @@ export function LdapSettingsTab({
           </div>
         </div>
 
-        {/* Test Connection Button & Save */}
+        {/* Test Connection Button, Sync Button & Save */}
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={testingLdap}
-            onClick={handleTestLdap}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-300 cursor-pointer disabled:opacity-50"
-          >
-            {testingLdap ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <span>⚡</span>}
-            <span>{testingLdap ? (isEn ? 'Testing connection...' : 'Đang thử kết nối...') : (isEn ? 'Test LDAP Server Connection' : 'Kiểm Tra Kết Nối Máy Chủ LDAP')}</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              disabled={testingLdap || syncingLdap}
+              onClick={handleTestLdap}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-300 cursor-pointer disabled:opacity-50"
+            >
+              {testingLdap ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <span>⚡</span>}
+              <span>{testingLdap ? (isEn ? 'Testing connection...' : 'Đang thử kết nối...') : (isEn ? 'Test LDAP Server Connection' : 'Kiểm Tra Kết Nối Máy Chủ LDAP')}</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={syncingLdap || testingLdap}
+              onClick={handleSyncLdapNow}
+              className="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {syncingLdap ? <Loader2 className="w-4 h-4 animate-spin text-indigo-600" /> : <span>🔄</span>}
+              <span>{syncingLdap ? (isEn ? 'Syncing users from LDAP...' : 'Đang đồng bộ User từ LDAP...') : (isEn ? 'Sync All Users from LDAP Now' : 'Đồng Bộ Toàn Bộ User Từ LDAP Ngay')}</span>
+            </button>
+          </div>
 
           <button
             type="submit"
