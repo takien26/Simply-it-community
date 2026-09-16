@@ -12,7 +12,7 @@ import { useLanguage } from '@/lib/i18n/context';
 import { DocumentQuickPreviewModal } from '@/components/documents/document-quick-preview-modal';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { fetchWithSwr, invalidateClientCache } from '@/lib/client-cache';
+import { fetchWithSwr, invalidateClientCache, useAutoRefresh } from '@/lib/client-cache';
 import { getStoredBaseCurrency, getStoredCurrencies, convertCurrencyAmount } from '@/lib/currency-store';
 import {
   Eye,
@@ -392,14 +392,14 @@ export default function LicensesPage() {
             return list.find((l: any) => l.id === prev.id) || prev;
           });
         }
-      });
+      }, 30000, forceFresh);
 
       // 2. Fetch Assets with SWR Cache
       fetchWithSwr<any>('/api/assets?pageSize=300', (assetRes) => {
         if (assetRes && (assetRes.success || assetRes.data)) {
           setAssets(assetRes.data || assetRes.assets || []);
         }
-      });
+      }, 30000, forceFresh);
 
       // 3. Fetch Master Data with SWR Cache
       fetchWithSwr<any>('/api/master-data', (masterRes) => {
@@ -409,12 +409,18 @@ export default function LicensesPage() {
           if (md.users) setUsers(md.users);
           if (md.companies) setCompanies(md.companies);
         }
-      });
+      }, 60000, forceFresh);
     } catch (error) {
       console.error('Failed to load license data:', error);
       setLoading(false);
     }
   }, []);
+
+  // Connect Professional Auto-Refresh & Instant Reactive Sync
+  const { isRefreshing: isAutoRefreshing, refreshNow } = useAutoRefresh({
+    onRefresh: loadData,
+    scope: 'licenses',
+  });
 
   useEffect(() => {
     loadData();

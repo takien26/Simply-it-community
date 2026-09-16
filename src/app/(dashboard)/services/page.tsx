@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { DocumentQuickPreviewModal } from '@/components/documents/document-quick-preview-modal';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { fetchWithSwr } from '@/lib/client-cache';
+import { fetchWithSwr, invalidateClientCache, useAutoRefresh } from '@/lib/client-cache';
 import { getStoredBaseCurrency, getStoredCurrencies, convertCurrencyAmount } from '@/lib/currency-store';
 import {
   Globe,
@@ -648,6 +648,9 @@ export default function ServicesPage() {
   // Load Data
   const loadData = useCallback(async (forceMaster = false) => {
     try {
+      if (forceMaster) {
+        invalidateClientCache('/api/services');
+      }
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       if (selectedType !== 'ALL') params.append('type', selectedType);
@@ -662,14 +665,14 @@ export default function ServicesPage() {
           setServices(servicesRes.data || []);
           setLoading(false);
         }
-      });
+      }, 30000, forceMaster);
 
       // 2. Fetch Assets with SWR Cache
       fetchWithSwr<any>('/api/assets?pageSize=300', (assetsRes) => {
         if (assetsRes && (assetsRes.success || assetsRes.data)) {
           setAssets(assetsRes.data || assetsRes.assets || []);
         }
-      });
+      }, 30000, forceMaster);
 
       // 3. Fetch Master Data with SWR Cache
       fetchWithSwr<any>('/api/master-data', (masterRes) => {
@@ -680,12 +683,18 @@ export default function ServicesPage() {
           if (md.companies) setCompanies(md.companies);
           if (md.users) setUsers(md.users);
         }
-      });
+      }, 60000, forceMaster);
     } catch (err) {
       console.error('Failed to load services data:', err);
       setLoading(false);
     }
   }, [search, selectedType, selectedStatus, selectedVendor, selectedCompany]);
+
+  // Connect Professional Auto-Refresh & Instant Reactive Sync
+  const { isRefreshing: isAutoRefreshing, refreshNow } = useAutoRefresh({
+    onRefresh: loadData,
+    scope: 'services',
+  });
 
   useEffect(() => {
     loadData();

@@ -6,7 +6,7 @@ import { DocumentQuickPreviewModal } from '@/components/documents/document-quick
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/context';
-import { fetchWithSwr } from '@/lib/client-cache';
+import { fetchWithSwr, invalidateClientCache, useAutoRefresh } from '@/lib/client-cache';
 import { getStoredBaseCurrency, getStoredCurrencies, convertCurrencyAmount } from '@/lib/currency-store';
 import {
   Sparkles,
@@ -788,8 +788,11 @@ export default function AssetsPage() {
 
   const isMasterLoadedRef = useRef(false);
 
-  const loadData = async (forceMaster = false) => {
+  const loadData = useCallback(async (forceFresh = false) => {
     try {
+      if (forceFresh) {
+        invalidateClientCache('/api/assets');
+      }
       // 1. Fetch Assets with SWR Cache (0ms instant render)
       fetchWithSwr<any>('/api/assets?pageSize=1000', (assetsRes) => {
         if (assetsRes) {
@@ -797,7 +800,7 @@ export default function AssetsPage() {
           setAssets(list);
           setLoading(false);
         }
-      });
+      }, 30000, forceFresh);
 
       // 2. Fetch Master Data with SWR Cache (0ms instant render)
       fetchWithSwr<any>('/api/master-data', (masterRes) => {
@@ -809,23 +812,29 @@ export default function AssetsPage() {
           if (md.users) setUsers(md.users);
           if (md.companies) setCompanies(md.companies);
         }
-      });
+      }, 60000, forceFresh);
 
       // 3. Fetch Licenses with SWR Cache
       fetchWithSwr<any>('/api/licenses', (licRes) => {
         if (licRes && (licRes.success || licRes.data || licRes.licenses)) {
           setLicenses(licRes.data || licRes.licenses || []);
         }
-      });
+      }, 30000, forceFresh);
     } catch (error) {
       console.error('Failed to load assets data:', error);
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Connect Professional Auto-Refresh & Instant Reactive Sync
+  const { isRefreshing: isAutoRefreshing, refreshNow } = useAutoRefresh({
+    onRefresh: loadData,
+    scope: 'assets',
+  });
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   // Quick Create User for Transfer / Assign modal
   const handleQuickCreateUser = async () => {

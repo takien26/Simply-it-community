@@ -25,6 +25,8 @@ const RealtimeNotificationListener = dynamic(
   { ssr: false }
 );
 
+import { triggerDataRefresh } from '@/lib/client-cache';
+
 export default function DashboardLayout({
   children,
 }: {
@@ -34,7 +36,7 @@ export default function DashboardLayout({
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
 
   const handleGlobalRefresh = () => {
-    window.location.reload();
+    triggerDataRefresh();
   };
 
   return (

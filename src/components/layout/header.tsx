@@ -40,6 +40,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { GlobalSearch } from '@/components/common/GlobalSearch';
 import { useLanguage } from '@/lib/i18n/context';
+import { triggerDataRefresh } from '@/lib/client-cache';
 
 const PAGE_TITLES: Record<string, { titleVi: string; titleEn: string; titleJa?: string; icon: string }> = {
   '/dashboard': { titleVi: 'Tổng Quan & Dashboard', titleEn: 'Dashboard & Overview', titleJa: '総合ダッシュボード＆概要', icon: '📊' },
@@ -88,6 +89,55 @@ export function Header({
   const isEn = language === 'en';
   const [currentTab, setCurrentTab] = useState<string>('');
   const [appName, setAppName] = useState('IT Asset Manager');
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(60);
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+  const [isSyncMenuOpen, setIsSyncMenuOpen] = useState(false);
+  const syncMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('app:auto-refresh-interval');
+      if (saved !== null) {
+        const val = parseInt(saved, 10);
+        if (!isNaN(val)) setAutoRefreshInterval(val);
+      }
+    } catch {}
+
+    const handleDataRefresh = () => {
+      setIsManualSyncing(true);
+      setTimeout(() => setIsManualSyncing(false), 600);
+    };
+    window.addEventListener('app:data-refresh', handleDataRefresh);
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (syncMenuRef.current && !syncMenuRef.current.contains(e.target as Node)) {
+        setIsSyncMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      window.removeEventListener('app:data-refresh', handleDataRefresh);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleSelectRefreshInterval = (sec: number) => {
+    setAutoRefreshInterval(sec);
+    setIsSyncMenuOpen(false);
+    try {
+      localStorage.setItem('app:auto-refresh-interval', String(sec));
+      window.dispatchEvent(
+        new CustomEvent('app:auto-refresh-config-changed', { detail: { intervalSec: sec } })
+      );
+    } catch {}
+  };
+
+  const handleTriggerManualSync = () => {
+    setIsManualSyncing(true);
+    triggerDataRefresh();
+    setTimeout(() => setIsManualSyncing(false), 600);
+  };
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifTab, setNotifTab] = useState<'ALL' | 'TICKETS' | 'LICENSES' | 'SERVICES'>('ALL');
   const [readNotifIds, setReadNotifIds] = useState<string[]>([]);
@@ -469,6 +519,66 @@ export function Header({
       </div>
 
       <div className="flex items-center space-x-2.5 sm:space-x-3">
+        {/* REACTIVE DATA SYNC WIDGET */}
+        <div className="relative" ref={syncMenuRef}>
+          <div className="flex items-center bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-xl p-0.5 shadow-2xs transition-all">
+            <button
+              type="button"
+              onClick={handleTriggerManualSync}
+              className="p-1.5 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-white transition-all cursor-pointer group"
+              title="Đồng bộ dữ liệu ngầm tức thì (Click để tải lại ngầm)"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 text-slate-500 group-hover:text-blue-600 transition-transform ${
+                  isManualSyncing ? 'animate-spin text-blue-600' : ''
+                }`}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsSyncMenuOpen(!isSyncMenuOpen)}
+              className="px-1.5 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 flex items-center gap-0.5 cursor-pointer rounded-r-lg hover:bg-white"
+              title="Tùy chọn chu kỳ tự động làm mới ngầm"
+            >
+              <span>{autoRefreshInterval > 0 ? `${autoRefreshInterval}s` : 'Tắt'}</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+          </div>
+
+          {isSyncMenuOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="px-2 py-1.5 border-b border-slate-100 mb-1">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                  Tự động làm mới ngầm
+                </span>
+                <span className="text-[10px] text-slate-500">Chuẩn ứng dụng lớn (Chỉ chạy khi xem tab)</span>
+              </div>
+              <div className="space-y-0.5">
+                {[
+                  { sec: 30, label: '30 giây (Rất nhanh)' },
+                  { sec: 60, label: '60 giây (Khuyên dùng)' },
+                  { sec: 120, label: '2 phút (Tiết kiệm)' },
+                  { sec: 0, label: 'Tắt (Chỉ làm mới khi bấm)' },
+                ].map((opt) => (
+                  <button
+                    key={opt.sec}
+                    type="button"
+                    onClick={() => handleSelectRefreshInterval(opt.sec)}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between cursor-pointer transition-colors ${
+                      autoRefreshInterval === opt.sec
+                        ? 'bg-blue-50 text-blue-700 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {autoRefreshInterval === opt.sec && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* GLOBAL SEARCH — Command Palette (Ctrl+K) */}
         <GlobalSearch />
 
