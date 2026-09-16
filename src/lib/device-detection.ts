@@ -17,11 +17,55 @@ export interface DeviceDetectionInput {
   } | null;
 }
 
+export function isGenericSerial(serial: string | null | undefined): boolean {
+  if (!serial) return true;
+  const s = serial.trim().toLowerCase();
+  if (!s || s.length < 3) return true;
+  const genericList = [
+    'default string',
+    'default',
+    'to be filled by o.e.m.',
+    'to be filled by oem',
+    'none',
+    'null',
+    'system serial number',
+    'system serial',
+    'all series',
+    'chassis serial number',
+    'base board serial number',
+    'motherboard serial number',
+    'not specified',
+    'unknown',
+    'system manufacturer',
+    'o.e.m.',
+    'oem',
+    '123456789',
+    '1234567890',
+    '0123456789',
+    '0000000000',
+    'na',
+    'n/a',
+  ];
+  return genericList.includes(s) || genericList.some((g) => s.startsWith(g));
+}
+
 /**
  * Detects whether a machine is a Laptop, Desktop, or Server
  * based on collected hardware signals, model names, and OS details.
  */
 export function detectDeviceType(input: DeviceDetectionInput): DetectedDeviceType {
+  const brand = (input.brand || '').toLowerCase();
+  const model = (input.model || '').toLowerCase();
+  const hostname = (input.hostname || '').toLowerCase();
+  const os = (input.specs?.os || '').toLowerCase();
+  const combined = `${brand} ${model} ${hostname}`;
+
+  // 0. Desktop motherboard & PC keywords (take precedence over false battery / UPS / laptop flags)
+  const desktopMotherboardPattern = /\b(b450|b550|b650|a320|a520|x370|x470|x570|x670|h310|h410|h510|h610|b360|b365|b460|b560|b660|b760|z370|z390|z490|z590|z690|z790|aorus|tomahawk|mortar|b85|h81|h61)\b/i;
+  if (desktopMotherboardPattern.test(model) || desktopMotherboardPattern.test(combined)) {
+    return 'Desktop';
+  }
+
   // 1. Explicit deviceType reported by collector script
   const explicitType = (input.deviceType || input.specs?.deviceType || '').trim().toLowerCase();
   if (explicitType === 'laptop' || explicitType.includes('notebook') || explicitType.includes('laptop')) {
@@ -55,12 +99,6 @@ export function detectDeviceType(input: DeviceDetectionInput): DetectedDeviceTyp
       return 'Server';
     }
   }
-
-  const brand = (input.brand || '').toLowerCase();
-  const model = (input.model || '').toLowerCase();
-  const hostname = (input.hostname || '').toLowerCase();
-  const os = (input.specs?.os || '').toLowerCase();
-  const combined = `${brand} ${model} ${hostname}`;
 
   // 4. Server OS or keywords
   if (os.includes('server') || combined.includes('server') || combined.includes('poweredge') || combined.includes('proliant') || combined.includes('thinksystem')) {

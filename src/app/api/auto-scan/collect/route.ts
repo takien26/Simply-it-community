@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { reconcileSoftwareLicenses } from '@/lib/license-reconciliation';
-import { detectDeviceType, resolveCategoryForDevice } from '@/lib/device-detection';
+import { detectDeviceType, resolveCategoryForDevice, isGenericSerial } from '@/lib/device-detection';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,14 +29,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const cleanSerial = (serialNumber || '').trim();
+    const rawSerial = (serialNumber || '').trim();
     const cleanHostname = (hostname || '').trim();
+    const isGeneric = isGenericSerial(rawSerial);
+    const validSerial = !isGeneric ? rawSerial : null;
 
-    // 1. Check if asset exists by Serial Number or Hostname
+    // 1. Check if asset exists by Serial Number (only if valid & not generic) or Hostname
     let existingAsset = null;
-    if (cleanSerial) {
+    if (validSerial) {
       existingAsset = await prisma.asset.findFirst({
-        where: { serialNumber: { equals: cleanSerial, mode: 'insensitive' } },
+        where: { serialNumber: { equals: validSerial, mode: 'insensitive' } },
         include: { category: true, assignments: { where: { returnedAt: null } } },
       });
     }
@@ -166,9 +168,58 @@ export async function POST(request: NextRequest) {
     });
     const category = await resolveCategoryForDevice(detectedType);
 
-    // Generate tag
-    const tagCount = await prisma.asset.count();
-    const generatedTag = `AST-${String(tagCount + 1).padStart(4, '0')}`;
+    // Resolve safe categoryId (never empty string)
+    let targetCategoryId = category?.id;
+    if (!targetCategoryId) {
+      const fallbackCat = await prisma.assetCategory.findFirst();
+      if (fallbackCat) {
+        targetCategoryId = fallbackCat.id;
+      } else {
+        const createdCat = await prisma.assetCategory.create({
+          data: {
+            name: 'Thiết bị văn phòng',
+            icon: '🏢',
+            description: 'Danh mục thiết bị',
+            isActive: true,
+            sortOrder: 0,
+          },
+        });
+        targetCategoryId = createdCat.id;
+      }
+    }
+
+    // Generate unique asset tag safely (avoid collision with existing tags)
+    let generatedTag = '';
+    const lastAst = await prisma.asset.findFirst({
+      where: { assetTag: { startsWith: 'AST-' } },
+      orderBy: { assetTag: 'desc' },
+      select: { assetTag: true },
+    });
+
+    let nextNum = 1;
+    if (lastAst?.assetTag) {
+      const match = lastAst.assetTag.match(/^AST-(\d+)$/i);
+      if (match) {
+        nextNum = parseInt(match[1], 10) + 1;
+      }
+    }
+    const totalCount = await prisma.asset.count();
+    if (totalCount >= nextNum) {
+      nextNum = totalCount + 1;
+    }
+
+    while (true) {
+      const candidateTag = `AST-${String(nextNum).padStart(4, '0')}`;
+      const exists = await prisma.asset.findUnique({
+        where: { assetTag: candidateTag },
+        select: { id: true },
+      });
+      if (!exists) {
+        generatedTag = candidateTag;
+        break;
+      }
+      nextNum++;
+    }
 
     const targetSoftware = Array.isArray(installedSoftware) ? installedSoftware : [];
     const reconciliation = await reconcileSoftwareLicenses(targetSoftware, null);
@@ -194,8 +245,8 @@ export async function POST(request: NextRequest) {
         name: cleanHostname ? `${deviceTypeLabel} ${cleanHostname}` : `${deviceTypeLabel} ${model || 'Mới'}`,
         brand: brand || 'Generic',
         model: model || (detectedType === 'Laptop' ? 'Laptop' : 'PC'),
-        serialNumber: cleanSerial || generatedTag,
-        categoryId: category?.id || '',
+        serialNumber: validSerial, // null if generic to avoid @unique collision
+        categoryId: targetCategoryId,
         status: 'PENDING',
         condition: 'GOOD',
         specs: newSpecsData,

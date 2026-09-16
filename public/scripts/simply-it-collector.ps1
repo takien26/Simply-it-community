@@ -393,13 +393,41 @@ try {
     $enclosure  = Get-CimCompat "Win32_SystemEnclosure"
     $batteries  = @(Get-CimCompat "Win32_Battery")
 
+    # Safe Serial Number detection with robust blacklist filtering
+    $genericSerials = @(
+        "Default string",
+        "To be filled by O.E.M.",
+        "None",
+        "System Serial Number",
+        "All Series",
+        "0123456789",
+        "1234567890",
+        "Chassis Serial Number",
+        "Not Specified",
+        "System Manufacturer"
+    )
+
+    function Test-IsGenericSerial {
+        param([string]$Serial)
+        if ([string]::IsNullOrWhiteSpace($Serial)) { return $true }
+        $s = $Serial.Trim()
+        if ($s.Length -lt 3) { return $true }
+        foreach ($g in $genericSerials) {
+            if ($s -ieq $g -or $s.ToLower().StartsWith($g.ToLower())) {
+                return $true
+            }
+        }
+        return $false
+    }
+
     $serialNumber = [string]$bios.SerialNumber
-    if ([string]::IsNullOrWhiteSpace($serialNumber) -or
-        $serialNumber -match "To be filled|Default|None|0123456789") {
+    if (Test-IsGenericSerial $serialNumber) {
         $serialNumber = [string]$csProduct.IdentifyingNumber
     }
-    if ([string]::IsNullOrWhiteSpace($serialNumber)) {
-        $serialNumber = $hostname
+    if (Test-IsGenericSerial $serialNumber) {
+        # Fallback: leave empty so backend identifies via Hostname and stores NULL in database
+        $serialNumber = ""
+        Log "Serial is generic/OEM placeholder (e.g. Default string). Cleared to avoid database collision."
     }
 
     $brand = [string]$cs.Manufacturer
@@ -450,7 +478,13 @@ try {
     $serverChassis = @(17, 23, 28, 29)
 
     $deviceType = "Desktop"
-    if ($hasBattery -or ($chassisList | Where-Object { $laptopChassis -contains $_ })) {
+
+    # Check Desktop motherboards and PC models (takes precedence over UPS / false chassis codes)
+    $desktopPatterns = "B450|B550|B650|A320|A520|X370|X470|X570|X670|H310|H410|H510|H610|B360|B365|B460|B560|B660|B760|Z370|Z390|Z490|Z590|Z690|Z790|AORUS|OptiPlex|ProDesk|EliteDesk|ThinkCentre|Tower|Workstation"
+
+    if ($model -match $desktopPatterns -or $brand -match "Gigabyte|ASRock|Micro-Star") {
+        $deviceType = "Desktop"
+    } elseif ($hasBattery -or ($chassisList | Where-Object { $laptopChassis -contains $_ })) {
         $deviceType = "Laptop"
     } elseif ($chassisList | Where-Object { $serverChassis -contains $_ } -or ($os -match "Server")) {
         $deviceType = "Server"
@@ -515,10 +549,66 @@ try {
         scannedAt         = (Get-Date).ToString("o")
     }
 
-    $jsonBody = $payload | ConvertTo-Json -Depth 8 -Compress
+    # --------------------------------------------------------------------------
+    # SANITIZE PAYLOAD - PostgreSQL does not accept NUL (U+0000) in text fields.
+    # Some Windows WMI/Registry values can contain embedded NUL characters.
+    # Clean recursively before JSON serialization so the API cannot receive them.
+    # --------------------------------------------------------------------------
+    function Remove-NullCharacters {
+        param(
+            [Parameter(Mandatory = $false)]
+            $Value
+        )
+
+        if ($null -eq $Value) {
+            return $null
+        }
+
+        if ($Value -is [string]) {
+            if ($Value.IndexOf([char]0) -ge 0) {
+                return $Value.Replace([string][char]0, "")
+            }
+            return $Value
+        }
+
+        if ($Value -is [System.Collections.IDictionary]) {
+            $clean = @{}
+            foreach ($key in $Value.Keys) {
+                $cleanKey = if ($key -is [string]) {
+                    ([string]$key).Replace([string][char]0, "")
+                } else {
+                    $key
+                }
+                $clean[$cleanKey] = Remove-NullCharacters $Value[$key]
+            }
+            return $clean
+        }
+
+        if ($Value -is [System.Collections.IEnumerable] -and
+            -not ($Value -is [System.Management.Automation.PSObject])) {
+            $items = @()
+            foreach ($item in $Value) {
+                $items += ,(Remove-NullCharacters $item)
+            }
+            return $items
+        }
+
+        if ($Value.PSObject -and $Value.PSObject.Properties.Count -gt 0) {
+            $clean = [ordered]@{}
+            foreach ($prop in $Value.PSObject.Properties) {
+                $clean[$prop.Name] = Remove-NullCharacters $prop.Value
+            }
+            return $clean
+        }
+
+        return $Value
+    }
+
+    $payloadClean = Remove-NullCharacters $payload
+    $jsonBody = $payloadClean | ConvertTo-Json -Depth 8 -Compress
 
     try {
-        $payload | ConvertTo-Json -Depth 8 | Set-Content -Path $JsonFile -Encoding UTF8
+        $payloadClean | ConvertTo-Json -Depth 8 | Set-Content -Path $JsonFile -Encoding UTF8
         Log "Payload saved to $JsonFile"
     } catch {
         Log "Payload save failed: $($_.Exception.Message)"
@@ -593,6 +683,28 @@ try {
             }
         } catch {
             $lastError = $_.Exception.Message
+            $serverDetail = ""
+            try {
+                if ($_.Exception.Response) {
+                    $stream = $_.Exception.Response.GetResponseStream()
+                    if ($stream) {
+                        $reader = New-Object System.IO.StreamReader($stream, [System.Text.Encoding]::UTF8)
+                        $rawText = $reader.ReadToEnd()
+                        if ($rawText) {
+                            $parsed = $rawText | ConvertFrom-Json -ErrorAction SilentlyContinue
+                            if ($parsed -and $parsed.error) {
+                                $serverDetail = $parsed.error
+                            } else {
+                                $serverDetail = $rawText
+                            }
+                        }
+                    }
+                }
+            } catch {}
+
+            if ($serverDetail) {
+                $lastError = "$($_.Exception.Message) [$serverDetail]"
+            }
             Log "POST FAILED $ep : $lastError"
         }
     }
