@@ -45,6 +45,7 @@ export function isGenericSerial(serial: string | null | undefined): boolean {
     '0000000000',
     'na',
     'n/a',
+    'scan',
   ];
   return genericList.includes(s) || genericList.some((g) => s.startsWith(g));
 }
