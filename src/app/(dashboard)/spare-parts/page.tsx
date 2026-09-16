@@ -148,10 +148,6 @@ export default function SparePartsPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isStockActionOpen, isHistoryOpen, isEditOpen, isCreateOpen, isDrawerOpen]);
 
-  useEffect(() => {
-    loadParts();
-    loadDropdowns();
-  }, [loadParts]);
 
   // Debounced search for Assets in Stock-Out Modal
   useEffect(() => {
@@ -239,6 +235,11 @@ export default function SparePartsPage() {
       console.error(e);
     }
   };
+
+  useEffect(() => {
+    loadParts();
+    loadDropdowns();
+  }, [loadParts]);
 
   // Open Quick-View Drawer
   const openDrawer = (part: SparePart) => {

@@ -22,6 +22,8 @@ export interface LdapUserEntry {
   department?: string;
   title?: string;
   phone?: string;
+  officeLocation?: string;
+  company?: string;
   isDisabled?: boolean;
 }
 
@@ -243,7 +245,12 @@ export async function syncUsersFromLdap(customConfig?: LdapConfig): Promise<{
         'cn',
         'department',
         'title',
+        'company',
         'telephoneNumber',
+        'mobile',
+        'physicalDeliveryOfficeName',
+        'l',
+        'streetAddress',
         'userAccountControl',
       ],
       sizeLimit: 1000,
@@ -280,7 +287,9 @@ export async function syncUsersFromLdap(customConfig?: LdapConfig): Promise<{
       const fullName = getAttr(entry.displayName || entry.cn || username).trim();
       const department = getAttr(entry.department).trim() || undefined;
       const title = getAttr(entry.title).trim() || undefined;
-      const phone = getAttr(entry.telephoneNumber).trim() || undefined;
+      const phone = getAttr(entry.telephoneNumber || entry.mobile).trim() || undefined;
+      const company = getAttr(entry.company).trim() || undefined;
+      const officeLocation = getAttr(entry.physicalDeliveryOfficeName || entry.l || entry.streetAddress).trim() || undefined;
 
       // In Active Directory: Bit 2 (0x0002) of userAccountControl indicates ACCOUNTDISABLE
       const isDisabled = (uac & 2) !== 0;
@@ -292,6 +301,8 @@ export async function syncUsersFromLdap(customConfig?: LdapConfig): Promise<{
         department,
         title,
         phone,
+        company,
+        officeLocation,
         isDisabled,
       });
     }
@@ -322,7 +333,16 @@ export async function authenticateWithLdap(
   password: string
 ): Promise<{
   success: boolean;
-  user?: { email: string; fullName: string; department?: string; username: string };
+  user?: {
+    email: string;
+    fullName: string;
+    department?: string;
+    username: string;
+    phone?: string;
+    position?: string;
+    companyName?: string;
+    officeLocation?: string;
+  };
   error?: string;
   isAccountDisabled?: boolean;
 }> {
@@ -361,6 +381,10 @@ export async function authenticateWithLdap(
     let userDn = '';
     let fetchedDisplayName = '';
     let fetchedDepartment = '';
+    let fetchedTitle = '';
+    let fetchedCompany = '';
+    let fetchedPhone = '';
+    let fetchedOffice = '';
     let isAccountDisabled = false;
 
     // 1. If bindDn configured, search for user's DN first
@@ -374,7 +398,22 @@ export async function authenticateWithLdap(
       const { searchEntries } = await client.search(config.baseDn, {
         scope: 'sub',
         filter: searchFilter,
-        attributes: ['dn', 'displayName', 'cn', 'department', 'userAccountControl', 'mail', 'userPrincipalName'],
+        attributes: [
+          'dn',
+          'displayName',
+          'cn',
+          'department',
+          'title',
+          'company',
+          'telephoneNumber',
+          'mobile',
+          'physicalDeliveryOfficeName',
+          'l',
+          'streetAddress',
+          'userAccountControl',
+          'mail',
+          'userPrincipalName',
+        ],
       });
 
       if (searchEntries && searchEntries.length > 0) {
@@ -382,6 +421,10 @@ export async function authenticateWithLdap(
         userDn = entry.dn;
         fetchedDisplayName = String(entry.displayName || entry.cn || '');
         fetchedDepartment = entry.department ? String(entry.department) : '';
+        fetchedTitle = entry.title ? String(entry.title).trim() : '';
+        fetchedCompany = entry.company ? String(entry.company).trim() : '';
+        fetchedPhone = String(entry.telephoneNumber || entry.mobile || '').trim();
+        fetchedOffice = String(entry.physicalDeliveryOfficeName || entry.l || entry.streetAddress || '').trim();
         const realMail = String(entry.mail || entry.userPrincipalName || '').trim().toLowerCase();
         if (realMail && realMail.includes('@')) {
           email = realMail;
@@ -445,6 +488,10 @@ export async function authenticateWithLdap(
         email,
         fullName: formattedName,
         department: fetchedDepartment || 'Tài khoản miền (LDAP / AD)',
+        phone: fetchedPhone || undefined,
+        position: fetchedTitle || undefined,
+        companyName: fetchedCompany || undefined,
+        officeLocation: fetchedOffice || undefined,
       },
     };
   } catch (err: any) {

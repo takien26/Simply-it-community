@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
-import { getLdapConfig, syncUsersFromLdap } from '@/lib/ldap';
+import { getLdapConfig, syncUsersFromLdap, type LdapConfig } from '@/lib/ldap';
 import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +40,30 @@ export async function POST(request: NextRequest) {
         update: { value, group },
         create: { key, value, label: key, group, type: 'STRING' },
       });
+    };
+
+    // Helper to resolve or auto-create Location from office name
+    const locationCache = new Map<string, string>();
+    const resolveLocationId = async (officeName?: string): Promise<string | null> => {
+      if (!officeName || !officeName.trim()) return null;
+      const clean = officeName.trim();
+      const key = clean.toLowerCase();
+      if (locationCache.has(key)) {
+        return locationCache.get(key)!;
+      }
+      let loc = await prisma.location.findFirst({
+        where: { name: { equals: clean, mode: 'insensitive' } },
+      });
+      if (!loc) {
+        loc = await prisma.location.create({
+          data: {
+            name: clean,
+            notes: 'Tự động tạo từ danh bạ thư mục (Directory Sync)',
+          },
+        });
+      }
+      locationCache.set(key, loc.id);
+      return loc.id;
     };
 
     // Resolve default system role for new accounts
@@ -103,7 +127,7 @@ export async function POST(request: NextRequest) {
           } else {
             // Fetch users with full profile attributes from Microsoft Graph
             const graphUsersRes = await fetch(
-              'https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,userPrincipalName,accountEnabled,department,jobTitle&$top=999',
+              'https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,userPrincipalName,accountEnabled,department,jobTitle,mobilePhone,businessPhones,officeLocation,companyName,city&$top=999',
               {
                 headers: { Authorization: `Bearer ${tokenData.access_token}` },
               }
@@ -115,16 +139,32 @@ export async function POST(request: NextRequest) {
             } else {
               const graphData = await graphUsersRes.json();
               const graphUsers = graphData.value || [];
-              const graphMap = new Map<string, { accountEnabled: boolean; displayName: string; department?: string; jobTitle?: string }>();
+              const graphMap = new Map<
+                string,
+                {
+                  accountEnabled: boolean;
+                  displayName: string;
+                  department?: string;
+                  jobTitle?: string;
+                  phone?: string;
+                  officeLocation?: string;
+                  companyName?: string;
+                }
+              >();
 
               for (const gu of graphUsers) {
                 const email = (gu.mail || gu.userPrincipalName || '').toLowerCase().trim();
                 if (email) {
+                  const phone = gu.mobilePhone || (Array.isArray(gu.businessPhones) && gu.businessPhones.length > 0 ? gu.businessPhones[0] : undefined);
+                  const officeLocation = gu.officeLocation || gu.city || undefined;
                   graphMap.set(email, {
                     accountEnabled: gu.accountEnabled !== false,
                     displayName: gu.displayName || email.split('@')[0],
                     department: gu.department || undefined,
                     jobTitle: gu.jobTitle || undefined,
+                    phone: phone ? String(phone).trim() : undefined,
+                    officeLocation: officeLocation ? String(officeLocation).trim() : undefined,
+                    companyName: gu.companyName ? String(gu.companyName).trim() : undefined,
                   });
                 }
               }
@@ -138,12 +178,18 @@ export async function POST(request: NextRequest) {
                     where: { email },
                   });
 
+                  const locationId = await resolveLocationId(gInfo.officeLocation);
+
                   if (!existingUser) {
                     await prisma.user.create({
                       data: {
                         email,
                         fullName: gInfo.displayName,
                         department: gInfo.department || 'Microsoft 365',
+                        position: gInfo.jobTitle || null,
+                        companyName: gInfo.companyName || null,
+                        phone: gInfo.phone || null,
+                        locationId,
                         roleId: defaultRole.id,
                         passwordHash: 'SSO_MS365_AUTH_NO_PASSWORD',
                         isActive: true,
@@ -151,11 +197,15 @@ export async function POST(request: NextRequest) {
                     });
                     ssoImportedCount++;
                     importedUsers.push({ email, fullName: gInfo.displayName, provider: 'Microsoft 365' });
-                  } else if (existingUser.isActive && (gInfo.department || gInfo.displayName)) {
-                    // Update department or display name if missing
+                  } else if (existingUser.isActive) {
+                    // Update profile fields if missing
                     const updates: any = {};
                     if (!existingUser.department && gInfo.department) updates.department = gInfo.department;
                     if (existingUser.fullName === email.split('@')[0] && gInfo.displayName) updates.fullName = gInfo.displayName;
+                    if (!existingUser.phone && gInfo.phone) updates.phone = gInfo.phone;
+                    if (!existingUser.position && gInfo.jobTitle) updates.position = gInfo.jobTitle;
+                    if (!existingUser.companyName && gInfo.companyName) updates.companyName = gInfo.companyName;
+                    if (!existingUser.locationId && locationId) updates.locationId = locationId;
 
                     if (Object.keys(updates).length > 0) {
                       await prisma.user.update({
@@ -299,6 +349,8 @@ export async function POST(request: NextRequest) {
                 where: { email: uEmail },
               });
 
+              const locationId = await resolveLocationId(lu.officeLocation);
+
               if (!existingUser) {
                 // Pre-provision new active user from Active Directory / LDAP
                 if (!lu.isDisabled && targetRoleId) {
@@ -307,6 +359,10 @@ export async function POST(request: NextRequest) {
                       email: uEmail,
                       fullName: lu.fullName,
                       department: lu.department || 'Active Directory / LDAP',
+                      position: lu.title || null,
+                      companyName: lu.company || null,
+                      phone: lu.phone || null,
+                      locationId,
                       roleId: targetRoleId,
                       passwordHash: placeholderPasswordHash,
                       isActive: true,
@@ -338,10 +394,14 @@ export async function POST(request: NextRequest) {
                     userId: currentUser.userId,
                   });
                 } else if (existingUser.isActive) {
-                  // Update department or full name if missing
+                  // Update profile fields if missing
                   const updates: any = {};
                   if (!existingUser.department && lu.department) updates.department = lu.department;
                   if (existingUser.fullName === uEmail.split('@')[0] && lu.fullName) updates.fullName = lu.fullName;
+                  if (!existingUser.phone && lu.phone) updates.phone = lu.phone;
+                  if (!existingUser.position && lu.title) updates.position = lu.title;
+                  if (!existingUser.companyName && lu.company) updates.companyName = lu.company;
+                  if (!existingUser.locationId && locationId) updates.locationId = locationId;
 
                   if (Object.keys(updates).length > 0) {
                     await prisma.user.update({

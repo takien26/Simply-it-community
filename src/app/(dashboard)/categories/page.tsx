@@ -537,7 +537,13 @@ export default function CategoriesPage() {
     if (!confirm(`Bạn có chắc chắn muốn xóa danh mục "${cat.name}" không?`)) return;
 
     // 0ms Optimistic removal
-    setCategories((prev) => prev.filter((c) => c.id !== cat.id));
+    if (activeTab === 'licenses') {
+      setLicenseCategories((prev: any[]) => prev.filter((c: any) => c.id !== cat.id));
+    } else if (activeTab === 'services') {
+      setServiceCategories((prev: any[]) => prev.filter((c: any) => c.id !== cat.id));
+    } else {
+      setAssetCategories((prev: any[]) => prev.filter((c: any) => c.id !== cat.id));
+    }
 
     try {
       let url = `/api/categories/${cat.id}`;

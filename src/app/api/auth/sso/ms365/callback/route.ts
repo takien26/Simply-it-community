@@ -49,19 +49,43 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. Get user info from Microsoft Graph
-    const graphRes = await fetch('https://graph.microsoft.com/v1.0/me?$select=id,displayName,mail,userPrincipalName,department,jobTitle,accountEnabled', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
-    });
+    const graphRes = await fetch(
+      'https://graph.microsoft.com/v1.0/me?$select=id,displayName,mail,userPrincipalName,department,jobTitle,accountEnabled,mobilePhone,businessPhones,officeLocation,companyName,city',
+      {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      }
+    );
 
     const graphUser = await graphRes.json();
     const email = (graphUser.mail || graphUser.userPrincipalName || '').toLowerCase();
     const fullName = graphUser.displayName || email.split('@')[0];
     const department = graphUser.department || null;
     const position = graphUser.jobTitle || null;
+    const phone = graphUser.mobilePhone || (Array.isArray(graphUser.businessPhones) && graphUser.businessPhones.length > 0 ? graphUser.businessPhones[0] : null);
+    const companyName = graphUser.companyName || null;
+    const officeLocation = graphUser.officeLocation || graphUser.city || null;
     const isAccountEnabled = graphUser.accountEnabled !== false;
 
     if (!email) {
       return NextResponse.redirect(new URL('/login?error=email_not_found', request.url));
+    }
+
+    // Resolve Location if officeLocation provided
+    let locationId: string | null = null;
+    if (officeLocation) {
+      const locName = officeLocation.trim();
+      let loc = await prisma.location.findFirst({
+        where: { name: { equals: locName, mode: 'insensitive' } },
+      });
+      if (!loc) {
+        loc = await prisma.location.create({
+          data: {
+            name: locName,
+            notes: 'Tự động tạo từ Microsoft 365 SSO',
+          },
+        });
+      }
+      locationId = loc.id;
     }
 
     // 3. Find or auto-create User in database
@@ -89,6 +113,9 @@ export async function GET(request: NextRequest) {
           roleId: defaultRole.id,
           department,
           position,
+          companyName,
+          phone,
+          locationId,
           isActive: isAccountEnabled,
         },
         include: { role: true },
@@ -100,6 +127,22 @@ export async function GET(request: NextRequest) {
         data: { isActive: false },
       });
       user.isActive = false;
+    } else if (user.isActive) {
+      // Update missing fields from M365 profile
+      const updates: any = {};
+      if (!user.phone && phone) updates.phone = phone;
+      if (!user.position && position) updates.position = position;
+      if (!user.companyName && companyName) updates.companyName = companyName;
+      if (!user.department && department) updates.department = department;
+      if (!user.locationId && locationId) updates.locationId = locationId;
+
+      if (Object.keys(updates).length > 0) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: updates,
+          include: { role: true },
+        });
+      }
     }
 
     if (!user.isActive || !isAccountEnabled) {

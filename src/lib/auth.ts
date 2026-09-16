@@ -99,11 +99,32 @@ export async function authenticate(
 
           const defaultPasswordHash = await bcrypt.hash(`Ldap@${Date.now()}`, 10);
 
+          let locationId: string | null = null;
+          if (ldapRes.user.officeLocation) {
+            const locName = ldapRes.user.officeLocation.trim();
+            let loc = await prisma.location.findFirst({
+              where: { name: { equals: locName, mode: 'insensitive' } },
+            });
+            if (!loc) {
+              loc = await prisma.location.create({
+                data: {
+                  name: locName,
+                  notes: 'Tự động tạo từ thông tin Active Directory / LDAP',
+                },
+              });
+            }
+            locationId = loc.id;
+          }
+
           userInDb = await prisma.user.create({
             data: {
               email: ldapRes.user.email,
               fullName: ldapRes.user.fullName,
               department: ldapRes.user.department || 'LDAP Domain User',
+              position: ldapRes.user.position || null,
+              companyName: ldapRes.user.companyName || null,
+              phone: ldapRes.user.phone || null,
+              locationId,
               roleId: targetRole.id,
               passwordHash: defaultPasswordHash,
               isActive: true,
@@ -113,6 +134,32 @@ export async function authenticate(
         }
 
         if (userInDb && userInDb.isActive) {
+          const updates: any = {};
+          if (!userInDb.phone && ldapRes.user.phone) updates.phone = ldapRes.user.phone;
+          if (!userInDb.position && ldapRes.user.position) updates.position = ldapRes.user.position;
+          if (!userInDb.companyName && ldapRes.user.companyName) updates.companyName = ldapRes.user.companyName;
+          if (!userInDb.locationId && ldapRes.user.officeLocation) {
+            const locName = ldapRes.user.officeLocation.trim();
+            let loc = await prisma.location.findFirst({
+              where: { name: { equals: locName, mode: 'insensitive' } },
+            });
+            if (!loc) {
+              loc = await prisma.location.create({
+                data: {
+                  name: locName,
+                  notes: 'Tự động tạo từ thông tin Active Directory / LDAP',
+                },
+              });
+            }
+            updates.locationId = loc.id;
+          }
+          if (Object.keys(updates).length > 0) {
+            userInDb = await prisma.user.update({
+              where: { id: userInDb.id },
+              data: updates,
+              include: { role: true },
+            });
+          }
           const payload: JWTPayload = {
             userId: userInDb.id,
             email: userInDb.email,
