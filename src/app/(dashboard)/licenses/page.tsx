@@ -56,6 +56,7 @@ import {
   Download,
   FolderOpen,
   Link as LinkIcon,
+  Unlink,
 } from 'lucide-react';
 import { formatCurrency, formatDate, getRemainingTimeText, numberToVietnameseWords, numberToForeignCurrencyWords } from '@/lib/utils';
 import CurrencyInput from '@/components/ui/currency-input';
@@ -223,6 +224,73 @@ export default function LicensesPage() {
 
   // Active Dropdown Action Menu
   const [activeDropdownLicenseId, setActiveDropdownLicenseId] = useState<string | null>(null);
+
+  // Batch Selection & Merge Groups
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const [mergeMasterId, setMergeMasterId] = useState<string>('');
+  const [isMerging, setIsMerging] = useState(false);
+
+  const handleToggleSelectAll = () => {
+    if (selectedGroupIds.size === paginatedGroups.length) {
+      setSelectedGroupIds(new Set());
+    } else {
+      setSelectedGroupIds(new Set(paginatedGroups.map((g) => g.id)));
+    }
+  };
+
+  const handleUnlinkBatch = async (batchId: string, batchName: string) => {
+    if (!confirm(`Bạn có chắc chắn muốn tách "${batchName}" thành một gói bản quyền độc lập riêng biệt?`)) return;
+    try {
+      const res = await fetch(`/api/licenses/${batchId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parentLicenseId: null }),
+      });
+      if (res.ok) {
+        invalidateClientCache('/api/licenses');
+        triggerDataRefresh('licenses');
+        await loadData(true);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Tách gói thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi tách gói bản quyền');
+    }
+  };
+
+  const handleConfirmBatchMerge = async () => {
+    if (!mergeMasterId) return;
+    setIsMerging(true);
+    try {
+      const memberIds = Array.from(selectedGroupIds);
+      const res = await fetch('/api/licenses/batch-merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetMasterId: mergeMasterId,
+          memberLicenseIds: memberIds,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsMergeModalOpen(false);
+        setSelectedGroupIds(new Set());
+        setExpandedGroupIds((prev) => new Set([...prev, mergeMasterId]));
+        invalidateClientCache('/api/licenses');
+        triggerDataRefresh('licenses');
+        await loadData(true);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Gom nhóm thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi gom nhóm bản quyền');
+    } finally {
+      setIsMerging(false);
+    }
+  };
 
   // Multi-batch Expandable Groups
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(new Set());
@@ -1416,7 +1484,18 @@ export default function LicensesPage() {
           <table className="w-full text-left text-xs border-collapse min-w-[900px]">
             <thead className="bg-slate-50/90 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               <tr>
-                <th className="py-2 px-2.5 sticky left-0 z-20 bg-slate-50 dark:bg-slate-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] min-w-[155px]">{language === 'en' ? 'LICENSE NAME & KEY' : 'TÊN BẢN QUYỀN & KEY'}</th>
+                <th className="py-2 px-2.5 sticky left-0 z-20 bg-slate-50 dark:bg-slate-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] min-w-[175px]">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={paginatedGroups.length > 0 && selectedGroupIds.size === paginatedGroups.length}
+                      onChange={handleToggleSelectAll}
+                      className="rounded border-slate-300 dark:border-slate-700 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                      title="Chọn tất cả các gói trên trang này"
+                    />
+                    <span>{language === 'en' ? 'LICENSE NAME & KEY' : 'TÊN BẢN QUYỀN & KEY'}</span>
+                  </div>
+                </th>
                 <th className="py-2 px-2 min-w-[110px]">{language === 'en' ? 'TYPE & COMPANY' : 'LOẠI & CÔNG TY'}</th>
                 <th className="py-2 px-2 min-w-[100px]">{language === 'en' ? 'SEATS ALLOCATION' : 'PHÂN BỐ SEATS'}</th>
                 <th className="py-2 px-2 min-w-[95px]">{language === 'en' ? 'COST' : 'ĐỊNH GIÁ'} ({selectedCurrency})</th>
@@ -1514,8 +1593,23 @@ export default function LicensesPage() {
                         title={hasBatches ? (isExpanded ? 'Bấm để thu gọn các đợt mua' : 'Bấm để mở rộng chi tiết các đợt mua') : 'Bấm để xem chi tiết bản quyền'}
                       >
                         {/* Cột 1: Tên & Đợt mua (Sticky Left) */}
-                        <td className="py-2.5 px-2.5 sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-purple-50/90 dark:group-hover:bg-slate-800/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors min-w-[170px]">
+                        <td className="py-2.5 px-2.5 sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-purple-50/90 dark:group-hover:bg-slate-800/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors min-w-[175px]">
                           <div className="flex items-start gap-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedGroupIds.has(group.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setSelectedGroupIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (checked) next.add(group.id);
+                                  else next.delete(group.id);
+                                  return next;
+                                });
+                              }}
+                              className="mt-1 rounded border-slate-300 dark:border-slate-700 text-purple-600 focus:ring-purple-500 cursor-pointer shrink-0"
+                            />
                             {hasBatches ? (
                               <button
                                 type="button"
@@ -2019,6 +2113,7 @@ export default function LicensesPage() {
         }}
         initialData={isEditModalOpen ? editFormData : formData}
         editingLicenseId={editingLicenseId}
+        allLicenses={licenses}
         vendors={vendors}
         companies={companies}
         users={users}
@@ -2639,6 +2734,155 @@ export default function LicensesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+{/* ==================== FLOATING BATCH MERGE ACTION BAR ==================== */}
+      {selectedGroupIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 text-white dark:bg-purple-950/95 dark:text-purple-100 px-5 py-3 rounded-2xl shadow-2xl border border-purple-500/30 backdrop-blur-md flex items-center gap-4 animate-in slide-in-from-bottom-5 duration-200">
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center font-mono text-[11px]">
+              {selectedGroupIds.size}
+            </span>
+            <span>Đã chọn {selectedGroupIds.size} gói bản quyền</span>
+          </div>
+
+          <div className="h-4 w-px bg-white/20" />
+
+          <button
+            type="button"
+            disabled={selectedGroupIds.size < 2}
+            onClick={() => {
+              const firstSelected = Array.from(selectedGroupIds)[0];
+              setMergeMasterId(firstSelected);
+              setIsMergeModalOpen(true);
+            }}
+            className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              selectedGroupIds.size >= 2
+                ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-md'
+                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+            }`}
+            title={selectedGroupIds.size < 2 ? 'Cần chọn ít nhất 2 gói để gom nhóm' : 'Gom các gói đã chọn thành 1 nhóm'}
+          >
+            <Package className="w-3.5 h-3.5" />
+            <span>Gom thành 1 gói ({selectedGroupIds.size} đợt)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedGroupIds(new Set())}
+            className="text-xs text-slate-400 hover:text-white px-2 py-1 cursor-pointer font-medium"
+          >
+            Bỏ chọn
+          </button>
+        </div>
+      )}
+
+      {/* ==================== MODAL: GOM NHÓM ĐỢT MUA (BATCH MERGE) ==================== */}
+      {isMergeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/40 dark:to-indigo-950/40">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-purple-600 text-white rounded-xl">
+                  <Package className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Gom Nhóm Các Đợt Mua Bản Quyền</h3>
+                  <p className="text-[11px] text-slate-500">Gộp {selectedGroupIds.size} gói bản quyền thành các đợt mua của 1 gói chính</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMergeModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-xl cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div className="p-3 bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl text-[11.5px] text-purple-900 dark:text-purple-200 leading-relaxed">
+                💡 <b>Cách thức hoạt động:</b> Gói được chọn làm <b>Bản quyền gốc</b> sẽ là dòng hiển thị tổng quan. Các gói còn lại sẽ được chuyển thành các <b>Đợt mua bổ sung</b> của gói đó. Toàn bộ thông tin seats, chi phí, hóa đơn/hợp đồng và nhân sự được gán của từng gói vẫn được bảo toàn nguyên vẹn 100%.
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Chọn gói làm Bản Quyền Gốc (Master):
+                </label>
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {Array.from(selectedGroupIds).map((id) => {
+                    const grp = groupedLicenses.find((g) => g.id === id);
+                    if (!grp) return null;
+                    const isSelected = mergeMasterId === grp.id;
+                    return (
+                      <label
+                        key={grp.id}
+                        onClick={() => setMergeMasterId(grp.id)}
+                        className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-purple-500 bg-purple-50/60 dark:bg-purple-950/40 ring-1 ring-purple-500'
+                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="mergeMaster"
+                          checked={isSelected}
+                          onChange={() => setMergeMasterId(grp.id)}
+                          className="mt-0.5 text-purple-600 focus:ring-purple-500"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="font-extrabold text-slate-900 dark:text-white text-xs">{grp.name}</span>
+                            {isSelected && (
+                              <span className="px-1.5 py-0.2 bg-purple-600 text-white font-bold text-[9px] rounded-full">
+                                Gói gốc
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5 font-mono">
+                            <span>{grp.totalSeats} seats</span>
+                            <span>•</span>
+                            <span>{grp.companyName || 'Toàn tập đoàn'}</span>
+                            {grp.batches.length > 1 && <span>• ({grp.batches.length} đợt có sẵn)</span>}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
+              <button
+                type="button"
+                disabled={isMerging}
+                onClick={() => setIsMergeModalOpen(false)}
+                className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={isMerging || !mergeMasterId}
+                onClick={handleConfirmBatchMerge}
+                className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-md cursor-pointer flex items-center gap-1.5"
+              >
+                {isMerging ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang gom nhóm...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Xác nhận gom nhóm</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

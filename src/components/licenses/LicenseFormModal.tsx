@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Key,
+  Package,
   Users,
   DollarSign,
   FileText,
@@ -31,6 +32,7 @@ export interface LicenseFormModalProps {
   users?: any[];
   assets?: any[];
   currencies?: CurrencyConfig[];
+  allLicenses?: any[];
   exchangeRatesMap?: Record<string, number>;
   onSuccess?: (savedData?: any) => void;
   onOpenAddCurrency?: () => void;
@@ -47,6 +49,7 @@ export function LicenseFormModal({
   users = [],
   assets = [],
   currencies = [],
+  allLicenses = [],
   exchangeRatesMap = {},
   onSuccess,
   onOpenAddCurrency,
@@ -101,6 +104,7 @@ export function LicenseFormModal({
             purchaseDate: currentForm.purchaseDate ? new Date(currentForm.purchaseDate).toISOString() : null,
             expiryDate: currentForm.expiryDate ? new Date(currentForm.expiryDate).toISOString() : null,
             pairs: currentForm.pairs || [],
+            parentLicenseId: currentForm.parentLicenseId ? currentForm.parentLicenseId : null,
           }),
         });
         if (res.ok) {
@@ -155,6 +159,7 @@ export function LicenseFormModal({
             specs: {
               paymentHistory: initialPaymentHistory,
             },
+            parentLicenseId: currentForm.parentLicenseId ? currentForm.parentLicenseId : null,
           }),
         });
 
@@ -362,6 +367,35 @@ export function LicenseFormModal({
                             ))}
                           </select>
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Section: Nhóm Đợt Mua / Gói Bản Quyền Gốc (Parent License) */}
+                    <div className="p-4 bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/80 rounded-2xl space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Package className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                        <span className="text-xs font-extrabold text-purple-950 dark:text-purple-200 uppercase tracking-wider">
+                          Nhóm Đợt Mua / Gói Bản Quyền Gốc (Parent License)
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Nếu đây là một đợt mua bổ sung hoặc gia hạn sau của một gói bản quyền có sẵn, hãy chọn gói gốc bên dưới để hệ thống tự động gom lại thành dòng Master thu gọn.
+                      </p>
+                      <div>
+                        <select
+                          value={currentForm.parentLicenseId || ''}
+                          onChange={(e) => setCurrentForm({ ...currentForm, parentLicenseId: e.target.value || null })}
+                          className="w-full p-2.5 bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                        >
+                          <option value="">-- Là gói bản quyền độc lập (Gốc) --</option>
+                          {(allLicenses || [])
+                            .filter((l: any) => l.id !== editingLicenseId && !l.parentLicenseId)
+                            .map((l: any) => (
+                              <option key={l.id} value={l.id}>
+                                📦 {l.name} ({l.companyName || 'Toàn tập đoàn'}) — {l.totalSeats} seats
+                              </option>
+                            ))}
+                        </select>
                       </div>
                     </div>
                   </div>
