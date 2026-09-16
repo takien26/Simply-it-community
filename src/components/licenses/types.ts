@@ -115,6 +115,26 @@ export const formatPrice = (amount: number, currency: string = 'VND'): string =>
   return new Intl.NumberFormat('vi-VN').format(amount) + ` ${currency}`;
 };
 
+export interface CompanyLicenseStat {
+  companyName: string;
+  purchasedSeats: number;
+  usedSeats: number;
+  balanceSeats: number; // purchasedSeats - usedSeats (> 0: surplus, < 0: deficit, = 0: exact)
+  status: 'SURPLUS' | 'DEFICIT' | 'BORROWED' | 'EXACT';
+  batches: Array<{
+    batchId: string;
+    batchNumber: number;
+    contractNumber?: string;
+    invoiceNumber?: string;
+    seats: number;
+    purchaseDate?: string;
+    expiryDate?: string;
+    costInSelectedCurrency: number;
+  }>;
+  assignments: Array<any>;
+  totalCostInSelectedCurrency: number;
+}
+
 export interface LicenseGroup {
   id: string;
   name: string;
@@ -132,6 +152,7 @@ export interface LicenseGroup {
   hasMultipleBatches: boolean;
   totalCostInSelectedCurrency: number;
   allAssignments: any[];
+  companyStats: CompanyLicenseStat[];
 }
 
 export function groupLicenses(
@@ -141,18 +162,8 @@ export function groupLicenses(
 ): LicenseGroup[] {
   if (!Array.isArray(licenses) || licenses.length === 0) return [];
 
-  // Map to hold groups keyed by normalized name + company (or explicit parentLicenseId)
+  // Map to hold groups keyed by normalized name (or explicit parentLicenseId)
   const groupMap = new Map<string, any[]>();
-
-  // Helper to normalize product key
-  const getGroupKey = (lic: any): string => {
-    if (lic.parentLicenseId) {
-      return `parent:${lic.parentLicenseId}`;
-    }
-    const normName = (lic.name || '').trim().toLowerCase();
-    const normComp = (lic.companyName || '').trim().toLowerCase();
-    return `name:${normName}__${normComp}`;
-  };
 
   // Step 1: Collect all child batches that have parentLicenseId
   const explicitChildrenByParent = new Map<string, any[]>();
@@ -168,11 +179,11 @@ export function groupLicenses(
     }
   });
 
-  // Step 2: Group top-level licenses (exclude those that are already child batches of another license)
+  // Step 2: Group top-level licenses (exclude those that are child batches of another license)
   licenses.forEach((lic) => {
     if (lic.parentLicenseId) return; // Will be attached to their parent
 
-    const key = `name:${(lic.name || '').trim().toLowerCase()}__${(lic.companyName || '').trim().toLowerCase()}`;
+    const key = `name:${(lic.name || '').trim().toLowerCase()}`;
     if (!groupMap.has(key)) {
       groupMap.set(key, []);
     }
@@ -204,7 +215,6 @@ export function groupLicenses(
         seenBatchIds.add(m.id);
         allBatchItems.push(m);
       }
-      // Check if this license has explicit children in DB
       const children = explicitChildrenByParent.get(m.id) || m.batches || [];
       children.forEach((c: any) => {
         if (!seenBatchIds.has(c.id)) {
@@ -252,6 +262,96 @@ export function groupLicenses(
       }
     });
 
+    // ==================== CROSS-COMPANY BREAKDOWN & BALANCE MATRIX ====================
+    const companyMap = new Map<string, {
+      purchasedSeats: number;
+      batches: Array<any>;
+      assignments: Array<any>;
+      totalCostInSelectedCurrency: number;
+    }>();
+
+    const getCompKey = (comp?: string | null) => (comp && comp.trim()) ? comp.trim() : 'Toàn tập đoàn / Chung';
+
+    // A. Count purchased seats & costs by company
+    allBatchItems.forEach((b, idx) => {
+      const bComp = getCompKey(b.companyName);
+      if (!companyMap.has(bComp)) {
+        companyMap.set(bComp, {
+          purchasedSeats: 0,
+          batches: [],
+          assignments: [],
+          totalCostInSelectedCurrency: 0,
+        });
+      }
+      const cData = companyMap.get(bComp)!;
+      const bSeats = b.totalSeats || 1;
+      cData.purchasedSeats += bSeats;
+
+      const rawPrice = Number(b.purchasePrice) || 0;
+      const cur = b.purchaseCurrency || 'VND';
+      const cost = convertCurrencyFn(rawPrice, cur, selectedCurrency);
+      cData.totalCostInSelectedCurrency += cost;
+
+      cData.batches.push({
+        batchId: b.id,
+        batchNumber: idx + 1,
+        contractNumber: b.contractNumber,
+        invoiceNumber: b.invoiceNumber,
+        seats: bSeats,
+        purchaseDate: b.purchaseDate,
+        expiryDate: b.expiryDate,
+        costInSelectedCurrency: cost,
+      });
+    });
+
+    // B. Count used seats by company of assigned users / assets
+    allAssignments.forEach((a) => {
+      const userComp = getCompKey(a.user?.companyName || a.asset?.companyName);
+      if (!companyMap.has(userComp)) {
+        companyMap.set(userComp, {
+          purchasedSeats: 0,
+          batches: [],
+          assignments: [],
+          totalCostInSelectedCurrency: 0,
+        });
+      }
+      companyMap.get(userComp)!.assignments.push(a);
+    });
+
+    // C. Compile company stats with balance status
+    const companyStats: CompanyLicenseStat[] = [];
+    companyMap.forEach((cData, compName) => {
+      const used = cData.assignments.length;
+      const balance = cData.purchasedSeats - used;
+      let status: 'SURPLUS' | 'DEFICIT' | 'BORROWED' | 'EXACT' = 'EXACT';
+
+      if (cData.purchasedSeats === 0 && used > 0) {
+        status = 'BORROWED';
+      } else if (balance > 0) {
+        status = 'SURPLUS';
+      } else if (balance < 0) {
+        status = 'DEFICIT';
+      }
+
+      companyStats.push({
+        companyName: compName,
+        purchasedSeats: cData.purchasedSeats,
+        usedSeats: used,
+        balanceSeats: balance,
+        status,
+        batches: cData.batches,
+        assignments: cData.assignments,
+        totalCostInSelectedCurrency: cData.totalCostInSelectedCurrency,
+      });
+    });
+
+    // Sort companyStats: Deficit first (red), then Borrowed (yellow), then Surplus (green), then Exact
+    companyStats.sort((a, b) => {
+      const pMap = { DEFICIT: 1, BORROWED: 2, SURPLUS: 3, EXACT: 4 };
+      if (pMap[a.status] !== pMap[b.status]) return pMap[a.status] - pMap[b.status];
+      return b.purchasedSeats - a.purchasedSeats;
+    });
+
     const remainingSeats = Math.max(0, totalSeats - usedSeats);
     const seatPercent = totalSeats > 0 ? Math.min(100, Math.round((usedSeats / totalSeats) * 100)) : 0;
 
@@ -272,6 +372,7 @@ export function groupLicenses(
       hasMultipleBatches: allBatchItems.length > 1,
       totalCostInSelectedCurrency,
       allAssignments,
+      companyStats,
     });
   });
 

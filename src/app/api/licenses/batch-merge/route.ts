@@ -71,9 +71,9 @@ export async function POST(request: NextRequest) {
     await createAuditLog({
       userId: currentUser.userId,
       action: 'UPDATE',
-      resourceType: 'LICENSE',
-      resourceId: targetMasterId,
-      details: {
+      entityType: 'LICENSE',
+      entityId: targetMasterId,
+      changes: {
         event: 'BATCH_MERGE_LICENSES',
         masterLicenseName: masterLicense.name,
         mergedLicenseIds: childIdsToAttach,

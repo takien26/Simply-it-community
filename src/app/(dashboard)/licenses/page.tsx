@@ -292,6 +292,41 @@ export default function LicensesPage() {
     }
   };
 
+  // Active Sub-table Tab: 'companies' | 'batches'
+  const [subTableTabs, setSubTableTabs] = useState<Record<string, 'companies' | 'batches'>>({});
+  const setGroupSubTab = (groupId: string, tab: 'companies' | 'batches') => {
+    setSubTableTabs((prev) => ({ ...prev, [groupId]: tab }));
+  };
+
+  // Company Assignees Modal
+  const [isCompanyAssigneesOpen, setIsCompanyAssigneesOpen] = useState(false);
+  const [viewingCompanyStat, setViewingCompanyStat] = useState<{ group: LicenseGroup; companyStat: any } | null>(null);
+
+  const handleOpenAddBatchForCompany = (group: LicenseGroup, targetCompany: string) => {
+    const master = group.masterLicense;
+    const nextBatchNum = group.batches.length + 1;
+    setFormData({
+      name: group.name,
+      licenseKey: '',
+      licenseType: group.licenseType || 'SUBSCRIPTION',
+      totalSeats: 10,
+      purchaseDate: new Date().toISOString().split('T')[0],
+      expiryDate: master.expiryDate ? new Date(master.expiryDate).toISOString().split('T')[0] : '',
+      purchasePrice: '',
+      purchaseCurrency: master.purchaseCurrency || selectedCurrency,
+      exchangeRate: exchangeRatesMap[master.purchaseCurrency || selectedCurrency] || 1,
+      companyName: targetCompany || group.companyName || companies[0] || '',
+      vendorId: master.vendorId || '',
+      contractNumber: '',
+      invoiceNumber: '',
+      contractUrl: '',
+      notes: `Mua bổ sung Đợt ${nextBatchNum} cho ${targetCompany}`,
+      pairs: [],
+      parentLicenseId: group.id,
+    });
+    setIsAddModalOpen(true);
+  };
+
   // Multi-batch Expandable Groups
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(new Set());
   const toggleGroupExpand = (groupId: string) => {
@@ -580,8 +615,15 @@ export default function LicensesPage() {
       // Status Filter
       if (selectedStatus && lic.status !== selectedStatus) return false;
 
-      // Company Filter
-      if (selectedCompany && lic.companyName !== selectedCompany) return false;
+      // Company Filter (Smart Conglomerate Filter: matches if company bought batch OR has users using it)
+      if (selectedCompany) {
+        const matchesSelf = lic.companyName === selectedCompany;
+        const matchesBatch = lic.batches?.some((b: any) => b.companyName === selectedCompany);
+        const matchesUser = lic.assignments?.some(
+          (a: any) => a.user?.companyName === selectedCompany || a.asset?.companyName === selectedCompany
+        );
+        if (!matchesSelf && !matchesBatch && !matchesUser) return false;
+      }
 
       // Vendor Filter
       if (selectedVendor && lic.vendorId !== selectedVendor) return false;
@@ -1716,6 +1758,43 @@ export default function LicensesPage() {
                           <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium block mt-0.5">
                             Còn trống: <b>{remaining}</b> seats
                           </span>
+
+                          {/* Multi-Company Balance Preview Badges */}
+                          {group.companyStats && group.companyStats.length > 0 && (
+                            <div className="flex items-center gap-1 flex-wrap mt-1">
+                              {group.companyStats.slice(0, 3).map((cs) => {
+                                const isSurplus = cs.balanceSeats > 0 && cs.purchasedSeats > 0;
+                                const isDeficit = cs.balanceSeats < 0;
+                                const isBorrowed = cs.purchasedSeats === 0 && cs.usedSeats > 0;
+                                return (
+                                  <span
+                                    key={cs.companyName}
+                                    className={`px-1.5 py-0.2 rounded text-[8.5px] font-mono font-bold inline-flex items-center gap-1 border ${
+                                      isDeficit
+                                        ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                        : isBorrowed
+                                        ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                                        : isSurplus
+                                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                                    }`}
+                                    title={`${cs.companyName}: Đã mua ${cs.purchasedSeats}, Dùng ${cs.usedSeats} (${
+                                      isDeficit ? `Thiếu ${Math.abs(cs.balanceSeats)} seats` : isBorrowed ? `Mượn ${cs.usedSeats} seats` : isSurplus ? `Dư ${cs.balanceSeats} seats` : 'Vừa đủ'
+                                    })`}
+                                  >
+                                    <span className="truncate max-w-[65px]">{cs.companyName}:</span>
+                                    <span>{cs.usedSeats}/{cs.purchasedSeats}</span>
+                                    {isDeficit && <span className="text-rose-600">(-{Math.abs(cs.balanceSeats)})</span>}
+                                    {isBorrowed && <span className="text-amber-600">(Mượn {cs.usedSeats})</span>}
+                                    {isSurplus && <span className="text-emerald-600">(+{cs.balanceSeats})</span>}
+                                  </span>
+                                );
+                              })}
+                              {group.companyStats.length > 3 && (
+                                <span className="text-[8px] text-slate-400 font-mono">+{group.companyStats.length - 3} cty</span>
+                              )}
+                            </div>
+                          )}
                         </td>
 
                         {/* Cột 4: Tổng chi phí đầu tư */}
@@ -1845,19 +1924,41 @@ export default function LicensesPage() {
                         </td>
                       </tr>
 
-                      {/* Expanded Sub-table: Chi tiết từng đợt mua */}
+                      {/* Expanded Sub-table: Chi tiết từng đợt mua & Cân đối theo công ty */}
                       {hasBatches && isExpanded && (
                         <tr className="bg-slate-50/70 dark:bg-slate-900/80 border-y border-purple-200 dark:border-purple-800/80 animate-in fade-in duration-200">
                           <td colSpan={7} className="p-3.5 pl-6 sm:pl-10">
                             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-purple-200 dark:border-purple-800/80 shadow-xs overflow-hidden">
-                              {/* Sub-table Header */}
-                              <div className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/40 dark:to-indigo-950/40 border-b border-purple-100 dark:border-purple-800">
-                                <div className="flex items-center gap-2">
-                                  <Package className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                  <h4 className="font-extrabold text-xs text-purple-950 dark:text-purple-200 uppercase tracking-wider">
-                                    Chi Tiết Các Đợt Mua Hàng ({group.batches.length} đợt)
-                                  </h4>
+                              {/* Sub-table Header with 2 Tabs */}
+                              <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/40 dark:to-indigo-950/40 border-b border-purple-100 dark:border-purple-800 flex-wrap gap-2">
+                                <div className="flex items-center gap-1 bg-white/80 dark:bg-slate-900/80 p-1 rounded-xl border border-purple-200 dark:border-purple-800">
+                                  <button
+                                    type="button"
+                                    onClick={() => setGroupSubTab(group.id, 'companies')}
+                                    className={`px-3 py-1 rounded-lg font-extrabold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                                      (subTableTabs[group.id] || 'companies') === 'companies'
+                                        ? 'bg-purple-600 text-white shadow-2xs'
+                                        : 'text-slate-600 dark:text-slate-400 hover:text-purple-600'
+                                    }`}
+                                  >
+                                    <Building2 className="w-3.5 h-3.5" />
+                                    <span>🏢 Cân Đối Theo Công Ty ({group.companyStats.length})</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setGroupSubTab(group.id, 'batches')}
+                                    className={`px-3 py-1 rounded-lg font-extrabold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                                      (subTableTabs[group.id] || 'companies') === 'batches'
+                                        ? 'bg-purple-600 text-white shadow-2xs'
+                                        : 'text-slate-600 dark:text-slate-400 hover:text-purple-600'
+                                    }`}
+                                  >
+                                    <Package className="w-3.5 h-3.5" />
+                                    <span>📦 Lịch Sử Các Đợt Mua ({group.batches.length})</span>
+                                  </button>
                                 </div>
+
                                 <button
                                   type="button"
                                   onClick={() => handleOpenAddBatch(group)}
@@ -1868,198 +1969,368 @@ export default function LicensesPage() {
                                 </button>
                               </div>
 
-                              {/* Bảng con chi tiết các đợt */}
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs border-collapse">
-                                  <thead className="bg-slate-100/80 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 uppercase">
-                                    <tr>
-                                      <th className="py-2 px-3">ĐỢT MUA & HỢP ĐỒNG</th>
-                                      <th className="py-2 px-2.5">LICENSE KEY</th>
-                                      <th className="py-2 px-2.5">THỜI HẠN SỬ DỤNG</th>
-                                      <th className="py-2 px-2.5">SEATS CỦA ĐỢT</th>
-                                      <th className="py-2 px-2.5">CHI PHÍ ĐỢT</th>
-                                      <th className="py-2 px-2.5">NHÀ CUNG CẤP</th>
-                                      <th className="py-2 px-3 text-right">THAO TÁC</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
-                                    {group.batches.map((batch: any, bIdx: number) => {
-                                      const bAssignments = batch.assignments?.filter((a: any) => !a.revokedAt) || [];
-                                      const bUsed = batch.usedSeats !== undefined && batch.usedSeats !== null ? batch.usedSeats : bAssignments.length;
-                                      const bTotal = batch.totalSeats || 1;
-                                      const bRemaining = Math.max(0, bTotal - bUsed);
-                                      const bPercent = Math.min(100, Math.round((bUsed / bTotal) * 100));
+                              {/* TAB 1: CÂN ĐỐI THEO CÔNG TY THÀNH VIÊN */}
+                              {(subTableTabs[group.id] || 'companies') === 'companies' && (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-left text-xs border-collapse">
+                                    <thead className="bg-slate-100/80 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 uppercase">
+                                      <tr>
+                                        <th className="py-2.5 px-3.5">CÔNG TY THÀNH VIÊN</th>
+                                        <th className="py-2.5 px-2.5">ĐỢT MUA SỞ HỮU & HỢP ĐỒNG</th>
+                                        <th className="py-2.5 px-2.5 text-center">ĐÃ MUA</th>
+                                        <th className="py-2.5 px-2.5 text-center">ĐANG DÙNG</th>
+                                        <th className="py-2.5 px-2.5">TÌNH TRẠNG CÂN ĐỐI (DƯ / THIẾU)</th>
+                                        <th className="py-2.5 px-2.5">CHI PHÍ CÔNG TY</th>
+                                        <th className="py-2.5 px-3.5 text-right">THAO TÁC</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                                      {group.companyStats.map((cs) => {
+                                        const isSurplus = cs.balanceSeats > 0 && cs.purchasedSeats > 0;
+                                        const isDeficit = cs.balanceSeats < 0;
+                                        const isBorrowed = cs.purchasedSeats === 0 && cs.usedSeats > 0;
+                                        const isExact = cs.balanceSeats === 0 && cs.purchasedSeats > 0;
 
-                                      const bPrice = Number(batch.purchasePrice) || 0;
-                                      const bCur = batch.purchaseCurrency || 'VND';
-                                      const bPriceConverted = convertCurrency(bPrice, bCur, selectedCurrency);
+                                        return (
+                                          <tr key={cs.companyName} className="hover:bg-purple-50/30 dark:hover:bg-purple-950/20 transition-colors">
+                                            {/* Cột 1: Tên Công ty */}
+                                            <td className="py-3 px-3.5">
+                                              <div className="flex items-center gap-2">
+                                                <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold shrink-0">
+                                                  <Building2 className="w-3.5 h-3.5 text-purple-600" />
+                                                </div>
+                                                <div>
+                                                  <span className="font-extrabold text-slate-900 dark:text-white text-xs block">
+                                                    {cs.companyName}
+                                                  </span>
+                                                  <span className="text-[10px] text-slate-400 font-medium">
+                                                    {cs.batches.length > 0 ? `${cs.batches.length} đợt mua đứng tên` : 'Chưa có đợt mua riêng'}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            </td>
 
-                                      const bIsExpired = batch.expiryDate && new Date(batch.expiryDate) < new Date();
-                                      const bIsExpiring =
-                                        batch.expiryDate &&
-                                        !bIsExpired &&
-                                        new Date(batch.expiryDate) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+                                            {/* Cột 2: Đợt mua sở hữu & Hợp đồng */}
+                                            <td className="py-3 px-2.5">
+                                              {cs.batches.length > 0 ? (
+                                                <div className="space-y-1">
+                                                  {cs.batches.map((b: any) => (
+                                                    <div key={b.batchId} className="flex items-center gap-1.5 flex-wrap">
+                                                      <span className="px-1.5 py-0.2 bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 font-bold text-[9.5px] rounded border border-purple-200 dark:border-purple-800">
+                                                        Đợt {b.batchNumber} ({b.seats} seats)
+                                                      </span>
+                                                      {b.contractNumber && (
+                                                        <span className="font-mono text-[9.5px] text-slate-500">
+                                                          HĐ: {b.contractNumber}
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              ) : (
+                                                <span className="text-[10.5px] text-amber-600 dark:text-amber-400 italic">
+                                                  Chưa mua đợt nào (Dùng chung pool Tập đoàn)
+                                                </span>
+                                              )}
+                                            </td>
 
-                                      return (
-                                        <tr key={batch.id} className="hover:bg-purple-50/30 dark:hover:bg-purple-950/20 transition-colors">
-                                          {/* Tên đợt & Hợp đồng */}
-                                          <td className="py-2.5 px-3">
-                                            <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                                              Đợt {bIdx + 1}
-                                            </div>
-                                            <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
-                                              {batch.contractNumber && <span>HĐ: {batch.contractNumber}</span>}
-                                              {batch.invoiceNumber && <span>• HĐĐ: {batch.invoiceNumber}</span>}
-                                              {!batch.contractNumber && !batch.invoiceNumber && <span className="italic">Chưa có số HĐ</span>}
-                                            </div>
-                                          </td>
+                                            {/* Cột 3: Đã mua */}
+                                            <td className="py-3 px-2.5 text-center">
+                                              <span className="font-extrabold font-mono text-xs text-slate-900 dark:text-white">
+                                                {cs.purchasedSeats}
+                                              </span>
+                                              <span className="text-[10px] text-slate-400 block">seats</span>
+                                            </td>
 
-                                          {/* Key */}
-                                          <td className="py-2.5 px-2.5">
-                                            {batch.licenseKey ? (
-                                              <div className="flex items-center gap-1">
-                                                <code className="px-1 py-0.2 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-mono text-[9.5px] rounded border border-slate-200 dark:border-slate-700 truncate max-w-[130px]">
-                                                  {batch.licenseKey}
-                                                </code>
+                                            {/* Cột 4: Đang dùng */}
+                                            <td className="py-3 px-2.5 text-center">
+                                              <span className={`font-extrabold font-mono text-xs ${isDeficit ? 'text-rose-600 font-black' : 'text-slate-900 dark:text-white'}`}>
+                                                {cs.usedSeats}
+                                              </span>
+                                              <span className="text-[10px] text-slate-400 block">seats</span>
+                                            </td>
+
+                                            {/* Cột 5: Tình trạng Cân đối (Dư / Thiếu) */}
+                                            <td className="py-3 px-2.5">
+                                              {isDeficit && (
+                                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-100 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold text-[11px]">
+                                                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                                  <span>🔴 Thiếu {Math.abs(cs.balanceSeats)} seats (Dùng vượt mức)</span>
+                                                </div>
+                                              )}
+                                              {isBorrowed && (
+                                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-100 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 font-bold text-[11px]">
+                                                  <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                                  <span>⚠️ Mượn {cs.usedSeats} seats (Dùng nhờ license)</span>
+                                                </div>
+                                              )}
+                                              {isSurplus && (
+                                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-bold text-[11px]">
+                                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                                  <span>🟢 Dư {cs.balanceSeats} seats (Thừa hạn mức)</span>
+                                                </div>
+                                              )}
+                                              {isExact && (
+                                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[11px]">
+                                                  <span>⚪ Vừa đủ 100%</span>
+                                                </div>
+                                              )}
+                                            </td>
+
+                                            {/* Cột 6: Chi phí cty */}
+                                            <td className="py-3 px-2.5">
+                                              {cs.totalCostInSelectedCurrency > 0 ? (
+                                                <span className="font-extrabold font-mono text-[11px] text-slate-900 dark:text-white">
+                                                  {formatPrice(cs.totalCostInSelectedCurrency, selectedCurrency)}
+                                                </span>
+                                              ) : (
+                                                <span className="text-slate-400 italic text-[10px]">0 ₫</span>
+                                              )}
+                                            </td>
+
+                                            {/* Cột 7: Thao tác */}
+                                            <td className="py-3 px-3.5 text-right">
+                                              <div className="flex items-center justify-end gap-1.5">
                                                 <button
                                                   type="button"
-                                                  onClick={() => handleCopyKey(batch.licenseKey, batch.id)}
-                                                  className="text-slate-400 hover:text-purple-600 p-0.5 rounded cursor-pointer"
-                                                  title="Sao chép key"
+                                                  onClick={() => {
+                                                    setViewingCompanyStat({ group, companyStat: cs });
+                                                    setIsCompanyAssigneesOpen(true);
+                                                  }}
+                                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 dark:bg-purple-950 dark:hover:bg-purple-900 text-purple-700 dark:text-purple-300 font-bold text-[10.5px] transition-colors cursor-pointer"
+                                                  title={`Xem danh sách ${cs.usedSeats} nhân sự của ${cs.companyName}`}
                                                 >
-                                                  {copiedKeyId === batch.id ? (
-                                                    <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
-                                                  ) : (
-                                                    <Copy className="w-3 h-3" />
-                                                  )}
+                                                  <Users className="w-3 h-3" />
+                                                  <span>Xem {cs.usedSeats} nhân sự</span>
+                                                </button>
+
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleOpenAddBatchForCompany(group, cs.companyName)}
+                                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-bold text-[10.5px] transition-colors cursor-pointer"
+                                                  title={`Mua thêm đợt mới đứng tên ${cs.companyName}`}
+                                                >
+                                                  <Plus className="w-3 h-3" />
+                                                  <span>Mua thêm đợt</span>
                                                 </button>
                                               </div>
-                                            ) : (
-                                              <span className="text-[9.5px] text-slate-400 italic">Không có Key</span>
-                                            )}
-                                          </td>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
 
-                                          {/* Thời hạn */}
-                                          <td className="py-2.5 px-2.5">
-                                            {batch.expiryDate ? (
-                                              <div className="space-y-0.5">
-                                                <span
-                                                  className={`px-1.5 py-0.2 rounded font-bold text-[9px] border inline-flex items-center gap-1 ${
-                                                    bIsExpired
-                                                      ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
-                                                      : bIsExpiring
-                                                      ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                                                      : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200'
-                                                  }`}
-                                                >
-                                                  <Calendar className="w-2.5 h-2.5" />
-                                                  <span>{formatDate(batch.expiryDate)}</span>
-                                                </span>
-                                                <span className="text-[9px] text-slate-400 block font-mono">
-                                                  {getRemainingTimeText(batch.expiryDate).text}
+                              {/* TAB 2: LỊCH SỬ CÁC ĐỢT MUA HÀNG */}
+                              {(subTableTabs[group.id] || 'companies') === 'batches' && (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-left text-xs border-collapse">
+                                    <thead className="bg-slate-100/80 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 uppercase">
+                                      <tr>
+                                        <th className="py-2 px-3">ĐỢT MUA & CÔNG TY SỞ HỮU</th>
+                                        <th className="py-2 px-2.5">LICENSE KEY</th>
+                                        <th className="py-2 px-2.5">THỜI HẠN SỬ DỤNG</th>
+                                        <th className="py-2 px-2.5">SEATS CỦA ĐỢT</th>
+                                        <th className="py-2 px-2.5">CHI PHÍ ĐỢT</th>
+                                        <th className="py-2 px-2.5">NHÀ CUNG CẤP</th>
+                                        <th className="py-2 px-3 text-right">THAO TÁC</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                                      {group.batches.map((batch: any, bIdx: number) => {
+                                        const bAssignments = batch.assignments?.filter((a: any) => !a.revokedAt) || [];
+                                        const bUsed = batch.usedSeats !== undefined && batch.usedSeats !== null ? batch.usedSeats : bAssignments.length;
+                                        const bTotal = batch.totalSeats || 1;
+                                        const bRemaining = Math.max(0, bTotal - bUsed);
+                                        const bPercent = Math.min(100, Math.round((bUsed / bTotal) * 100));
+
+                                        const bPrice = Number(batch.purchasePrice) || 0;
+                                        const bCur = batch.purchaseCurrency || 'VND';
+                                        const bPriceConverted = convertCurrency(bPrice, bCur, selectedCurrency);
+
+                                        const bIsExpired = batch.expiryDate && new Date(batch.expiryDate) < new Date();
+                                        const bIsExpiring =
+                                          batch.expiryDate &&
+                                          !bIsExpired &&
+                                          new Date(batch.expiryDate) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+                                        return (
+                                          <tr key={batch.id} className="hover:bg-purple-50/30 dark:hover:bg-purple-950/20 transition-colors">
+                                            {/* Tên đợt & Hợp đồng */}
+                                            <td className="py-2.5 px-3">
+                                              <div className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
+                                                <span>Đợt {bIdx + 1}</span>
+                                                <span className="px-1.5 py-0.2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-normal text-[9.5px] rounded">
+                                                  🏢 {batch.companyName || 'Toàn tập đoàn'}
                                                 </span>
                                               </div>
-                                            ) : (
-                                              <span className="text-[9.5px] text-emerald-600 font-bold">♾️ Vô hạn</span>
-                                            )}
-                                          </td>
+                                              <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
+                                                {batch.contractNumber && <span>HĐ: {batch.contractNumber}</span>}
+                                                {batch.invoiceNumber && <span>• HĐĐ: {batch.invoiceNumber}</span>}
+                                                {!batch.contractNumber && !batch.invoiceNumber && <span className="italic">Chưa có số HĐ</span>}
+                                              </div>
+                                            </td>
 
-                                          {/* Seats của đợt */}
-                                          <td className="py-2.5 px-2.5">
-                                            <div className="flex items-center gap-1.5 text-xs font-bold">
-                                              <span className={bUsed >= bTotal ? 'text-rose-600' : 'text-slate-800 dark:text-slate-200'}>
-                                                {bUsed}/{bTotal}
-                                              </span>
-                                              <span className="text-[9.5px] font-normal text-slate-400">
-                                                ({bRemaining > 0 ? `Trống ${bRemaining}` : 'Hết'})
-                                              </span>
-                                            </div>
-                                            <div className="w-24 h-1 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mt-1">
-                                              <div
-                                                className={`h-full rounded-full ${
-                                                  bPercent >= 100 ? 'bg-rose-500' : bPercent >= 80 ? 'bg-amber-500' : 'bg-emerald-500'
-                                                }`}
-                                                style={{ width: `${bPercent}%` }}
-                                              />
-                                            </div>
-                                          </td>
+                                            {/* Key */}
+                                            <td className="py-2.5 px-2.5">
+                                              {batch.licenseKey ? (
+                                                <div className="flex items-center gap-1">
+                                                  <code className="px-1 py-0.2 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-mono text-[9.5px] rounded border border-slate-200 dark:border-slate-700 truncate max-w-[130px]">
+                                                    {batch.licenseKey}
+                                                  </code>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleCopyKey(batch.licenseKey, batch.id)}
+                                                    className="text-slate-400 hover:text-purple-600 p-0.5 rounded cursor-pointer"
+                                                    title="Sao chép key"
+                                                  >
+                                                    {copiedKeyId === batch.id ? (
+                                                      <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                                                    ) : (
+                                                      <Copy className="w-3 h-3" />
+                                                    )}
+                                                  </button>
+                                                </div>
+                                              ) : (
+                                                <span className="text-[9.5px] text-slate-400 italic">Không có Key</span>
+                                              )}
+                                            </td>
 
-                                          {/* Chi phí đợt */}
-                                          <td className="py-2.5 px-2.5">
-                                            {bPrice > 0 ? (
-                                              <div>
-                                                <span className="font-extrabold text-slate-800 dark:text-slate-200 font-mono text-[11px] block">
-                                                  {formatPrice(bPriceConverted, selectedCurrency)}
-                                                </span>
-                                                {bCur !== selectedCurrency && (
-                                                  <span className="text-[8.5px] text-slate-400 block font-mono">
-                                                    Gốc: {formatPrice(bPrice, bCur)}
+                                            {/* Thời hạn */}
+                                            <td className="py-2.5 px-2.5">
+                                              {batch.expiryDate ? (
+                                                <div>
+                                                  <span
+                                                    className={`px-1.5 py-0.2 rounded font-bold text-[9px] border inline-flex items-center gap-0.5 ${
+                                                      bIsExpired
+                                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                                        : bIsExpiring
+                                                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                        : 'bg-slate-50 text-slate-700 border-slate-200'
+                                                    }`}
+                                                  >
+                                                    {formatDate(batch.expiryDate)}
                                                   </span>
-                                                )}
+                                                  <span className="text-[8.5px] text-slate-400 block font-mono">
+                                                    {getRemainingTimeText(batch.expiryDate).text}
+                                                  </span>
+                                                </div>
+                                              ) : (
+                                                <span className="text-[9.5px] text-emerald-600 font-medium">♾️ Vô hạn</span>
+                                              )}
+                                            </td>
+
+                                            {/* Seats của đợt */}
+                                            <td className="py-2.5 px-2.5">
+                                              <div className="flex items-center justify-between text-[10px] font-bold">
+                                                <span>
+                                                  {bUsed}/{bTotal}
+                                                </span>
+                                                <span className="text-[8.5px] text-slate-400 font-normal">
+                                                  ({bRemaining > 0 ? `Trống ${bRemaining}` : 'Hết'})
+                                                </span>
                                               </div>
-                                            ) : (
-                                              <span className="text-slate-400 italic text-[9.5px]">—</span>
-                                            )}
-                                          </td>
+                                              <div className="w-24 h-1 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mt-1">
+                                                <div
+                                                  className={`h-full rounded-full ${
+                                                    bPercent >= 100 ? 'bg-rose-500' : bPercent >= 80 ? 'bg-amber-500' : 'bg-emerald-500'
+                                                  }`}
+                                                  style={{ width: `${bPercent}%` }}
+                                                />
+                                              </div>
+                                            </td>
 
-                                          {/* Nhà cung cấp đợt */}
-                                          <td className="py-2.5 px-2.5 text-slate-700 dark:text-slate-300 text-[10px]">
-                                            {batch.vendor?.name || '—'}
-                                          </td>
+                                            {/* Chi phí đợt */}
+                                            <td className="py-2.5 px-2.5">
+                                              {bPrice > 0 ? (
+                                                <div>
+                                                  <span className="font-extrabold text-slate-800 dark:text-slate-200 font-mono text-[11px] block">
+                                                    {formatPrice(bPriceConverted, selectedCurrency)}
+                                                  </span>
+                                                  {bCur !== selectedCurrency && (
+                                                    <span className="text-[8.5px] text-slate-400 block font-mono">
+                                                      Gốc: {formatPrice(bPrice, bCur)}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                <span className="text-slate-400 italic text-[9.5px]">—</span>
+                                              )}
+                                            </td>
 
-                                          {/* Thao tác đợt */}
-                                          <td className="py-2.5 px-3 text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                              {/* Cấp seat riêng đợt này */}
-                                              <button
-                                                type="button"
-                                                onClick={() => handleOpenAssign({ ...batch, name: `${group.name} (Đợt ${bIdx + 1})` })}
-                                                title={`Cấp phát seat thuộc Đợt ${bIdx + 1}`}
-                                                className="p-1 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-950 rounded-md transition-colors cursor-pointer"
-                                              >
-                                                <Users className="w-3 h-3" />
-                                              </button>
+                                            {/* Nhà cung cấp đợt */}
+                                            <td className="py-2.5 px-2.5 text-slate-700 dark:text-slate-300 text-[10px]">
+                                              {batch.vendor?.name || '—'}
+                                            </td>
 
-                                              {/* Xem chi tiết đợt này */}
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  setSelectedDetailLicense(batch);
-                                                  setIsDetailModalOpen(true);
-                                                }}
-                                                title={`Xem chi tiết Đợt ${bIdx + 1}`}
-                                                className="p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950 rounded-md transition-colors cursor-pointer"
-                                              >
-                                                <Eye className="w-3 h-3" />
-                                              </button>
+                                            {/* Thao tác đợt */}
+                                            <td className="py-2.5 px-3 text-right">
+                                              <div className="flex items-center justify-end gap-1">
+                                                {/* Tách thành gói độc lập (Unlink) */}
+                                                {batch.parentLicenseId && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleUnlinkBatch(batch.id, `${group.name} - Đợt ${bIdx + 1}`)}
+                                                    title={`Tách Đợt ${bIdx + 1} thành gói bản quyền độc lập riêng`}
+                                                    className="p-1 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950 rounded-md transition-colors cursor-pointer"
+                                                  >
+                                                    <Unlink className="w-3 h-3" />
+                                                  </button>
+                                                )}
 
-                                              {/* Sửa đợt này */}
-                                              <button
-                                                type="button"
-                                                onClick={() => handleOpenEdit(batch)}
-                                                title={`Chỉnh sửa thông tin Đợt ${bIdx + 1}`}
-                                                className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-950 rounded-md transition-colors cursor-pointer"
-                                              >
-                                                <Edit2 className="w-3 h-3" />
-                                              </button>
+                                                {/* Cấp seat riêng đợt này */}
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleOpenAssign({ ...batch, name: `${group.name} (Đợt ${bIdx + 1})` })}
+                                                  title={`Cấp phát seat thuộc Đợt ${bIdx + 1}`}
+                                                  className="p-1 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-950 rounded-md transition-colors cursor-pointer"
+                                                >
+                                                  <Users className="w-3 h-3" />
+                                                </button>
 
-                                              {/* Xóa đợt này */}
-                                              <button
-                                                type="button"
-                                                onClick={() => handleDeleteLicense(batch.id, `${group.name} - Đợt ${bIdx + 1}`)}
-                                                title={`Xóa Đợt ${bIdx + 1}`}
-                                                className="p-1 text-rose-500 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950 rounded-md transition-colors cursor-pointer"
-                                              >
-                                                <Trash2 className="w-3 h-3" />
-                                              </button>
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
+                                                {/* Xem chi tiết đợt này */}
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setSelectedDetailLicense(batch);
+                                                    setIsDetailModalOpen(true);
+                                                  }}
+                                                  title={`Xem chi tiết Đợt ${bIdx + 1}`}
+                                                  className="p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950 rounded-md transition-colors cursor-pointer"
+                                                >
+                                                  <Eye className="w-3 h-3" />
+                                                </button>
+
+                                                {/* Sửa đợt này */}
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleOpenEdit(batch)}
+                                                  title={`Chỉnh sửa thông tin Đợt ${bIdx + 1}`}
+                                                  className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-950 rounded-md transition-colors cursor-pointer"
+                                                >
+                                                  <Edit2 className="w-3 h-3" />
+                                                </button>
+
+                                                {/* Xóa đợt này */}
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleDeleteLicense(batch.id, `${group.name} - Đợt ${bIdx + 1}`)}
+                                                  title={`Xóa Đợt ${bIdx + 1}`}
+                                                  className="p-1 text-rose-500 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950 rounded-md transition-colors cursor-pointer"
+                                                >
+                                                  <Trash2 className="w-3 h-3" />
+                                                </button>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -2886,6 +3157,107 @@ export default function LicensesPage() {
           </div>
         </div>
       )}
+
+      {/* ==================== MODAL: XEM NHÂN SỰ THEO CÔNG TY ==================== */}
+      {isCompanyAssigneesOpen && viewingCompanyStat && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/40 dark:to-indigo-950/40 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-purple-600 text-white rounded-xl shadow-xs">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                    Nhân Sự Đang Dùng Bản Quyền — {viewingCompanyStat.companyStat.companyName}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {viewingCompanyStat.group.name} • {viewingCompanyStat.companyStat.assignments.length} người đang sử dụng
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCompanyAssigneesOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-xl cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5 text-xs">
+              {viewingCompanyStat.companyStat.assignments.length === 0 ? (
+                <div className="text-center py-10 text-slate-400">
+                  <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                  <p>Chưa có nhân sự nào của công ty này được cấp bản quyền</p>
+                </div>
+              ) : (
+                <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 uppercase">
+                      <tr>
+                        <th className="py-2 px-3">HỌ VÀ TÊN & EMAIL</th>
+                        <th className="py-2 px-2.5">PHÒNG BAN</th>
+                        <th className="py-2 px-2.5">THIẾT BỊ / MÁY TÍNH</th>
+                        <th className="py-2 px-2.5">ĐỢT CẤP</th>
+                        <th className="py-2 px-2.5">NGÀY CẤP</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {viewingCompanyStat.companyStat.assignments.map((a: any, idx: number) => (
+                        <tr key={a.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          <td className="py-2.5 px-3">
+                            <div className="font-bold text-slate-900 dark:text-white text-xs">
+                              {a.user?.fullName || '—'}
+                            </div>
+                            <div className="text-[10.5px] text-slate-500 font-mono">
+                              {a.user?.email || '—'}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-2.5 text-slate-600 dark:text-slate-400">
+                            {a.user?.department || '—'}
+                          </td>
+                          <td className="py-2.5 px-2.5">
+                            {a.asset ? (
+                              <span className="font-mono text-purple-600 font-bold text-[10.5px]">
+                                {a.asset.assetTag} {a.asset.name ? `(${a.asset.name})` : ''}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 italic">Chưa gắn máy</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-2.5">
+                            <span className="px-1.5 py-0.2 bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 font-bold text-[9.5px] rounded">
+                              Đợt {a.batchNumber || 1}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-2.5 text-slate-500 font-mono text-[10.5px]">
+                            {a.assignedAt ? formatDate(a.assignedAt) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 flex justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsCompanyAssigneesOpen(false)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

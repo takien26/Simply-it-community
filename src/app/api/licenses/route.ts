@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
               assignments: {
                 where: { revokedAt: null },
                 include: {
-                  user: { select: { id: true, fullName: true, email: true, department: true } },
-                  asset: { select: { id: true, assetTag: true, name: true } },
+                  user: { select: { id: true, fullName: true, email: true, department: true, companyName: true } },
+                  asset: { select: { id: true, assetTag: true, name: true, companyName: true } },
                 },
               },
               documents: {
@@ -73,8 +73,8 @@ export async function GET(request: NextRequest) {
           assignments: {
             where: { revokedAt: null },
             include: {
-              user: { select: { id: true, fullName: true, email: true, department: true } },
-              asset: { select: { id: true, assetTag: true, name: true } },
+              user: { select: { id: true, fullName: true, email: true, department: true, companyName: true } },
+              asset: { select: { id: true, assetTag: true, name: true, companyName: true } },
             },
           },
           documents: {

@@ -27,8 +27,8 @@ export async function GET(
             assignments: {
               where: { revokedAt: null },
               include: {
-                user: { select: { id: true, fullName: true, email: true, department: true } },
-                asset: { select: { id: true, assetTag: true, name: true } },
+                user: { select: { id: true, fullName: true, email: true, department: true, companyName: true } },
+                asset: { select: { id: true, assetTag: true, name: true, companyName: true } },
               },
             },
           },
@@ -50,8 +50,8 @@ export async function GET(
         },
         assignments: {
           include: {
-            user: { select: { id: true, fullName: true, email: true, department: true } },
-            asset: { select: { id: true, assetTag: true, name: true } },
+            user: { select: { id: true, fullName: true, email: true, department: true, companyName: true } },
+            asset: { select: { id: true, assetTag: true, name: true, companyName: true } },
             assignedBy: { select: { fullName: true } },
           },
           orderBy: { assignedAt: 'desc' },
@@ -148,8 +148,8 @@ export async function PUT(
             assignments: {
               where: { revokedAt: null },
               include: {
-                user: { select: { id: true, fullName: true, email: true, department: true } },
-                asset: { select: { id: true, assetTag: true, name: true } },
+                user: { select: { id: true, fullName: true, email: true, department: true, companyName: true } },
+                asset: { select: { id: true, assetTag: true, name: true, companyName: true } },
               },
             },
           },
@@ -172,8 +172,8 @@ export async function PUT(
         assignments: {
           where: { revokedAt: null },
           include: {
-            user: { select: { id: true, fullName: true, email: true, department: true } },
-            asset: { select: { id: true, assetTag: true, name: true } },
+            user: { select: { id: true, fullName: true, email: true, department: true, companyName: true } },
+            asset: { select: { id: true, assetTag: true, name: true, companyName: true } },
           },
         },
       },
