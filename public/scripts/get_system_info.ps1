@@ -515,7 +515,7 @@ try {
         scannedAt         = (Get-Date).ToString("o")
     }
 
-    $jsonBody = $payload | ConvertTo-Json -Depth 8 -Compress
+    $jsonBody = ($payload | ConvertTo-Json -Depth 8 -Compress) -replace '\\u0000', '' -replace "`0", ''
 
     try {
         $payload | ConvertTo-Json -Depth 8 | Set-Content -Path $JsonFile -Encoding UTF8
