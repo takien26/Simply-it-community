@@ -174,6 +174,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let finalSpecs = body.specs && typeof body.specs === 'object' ? { ...body.specs } : {};
+    if (body.batchName) {
+      finalSpecs.batchName = body.batchName;
+    }
+
     const license = await prisma.license.create({
       data: {
         name,
@@ -192,7 +197,7 @@ export async function POST(request: NextRequest) {
         contractUrl: contractUrl || null,
         parentLicenseId: parentLicenseId || null,
         status: 'ACTIVE',
-        specs: body.specs || null,
+        specs: Object.keys(finalSpecs).length > 0 ? finalSpecs : null,
         notes: notes || null,
       },
     });

@@ -124,11 +124,16 @@ export interface CompanyLicenseStat {
   batches: Array<{
     batchId: string;
     batchNumber: number;
+    batchName: string;
     contractNumber?: string;
     invoiceNumber?: string;
     seats: number;
     purchaseDate?: string;
     expiryDate?: string;
+    purchasePrice?: number;
+    purchaseCurrency?: string;
+    vendorName?: string;
+    notes?: string;
     costInSelectedCurrency: number;
   }>;
   assignments: Array<any>;
@@ -247,7 +252,13 @@ export function groupLicenses(
       totalSeats += bSeats;
       usedSeats += bUsed;
 
-      bActiveAssignments.forEach((a: any) => allAssignments.push({ ...a, batchId: b.id, batchNumber: idx + 1 }));
+      const customBatchName = b.specs?.batchName || b.specs?.batchLabel || `Đợt ${idx + 1}`;
+      bActiveAssignments.forEach((a: any) => allAssignments.push({
+        ...a,
+        batchId: b.id,
+        batchNumber: idx + 1,
+        batchName: customBatchName,
+      }));
 
       const rawPrice = Number(b.purchasePrice) || 0;
       const cur = b.purchaseCurrency || 'VND';
@@ -292,14 +303,20 @@ export function groupLicenses(
       const cost = convertCurrencyFn(rawPrice, cur, selectedCurrency);
       cData.totalCostInSelectedCurrency += cost;
 
+      const customBatchName = b.specs?.batchName || b.specs?.batchLabel || `Đợt ${idx + 1}`;
       cData.batches.push({
         batchId: b.id,
         batchNumber: idx + 1,
+        batchName: customBatchName,
         contractNumber: b.contractNumber,
         invoiceNumber: b.invoiceNumber,
         seats: bSeats,
         purchaseDate: b.purchaseDate,
         expiryDate: b.expiryDate,
+        purchasePrice: rawPrice,
+        purchaseCurrency: cur,
+        vendorName: b.vendor?.name,
+        notes: b.notes,
         costInSelectedCurrency: cost,
       });
     });

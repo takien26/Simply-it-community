@@ -299,6 +299,32 @@ export default function LicensesPage() {
     setSubTableTabs((prev) => ({ ...prev, [groupId]: tab }));
   };
 
+  // Quick Rename Batch Name (Tùy chỉnh tên đợt mua ví dụ theo ngày)
+  const handleRenameBatch = async (batchId: string, currentName: string) => {
+    const newName = window.prompt(
+      'Nhập tên / ký hiệu mới cho đợt mua này (ví dụ: Đợt mua ngày 15/08/2025, Gói bổ sung Q3...):',
+      currentName
+    );
+    if (newName === null) return;
+    const trimmed = newName.trim();
+    try {
+      const res = await fetch(`/api/licenses/${batchId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batchName: trimmed || null }),
+      });
+      if (res.ok) {
+        invalidateClientCache('/api/licenses');
+        triggerDataRefresh('licenses');
+        await loadData(true);
+      } else {
+        alert('Đổi tên đợt mua thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi đổi tên đợt mua');
+    }
+  };
+
   // Company Assignees Modal
   const [isCompanyAssigneesOpen, setIsCompanyAssigneesOpen] = useState(false);
   const [viewingCompanyStat, setViewingCompanyStat] = useState<{ group: LicenseGroup; companyStat: any } | null>(null);
@@ -306,7 +332,10 @@ export default function LicensesPage() {
   const handleOpenAddBatchForCompany = (group: LicenseGroup, targetCompany: string) => {
     const master = group.masterLicense;
     const nextBatchNum = group.batches.length + 1;
+    const todayFormatted = new Date().toLocaleDateString('vi-VN');
     setFormData({
+      batchName: `Đợt ${nextBatchNum} - Ngày ${todayFormatted}`,
+
       name: group.name,
       licenseKey: '',
       licenseType: group.licenseType || 'SUBSCRIPTION',
@@ -741,6 +770,7 @@ export default function LicensesPage() {
 
     setEditFormData({
       name: lic.name || '',
+      batchName: (lic as any).specs?.batchName || (lic as any).specs?.batchLabel || '',
       licenseKey: lic.licenseKey || '',
       licenseType: lic.licenseType || 'PERPETUAL',
       totalSeats: lic.totalSeats || 1,
@@ -764,7 +794,10 @@ export default function LicensesPage() {
   const handleOpenAddBatch = (group: LicenseGroup) => {
     const master = group.masterLicense;
     const nextBatchNum = group.batches.length + 1;
+    const todayFormatted = new Date().toLocaleDateString('vi-VN');
     setFormData({
+      batchName: `Đợt ${nextBatchNum} - Ngày ${todayFormatted}`,
+
       name: group.name,
       licenseKey: '',
       licenseType: group.licenseType || 'SUBSCRIPTION',
@@ -840,9 +873,11 @@ export default function LicensesPage() {
           purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : null,
           purchaseDate: formData.purchaseDate ? new Date(formData.purchaseDate).toISOString() : null,
           expiryDate: formData.expiryDate ? new Date(formData.expiryDate).toISOString() : null,
+          batchName: formData.batchName || undefined,
           pairs: formData.pairs || [],
           specs: {
             paymentHistory: initialPaymentHistory,
+            batchName: formData.batchName || undefined,
           },
         }),
       });
@@ -872,6 +907,7 @@ export default function LicensesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...editFormData,
+          batchName: editFormData.batchName !== undefined ? editFormData.batchName : undefined,
           purchaseCurrency: editFormData.purchaseCurrency || 'VND',
           exchangeRate: editFormData.exchangeRate || exchangeRatesMap[editFormData.purchaseCurrency || 'VND'] || 1,
           totalSeats: Number(editFormData.totalSeats) || 1,
@@ -2014,19 +2050,32 @@ export default function LicensesPage() {
                                             {/* Cột 2: Đợt mua sở hữu & Hợp đồng */}
                                             <td className="py-3 px-2.5">
                                               {cs.batches.length > 0 ? (
-                                                <div className="space-y-1">
-                                                  {cs.batches.map((b: any) => (
-                                                    <div key={b.batchId} className="flex items-center gap-1.5 flex-wrap">
-                                                      <span className="px-1.5 py-0.2 bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 font-bold text-[9.5px] rounded border border-purple-200 dark:border-purple-800">
-                                                        Đợt {b.batchNumber} ({b.seats} seats)
-                                                      </span>
-                                                      {b.contractNumber && (
-                                                        <span className="font-mono text-[9.5px] text-slate-500">
-                                                          HĐ: {b.contractNumber}
+                                                <div className="space-y-1.5">
+                                                  {cs.batches.map((b: any) => {
+                                                    const bDisplayName = b.batchName || `Đợt ${b.batchNumber}`;
+                                                    return (
+                                                      <div key={b.batchId} className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="px-1.5 py-0.2 bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 font-bold text-[9.5px] rounded border border-purple-200 dark:border-purple-800">
+                                                          {bDisplayName} ({b.seats} seats)
                                                         </span>
-                                                      )}
-                                                    </div>
-                                                  ))}
+                                                        {b.purchaseDate && (
+                                                          <span className="text-[9px] text-slate-500 font-mono">
+                                                            Mua: {formatDate(b.purchaseDate)}
+                                                          </span>
+                                                        )}
+                                                        {b.expiryDate && (
+                                                          <span className="text-[9px] text-slate-400 font-mono">
+                                                            • Hạn: {formatDate(b.expiryDate)}
+                                                          </span>
+                                                        )}
+                                                        {b.contractNumber && (
+                                                          <span className="font-mono text-[9px] text-slate-500">
+                                                            • HĐ: {b.contractNumber}
+                                                          </span>
+                                                        )}
+                                                      </div>
+                                                    );
+                                                  })}
                                                 </div>
                                               ) : (
                                                 <span className="text-[10.5px] text-amber-600 dark:text-amber-400 italic">
@@ -2161,17 +2210,33 @@ export default function LicensesPage() {
                                           <tr key={batch.id} className="hover:bg-purple-50/30 dark:hover:bg-purple-950/20 transition-colors">
                                             {/* Tên đợt & Hợp đồng */}
                                             <td className="py-2.5 px-3">
-                                              <div className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
-                                                <span>Đợt {bIdx + 1}</span>
-                                                <span className="px-1.5 py-0.2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-normal text-[9.5px] rounded">
-                                                  🏢 {batch.companyName || 'Toàn tập đoàn'}
-                                                </span>
-                                              </div>
-                                              <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
-                                                {batch.contractNumber && <span>HĐ: {batch.contractNumber}</span>}
-                                                {batch.invoiceNumber && <span>• HĐĐ: {batch.invoiceNumber}</span>}
-                                                {!batch.contractNumber && !batch.invoiceNumber && <span className="italic">Chưa có số HĐ</span>}
-                                              </div>
+                                              {(() => {
+                                                const batchDisplayName = batch.specs?.batchName || batch.specs?.batchLabel || `Đợt ${bIdx + 1}`;
+                                                return (
+                                                  <>
+                                                    <div className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 flex-wrap">
+                                                      <span className="text-purple-700 dark:text-purple-300 font-extrabold">{batchDisplayName}</span>
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => handleRenameBatch(batch.id, batchDisplayName)}
+                                                        className="p-1 text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded hover:bg-purple-50 dark:hover:bg-purple-950/50 cursor-pointer transition-colors"
+                                                        title="Đổi tên đợt mua (VD: Đợt mua ngày 15/08/2025, Gói bổ sung Q3...)"
+                                                      >
+                                                        <Edit2 className="w-3 h-3" />
+                                                      </button>
+                                                      <span className="px-1.5 py-0.2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-normal text-[9.5px] rounded">
+                                                        🏢 {batch.companyName || 'Toàn tập đoàn'}
+                                                      </span>
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
+                                                      {batch.purchaseDate && <span>Mua: {formatDate(batch.purchaseDate)}</span>}
+                                                      {batch.contractNumber && <span>• HĐ: {batch.contractNumber}</span>}
+                                                      {batch.invoiceNumber && <span>• HĐĐ: {batch.invoiceNumber}</span>}
+                                                      {!batch.contractNumber && !batch.invoiceNumber && !batch.purchaseDate && <span className="italic">Chưa có số HĐ</span>}
+                                                    </div>
+                                                  </>
+                                                );
+                                              })()}
                                             </td>
 
                                             {/* Key */}

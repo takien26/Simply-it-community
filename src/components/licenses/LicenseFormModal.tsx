@@ -326,6 +326,21 @@ export function LicenseFormModal({
                       </div>
                     </div>
 
+                    {/* Tên / Ký hiệu đợt mua tùy chỉnh */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                        <span>Tên / Ký hiệu đợt mua (Tùy chỉnh):</span>
+                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-normal">Tự do đổi tên (VD: kèm ngày mua hoặc mục đích)</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="VD: Đợt mua ngày 15/08/2025, Gói bổ sung Q3/2026, Đợt 2 - CADIVI..."
+                        value={currentForm.batchName || (currentForm.specs && currentForm.specs.batchName) || ''}
+                        onChange={(e) => setCurrentForm({ ...currentForm, batchName: e.target.value })}
+                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+
                     {/* Section: Đơn vị & Nhà cung cấp */}
                     <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-3">
                       <span className="text-xs font-extrabold text-slate-800 dark:text-white uppercase tracking-wider block">

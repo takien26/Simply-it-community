@@ -117,6 +117,11 @@ export async function PUT(
       usedSeats = validPairs.length;
     }
 
+    let finalSpecs = body.specs !== undefined ? body.specs : (existing as any).specs;
+    if (body.batchName !== undefined) {
+      finalSpecs = { ...(finalSpecs && typeof finalSpecs === 'object' ? finalSpecs : {}), batchName: body.batchName };
+    }
+
     const updated = await prisma.license.update({
       where: { id },
       data: {
@@ -136,7 +141,7 @@ export async function PUT(
         contractUrl: body.contractUrl !== undefined ? (body.contractUrl || null) : existing.contractUrl,
         parentLicenseId: body.parentLicenseId !== undefined ? (body.parentLicenseId || null) : (existing as any).parentLicenseId,
         status: body.status ?? existing.status,
-        specs: body.specs !== undefined ? body.specs : (existing as any).specs,
+        specs: finalSpecs,
         notes: body.notes !== undefined ? (body.notes || null) : existing.notes,
       },
       include: {
