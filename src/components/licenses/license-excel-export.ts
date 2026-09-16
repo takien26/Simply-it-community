@@ -536,8 +536,22 @@ export async function exportSingleLicenseExcel(
   workbook.created = new Date();
   workbook.modified = new Date();
 
+  // Helper format loại bản quyền thuần tiếng Việt chuẩn
+  const formatLicenseTypeVi = (type: string) => {
+    switch (type) {
+      case 'SUBSCRIPTION': return 'Thuê bao định kỳ (Subscription)';
+      case 'PERPETUAL': return 'Vĩnh viễn (Perpetual)';
+      case 'OEM': return 'OEM (Đi kèm thiết bị)';
+      case 'TRIAL': return 'Dùng thử (Trial)';
+      case 'OPEN_SOURCE': return 'Mã nguồn mở (Open Source)';
+      default: return type || '—';
+    }
+  };
+
+  const currencyFmt = selectedCurrency === 'VND' ? '#,##0" VNĐ"' : selectedCurrency === 'USD' ? '"$"#,##0.00' : '#,##0.00';
+
   // =========================================================================
-  // SHEET 1: QUẢN LÝ TẬP ĐOÀN & CHI TIẾT CÁC ĐỢT MUA (EXECUTIVE FINANCIAL DASHBOARD)
+  // SHEET 1: QUẢN LÝ TẬP ĐOÀN & CHI TIẾT CÁC ĐỢT MUA
   // =========================================================================
   const sheet1 = workbook.addWorksheet('1. Quản Lý & Chi Tiết Đợt Mua', {
     views: [{ showGridLines: true }],
@@ -554,7 +568,8 @@ export async function exportSingleLicenseExcel(
 
   sheet1.mergeCells('A2:P2');
   const sub1 = sheet1.getCell('A2');
-  sub1.value = `Loại bản quyền: ${group.licenseType} | Nhà cung cấp: ${group.vendor?.name || '—'} | Tổng số ghế: ${group.totalSeats} seats | Đang sử dụng: ${group.usedSeats} seats | Thời gian xuất: ${new Date().toLocaleString('vi-VN')}`;
+  const typeText = formatLicenseTypeVi(group.licenseType);
+  sub1.value = `Loại bản quyền: ${typeText}  |  Nhà cung cấp: ${group.vendor?.name || '—'}  |  Tổng số lượng: ${group.totalSeats} seats  |  Đang sử dụng: ${group.usedSeats} seats  |  Còn trống: ${Math.max(0, group.totalSeats - group.usedSeats)} seats  |  Thời gian xuất: ${new Date().toLocaleString('vi-VN')}`;
   sub1.font = { name: 'Arial', size: 9.5, italic: true, color: { argb: 'FF475569' } };
   sub1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
   sub1.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -562,10 +577,10 @@ export async function exportSingleLicenseExcel(
 
   sheet1.addRow([]); // Dòng 3 trống
 
-  // --- 2. KHỐI A: BẢNG CÂN ĐỐI THEO CÔNG TY THÀNH VIÊN ---
+  // --- 2. KHỐI I: BẢNG CÂN ĐỐI BẢN QUYỀN CÁC CÔNG TY THÀNH VIÊN ---
   sheet1.mergeCells('A4:I4');
   const sectionATitle = sheet1.getCell('A4');
-  sectionATitle.value = 'I. BẢNG CÂN ĐỐI BẢN QUYỀN THEO CÔNG TY THÀNH VIÊN (BALANCE MATRIX)';
+  sectionATitle.value = 'I. BẢNG CÂN ĐỐI BẢN QUYỀN CÁC CÔNG TY THÀNH VIÊN';
   sectionATitle.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: 'FFFFFFFF' } };
   sectionATitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6B21A8' } }; // Purple 700
   sectionATitle.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
@@ -575,26 +590,26 @@ export async function exportSingleLicenseExcel(
     'STT',
     'Công Ty Thành Viên',
     'Các Đợt Mua Sở Hữu',
-    'Ngày Mua Gần Nhất',
-    'Hạn Dùng Gần Nhất',
-    'Đã Mua (Seats)',
-    'Đang Dùng (Seats)',
-    'Còn Dư / Thiếu',
-    'Tình Trạng Cân Đối',
+    'Ngày Mua',
+    'Hạn Dùng',
+    'Đã Mua',
+    'Đang Dùng',
+    'Chênh Lệch',
+    'Tình Trạng',
     '',
     '',
-    `Tổng Chi Phí Công Ty (${selectedCurrency})`,
+    `Tổng Chi Phí (${selectedCurrency})`,
     '',
     '',
     '',
     '',
   ];
   const hRowA = sheet1.addRow(headersA);
-  hRowA.height = 24;
+  hRowA.height = 25;
 
   // Merge header cells cho cột tiền J5:L5
   sheet1.mergeCells('J5:L5');
-  sheet1.getCell('J5').value = `Tổng Chi Phí Công Ty (${selectedCurrency})`;
+  sheet1.getCell('J5').value = `Tổng Chi Phí (${selectedCurrency})`;
 
   for (let c = 1; c <= 9; c++) {
     const cell = hRowA.getCell(c);
@@ -613,7 +628,7 @@ export async function exportSingleLicenseExcel(
     const bStr = cs.batches.map((b) => {
       const bTitle = b.batchName || `Đợt ${b.batchNumber}`;
       const dStr = b.purchaseDate ? ` - ${formatDate(b.purchaseDate)}` : '';
-      return `${bTitle}${dStr} (${b.seats}s)`;
+      return `${bTitle}${dStr} (${b.seats} seats)`;
     }).join('; ') || 'Chưa mua đợt nào (Dùng pool chung)';
 
     const dates = cs.batches.map((b) => b.purchaseDate).filter(Boolean);
@@ -650,7 +665,7 @@ export async function exportSingleLicenseExcel(
     sheet1.mergeCells(`J${rowNum}:L${rowNum}`);
     const costValCell = sheet1.getCell(`J${rowNum}`);
     costValCell.value = Math.round(cs.totalCostInSelectedCurrency);
-    costValCell.numFmt = selectedCurrency === 'VND' ? '#,##0" ₫"' : '#,##0.00';
+    costValCell.numFmt = currencyFmt;
     costValCell.alignment = { vertical: 'middle', horizontal: 'right' };
     costValCell.font = { name: 'Arial', size: 9.5, bold: true };
 
@@ -689,16 +704,16 @@ export async function exportSingleLicenseExcel(
     }
   });
 
-  // Summary Row Khối A
+  // Summary Row Khối I (MERGED A:C to look spacious and clean)
   const totalPurchased = (group.companyStats || []).reduce((acc, cs) => acc + cs.purchasedSeats, 0);
   const totalUsed = (group.companyStats || []).reduce((acc, cs) => acc + cs.usedSeats, 0);
   const netBal = totalPurchased - totalUsed;
   const totalCost = (group.companyStats || []).reduce((acc, cs) => acc + cs.totalCostInSelectedCurrency, 0);
 
   const sumRowA = sheet1.addRow([
-    'TỔNG',
-    'Toàn bộ các công ty thành viên',
-    `${group.batches?.length || 1} đợt mua cộng dồn`,
+    'TỔNG CỘNG',
+    '',
+    '',
     '—',
     group.earliestExpiry ? formatDate(group.earliestExpiry) : 'Vô hạn',
     totalPurchased,
@@ -710,23 +725,27 @@ export async function exportSingleLicenseExcel(
     '',
   ]);
   const sumARowNum = sumRowA.number;
+  sheet1.mergeCells(`A${sumARowNum}:C${sumARowNum}`);
+  const sumTitleCellA = sheet1.getCell(`A${sumARowNum}`);
+  sumTitleCellA.value = 'TỔNG CỘNG (CÁC ĐƠN VỊ THÀNH VIÊN)';
+  sumTitleCellA.alignment = { vertical: 'middle', horizontal: 'center' };
+  sumTitleCellA.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF3B0764' } };
+
   sheet1.mergeCells(`J${sumARowNum}:L${sumARowNum}`);
   const sumCostCellA = sheet1.getCell(`J${sumARowNum}`);
   sumCostCellA.value = Math.round(totalCost);
-  sumCostCellA.numFmt = selectedCurrency === 'VND' ? '#,##0" ₫"' : '#,##0.00';
+  sumCostCellA.numFmt = currencyFmt;
   sumCostCellA.alignment = { vertical: 'middle', horizontal: 'right' };
   sumCostCellA.font = { name: 'Arial', size: 10, bold: true };
 
-  sumRowA.height = 24;
+  sumRowA.height = 25;
   for (let c = 1; c <= 9; c++) {
     const cell = sumRowA.getCell(c);
-    cell.font = { name: 'Arial', size: 9.5, bold: true };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
     cell.border = { top: { style: 'medium', color: { argb: 'FF64748B' } }, bottom: { style: 'double', color: { argb: 'FF0F172A' } } };
   }
   sumCostCellA.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
   sumCostCellA.border = { top: { style: 'medium', color: { argb: 'FF64748B' } }, bottom: { style: 'double', color: { argb: 'FF0F172A' } } };
-  sumRowA.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
   sumRowA.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };
   sumRowA.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
   sumRowA.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
@@ -737,17 +756,17 @@ export async function exportSingleLicenseExcel(
   sumRowA.getCell(9).font = { bold: true, color: { argb: netBal >= 0 ? 'FF15803D' : 'FFB91C1C' } };
 
 
-  // --- 3. KHOẢNG CÁCH NGHỈ CHUYÊN NGHIỆP ---
+  // --- 3. KHOẢNG NGHỈ CHUYÊN NGHIỆP ---
   sheet1.addRow([]); // Dòng trống 1
   sheet1.addRow([]); // Dòng trống 2
 
 
-  // --- 4. KHỐI B: BẢNG KÊ CHI TIẾT TỪNG ĐỢT MUA HÀNG (PURCHASE BATCHES DEEP-DIVE) ---
+  // --- 4. KHỐI II: BẢNG KÊ CHI TIẾT TỪNG ĐỢT MUA HÀNG & HỢP ĐỒNG ---
   const bBannerRow = sheet1.addRow([]);
   const bBannerNum = bBannerRow.number;
   sheet1.mergeCells(`A${bBannerNum}:P${bBannerNum}`);
   const sectionBTitle = sheet1.getCell(`A${bBannerNum}`);
-  sectionBTitle.value = 'II. BẢNG KÊ CHI TIẾT CÁC ĐỢT MUA HÀNG & HỢP ĐỒNG (PURCHASE BATCHES DEEP-DIVE)';
+  sectionBTitle.value = 'II. BẢNG KÊ CHI TIẾT TỪNG ĐỢT MUA HÀNG & HỢP ĐỒNG';
   sectionBTitle.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: 'FFFFFFFF' } };
   sectionBTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E1B4B' } }; // Deep Navy 950
   sectionBTitle.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
@@ -755,17 +774,17 @@ export async function exportSingleLicenseExcel(
 
   const headersB = [
     'STT',
-    'Tên Đợt / Ký Hiệu Mua',
+    'Tên Đợt Mua',
     'Công Ty Đứng Tên Mua',
     'Ngày Mua',
-    'Ngày Hết Hạn',
-    'Số Ghế Mua',
+    'Hạn Sử Dụng',
+    'Số Lượng Mua',
     'Đang Dùng',
     'Còn Trống',
-    'Trạng Thái Hạn',
-    'Đơn Giá (Giá/Ghế)',
-    'Tổng Giá Trị (Nguyên Tệ)',
-    `Tổng Tiền Quy Đổi (${selectedCurrency})`,
+    'Tình Trạng Hạn',
+    'Đơn Giá / Ghế',
+    'Tổng Tiền Đợt (Nguyên Tệ)',
+    `Thành Tiền Quy Đổi (${selectedCurrency})`,
     'Số Hợp Đồng',
     'Số Hóa Đơn VAT',
     'Nhà Cung Cấp',
@@ -816,7 +835,7 @@ export async function exportSingleLicenseExcel(
       bRem,
       isExp ? 'Đã hết hạn' : isExpSoon ? 'Sắp hết (<30d)' : b.expiryDate ? 'Còn hạn' : 'Vô hạn',
       unitPrice > 0 ? Math.round(unitPrice) : '—',
-      bPrice > 0 ? `${formatPrice(bPrice, bCur)}` : '0 ₫',
+      bPrice > 0 ? (bCur === 'VND' ? `${new Intl.NumberFormat('vi-VN').format(Math.round(bPrice))} VNĐ` : formatPrice(bPrice, bCur)) : '0 VNĐ',
       Math.round(bCost),
       b.contractNumber || '—',
       b.invoiceNumber || '—',
@@ -833,10 +852,10 @@ export async function exportSingleLicenseExcel(
     rB.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
     rB.getCell(9).alignment = { vertical: 'middle', horizontal: 'center' };
     rB.getCell(10).alignment = { vertical: 'middle', horizontal: 'right' };
-    rB.getCell(10).numFmt = selectedCurrency === 'VND' ? '#,##0" ₫"' : '#,##0.00';
+    if (unitPrice > 0) rB.getCell(10).numFmt = currencyFmt;
     rB.getCell(11).alignment = { vertical: 'middle', horizontal: 'right' };
     rB.getCell(12).alignment = { vertical: 'middle', horizontal: 'right' };
-    rB.getCell(12).numFmt = selectedCurrency === 'VND' ? '#,##0" ₫"' : '#,##0.00';
+    rB.getCell(12).numFmt = currencyFmt;
     rB.getCell(13).alignment = { vertical: 'middle', horizontal: 'center' };
     rB.getCell(14).alignment = { vertical: 'middle', horizontal: 'center' };
 
@@ -859,13 +878,13 @@ export async function exportSingleLicenseExcel(
     }
   });
 
-  // Summary Row Khối B
+  // Summary Row Khối II (MERGED A:E completely eliminating the cut-off text bug)
   const sumRowB = sheet1.addRow([
-    'TỔNG CỘNG ĐỢT MUA',
-    `${group.batches?.length || 1} đợt mua`,
-    '—',
-    '—',
-    '—',
+    'TỔNG CỘNG',
+    '',
+    '',
+    '',
+    '',
     bTotalSeatsSum,
     bTotalUsedSum,
     Math.max(0, bTotalSeatsSum - bTotalUsedSum),
@@ -878,40 +897,54 @@ export async function exportSingleLicenseExcel(
     '—',
     '—',
   ]);
+  const bSumRowNum = sumRowB.number;
+  sheet1.mergeCells(`A${bSumRowNum}:E${bSumRowNum}`);
+  const sumTitleCellB = sheet1.getCell(`A${bSumRowNum}`);
+  sumTitleCellB.value = `TỔNG CỘNG (${group.batches?.length || 1} ĐỢT MUA)`;
+  sumTitleCellB.alignment = { vertical: 'middle', horizontal: 'center' };
+  sumTitleCellB.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF1E1B4B' } };
+
   sumRowB.height = 25;
-  sumRowB.eachCell((c) => {
-    c.font = { name: 'Arial', size: 10, bold: true };
-    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
-    c.border = { top: { style: 'medium', color: { argb: 'FF64748B' } }, bottom: { style: 'double', color: { argb: 'FF0F172A' } } };
-  });
-  sumRowB.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+  for (let c = 1; c <= 16; c++) {
+    const cell = sumRowB.getCell(c);
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+    cell.border = { top: { style: 'medium', color: { argb: 'FF64748B' } }, bottom: { style: 'double', color: { argb: 'FF0F172A' } } };
+  }
   sumRowB.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
   sumRowB.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
   sumRowB.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
+  sumRowB.getCell(9).alignment = { vertical: 'middle', horizontal: 'center' };
+  sumRowB.getCell(10).alignment = { vertical: 'middle', horizontal: 'center' };
+  sumRowB.getCell(11).alignment = { vertical: 'middle', horizontal: 'center' };
   sumRowB.getCell(12).alignment = { vertical: 'middle', horizontal: 'right' };
-  sumRowB.getCell(12).numFmt = selectedCurrency === 'VND' ? '#,##0" ₫"' : '#,##0.00';
+  sumRowB.getCell(12).numFmt = currencyFmt;
+  sumRowB.getCell(12).font = { name: 'Arial', size: 10.5, bold: true, color: { argb: 'FF1E1B4B' } };
+  sumRowB.getCell(13).alignment = { vertical: 'middle', horizontal: 'center' };
+  sumRowB.getCell(14).alignment = { vertical: 'middle', horizontal: 'center' };
+  sumRowB.getCell(15).alignment = { vertical: 'middle', horizontal: 'center' };
+  sumRowB.getCell(16).alignment = { vertical: 'middle', horizontal: 'center' };
 
-  // Điều chỉnh độ rộng cột chuẩn cho toàn bộ Sheet 1
+  // Điều chỉnh độ rộng cột chuẩn rộng rãi, tuyệt đối không bị đè chữ
   sheet1.getColumn(1).width = 6;   // STT
-  sheet1.getColumn(2).width = 28;  // Tên đợt / Công ty
-  sheet1.getColumn(3).width = 28;  // Công ty đứng tên / Sở hữu
-  sheet1.getColumn(4).width = 14;  // Ngày mua
-  sheet1.getColumn(5).width = 14;  // Ngày hết hạn
-  sheet1.getColumn(6).width = 13;  // Ghế mua
-  sheet1.getColumn(7).width = 13;  // Đang dùng
-  sheet1.getColumn(8).width = 15;  // Còn trống / Dư thiếu
-  sheet1.getColumn(9).width = 16;  // Trạng thái hạn / Cân đối
-  sheet1.getColumn(10).width = 16; // Đơn giá
-  sheet1.getColumn(11).width = 18; // Nguyên tệ
-  sheet1.getColumn(12).width = 20; // Quy đổi
-  sheet1.getColumn(13).width = 16; // Số HĐ
-  sheet1.getColumn(14).width = 16; // Hóa đơn VAT
-  sheet1.getColumn(15).width = 22; // NCC
-  sheet1.getColumn(16).width = 26; // Ghi chú
+  sheet1.getColumn(2).width = 30;  // Tên đợt mua / Công ty
+  sheet1.getColumn(3).width = 32;  // Công ty đứng tên mua / Đợt mua sở hữu
+  sheet1.getColumn(4).width = 15;  // Ngày mua
+  sheet1.getColumn(5).width = 15;  // Hạn sử dụng
+  sheet1.getColumn(6).width = 14;  // Số lượng mua
+  sheet1.getColumn(7).width = 14;  // Đang dùng
+  sheet1.getColumn(8).width = 14;  // Còn trống / Chênh lệch
+  sheet1.getColumn(9).width = 18;  // Tình trạng hạn / Tình trạng cân đối
+  sheet1.getColumn(10).width = 18; // Đơn giá / Ghế
+  sheet1.getColumn(11).width = 24; // Tổng tiền đợt (Nguyên tệ)
+  sheet1.getColumn(12).width = 24; // Thành tiền quy đổi (VNĐ)
+  sheet1.getColumn(13).width = 22; // Số hợp đồng
+  sheet1.getColumn(14).width = 18; // Số hóa đơn VAT
+  sheet1.getColumn(15).width = 28; // Nhà cung cấp
+  sheet1.getColumn(16).width = 30; // Ghi chú đợt mua
 
 
   // =========================================================================
-  // SHEET 2: DANH SÁCH GÁN NGƯỜI DÙNG & THIẾT BỊ (AUDIT TRAIL)
+  // SHEET 2: DANH SÁCH NHÂN SỰ & THIẾT BỊ GÁN SỬ DỤNG (AUDIT TRAIL)
   // =========================================================================
   const sheet2 = workbook.addWorksheet('2. Danh Sách Gán Người Dùng', {
     views: [{ showGridLines: true }],
@@ -919,7 +952,7 @@ export async function exportSingleLicenseExcel(
 
   sheet2.mergeCells('A1:I1');
   const title2 = sheet2.getCell('A1');
-  title2.value = `DANH SÁCH GÁN NGƯỜI DÙNG & THIẾT BỊ: ${group.name.toUpperCase()}`;
+  title2.value = `DANH SÁCH NHÂN SỰ & THIẾT BỊ SỬ DỤNG BẢN QUYỀN: ${group.name.toUpperCase()}`;
   title2.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
   title2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } }; // Slate 900
   title2.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -927,7 +960,7 @@ export async function exportSingleLicenseExcel(
 
   sheet2.mergeCells('A2:I2');
   const sub2 = sheet2.getCell('A2');
-  sub2.value = `Tổng số lượng ghế đã cấp: ${group.allAssignments?.length || 0} seats | Phục vụ kiểm toán nội bộ & thanh tra bản quyền (SAM Audit Trail)`;
+  sub2.value = `Tổng số ghế đã cấp phát: ${group.allAssignments?.length || 0} seats  |  Phục vụ đối soát nội bộ và kiểm toán bản quyền phần mềm`;
   sub2.font = { name: 'Arial', size: 9.5, italic: true, color: { argb: 'FF475569' } };
   sub2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
   sub2.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -942,7 +975,7 @@ export async function exportSingleLicenseExcel(
     'Công Ty Thành Viên',
     'Phòng Ban',
     'Thiết Bị Cài Đặt (Asset Tag)',
-    'Đợt Mua Cấp Phát',
+    'Thuộc Đợt Mua Cấp Phát',
     'Ngày Cấp Phát',
     'Ghi Chú Phân Bổ',
   ];
@@ -984,14 +1017,14 @@ export async function exportSingleLicenseExcel(
   });
 
   sheet2.getColumn(1).width = 6;
-  sheet2.getColumn(2).width = 24;
-  sheet2.getColumn(3).width = 26;
-  sheet2.getColumn(4).width = 30;
+  sheet2.getColumn(2).width = 26;
+  sheet2.getColumn(3).width = 28;
+  sheet2.getColumn(4).width = 32;
   sheet2.getColumn(5).width = 22;
-  sheet2.getColumn(6).width = 26;
-  sheet2.getColumn(7).width = 24;
+  sheet2.getColumn(6).width = 28;
+  sheet2.getColumn(7).width = 26;
   sheet2.getColumn(8).width = 16;
-  sheet2.getColumn(9).width = 26;
+  sheet2.getColumn(9).width = 28;
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
