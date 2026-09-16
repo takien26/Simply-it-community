@@ -1598,23 +1598,50 @@ export default function ServicesPage() {
 
       {/* Filter and Search Bar */}
       <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xs space-y-3">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
+          {/* Ô Tìm Kiếm Nhanh */}
+          <div className="lg:col-span-2 relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
             <input
               type="text"
-              placeholder={language === 'en' ? 'Search by service code, plan name, contract #, static IP, hotline...' : 'Tìm kiếm theo mã dịch vụ, tên gói cước, số hợp đồng, IP tĩnh, hotline...'}
+              placeholder={language === 'en' ? '🔍 Search service, code, contract, IP, company...' : '🔍 Tìm mã dịch vụ, tên gói, số HĐ, IP tĩnh, công ty...'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+              className="w-full pl-9 pr-7 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* Công ty (Chuẩn tương đồng với Tài sản & Bản quyền) */}
+          <div>
+            <select
+              value={selectedCompany}
+              onChange={(e) => setSelectedCompany(e.target.value)}
+              className="w-full py-2 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer truncate"
+            >
+              <option value="ALL">{language === 'en' ? '🏢 Company (All)' : '🏢 Công ty (Tất cả)'}</option>
+              {companies.map((c) => (
+                <option key={c} value={c}>
+                  🏢 {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Phân loại dịch vụ */}
+          <div>
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+              className="w-full py-2 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer truncate"
             >
               {DEFAULT_SERVICE_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -1622,11 +1649,14 @@ export default function ServicesPage() {
                 </option>
               ))}
             </select>
+          </div>
 
+          {/* Trạng thái */}
+          <div>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+              className="w-full py-2 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer truncate"
             >
               <option value="ALL">{language === 'en' ? 'All Statuses' : 'Tất cả trạng thái'}</option>
               <option value="ACTIVE">{language === 'en' ? '🟢 Active' : '🟢 Đang hoạt động'}</option>
@@ -1634,16 +1664,19 @@ export default function ServicesPage() {
               <option value="EXPIRED">{language === 'en' ? '🔴 Expired' : '🔴 Đã quá hạn'}</option>
               <option value="SUSPENDED">{language === 'en' ? '⏸️ Suspended' : '⏸️ Tạm ngưng'}</option>
             </select>
+          </div>
 
+          {/* Nhà Cung Cấp / Đối Tác */}
+          <div>
             <select
               value={selectedVendor}
               onChange={(e) => setSelectedVendor(e.target.value)}
-              className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+              className="w-full py-2 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer truncate"
             >
-              <option value="ALL">{language === 'en' ? 'All Vendors / Providers' : 'Tất cả nhà mạng / đối tác'}</option>
+              <option value="ALL">{language === 'en' ? 'All Vendors' : 'Tất cả nhà mạng / NCC'}</option>
               {vendors.map((v) => (
                 <option key={v.id} value={v.id}>
-                  {v.name}
+                  🤝 {v.name}
                 </option>
               ))}
             </select>
@@ -1675,7 +1708,7 @@ export default function ServicesPage() {
             ))}
           </div>
 
-          {(search || selectedType !== 'ALL' || selectedStatus !== 'ALL' || selectedVendor !== 'ALL') && (
+          {(search || selectedType !== 'ALL' || selectedStatus !== 'ALL' || selectedVendor !== 'ALL' || selectedCompany !== 'ALL') && (
             <button
               type="button"
               onClick={() => {
@@ -1683,6 +1716,7 @@ export default function ServicesPage() {
                 setSelectedType('ALL');
                 setSelectedStatus('ALL');
                 setSelectedVendor('ALL');
+                setSelectedCompany('ALL');
               }}
               className="inline-flex items-center gap-1 px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
             >
@@ -1756,9 +1790,16 @@ export default function ServicesPage() {
                             <TypeIcon className="w-3 h-3" />
                           </div>
                           <div className="min-w-0">
-                            <span className="font-mono text-[9.5px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-1.5 py-0.2 rounded border border-purple-200/80 dark:border-purple-800 inline-block mb-0.5 whitespace-nowrap leading-tight">
-                              {svc.serviceCode}
-                            </span>
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span className="font-mono text-[9.5px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-1.5 py-0.2 rounded border border-purple-200/80 dark:border-purple-800 inline-block mb-0.5 whitespace-nowrap leading-tight">
+                                {svc.serviceCode}
+                              </span>
+                              {svc.companyName && (
+                                <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-medium truncate max-w-[120px]" title={svc.companyName}>
+                                  🏢 {svc.companyName}
+                                </span>
+                              )}
+                            </div>
                             <h4 className="font-bold text-slate-900 dark:text-white text-[11px] leading-snug group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors line-clamp-2">
                               {svc.name}
                             </h4>

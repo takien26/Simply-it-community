@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
         { invoiceNumber: { contains: search, mode: 'insensitive' } },
         { contactSupport: { contains: search, mode: 'insensitive' } },
         { notes: { contains: search, mode: 'insensitive' } },
+        { companyName: { contains: search, mode: 'insensitive' } },
+        { vendor: { name: { contains: search, mode: 'insensitive' } } },
       ];
     }
 

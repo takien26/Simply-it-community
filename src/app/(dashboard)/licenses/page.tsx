@@ -1414,71 +1414,42 @@ export default function LicensesPage() {
 
       {/* ==================== 3. BỘ LỌC MICROCOPY TINH GỌN ==================== */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-        {/* Quick Company Filter Chips (Chuẩn SAM Quốc Tế ServiceNow & Flexera One) */}
-        <div className="flex items-center gap-1.5 flex-wrap pb-2.5 border-b border-slate-100 dark:border-slate-800">
-          <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-1">
-            <Building2 className="w-3.5 h-3.5 text-purple-600" />
-            <span>{isEn ? 'Conglomerate View:' : 'Lọc nhanh công ty:'}</span>
-          </span>
-
-          <button
-            type="button"
-            onClick={() => setSelectedCompany('')}
-            className={`px-3 py-1 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 border ${
-              !selectedCompany
-                ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
-                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
-            }`}
-          >
-            <span>{isEn ? '🏢 All Conglomerate' : '🏢 Toàn tập đoàn'}</span>
-            <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                !selectedCompany ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-              }`}
-            >
-              {licenses.length}
-            </span>
-          </button>
-
-          {conglomerateCompanies.map(([cName, count]) => {
-            const isSelected = selectedCompany === cName;
-            return (
-              <button
-                key={cName}
-                type="button"
-                onClick={() => setSelectedCompany(isSelected ? '' : cName)}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
-                  isSelected
-                    ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
-                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
-                }`}
-              >
-                <span className="truncate max-w-[140px] sm:max-w-[200px]">🏢 {cName}</span>
-                {count > 0 && (
-                  <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                      isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
-          {/* Ô Tìm Kiếm */}
+          {/* Ô Tìm Kiếm Nhanh */}
           <div className="lg:col-span-2 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
             <input
               type="text"
-              placeholder={language === 'en' ? 'Search by software name, key, vendor...' : 'Tìm theo tên phần mềm, license key, NCC...'}
+              placeholder={language === 'en' ? '🔍 Search software, key, vendor, company...' : '🔍 Tìm theo tên phần mềm, key, NCC, công ty...'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-800 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full pl-9 pr-7 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-800 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Công ty (Chuẩn tương đồng với Tài sản) */}
+          <div>
+            <select
+              value={selectedCompany}
+              onChange={(e) => setSelectedCompany(e.target.value)}
+              className="w-full py-2 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer truncate"
+            >
+              <option value="">{language === 'en' ? '🏢 Company (All)' : '🏢 Công ty (Tất cả)'}</option>
+              {companies.map((c) => (
+                <option key={c} value={c}>
+                  🏢 {c}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Loại */}
@@ -1486,7 +1457,7 @@ export default function LicensesPage() {
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
+              className="w-full py-2 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer truncate"
             >
               <option value="">{language === 'en' ? '-- Type: All --' : '-- Loại: Tất cả --'}</option>
               <option value="PERPETUAL">{language === 'en' ? 'Perpetual' : 'Vĩnh viễn (Perpetual)'}</option>
@@ -1497,28 +1468,12 @@ export default function LicensesPage() {
             </select>
           </div>
 
-          {/* Công ty */}
-          <div>
-            <select
-              value={selectedCompany}
-              onChange={(e) => setSelectedCompany(e.target.value)}
-              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
-            >
-              <option value="">{language === 'en' ? '-- Company: All --' : '-- Công ty: Tất cả --'}</option>
-              {companies.map((c) => (
-                <option key={c} value={c}>
-                  🏢 {c}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* Nhà Cung Cấp */}
           <div>
             <select
               value={selectedVendor}
               onChange={(e) => setSelectedVendor(e.target.value)}
-              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
+              className="w-full py-2 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer truncate"
             >
               <option value="">{language === 'en' ? '-- Vendor: All --' : '-- NCC: Tất cả --'}</option>
               {vendors.map((v) => (
@@ -1534,7 +1489,7 @@ export default function LicensesPage() {
             <select
               value={selectedExpiryFilter}
               onChange={(e) => setSelectedExpiryFilter(e.target.value as any)}
-              className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
+              className="w-full py-2 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer truncate"
             >
               <option value="ALL">{language === 'en' ? '-- Expiry: All --' : '-- Hạn: Tất cả --'}</option>
               <option value="VALID">{language === 'en' ? '🟢 Active / Valid' : '🟢 Còn hạn sử dụng'}</option>
@@ -1543,6 +1498,30 @@ export default function LicensesPage() {
             </select>
           </div>
         </div>
+
+        {(search || selectedType || selectedCompany || selectedVendor || (selectedExpiryFilter && selectedExpiryFilter !== 'ALL')) && (
+          <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-[11px] font-bold text-slate-400">
+              {isEn
+                ? `Filtering: ${[selectedCompany && `🏢 ${selectedCompany}`, search && `"${search}"`, selectedType, selectedVendor && 'Vendor'].filter(Boolean).join(' • ')}`
+                : `Đang lọc: ${[selectedCompany && `🏢 ${selectedCompany}`, search && `"${search}"`, selectedType, selectedVendor && 'NCC'].filter(Boolean).join(' • ')}`}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setSelectedType('');
+                setSelectedCompany('');
+                setSelectedVendor('');
+                setSelectedExpiryFilter('ALL');
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>{language === 'en' ? 'Reset Filters' : 'Xóa bộ lọc'}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ==================== 4. BẢNG DỮ LIỆU DUAL-CURRENCY ==================== */}
