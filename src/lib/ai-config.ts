@@ -84,10 +84,11 @@ export async function testGeminiApiKey(apiKeyToTest?: string): Promise<{ success
 
     const genAI = new GoogleGenerativeAI(key.trim());
     const candidateModels = [
+      'gemini-3.5-flash-lite',
       'gemini-3.6-flash',
-      'gemini-3.5-flash',
-      'gemini-3.1-flash-lite',
       'gemini-3-flash-preview',
+      'gemini-flash-latest',
+      'gemini-3.5-flash',
     ];
 
     let lastError = '';
@@ -231,10 +232,11 @@ export async function generateUnifiedTextAI(options: {
   const geminiClient = await getGenAIClient();
   if (geminiClient) {
     const candidateModels = [
-      options.model || 'gemini-3.6-flash',
-      'gemini-3.5-flash',
-      'gemini-3.1-flash-lite',
+      options.model || 'gemini-3.5-flash-lite',
+      'gemini-3.6-flash',
       'gemini-3-flash-preview',
+      'gemini-flash-latest',
+      'gemini-3.5-flash',
     ];
 
     for (const modelName of candidateModels) {
@@ -335,10 +337,11 @@ export async function generateUnifiedVisionAI(options: {
     parts.push({ text: options.prompt });
 
     const candidateModels = [
+      'gemini-3.5-flash-lite',
       'gemini-3.6-flash',
-      'gemini-3.5-flash',
-      'gemini-3.1-flash-lite',
       'gemini-3-flash-preview',
+      'gemini-flash-latest',
+      'gemini-3.5-flash',
     ];
 
     for (const modelName of candidateModels) {

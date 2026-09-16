@@ -6,10 +6,11 @@ import path from 'path';
 import { getGenAIClient, generateUnifiedVisionAI } from '@/lib/ai-config';
 
 const CANDIDATE_MODELS = [
-  'gemini-3.5-flash',
-  'gemini-3.1-flash-lite',
-  'gemini-3-flash-preview',
+  'gemini-3.5-flash-lite',
   'gemini-3.6-flash',
+  'gemini-3-flash-preview',
+  'gemini-flash-latest',
+  'gemini-3.5-flash',
 ];
 
 const extractionCache = new Map<string, { data: Record<string, unknown>; confidence: number; timestamp: number }>();
@@ -319,15 +320,20 @@ CRITICAL EXTRACTION RULES:
 1. Scan EVERY table row, quotation item, and equipment clause.
 2. If there are multiple items (e.g. 1 Laptop, 2 Microphones, 1 Software License, 1 Maintenance Pack), you MUST output ALL items into the "items" array.
 3. For each line item:
-   - "targetEntity": Exactly "ASSET" (for hardware/devices), "LICENSE" (for software licenses/operating systems/apps), or "SERVICE" (for recurring subscriptions/cloud/internet/SLA/maintenance).
+   - "targetEntity": Exactly "ASSET" (for hardware/devices), "LICENSE" (for software licenses, operating systems, apps, cloud software subscriptions like Microsoft 365, Teams, Zoom, Adobe, AutoCAD, Antivirus), or "SERVICE" (for recurring internet/cloud hosting/domain/SLA/maintenance).
    - "categoryName": "Laptop", "PC / Máy tính để bàn", "Máy trạm Workstation", "Màn hình", "Máy in", "Thiết bị mạng", "Tai nghe / Loa", "Máy chủ & Hệ thống (Server)", "License Bản quyền", "Dịch vụ IT", or "Phụ kiện".
    - "name": Full formal product name in Vietnamese / English.
-   - "brand": Brand or vendor (e.g. Dell, Asus, Apple, HP, MapInfo, Microsoft, Cisco, TSG).
+   - "brand": Brand or vendor (e.g. Dell, Asus, Apple, HP, MapInfo, Microsoft, Cisco, Adobe, TSG).
    - "model": Model name or version.
    - "serialNumber": Serial number if found in document (or null).
    - "quantity": Integer quantity (default 1).
    - "purchasePrice": Unit price in VND (number only, e.g. 45000000).
    - "warrantyMonths": Warranty duration or subscription period in months (integer, e.g. 12, 24, 36).
+   - "licenseType": For LICENSE items: "SUBSCRIPTION" (if periodic renewal like M365, Teams, Adobe, Zoom, or has start-end dates) or "PERPETUAL" (vĩnh viễn).
+   - "totalSeats": For LICENSE items: number of user accounts or seats (integer, default 1).
+   - "expiryDate": Expiration date if mentioned (YYYY-MM-DD or null).
+   - "vendorName": Specific vendor/reseller if indicated on this item or inherit from header.
+   - "companyName": Purchaser company if indicated or inherit from header.
    - "specs": Hardware specs or license details (object or string).
 
 OUTPUT FORMAT: Return valid JSON matching this schema:
@@ -353,6 +359,11 @@ OUTPUT FORMAT: Return valid JSON matching this schema:
       "quantity": 1,
       "purchasePrice": 0,
       "warrantyMonths": 12,
+      "licenseType": "SUBSCRIPTION hoặc PERPETUAL",
+      "totalSeats": 1,
+      "expiryDate": null,
+      "vendorName": null,
+      "companyName": null,
       "specs": {}
     }
   ]
@@ -521,6 +532,9 @@ async function autoCreateEntity(
           companyName: (data.companyName as string) || null,
           vendorId: vendorId || null,
           locationId: (data.locationId as string) || null,
+          contractNumber: (data.contractNumber as string) || null,
+          invoiceNumber: (data.invoiceNumber as string) || null,
+          invoiceUrl: (data.invoiceUrl as string) || null,
           specs: (data.specs as object) || undefined,
           notes: (data.notes as string) || null,
         },
@@ -530,6 +544,14 @@ async function autoCreateEntity(
     }
 
     case 'LICENSE': {
+      let vendorId = data.vendorId as string | undefined;
+      if (!vendorId && data.vendorName) {
+        const v = await prisma.vendor.findFirst({
+          where: { name: { contains: data.vendorName as string, mode: 'insensitive' } },
+        });
+        if (v) vendorId = v.id;
+      }
+
       const price = normalizePrice(data.purchasePrice);
       const license = await prisma.license.create({
         data: {
@@ -541,7 +563,12 @@ async function autoCreateEntity(
           expiryDate: data.expiryDate ? new Date(data.expiryDate as string) : null,
           purchasePrice: price,
           purchaseCurrency: (data.purchaseCurrency as string) || 'VND',
-          vendorId: (data.vendorId as string) || null,
+          vendorId: vendorId || null,
+          companyName: (data.companyName as string) || null,
+          contractNumber: (data.contractNumber as string) || null,
+          invoiceNumber: (data.invoiceNumber as string) || null,
+          contractUrl: (data.contractUrl as string) || null,
+          specs: (data.specs as object) || undefined,
           notes: (data.notes as string) || null,
         },
       });

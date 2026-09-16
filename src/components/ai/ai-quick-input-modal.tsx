@@ -115,23 +115,28 @@ const SYNONYM_MAP: Record<string, string> = {
 };
 
 function detectItemEntity(raw: any, rawText: string): 'ASSET' | 'LICENSE' | 'SERVICE' {
-  const fullText = `${raw?.categoryName || ''} ${raw?.name || ''} ${raw?.model || ''} ${raw?.brand || ''} ${raw?.serviceType || ''} ${rawText || ''}`.toLowerCase();
+  if (raw?.targetEntity && ['ASSET', 'LICENSE', 'SERVICE'].includes(raw.targetEntity)) {
+    return raw.targetEntity;
+  }
 
-  const serviceKeywords = [
-    'dịch vụ', 'internet', 'đường truyền', 'cáp quang', 'vnpt', 'viettel', 'fpt telecom',
-    'domain', 'tên miền', 'hosting', 'vps', 'cloud server', 'aws', 'azure', 'gcp',
-    'bảo trì định kỳ', 'sla', 'thuê bao', 'gói cước', 'thuê chỗ đặt', 'co-location',
-    'chữ ký số', 'hóa đơn điện tử', 'bảo hành mở rộng'
-  ];
+  const fullText = `${raw?.categoryName || ''} ${raw?.name || ''} ${raw?.model || ''} ${raw?.brand || ''} ${raw?.serviceType || ''} ${rawText || ''}`.toLowerCase();
 
   const licenseKeywords = [
     'license', 'bản quyền', 'windows 11 pro', 'office 365', 'm365', 'microsoft 365',
-    'autocad', 'antivirus', 'kaspersky', 'vmware', 'photoshop', 'adobe', 'cal license',
-    'perpetual', 'subscription key', 'sql server standard', 'cals'
+    'teams', 'microsoft teams', 'zoom', 'slack', 'autocad', 'antivirus', 'kaspersky',
+    'vmware', 'photoshop', 'adobe', 'cal license', 'perpetual', 'subscription key',
+    'sql server standard', 'cals', 'creative cloud', 'canva'
   ];
 
-  if (serviceKeywords.some((kw) => fullText.includes(kw))) return 'SERVICE';
+  const serviceKeywords = [
+    'dịch vụ đường truyền', 'cước internet', 'đường truyền', 'cáp quang', 'vnpt', 'viettel', 'fpt telecom',
+    'domain', 'tên miền', 'hosting', 'vps', 'cloud server', 'aws', 'azure', 'gcp',
+    'bảo trì định kỳ', 'sla', 'thuê chỗ đặt', 'co-location',
+    'chữ ký số', 'hóa đơn điện tử', 'bảo hành mở rộng'
+  ];
+
   if (licenseKeywords.some((kw) => fullText.includes(kw))) return 'LICENSE';
+  if (serviceKeywords.some((kw) => fullText.includes(kw))) return 'SERVICE';
   return 'ASSET';
 }
 
@@ -441,13 +446,23 @@ export function AIQuickInputModal({ isOpen, onClose, onSuccess }: AIQuickInputMo
           if (v) matchedVendorId = v.id;
         }
 
+        let matchedCompanyName = companies[0] || 'TẬP ĐOÀN TechCorp';
+        if (extracted.companyName && companies.length > 0) {
+          const c = companies.find((comp) =>
+            comp.toLowerCase().includes(extracted.companyName.toLowerCase()) ||
+            extracted.companyName.toLowerCase().includes(comp.toLowerCase())
+          );
+          if (c) matchedCompanyName = c;
+          else if (extracted.companyName.trim()) matchedCompanyName = extracted.companyName.trim();
+        }
+
         const commonPDate = extracted.purchaseDate ? String(extracted.purchaseDate).split('T')[0] : '';
         setCommonDocData({
           contractNumber: extracted.contractNumber || '',
           invoiceNumber: extracted.invoiceNumber || '',
           vendorId: matchedVendorId,
-          vendorName: extracted.vendorName || '',
-          companyName: companies[0] || 'TẬP ĐOÀN TechCorp',
+          vendorName: extracted.vendorName || (vendors.find((v) => v.id === matchedVendorId)?.name || ''),
+          companyName: matchedCompanyName,
           purchaseDate: commonPDate,
         });
 
@@ -519,6 +534,25 @@ export function AIQuickInputModal({ isOpen, onClose, onSuccess }: AIQuickInputMo
           else if (rawName.includes('saas') || rawName.includes('phần mềm') || rawName.includes('chữ ký số')) defaultServiceType = 'SOFTWARE_SAAS';
           else if (rawName.includes('bảo trì') || rawName.includes('sla')) defaultServiceType = 'MAINTENANCE_SLA';
 
+          let itemVendorId = matchedVendorId;
+          if (raw.vendorName && vendors.length > 0) {
+            const v = vendors.find((vend) =>
+              vend.name.toLowerCase().includes(raw.vendorName.toLowerCase()) ||
+              raw.vendorName.toLowerCase().includes(vend.name.toLowerCase())
+            );
+            if (v) itemVendorId = v.id;
+          }
+
+          let itemCompanyName = matchedCompanyName;
+          if (raw.companyName && companies.length > 0) {
+            const c = companies.find((comp) =>
+              comp.toLowerCase().includes(raw.companyName.toLowerCase()) ||
+              raw.companyName.toLowerCase().includes(comp.toLowerCase())
+            );
+            if (c) itemCompanyName = c;
+            else if (raw.companyName.trim()) itemCompanyName = raw.companyName.trim();
+          }
+
           return {
             id: `item-${Date.now()}-${index}`,
             targetEntity: itemEntity,
@@ -541,10 +575,10 @@ export function AIQuickInputModal({ isOpen, onClose, onSuccess }: AIQuickInputMo
             purchaseDate: effectivePDate,
             warrantyExpiry: autoExpiryDate || (raw.warrantyExpiry ? String(raw.warrantyExpiry).split('T')[0] : ''),
             expiryDate: raw.expiryDate ? String(raw.expiryDate).split('T')[0] : (autoExpiryDate || ''),
-            companyName: companies[0] || 'TẬP ĐOÀN TechCorp',
+            companyName: itemCompanyName,
             assignedUserId: '',
             locationId: locations[0]?.id || '',
-            vendorId: matchedVendorId,
+            vendorId: itemVendorId,
             specs: normalizedSpecs,
             notes: raw.notes || '',
           };
@@ -1061,7 +1095,7 @@ export function AIQuickInputModal({ isOpen, onClose, onSuccess }: AIQuickInputMo
               </div>
 
               {/* COMMON DOCUMENT METADATA */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-amber-50/60 border border-amber-200 rounded-2xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl">
                 <div>
                   <label className="block text-xs font-bold text-amber-900 mb-1 flex items-center gap-1">
                     <FileText className="w-3.5 h-3.5 text-amber-600" />
@@ -1072,7 +1106,7 @@ export function AIQuickInputModal({ isOpen, onClose, onSuccess }: AIQuickInputMo
                     placeholder="VD: HĐ-2026/08/IT"
                     value={commonDocData.contractNumber}
                     onChange={(e) => setCommonDocData({ ...commonDocData, contractNumber: e.target.value })}
-                    className="w-full p-2 bg-white border border-amber-300 rounded-xl text-xs font-mono outline-none"
+                    className="w-full p-2 bg-white border border-amber-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
                 <div>
@@ -1085,21 +1119,66 @@ export function AIQuickInputModal({ isOpen, onClose, onSuccess }: AIQuickInputMo
                     placeholder="VD: HD-0089421"
                     value={commonDocData.invoiceNumber}
                     onChange={(e) => setCommonDocData({ ...commonDocData, invoiceNumber: e.target.value })}
-                    className="w-full p-2 bg-white border border-amber-300 rounded-xl text-xs font-mono outline-none"
+                    className="w-full p-2 bg-white border border-amber-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-amber-900 mb-1 flex items-center gap-1">
-                    <Building className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Nhà cung cấp / Đối tác</span>
+                    <Building2 className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Công ty quản lý chung</span>
                   </label>
-                  <input
-                    type="text"
-                    placeholder="VD: CÔNG TY CP CÔNG NGHỆ..."
-                    value={commonDocData.vendorName}
-                    onChange={(e) => setCommonDocData({ ...commonDocData, vendorName: e.target.value })}
-                    className="w-full p-2 bg-white border border-amber-300 rounded-xl text-xs font-semibold outline-none"
-                  />
+                  <select
+                    value={commonDocData.companyName}
+                    onChange={(e) => {
+                      const newComp = e.target.value;
+                      setCommonDocData({ ...commonDocData, companyName: newComp });
+                      setExtractedItems((prev) =>
+                        prev.map((it) => ({
+                          ...it,
+                          companyName: newComp,
+                        }))
+                      );
+                    }}
+                    className="w-full p-2 bg-white border border-amber-300 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    {companies.map((c) => (
+                      <option key={c} value={c}>
+                        🏢 {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-amber-900 mb-1 flex items-center gap-1">
+                    <Building className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Nhà cung cấp chung</span>
+                  </label>
+                  <select
+                    value={commonDocData.vendorId}
+                    onChange={(e) => {
+                      const vId = e.target.value;
+                      const vObj = vendors.find((v) => v.id === vId);
+                      setCommonDocData({
+                        ...commonDocData,
+                        vendorId: vId,
+                        vendorName: vObj ? vObj.name : commonDocData.vendorName,
+                      });
+                      setExtractedItems((prev) =>
+                        prev.map((it) => ({
+                          ...it,
+                          vendorId: vId,
+                        }))
+                      );
+                    }}
+                    className="w-full p-2 bg-white border border-amber-300 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    <option value="">{commonDocData.vendorName ? `Tự động: ${commonDocData.vendorName}` : '-- Chọn nhà cung cấp --'}</option>
+                    {vendors.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        🤝 {v.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1378,17 +1457,17 @@ export function AIQuickInputModal({ isOpen, onClose, onSuccess }: AIQuickInputMo
                                 </div>
                               </div>
 
-                              {/* ĐƠN VỊ SỞ HỮU & CẤP PHÁT */}
+                              {/* ĐƠN VỊ SỞ HỮU, NHÀ CUNG CẤP & CẤP PHÁT */}
                               <div className="p-3.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-purple-50/90 border border-indigo-200 rounded-2xl space-y-2.5">
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
                                     <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-                                    ĐƠN VỊ SỞ HỮU & CẤP PHÁT
+                                    ĐƠN VỊ SỞ HỮU, NHÀ CUNG CẤP & CẤP PHÁT
                                   </span>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                   <ManageableDropdown
-                                    label="Tài sản thuộc công ty nào (*)"
+                                    label="Công ty quản lý (*)"
                                     placeholder="-- Chọn công ty --"
                                     items={companies.map((c) => ({ id: c, name: c }))}
                                     selectedValue={item.companyName}
@@ -1397,13 +1476,31 @@ export function AIQuickInputModal({ isOpen, onClose, onSuccess }: AIQuickInputMo
                                   />
                                   <div>
                                     <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
+                                      <Building className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+                                      Nhà cung cấp / Đối tác:
+                                    </label>
+                                    <select
+                                      value={item.vendorId || ''}
+                                      onChange={(e) => handleUpdateItem(item.id, 'vendorId', e.target.value)}
+                                      className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs outline-none"
+                                    >
+                                      <option value="">-- Chưa chọn NCC --</option>
+                                      {vendors.map((v) => (
+                                        <option key={v.id} value={v.id}>
+                                          🤝 {v.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center">
                                       <User className="w-3.5 h-3.5 mr-1 text-blue-600" />
                                       Gán trực tiếp cho nhân sự:
                                     </label>
                                     <select
                                       value={item.assignedUserId || ''}
                                       onChange={(e) => handleUpdateItem(item.id, 'assignedUserId', e.target.value)}
-                                      className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-sm outline-none"
+                                      className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs outline-none"
                                     >
                                       <option value="">-- Chưa gán (Lưu vào kho) --</option>
                                       {users.map((u) => (
@@ -1680,6 +1777,41 @@ export function AIQuickInputModal({ isOpen, onClose, onSuccess }: AIQuickInputMo
                                 </div>
                               </div>
 
+                              {/* Section: Đơn vị & Nhà cung cấp */}
+                              <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-2xl space-y-2">
+                                <span className="text-[11px] font-bold text-emerald-950 uppercase tracking-wider block flex items-center gap-1.5">
+                                  <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  Đơn vị & Nhà cung cấp dịch vụ
+                                </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <ManageableDropdown
+                                    label="Công ty quản lý (*)"
+                                    placeholder="-- Chọn công ty --"
+                                    items={companies.map((c) => ({ id: c, name: c }))}
+                                    selectedValue={item.companyName}
+                                    onSelect={(val) => handleUpdateItem(item.id, 'companyName', val)}
+                                    allowEmpty={true}
+                                  />
+                                  <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                      Nhà cung cấp / Đối tác viễn thông:
+                                    </label>
+                                    <select
+                                      value={item.vendorId || ''}
+                                      onChange={(e) => handleUpdateItem(item.id, 'vendorId', e.target.value)}
+                                      className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                      <option value="">-- Chọn nhà cung cấp --</option>
+                                      {vendors.map((v) => (
+                                        <option key={v.id} value={v.id}>
+                                          🤝 {v.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+
                               {/* DATE & PRICE */}
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
@@ -1769,6 +1901,41 @@ export function AIQuickInputModal({ isOpen, onClose, onSuccess }: AIQuickInputMo
                                     onChange={(e) => handleUpdateItem(item.id, 'totalSeats', Number(e.target.value))}
                                     className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs outline-none font-bold"
                                   />
+                                </div>
+                              </div>
+
+                              {/* Section: Đơn vị & Nhà cung cấp */}
+                              <div className="p-3 bg-purple-50/60 border border-purple-200 rounded-2xl space-y-2">
+                                <span className="text-[11px] font-bold text-purple-950 uppercase tracking-wider block flex items-center gap-1.5">
+                                  <Building2 className="w-3.5 h-3.5 text-purple-600" />
+                                  Đơn vị & Nhà cung cấp bản quyền
+                                </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <ManageableDropdown
+                                    label="Công ty quản lý (*)"
+                                    placeholder="-- Chọn công ty --"
+                                    items={companies.map((c) => ({ id: c, name: c }))}
+                                    selectedValue={item.companyName}
+                                    onSelect={(val) => handleUpdateItem(item.id, 'companyName', val)}
+                                    allowEmpty={true}
+                                  />
+                                  <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                      Nhà cung cấp / Đối tác bán lẻ:
+                                    </label>
+                                    <select
+                                      value={item.vendorId || ''}
+                                      onChange={(e) => handleUpdateItem(item.id, 'vendorId', e.target.value)}
+                                      className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                                    >
+                                      <option value="">-- Chọn nhà cung cấp --</option>
+                                      {vendors.map((v) => (
+                                        <option key={v.id} value={v.id}>
+                                          🤝 {v.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
                                 </div>
                               </div>
 
