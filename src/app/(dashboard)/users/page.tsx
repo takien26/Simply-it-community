@@ -41,7 +41,6 @@ import {
   KeyRound,
   MapPin,
   UserCheck,
-  Crown,
   ExternalLink,
 } from 'lucide-react';
 
@@ -960,11 +959,11 @@ export default function UsersPage() {
           onClick={() => setSelectedFilter(selectedFilter === 'MANAGERS' ? 'ALL' : 'MANAGERS')}
           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
             selectedFilter === 'MANAGERS'
-              ? 'bg-amber-600 border-amber-600 text-white shadow-2xs'
-              : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
+              ? 'bg-purple-600 border-purple-600 text-white shadow-2xs'
+              : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
           }`}
         >
-          👑 {language === 'en' ? 'Managers' : 'Cấp quản lý'} ({managersCount})
+          {language === 'en' ? 'Managers' : 'Cấp quản lý'} ({managersCount})
         </button>
         <button
           type="button"
@@ -1143,11 +1142,11 @@ export default function UsersPage() {
                                     }
                                   }}
                                   title={isEn ? `Click to view manager: ${u.manager.fullName}` : `Bấm để xem hồ sơ cấp trên: ${u.manager.fullName}`}
-                                  className="text-[10px] text-amber-800 dark:text-amber-200 font-bold flex items-center gap-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/70 px-2 py-0.5 rounded-lg border border-amber-200/80 hover:border-amber-400 transition-all w-fit cursor-pointer group shadow-2xs"
+                                  className="text-[10px] text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 transition-all w-fit cursor-pointer group shadow-2xs"
                                 >
-                                  <Crown className="w-3 h-3 text-amber-600 shrink-0" />
+                                  <UserCheck className="w-3 h-3 text-slate-500 shrink-0" />
                                   <span className="group-hover:underline underline-offset-2">{isEn ? 'Manager: ' : 'Cấp trên: '}{u.manager.fullName}</span>
-                                  <ExternalLink className="w-2.5 h-2.5 text-amber-600 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                  <ExternalLink className="w-2.5 h-2.5 text-slate-400 opacity-60 group-hover:opacity-100 transition-opacity" />
                                 </button>
                               )}
                               {u.directReports && u.directReports.length > 0 && (
@@ -1432,11 +1431,11 @@ export default function UsersPage() {
                               }
                             }}
                             title={isEn ? `Manager: ${u.manager.fullName}` : `Cấp trên: ${u.manager.fullName}`}
-                            className="text-[10px] text-amber-800 dark:text-amber-200 font-bold inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 px-1.5 py-0.5 rounded-md border border-amber-200/80 transition-all cursor-pointer group"
+                            className="text-[10px] text-slate-700 dark:text-slate-300 font-medium inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 transition-all cursor-pointer group"
                           >
-                            <Crown className="w-3 h-3 text-amber-600 shrink-0" />
+                            <UserCheck className="w-3 h-3 text-slate-500 shrink-0" />
                             <span className="group-hover:underline">{isEn ? 'Manager: ' : 'Cấp trên: '}{u.manager.fullName}</span>
-                            <ExternalLink className="w-2.5 h-2.5 text-amber-600 opacity-60 group-hover:opacity-100" />
+                            <ExternalLink className="w-2.5 h-2.5 text-slate-400 opacity-60 group-hover:opacity-100" />
                           </button>
                         </div>
                       )}
@@ -1583,13 +1582,13 @@ export default function UsersPage() {
               {/* Row 2: Cấp trên trực tiếp & Nơi làm việc / Địa điểm */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Cấp trên trực tiếp */}
-                <div className="p-3 bg-amber-50/50 border border-amber-200 rounded-2xl">
+                <div className="p-3 bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl">
                   <ManageableDropdown
-                    label={isEn ? 'Direct Manager' : 'Cấp Trên Trực Tiếp (Manager)'}
+                    label={isEn ? 'Direct Manager' : 'Cấp Trên Trực Tiếp'}
                     placeholder={isEn ? '-- Select direct manager --' : '-- Chọn cấp trên trực tiếp --'}
                     emptyLabel={isEn ? '-- None / Self-managed --' : '-- Không có / Tự quản lý --'}
-                    icon={<Crown className="w-3.5 h-3.5 text-amber-600" />}
-                    themeColor="amber"
+                    icon={<UserCheck className="w-3.5 h-3.5 text-slate-500" />}
+                    themeColor="slate"
                     searchPlaceholder={isEn ? 'Search by name, email, title...' : 'Tìm theo tên, email, chức vụ...'}
                     items={users
                       .filter((u: any) => u.id !== editingUserId)
@@ -1597,7 +1596,7 @@ export default function UsersPage() {
                         id: u.id,
                         name: u.fullName,
                         subtitle: `${u.position || (isEn ? 'Staff' : 'Nhân viên')} · ${u.email}`,
-                        icon: <Crown className="w-3.5 h-3.5 text-amber-600" />,
+                        icon: <User className="w-3.5 h-3.5 text-slate-400" />,
                       }))}
                     selectedValue={editUserFormData.managerId || ''}
                     onSelect={(id) => setEditUserFormData((prev: any) => ({ ...prev, managerId: id }))}
@@ -1899,19 +1898,19 @@ export default function UsersPage() {
               {/* Row 2: Cấp trên trực tiếp & Nơi làm việc / Địa điểm */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Cấp trên trực tiếp */}
-                <div className="p-3 bg-amber-50/50 border border-amber-200 rounded-2xl">
+                <div className="p-3 bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl">
                   <ManageableDropdown
-                    label={isEn ? 'Direct Manager' : 'Cấp Trên Trực Tiếp (Manager)'}
+                    label={isEn ? 'Direct Manager' : 'Cấp Trên Trực Tiếp'}
                     placeholder={isEn ? '-- Select direct manager --' : '-- Chọn cấp trên trực tiếp --'}
                     emptyLabel={isEn ? '-- None / Self-managed --' : '-- Không có / Tự quản lý --'}
-                    icon={<Crown className="w-3.5 h-3.5 text-amber-600" />}
-                    themeColor="amber"
+                    icon={<UserCheck className="w-3.5 h-3.5 text-slate-500" />}
+                    themeColor="slate"
                     searchPlaceholder={isEn ? 'Search by name, email, title...' : 'Tìm theo tên, email, chức vụ...'}
                     items={users.map((u: any) => ({
                       id: u.id,
                       name: u.fullName,
                       subtitle: `${u.position || (isEn ? 'Staff' : 'Nhân viên')} · ${u.email}`,
-                      icon: <Crown className="w-3.5 h-3.5 text-amber-600" />,
+                      icon: <User className="w-3.5 h-3.5 text-slate-400" />,
                     }))}
                     selectedValue={userFormData.managerId || ''}
                     onSelect={(id) => setUserFormData((prev: any) => ({ ...prev, managerId: id }))}
@@ -2369,14 +2368,14 @@ export default function UsersPage() {
                         }
                       }}
                       title={isEn ? `Click to view manager's profile: ${viewingUserDetail.manager.fullName}` : `Bấm để xem hồ sơ cấp trên: ${viewingUserDetail.manager.fullName}`}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/70 text-amber-800 dark:text-amber-200 font-bold border border-amber-200 dark:border-amber-800 transition-all cursor-pointer text-xs group shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium border border-slate-200 dark:border-slate-700 transition-all cursor-pointer text-xs group shadow-2xs"
                     >
-                      <Crown className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <UserCheck className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                       <span className="group-hover:underline underline-offset-2">{viewingUserDetail.manager.fullName}</span>
                       {viewingUserDetail.manager.position && (
-                        <span className="text-[10px] text-amber-600/80 font-normal">({viewingUserDetail.manager.position})</span>
+                        <span className="text-[10px] text-slate-500 font-normal">({viewingUserDetail.manager.position})</span>
                       )}
-                      <ExternalLink className="w-3 h-3 text-amber-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+                      <ExternalLink className="w-3 h-3 text-slate-400 opacity-60 group-hover:opacity-100 transition-opacity" />
                     </button>
                   ) : (
                     <span className="text-slate-400 italic text-xs">{isEn ? 'Not assigned' : 'Chưa chỉ định'}</span>
