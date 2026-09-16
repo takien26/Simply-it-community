@@ -12,7 +12,7 @@ import { useLanguage } from '@/lib/i18n/context';
 import { DocumentQuickPreviewModal } from '@/components/documents/document-quick-preview-modal';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { fetchWithSwr } from '@/lib/client-cache';
+import { fetchWithSwr, invalidateClientCache } from '@/lib/client-cache';
 import { getStoredBaseCurrency, getStoredCurrencies, convertCurrencyAmount } from '@/lib/currency-store';
 import {
   Eye,
@@ -370,8 +370,11 @@ export default function LicensesPage() {
   const isMasterLoadedRef = useRef(false);
 
   // Load Data
-  const loadData = useCallback(async (forceMaster = false) => {
+  const loadData = useCallback(async (forceFresh = false) => {
     try {
+      if (forceFresh) {
+        invalidateClientCache('/api/licenses');
+      }
       // 1. Fetch Licenses with SWR Cache (0ms instant render)
       fetchWithSwr<any>('/api/licenses?pageSize=300', (licRes) => {
         if (licRes && (licRes.success || licRes.data || licRes.licenses)) {
@@ -576,7 +579,7 @@ export default function LicensesPage() {
       purchaseCurrency: cur,
       exchangeRate: savedRate,
       companyName: lic.companyName || '',
-      vendorId: lic.vendorId || '',
+      vendorId: lic.vendorId || lic.vendor?.id || '',
       contractNumber: lic.contractNumber || '',
       invoiceNumber: lic.invoiceNumber || '',
       contractUrl: lic.contractUrl || '',
@@ -1671,7 +1674,27 @@ export default function LicensesPage() {
         assets={assets}
         currencies={currencies}
         exchangeRatesMap={exchangeRatesMap}
-        onSuccess={() => loadData()}
+        onSuccess={(savedData) => {
+          invalidateClientCache('/api/licenses');
+          if (savedData) {
+            setLicenses((prev) => {
+              const idx = prev.findIndex((l) => l.id === savedData.id);
+              if (idx >= 0) {
+                const next = [...prev];
+                next[idx] = { ...prev[idx], ...savedData };
+                return next;
+              }
+              return [savedData, ...prev];
+            });
+            setSelectedDetailLicense((prev: any) =>
+              prev?.id === savedData.id ? { ...prev, ...savedData } : prev
+            );
+            setActiveLicense((prev: any) =>
+              prev?.id === savedData.id ? { ...prev, ...savedData } : prev
+            );
+          }
+          loadData(true);
+        }}
         onOpenAddCurrency={() => setIsAddCurrencyModalOpen(true)}
       />
 

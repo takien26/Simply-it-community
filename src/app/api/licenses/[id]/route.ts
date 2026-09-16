@@ -115,7 +115,7 @@ export async function PUT(
         expiryDate: body.expiryDate ? new Date(body.expiryDate) : null,
         purchasePrice: body.purchasePrice !== undefined && body.purchasePrice !== '' && !isNaN(Number(body.purchasePrice)) ? Number(body.purchasePrice) : null,
         purchaseCurrency: body.purchaseCurrency !== undefined ? (body.purchaseCurrency || 'VND') : existing.purchaseCurrency,
-        vendorId: body.vendorId ? body.vendorId : null,
+        vendorId: body.vendorId !== undefined ? (body.vendorId || null) : existing.vendorId,
         companyName: body.companyName !== undefined ? (body.companyName || null) : (existing as any).companyName,
         contractNumber: body.contractNumber !== undefined ? (body.contractNumber || null) : existing.contractNumber,
         invoiceNumber: body.invoiceNumber !== undefined ? (body.invoiceNumber || null) : existing.invoiceNumber,
@@ -138,6 +138,13 @@ export async function PUT(
             attachments: true,
             invoiceNumber: true,
             contractNumber: true,
+          },
+        },
+        assignments: {
+          where: { revokedAt: null },
+          include: {
+            user: { select: { id: true, fullName: true, email: true, department: true } },
+            asset: { select: { id: true, assetTag: true, name: true } },
           },
         },
       },

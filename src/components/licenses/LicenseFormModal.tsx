@@ -32,7 +32,7 @@ export interface LicenseFormModalProps {
   assets?: any[];
   currencies?: CurrencyConfig[];
   exchangeRatesMap?: Record<string, number>;
-  onSuccess?: () => void;
+  onSuccess?: (savedData?: any) => void;
   onOpenAddCurrency?: () => void;
 }
 
@@ -72,8 +72,10 @@ export function LicenseFormModal({
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    setCurrentForm(initialData || {});
-    setModalActiveTab('general');
+    if (isOpen) {
+      setCurrentForm(initialData || {});
+      setModalActiveTab('general');
+    }
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
@@ -102,8 +104,9 @@ export function LicenseFormModal({
           }),
         });
         if (res.ok) {
+          const resData = await res.json();
           onClose();
-          if (onSuccess) onSuccess();
+          if (onSuccess) onSuccess(resData.data);
         } else {
           const err = await res.json();
           alert(err.error || 'Cập nhật bản quyền thất bại');
@@ -156,8 +159,9 @@ export function LicenseFormModal({
         });
 
         if (res.ok) {
+          const resData = await res.json();
           onClose();
-          if (onSuccess) onSuccess();
+          if (onSuccess) onSuccess(resData.data);
         } else {
           const err = await res.json();
           alert(err.error || 'Thêm bản quyền thất bại');
@@ -346,7 +350,7 @@ export function LicenseFormModal({
                             Nhà cung cấp / Đối tác bán lẻ:
                           </label>
                           <select
-                            value={currentForm.vendorId}
+                            value={currentForm.vendorId || ''}
                             onChange={(e) => setCurrentForm({ ...currentForm, vendorId: e.target.value })}
                             className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none cursor-pointer"
                           >
