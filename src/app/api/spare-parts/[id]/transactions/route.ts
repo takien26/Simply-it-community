@@ -15,13 +15,43 @@ export async function GET(
 
     const { id } = await params;
 
-    const transactions = await prisma.sparePartTransaction.findMany({
+    const rawTransactions = await prisma.sparePartTransaction.findMany({
       where: { sparePartId: id },
       include: {
         performedBy: { select: { id: true, fullName: true, email: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    // Enrich with asset data if assetId is set
+    const assetIds = Array.from(new Set(rawTransactions.map((t) => t.assetId).filter(Boolean))) as string[];
+    let assetMap: Record<string, any> = {};
+    if (assetIds.length > 0) {
+      try {
+        const assets = await prisma.asset.findMany({
+          where: { id: { in: assetIds } },
+          select: {
+            id: true,
+            assetTag: true,
+            name: true,
+            model: true,
+            assignments: {
+              where: { returnedAt: null },
+              select: { user: { select: { id: true, fullName: true, email: true, department: true } } },
+              take: 1,
+            },
+          },
+        });
+        assetMap = Object.fromEntries(assets.map((a) => [a.id, a]));
+      } catch (e) {
+        console.error('Error fetching assets for transactions:', e);
+      }
+    }
+
+    const transactions = rawTransactions.map((t) => ({
+      ...t,
+      asset: t.assetId ? assetMap[t.assetId] || null : null,
+    }));
 
     return NextResponse.json({ success: true, transactions });
   } catch (error: any) {
@@ -42,7 +72,15 @@ export async function POST(
 
     const { id } = await params;
     const body = await request.json();
-    const { type, quantity, note, assetId, maintenanceLogId } = body;
+    const {
+      type,
+      quantity,
+      note,
+      assetId,
+      createMaintenanceLog,
+      maintenanceType,
+      targetDescription,
+    } = body;
 
     const qty = Math.abs(Number(quantity));
     if (!type || !qty || qty <= 0) {
@@ -66,6 +104,31 @@ export async function POST(
       newQuantity = qty; // Direct adjustment to this quantity
     }
 
+    let finalMaintenanceLogId: string | null = body.maintenanceLogId || null;
+
+    // If stock-out for an asset and maintenance log creation requested:
+    if (type === 'OUT' && assetId && createMaintenanceLog) {
+      try {
+        const mType = (maintenanceType as any) || 'UPGRADE';
+        const mLog = await prisma.assetMaintenanceLog.create({
+          data: {
+            assetId,
+            type: mType,
+            title: `Xuất linh kiện: ${part.name} (x${qty} ${part.unit})`,
+            description: targetDescription || note || `Xuất ${qty} ${part.unit} "${part.name}" (SKU: ${part.sku || 'N/A'}) cho thiết bị.`,
+            cost: part.unitPrice ? Number(part.unitPrice) * qty : undefined,
+            costCurrency: part.currency || 'VND',
+            performedAt: new Date(),
+            performedById: user.userId,
+            notes: note || undefined,
+          },
+        });
+        finalMaintenanceLogId = mLog.id;
+      } catch (err) {
+        console.error('Failed to create AssetMaintenanceLog:', err);
+      }
+    }
+
     // Execute atomic transaction
     const [transaction, updatedPart] = await prisma.$transaction([
       prisma.sparePartTransaction.create({
@@ -75,7 +138,7 @@ export async function POST(
           quantity: type === 'OUT' ? -qty : qty,
           note: note || null,
           assetId: assetId || null,
-          maintenanceLogId: maintenanceLogId || null,
+          maintenanceLogId: finalMaintenanceLogId,
           performedById: user.userId,
         },
         include: {

@@ -14,11 +14,11 @@ export function parseScheduleConfig(description?: string | null): {
   config: ScheduleConfig | null;
 } {
   if (!description) return { cleanDesc: '', config: null };
-  const match = description.match(/<!--SCHEDULE_CONFIG:(.+?)-->/s);
+  const match = description.match(/<!--SCHEDULE_CONFIG:([\s\S]+?)-->/);
   if (match) {
     try {
       const config: ScheduleConfig = JSON.parse(match[1]);
-      const cleanDesc = description.replace(/<!--SCHEDULE_CONFIG:.+?-->/s, '').trim();
+      const cleanDesc = description.replace(/<!--SCHEDULE_CONFIG:[\s\S]+?-->/, '').trim();
       return { cleanDesc, config };
     } catch {
       return { cleanDesc: description, config: null };
