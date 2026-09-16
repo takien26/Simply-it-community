@@ -130,7 +130,13 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
 
-    await prisma.incident.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.ticket.updateMany({
+        where: { incidentId: id },
+        data: { incidentId: null },
+      });
+      await tx.incident.delete({ where: { id } });
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Delete incident error:', error);

@@ -137,7 +137,22 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     const { id } = await params;
-    await prisma.iTService.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      // 1. Unlink documents referencing this service
+      await tx.document.updateMany({
+        where: { serviceId: id },
+        data: { serviceId: null },
+      });
+
+      // 2. Unlink password entries referencing this service
+      await tx.passwordEntry.updateMany({
+        where: { serviceId: id },
+        data: { serviceId: null },
+      });
+
+      // 3. Delete the service
+      await tx.iTService.delete({ where: { id } });
+    });
 
     return NextResponse.json({ success: true, message: 'Đã xóa dịch vụ thành công' });
   } catch (error: any) {

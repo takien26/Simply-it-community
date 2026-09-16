@@ -5,6 +5,7 @@ import { QuickLink } from '@/components/common/QuickLink';
 import { ManageableDropdown } from '@/components/ui/manageable-dropdown';
 
 import { useState, useEffect, useRef } from 'react';
+import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
 import {
   Users,
   Plus,
@@ -670,18 +671,29 @@ export default function UsersPage() {
 
   const handleDeleteUser = async (user: any) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa nhân viên "${user.fullName}" (${user.email || ''}) khỏi hệ thống?`)) return;
+
+    // 0ms Optimistic removal
+    setUsers((prev: any[]) => prev.filter((u) => u.id !== user.id));
+    if (viewingUserDetail?.id === user.id) setIsUserDetailModalOpen(false);
+
     try {
       const res = await fetch(`/api/users/${user.id}`, {
         method: 'DELETE',
       });
       const data = await res.json();
       if (res.ok) {
+        invalidateClientCache('/api/users');
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('users');
+        triggerDataRefresh('master-data');
         loadData();
       } else {
         alert(data.error || 'Xóa nhân viên thất bại');
+        loadData();
       }
     } catch {
       alert('Lỗi kết nối khi xóa nhân viên');
+      loadData();
     }
   };
 
@@ -1037,7 +1049,7 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {loading ? (
+                {loading && users.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-12 text-center text-slate-400">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-purple-600" />

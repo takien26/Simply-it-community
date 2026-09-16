@@ -11,6 +11,7 @@ import { ConvertToKbModal } from '@/components/tickets/ConvertToKbModal';
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/context';
+import { fetchWithSwr, invalidateClientCache, useAutoRefresh, triggerDataRefresh } from '@/lib/client-cache';
 import {
   LifeBuoy,
   Plus,
@@ -734,95 +735,115 @@ export default function TicketsPage() {
 
   
 
-  // Load Data
-  const loadData = async () => {
+  // Load Data with SWR (0ms instant display, zero-flicker background revalidation)
+  const loadData = useCallback(async (forceFresh = false) => {
     try {
-      setLoading(true);
-      const [ticketsRes, usersRes, assetsRes, meRes, settingsRes, incidentsRes] = await Promise.all([
-        fetch('/api/tickets'),
-        fetch('/api/users'),
-        fetch('/api/assets?pageSize=1000'),
-        fetch('/api/auth/me'),
-        fetch('/api/settings'),
-        fetch('/api/incidents').catch(() => ({ ok: false, json: async () => [] } as any)),
-      ]);
-
-      if (incidentsRes && incidentsRes.ok) {
-        try {
-          const incData = await incidentsRes.json();
-          setIncidentsList(Array.isArray(incData) ? incData : (incData.incidents || []));
-        } catch {}
+      if (forceFresh) {
+        invalidateClientCache('/api/tickets');
       }
 
-      if (settingsRes.ok) {
-        const sData = await settingsRes.json();
-        if (sData.success && Array.isArray(sData.data)) {
-          const uHours = Number(sData.data.find((s: any) => s.key === 'sla.urgent_hours')?.value || 4);
-          const hHours = Number(sData.data.find((s: any) => s.key === 'sla.high_hours')?.value || 24);
-          const mHours = Number(sData.data.find((s: any) => s.key === 'sla.medium_hours')?.value || 48);
-          const lHours = Number(sData.data.find((s: any) => s.key === 'sla.low_hours')?.value || 72);
-          setSlaConfig({ urgentHours: uHours, highHours: hHours, mediumHours: mHours, lowHours: lHours });
-        }
-      }
+      await Promise.all([
+        // 1. Tickets with SWR
+        fetchWithSwr<any>('/api/tickets', (data) => {
+          if (data) {
+            const ticketList = Array.isArray(data) ? data : data.tickets || data.data || [];
+            setTickets(ticketList);
+            if (data.stats) setStats(data.stats);
+            setLoading(false);
 
-      if (ticketsRes.ok) {
-        const data = await ticketsRes.json();
-        const ticketList = data.tickets || [];
-        setTickets(ticketList);
-        if (data.stats) setStats(data.stats);
-
-        // Auto open detail modal if id in URL
-        if (typeof window !== 'undefined') {
-          const params = new URLSearchParams(window.location.search);
-          const targetId = params.get('id');
-          if (targetId) {
-            const found = ticketList.find((t: any) => t.id === targetId);
-            if (found) {
-              setSelectedTicket(found);
-              setIsDetailModalOpen(true);
-            }
-          }
-        }
-      }
-
-      if (usersRes.ok) {
-        const u = await usersRes.json();
-        const userList = Array.isArray(u) ? u : u.data || u.users || [];
-        setUsers(userList);
-      }
-
-      if (assetsRes.ok) {
-        const a = await assetsRes.json();
-        const assetList = Array.isArray(a) ? a : a.data || a.assets || [];
-        setAssets(assetList);
-      }
-
-      if (meRes.ok) {
-        const meData = await meRes.json();
-        if (meData.success && meData.data) {
-          setCurrentUser(meData.data);
-          setNewRequesterId((prev) => prev || meData.data.id);
-          if (meData.data.id) {
-            const userAssetsRes = await fetch(`/api/users/${meData.data.id}`);
-            if (userAssetsRes.ok) {
-              const uDetail = await userAssetsRes.json();
-              if (uDetail.assetAssignments) {
-                setMyAssets(uDetail.assetAssignments.map((aa: any) => aa.asset));
+            // Auto open detail modal if id in URL
+            if (typeof window !== 'undefined') {
+              const params = new URLSearchParams(window.location.search);
+              const targetId = params.get('id');
+              if (targetId) {
+                const found = ticketList.find((t: any) => t.id === targetId);
+                if (found) {
+                  setSelectedTicket(found);
+                  setIsDetailModalOpen(true);
+                }
               }
             }
           }
-        }
-      }
+        }, 30000, forceFresh),
+
+        // 2. Users with SWR
+        fetchWithSwr<any>('/api/users', (u) => {
+          if (u) {
+            const userList = Array.isArray(u) ? u : u.data || u.users || [];
+            setUsers(userList);
+          }
+        }, 60000, forceFresh),
+
+        // 3. Assets with SWR
+        fetchWithSwr<any>('/api/assets?pageSize=1000', (a) => {
+          if (a) {
+            const assetList = Array.isArray(a) ? a : a.data || a.assets || [];
+            setAssets(assetList);
+          }
+        }, 60000, forceFresh),
+
+        // 4. Current user & incidents & settings
+        (async () => {
+          try {
+            const [meRes, settingsRes, incidentsRes] = await Promise.all([
+              fetch('/api/auth/me'),
+              fetch('/api/settings'),
+              fetch('/api/incidents').catch(() => ({ ok: false, json: async () => [] } as any)),
+            ]);
+
+            if (incidentsRes && incidentsRes.ok) {
+              try {
+                const incData = await incidentsRes.json();
+                setIncidentsList(Array.isArray(incData) ? incData : (incData.incidents || []));
+              } catch {}
+            }
+
+            if (settingsRes.ok) {
+              const sData = await settingsRes.json();
+              if (sData.success && Array.isArray(sData.data)) {
+                const uHours = Number(sData.data.find((s: any) => s.key === 'sla.urgent_hours')?.value || 4);
+                const hHours = Number(sData.data.find((s: any) => s.key === 'sla.high_hours')?.value || 24);
+                const mHours = Number(sData.data.find((s: any) => s.key === 'sla.medium_hours')?.value || 48);
+                const lHours = Number(sData.data.find((s: any) => s.key === 'sla.low_hours')?.value || 72);
+                setSlaConfig({ urgentHours: uHours, highHours: hHours, mediumHours: mHours, lowHours: lHours });
+              }
+            }
+
+            if (meRes.ok) {
+              const meData = await meRes.json();
+              if (meData.success && meData.data) {
+                setCurrentUser(meData.data);
+                setNewRequesterId((prev) => prev || meData.data.id);
+                if (meData.data.id) {
+                  const userAssetsRes = await fetch(`/api/users/${meData.data.id}`);
+                  if (userAssetsRes.ok) {
+                    const uDetail = await userAssetsRes.json();
+                    if (uDetail.assetAssignments) {
+                      setMyAssets(uDetail.assetAssignments.map((aa: any) => aa.asset));
+                    }
+                  }
+                }
+              }
+            }
+          } catch {}
+        })(),
+      ]);
     } catch (err) {
       console.error('Failed to load tickets data:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Connect Professional Auto-Refresh & Instant Reactive Sync
+  const { isRefreshing: isAutoRefreshing, refreshNow } = useAutoRefresh({
+    onRefresh: loadData,
+    scope: 'tickets',
+  });
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
 
   // Helper to open ticket by ID (instant open from notification)
@@ -1224,7 +1245,9 @@ export default function TicketsPage() {
         )
       );
       setSelectedTicketIds([]);
-      await loadData();
+      invalidateClientCache('/api/tickets');
+      triggerDataRefresh('tickets');
+      await loadData(true);
     } catch {
       alert('Lỗi khi đóng hàng loạt ticket');
     } finally {
@@ -1235,16 +1258,23 @@ export default function TicketsPage() {
   // Delete Ticket
   const handleDeleteTicket = async (ticketId: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa ticket này?')) return;
+    // 0ms Optimistic removal
+    setTickets((prev) => prev.filter((t) => t.id !== ticketId));
+    if (selectedTicket?.id === ticketId) setIsDetailModalOpen(false);
+
     try {
       const res = await fetch(`/api/tickets/${ticketId}`, { method: 'DELETE' });
       if (res.ok) {
-        if (selectedTicket?.id === ticketId) setIsDetailModalOpen(false);
-        loadData();
+        invalidateClientCache('/api/tickets');
+        triggerDataRefresh('tickets');
+        await loadData(true);
       } else {
         alert('Xóa ticket thất bại');
+        await loadData(true);
       }
     } catch {
       alert('Lỗi kết nối khi xóa');
+      await loadData(true);
     }
   };
 
@@ -1567,7 +1597,7 @@ export default function TicketsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading ? (
+              {loading && tickets.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-16 text-center text-slate-400">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
@@ -1823,6 +1853,8 @@ export default function TicketsPage() {
         onTicketUpdated={(updatedTicket) => {
           setSelectedTicket(updatedTicket);
           setTickets((prev) => prev.map((t) => (t.id === updatedTicket.id ? { ...t, ...updatedTicket } : t)));
+          invalidateClientCache('/api/tickets');
+          triggerDataRefresh('tickets');
         }}
         onUpdateStatus={handleUpdateStatus}
         onUpdateAssignee={handleUpdateAssignee}
@@ -1843,7 +1875,11 @@ export default function TicketsPage() {
         onClose={() => setIsCreateModalOpen(false)}
         currentUser={currentUser}
         userAssets={myAssets}
-        onSuccess={() => loadData()}
+        onSuccess={() => {
+          invalidateClientCache('/api/tickets');
+          triggerDataRefresh('tickets');
+          loadData(true);
+        }}
       />
 
       {/* MODAL: XIN GIA HẠN THỜI GIAN SLA (SLA EXTENSION WITH REASON AUDIT) */}

@@ -2,6 +2,7 @@
 
 import { OfficeDocumentViewer } from '@/components/documents/office-document-viewer';
 import { useState, useEffect, useRef } from 'react';
+import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
 import {
   FileText,
   Receipt,
@@ -851,12 +852,24 @@ export default function DocumentsPage() {
   // Delete
   const handleDeleteDocument = async (id: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa hồ sơ / giấy tờ này?')) return;
+
+    // 0ms Optimistic removal
+    setDocuments((prev) => prev.filter((d) => d.id !== id));
+    if (previewDoc?.id === id) setPreviewDoc(null);
+
     try {
       const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' });
-      if (res.ok) loadDocuments();
-      else alert('Xóa thất bại');
+      if (res.ok) {
+        invalidateClientCache('/api/documents');
+        triggerDataRefresh('documents');
+        loadDocuments();
+      } else {
+        alert('Xóa thất bại');
+        loadDocuments();
+      }
     } catch {
       alert('Lỗi kết nối');
+      loadDocuments();
     }
   };
 
@@ -1207,7 +1220,7 @@ export default function DocumentsPage() {
       </div>
 
       {/* Main Content Area */}
-      {loading ? (
+      {loading && documents.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
           <Loader2 className="w-7 h-7 animate-spin text-blue-600 mx-auto mb-2" />
           <p className="text-xs text-slate-500 font-medium">{isEn ? 'Loading documents & attachments...' : 'Đang tải danh sách hồ sơ & chứng từ...'}</p>

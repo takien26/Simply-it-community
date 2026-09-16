@@ -291,22 +291,80 @@ export async function DELETE(
       return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
     }
 
-    // Revoke any active licenses assigned to this asset
-    const activeLicAssignments = await prisma.licenseAssignment.findMany({
-      where: { assetId: id, revokedAt: null },
-    });
-    for (const la of activeLicAssignments) {
-      await prisma.licenseAssignment.update({
-        where: { id: la.id },
-        data: { revokedAt: new Date() },
+    // In a transaction, cascade delete/unlink relations to prevent foreign key errors
+    await prisma.$transaction(async (tx) => {
+      // 1. Decrement license seats for active assignments and delete/unlink license assignments
+      const activeLicAssignments = await tx.licenseAssignment.findMany({
+        where: { assetId: id, revokedAt: null },
       });
-      await prisma.license.update({
-        where: { id: la.licenseId },
-        data: { usedSeats: { decrement: 1 } },
+      for (const la of activeLicAssignments) {
+        await tx.license.update({
+          where: { id: la.licenseId },
+          data: { usedSeats: { decrement: 1 } },
+        });
+      }
+      // Unlink asset from license assignments that have a user, delete the rest
+      await tx.licenseAssignment.updateMany({
+        where: { assetId: id, userId: { not: null } },
+        data: { assetId: null },
       });
-    }
+      await tx.licenseAssignment.deleteMany({
+        where: { assetId: id },
+      });
 
-    await prisma.asset.delete({ where: { id } });
+      // 2. Unlink tickets referencing this asset
+      await tx.ticket.updateMany({
+        where: { assetId: id },
+        data: { assetId: null },
+      });
+
+      // 3. Unlink documents referencing this asset
+      await tx.document.updateMany({
+        where: { assetId: id },
+        data: { assetId: null },
+      });
+
+      // 4. Delete asset assignments history
+      await tx.assetAssignment.deleteMany({
+        where: { assetId: id },
+      });
+
+      // 5. Unlink spare part transactions referencing this asset
+      await tx.sparePartTransaction.updateMany({
+        where: { assetId: id },
+        data: { assetId: null },
+      });
+
+      // 6. Delete maintenance logs and unlink any spare part transactions linked to them
+      const maintenanceLogs = await tx.assetMaintenanceLog.findMany({
+        where: { assetId: id },
+        select: { id: true },
+      });
+      if (maintenanceLogs.length > 0) {
+        const logIds = maintenanceLogs.map(m => m.id);
+        await tx.sparePartTransaction.updateMany({
+          where: { maintenanceLogId: { in: logIds } },
+          data: { maintenanceLogId: null },
+        });
+        await tx.assetMaintenanceLog.deleteMany({
+          where: { assetId: id },
+        });
+      }
+
+      // 7. Unlink password entries referencing this asset
+      await tx.passwordEntry.updateMany({
+        where: { assetId: id },
+        data: { assetId: null },
+      });
+
+      // 8. Delete maintenance schedules referencing this asset
+      await tx.maintenanceSchedule.deleteMany({
+        where: { assetId: id },
+      });
+
+      // 9. Finally delete the asset
+      await tx.asset.delete({ where: { id } });
+    });
 
     await createAuditLog({
       action: 'DELETE',

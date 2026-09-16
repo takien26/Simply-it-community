@@ -3,6 +3,7 @@ import { EnterpriseFeatureLock } from '@/components/common/EnterpriseFeatureLock
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLanguage } from '@/lib/i18n/context';
+import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
 import {
   ClipboardCheck,
   Search,
@@ -572,6 +573,8 @@ export default function AssetsAuditPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         setCampaigns((prev) => prev.filter((c) => c.id !== campaignId));
+        invalidateClientCache('/api/audit-campaigns');
+        triggerDataRefresh('audit-campaigns');
         if (currentSession?.id === campaignId) {
           setCurrentSession(null);
           localStorage.removeItem('simply_it_current_audit_session');

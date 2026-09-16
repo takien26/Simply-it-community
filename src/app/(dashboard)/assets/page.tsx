@@ -6,7 +6,7 @@ import { DocumentQuickPreviewModal } from '@/components/documents/document-quick
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/context';
-import { fetchWithSwr, invalidateClientCache, useAutoRefresh } from '@/lib/client-cache';
+import { fetchWithSwr, invalidateClientCache, useAutoRefresh, triggerDataRefresh } from '@/lib/client-cache';
 import { getStoredBaseCurrency, getStoredCurrencies, convertCurrencyAmount } from '@/lib/currency-store';
 import {
   Sparkles,
@@ -793,33 +793,35 @@ export default function AssetsPage() {
       if (forceFresh) {
         invalidateClientCache('/api/assets');
       }
-      // 1. Fetch Assets with SWR Cache (0ms instant render)
-      fetchWithSwr<any>('/api/assets?pageSize=1000', (assetsRes) => {
-        if (assetsRes) {
-          const list = Array.isArray(assetsRes) ? assetsRes : assetsRes.data || assetsRes.assets || [];
-          setAssets(list);
-          setLoading(false);
-        }
-      }, 30000, forceFresh);
+      await Promise.all([
+        // 1. Fetch Assets with SWR Cache (0ms instant render)
+        fetchWithSwr<any>('/api/assets?pageSize=1000', (assetsRes) => {
+          if (assetsRes) {
+            const list = Array.isArray(assetsRes) ? assetsRes : assetsRes.data || assetsRes.assets || [];
+            setAssets(list);
+            setLoading(false);
+          }
+        }, 30000, forceFresh),
 
-      // 2. Fetch Master Data with SWR Cache (0ms instant render)
-      fetchWithSwr<any>('/api/master-data', (masterRes) => {
-        if (masterRes?.data) {
-          const md = masterRes.data;
-          if (md.categories) setCategories(md.categories);
-          if (md.locations) setLocations(md.locations);
-          if (md.vendors) setVendors(md.vendors);
-          if (md.users) setUsers(md.users);
-          if (md.companies) setCompanies(md.companies);
-        }
-      }, 60000, forceFresh);
+        // 2. Fetch Master Data with SWR Cache (0ms instant render)
+        fetchWithSwr<any>('/api/master-data', (masterRes) => {
+          if (masterRes?.data) {
+            const md = masterRes.data;
+            if (md.categories) setCategories(md.categories);
+            if (md.locations) setLocations(md.locations);
+            if (md.vendors) setVendors(md.vendors);
+            if (md.users) setUsers(md.users);
+            if (md.companies) setCompanies(md.companies);
+          }
+        }, 60000, forceFresh),
 
-      // 3. Fetch Licenses with SWR Cache
-      fetchWithSwr<any>('/api/licenses', (licRes) => {
-        if (licRes && (licRes.success || licRes.data || licRes.licenses)) {
-          setLicenses(licRes.data || licRes.licenses || []);
-        }
-      }, 30000, forceFresh);
+        // 3. Fetch Licenses with SWR Cache
+        fetchWithSwr<any>('/api/licenses', (licRes) => {
+          if (licRes && (licRes.success || licRes.data || licRes.licenses)) {
+            setLicenses(licRes.data || licRes.licenses || []);
+          }
+        }, 30000, forceFresh),
+      ]);
     } catch (error) {
       console.error('Failed to load assets data:', error);
       setLoading(false);
@@ -1020,6 +1022,8 @@ export default function AssetsPage() {
         setCompanies((prev) => prev.filter((c) => c !== name));
         if (formData.companyName === name) setFormData((prev: any) => ({ ...prev, companyName: '' }));
         if (editFormData.companyName === name) setEditFormData((prev: any) => ({ ...prev, companyName: '' }));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
       }
     } catch {
       console.error('Không thể xóa công ty');
@@ -1039,6 +1043,8 @@ export default function AssetsPage() {
         setCategories((prev) => [...prev, data.data]);
         if (isAddModalOpen) setFormData((prev: any) => ({ ...prev, categoryId: data.data.id }));
         if (isEditModalOpen) setEditFormData((prev: any) => ({ ...prev, categoryId: data.data.id }));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
       }
     } catch {
       console.error('Không thể thêm danh mục');
@@ -1054,7 +1060,9 @@ export default function AssetsPage() {
       });
       if (res.ok) {
         setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name: newName } : c)));
-        await loadData();
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
+        await loadData(true);
       }
     } catch {
       console.error('Không thể sửa danh mục');
@@ -1063,17 +1071,21 @@ export default function AssetsPage() {
 
   const handleDeleteCategory = async (id: string) => {
     try {
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+      if (formData.categoryId === id) setFormData((prev: any) => ({ ...prev, categoryId: '' }));
+      if (editFormData.categoryId === id) setEditFormData((prev: any) => ({ ...prev, categoryId: '' }));
       const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (res.ok) {
-        setCategories((prev) => prev.filter((c) => c.id !== id));
-        if (formData.categoryId === id) setFormData((prev: any) => ({ ...prev, categoryId: '' }));
-        if (editFormData.categoryId === id) setEditFormData((prev: any) => ({ ...prev, categoryId: '' }));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
       } else {
         console.error(data.error || 'Không thể xóa danh mục');
+        await loadData(true);
       }
     } catch {
       console.error('Không thể xóa danh mục');
+      await loadData(true);
     }
   };
 
@@ -1090,6 +1102,8 @@ export default function AssetsPage() {
         setLocations((prev) => [...prev, data.data]);
         if (isAddModalOpen) setFormData((prev: any) => ({ ...prev, locationId: data.data.id }));
         if (isEditModalOpen) setEditFormData((prev: any) => ({ ...prev, locationId: data.data.id }));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
       }
     } catch {
       console.error('Không thể thêm vị trí');
@@ -1105,7 +1119,9 @@ export default function AssetsPage() {
       });
       if (res.ok) {
         setLocations((prev) => prev.map((l) => (l.id === id ? { ...l, name: newName } : l)));
-        await loadData();
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
+        await loadData(true);
       }
     } catch {
       console.error('Không thể sửa vị trí');
@@ -1114,14 +1130,19 @@ export default function AssetsPage() {
 
   const handleDeleteLocation = async (id: string) => {
     try {
+      setLocations((prev) => prev.filter((l) => l.id !== id));
+      if (formData.locationId === id) setFormData((prev: any) => ({ ...prev, locationId: '' }));
+      if (editFormData.locationId === id) setEditFormData((prev: any) => ({ ...prev, locationId: '' }));
       const res = await fetch(`/api/locations/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        setLocations((prev) => prev.filter((l) => l.id !== id));
-        if (formData.locationId === id) setFormData((prev: any) => ({ ...prev, locationId: '' }));
-        if (editFormData.locationId === id) setEditFormData((prev: any) => ({ ...prev, locationId: '' }));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
+      } else {
+        await loadData(true);
       }
     } catch {
       console.error('Không thể xóa vị trí');
+      await loadData(true);
     }
   };
 
@@ -1138,6 +1159,8 @@ export default function AssetsPage() {
         setVendors((prev) => [...prev, data.data]);
         if (isAddModalOpen) setFormData((prev: any) => ({ ...prev, vendorId: data.data.id }));
         if (isEditModalOpen) setEditFormData((prev: any) => ({ ...prev, vendorId: data.data.id }));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
       }
     } catch {
       console.error('Không thể thêm nhà cung cấp');
@@ -1153,7 +1176,9 @@ export default function AssetsPage() {
       });
       if (res.ok) {
         setVendors((prev) => prev.map((v) => (v.id === id ? { ...v, name: newName } : v)));
-        await loadData();
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
+        await loadData(true);
       }
     } catch {
       console.error('Không thể sửa nhà cung cấp');
@@ -1162,14 +1187,19 @@ export default function AssetsPage() {
 
   const handleDeleteVendor = async (id: string) => {
     try {
+      setVendors((prev) => prev.filter((v) => v.id !== id));
+      if (formData.vendorId === id) setFormData((prev: any) => ({ ...prev, vendorId: '' }));
+      if (editFormData.vendorId === id) setEditFormData((prev: any) => ({ ...prev, vendorId: '' }));
       const res = await fetch(`/api/vendors/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        setVendors((prev) => prev.filter((v) => v.id !== id));
-        if (formData.vendorId === id) setFormData((prev: any) => ({ ...prev, vendorId: '' }));
-        if (editFormData.vendorId === id) setEditFormData((prev: any) => ({ ...prev, vendorId: '' }));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
+      } else {
+        await loadData(true);
       }
     } catch {
       console.error('Không thể xóa nhà cung cấp');
+      await loadData(true);
     }
   };
 
@@ -1416,7 +1446,9 @@ export default function AssetsPage() {
           specs: {},
           notes: '',
         });
-        loadData();
+        invalidateClientCache('/api/assets');
+        triggerDataRefresh('assets');
+        await loadData(true);
       } else {
         alert(`❌ ${data.error || 'Tạo tài sản thất bại'}`);
       }
@@ -1489,9 +1521,9 @@ export default function AssetsPage() {
         const prevUser = currentTargetAsset?.assignments?.find((a: any) => !a.returnedAt)?.user || currentTargetAsset?.assignedTo;
 
         setIsTransferModalOpen(false);
-        setTransferUserSearch('');
-        setTransferForm((prev) => ({ ...prev, toUserId: '' }));
-        await loadData();
+        invalidateClientCache('/api/assets');
+        triggerDataRefresh('assets');
+        await loadData(true);
 
         // Refresh detail asset if opened
         if (selectedDetailAsset?.id === currentTargetAsset.id && data.data) {
@@ -1745,7 +1777,9 @@ export default function AssetsPage() {
       if (res.ok) {
         setIsEditModalOpen(false);
         setEditingAssetId(null);
-        loadData();
+        invalidateClientCache('/api/assets');
+        triggerDataRefresh('assets');
+        await loadData(true);
       } else {
         const errorData = await res.json().catch(() => ({}));
         alert(`❌ ${errorData.error || 'Cập nhật tài sản thất bại'}`);
@@ -1757,11 +1791,25 @@ export default function AssetsPage() {
 
   const handleDeleteAsset = async (id: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa tài sản này?')) return;
+    // 0ms Optimistic removal
+    setAssets((prev) => prev.filter((a) => a.id !== id));
+    if (selectedDetailAsset?.id === id) setIsDetailModalOpen(false);
+    if (editingAssetId === id) setIsEditModalOpen(false);
+
     try {
       const res = await fetch(`/api/assets/${id}`, { method: 'DELETE' });
-      if (res.ok) loadData();
+      if (res.ok) {
+        invalidateClientCache('/api/assets');
+        triggerDataRefresh('assets');
+        await loadData(true);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(`❌ ${errorData.error || 'Xóa tài sản thất bại'}`);
+        await loadData(true);
+      }
     } catch {
       console.error('Xóa thất bại');
+      await loadData(true);
     }
   };
 
@@ -1803,7 +1851,9 @@ export default function AssetsPage() {
           setMaintenanceLogs(logsRes.data);
           setDetailMaintenanceLogs(logsRes.data);
         }
-        loadData();
+        invalidateClientCache('/api/assets');
+        triggerDataRefresh('assets');
+        await loadData(true);
       }
     } catch {
       console.error('Lỗi khi lưu bảo trì');
@@ -1821,7 +1871,9 @@ export default function AssetsPage() {
           setMaintenanceLogs(logsRes.data);
           setDetailMaintenanceLogs(logsRes.data);
         }
-        loadData();
+        invalidateClientCache('/api/assets');
+        triggerDataRefresh('assets');
+        await loadData(true);
       }
     } catch {
       console.error('Lỗi khi xóa bản ghi bảo trì');

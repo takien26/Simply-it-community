@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { DocumentQuickPreviewModal } from '@/components/documents/document-quick-preview-modal';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { fetchWithSwr, invalidateClientCache, useAutoRefresh } from '@/lib/client-cache';
+import { fetchWithSwr, invalidateClientCache, useAutoRefresh, triggerDataRefresh } from '@/lib/client-cache';
 import { getStoredBaseCurrency, getStoredCurrencies, convertCurrencyAmount } from '@/lib/currency-store';
 import {
   Globe,
@@ -546,12 +546,17 @@ export default function ServicesPage() {
   const handleDeleteVendor = async (id: string, name: string) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa đối tác "${name}" khỏi danh sách?`)) return;
     try {
+      setVendors((prev) => prev.filter((v) => v.id !== id));
       const res = await fetch(`/api/vendors/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        setVendors((prev) => prev.filter((v) => v.id !== id));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
+      } else {
+        await loadData(true);
       }
     } catch (e) {
       console.error('Delete vendor error:', e);
+      await loadData(true);
     }
   };
 
@@ -565,6 +570,8 @@ export default function ServicesPage() {
       });
       if (res.ok) {
         setCompanies((prev) => (prev.includes(name) ? prev : [...prev, name]));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
       }
     } catch (e) {
       console.error('Add company error:', e);
@@ -580,6 +587,9 @@ export default function ServicesPage() {
       });
       if (res.ok) {
         setCompanies((prev) => prev.map((c) => (c === oldName ? newName : c)));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
+        await loadData(true);
       }
     } catch (e) {
       console.error('Edit company error:', e);
@@ -589,12 +599,17 @@ export default function ServicesPage() {
   const handleDeleteCompany = async (id: string, name: string) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa công ty "${name}" khỏi danh sách?`)) return;
     try {
+      setCompanies((prev) => prev.filter((c) => c !== name));
       const res = await fetch(`/api/companies?name=${encodeURIComponent(name)}`, { method: 'DELETE' });
       if (res.ok) {
-        setCompanies((prev) => prev.filter((c) => c !== name));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
+      } else {
+        await loadData(true);
       }
     } catch (e) {
       console.error('Delete company error:', e);
+      await loadData(true);
     }
   };
 
@@ -609,6 +624,8 @@ export default function ServicesPage() {
       const data = await res.json();
       if (res.ok && data.data) {
         setLocations((prev) => [...prev, data.data]);
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
         return data.data.id;
       }
     } catch (e) {
@@ -625,6 +642,9 @@ export default function ServicesPage() {
       });
       if (res.ok) {
         setLocations((prev) => prev.map((l) => (l.id === id ? { ...l, name: newName } : l)));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
+        await loadData(true);
       }
     } catch (e) {
       console.error('Edit location error:', e);
@@ -634,12 +654,17 @@ export default function ServicesPage() {
   const handleDeleteLocation = async (id: string, name: string) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa địa điểm "${name}" khỏi hệ thống?`)) return;
     try {
+      setLocations((prev) => prev.filter((l) => l.id !== id));
       const res = await fetch(`/api/locations/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        setLocations((prev) => prev.filter((l) => l.id !== id));
+        invalidateClientCache('/api/master-data');
+        triggerDataRefresh('master-data');
+      } else {
+        await loadData(true);
       }
     } catch (e) {
       console.error('Delete location error:', e);
+      await loadData(true);
     }
   };
 
@@ -659,31 +684,33 @@ export default function ServicesPage() {
       if (selectedCompany !== 'ALL') params.append('companyName', selectedCompany);
       params.append('pageSize', '200');
 
-      // 1. Fetch Services with SWR Cache (0ms instant render)
-      fetchWithSwr<any>(`/api/services?${params.toString()}`, (servicesRes) => {
-        if (servicesRes && (servicesRes.success || servicesRes.data)) {
-          setServices(servicesRes.data || []);
-          setLoading(false);
-        }
-      }, 30000, forceMaster);
+      await Promise.all([
+        // 1. Fetch Services with SWR Cache (0ms instant render)
+        fetchWithSwr<any>(`/api/services?${params.toString()}`, (servicesRes) => {
+          if (servicesRes && (servicesRes.success || servicesRes.data)) {
+            setServices(servicesRes.data || []);
+            setLoading(false);
+          }
+        }, 30000, forceMaster),
 
-      // 2. Fetch Assets with SWR Cache
-      fetchWithSwr<any>('/api/assets?pageSize=300', (assetsRes) => {
-        if (assetsRes && (assetsRes.success || assetsRes.data)) {
-          setAssets(assetsRes.data || assetsRes.assets || []);
-        }
-      }, 30000, forceMaster);
+        // 2. Fetch Assets with SWR Cache
+        fetchWithSwr<any>('/api/assets?pageSize=300', (assetsRes) => {
+          if (assetsRes && (assetsRes.success || assetsRes.data)) {
+            setAssets(assetsRes.data || assetsRes.assets || []);
+          }
+        }, 30000, forceMaster),
 
-      // 3. Fetch Master Data with SWR Cache
-      fetchWithSwr<any>('/api/master-data', (masterRes) => {
-        if (masterRes?.data) {
-          const md = masterRes.data;
-          if (md.vendors) setVendors(md.vendors);
-          if (md.locations) setLocations(md.locations);
-          if (md.companies) setCompanies(md.companies);
-          if (md.users) setUsers(md.users);
-        }
-      }, 60000, forceMaster);
+        // 3. Fetch Master Data with SWR Cache
+        fetchWithSwr<any>('/api/master-data', (masterRes) => {
+          if (masterRes?.data) {
+            const md = masterRes.data;
+            if (md.vendors) setVendors(md.vendors);
+            if (md.locations) setLocations(md.locations);
+            if (md.companies) setCompanies(md.companies);
+            if (md.users) setUsers(md.users);
+          }
+        }, 60000, forceMaster),
+      ]);
     } catch (err) {
       console.error('Failed to load services data:', err);
       setLoading(false);
@@ -866,7 +893,9 @@ export default function ServicesPage() {
       const data = await res.json();
       if (res.ok) {
         setIsAddModalOpen(false);
-        loadData();
+        invalidateClientCache('/api/services');
+        triggerDataRefresh('services');
+        await loadData(true);
       } else {
         alert(data.error || 'Thêm dịch vụ thất bại');
       }
@@ -947,7 +976,9 @@ export default function ServicesPage() {
         if (selectedService?.id === editingId) {
           setSelectedService(data.data);
         }
-        loadData();
+        invalidateClientCache('/api/services');
+        triggerDataRefresh('services');
+        await loadData(true);
       } else {
         alert(data.error || 'Cập nhật dịch vụ thất bại');
       }
@@ -958,19 +989,27 @@ export default function ServicesPage() {
 
   // Delete Service Handler
   const handleDeleteService = async (id: string, name: string) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa dịch vụ "${name}"?
-Hành động này không thể hoàn tác.`)) return;
+    if (!confirm(`Bạn có chắc chắn muốn xóa dịch vụ "${name}"?\nHành động này không thể hoàn tác.`)) return;
+
+    // 0ms Optimistic removal
+    setServices((prev) => prev.filter((s) => s.id !== id));
+    if (selectedService?.id === id) setIsDetailModalOpen(false);
+    if (editingId === id) setIsEditModalOpen(false);
+
     try {
       const res = await fetch(`/api/services/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        loadData();
-        if (selectedService?.id === id) setIsDetailModalOpen(false);
+        invalidateClientCache('/api/services');
+        triggerDataRefresh('services');
+        await loadData(true);
       } else {
         const data = await res.json();
         alert(data.error || 'Xóa dịch vụ thất bại');
+        await loadData(true);
       }
     } catch {
       alert('Lỗi kết nối');
+      await loadData(true);
     }
   };
 
@@ -1655,7 +1694,7 @@ Hành động này không thể hoàn tác.`)) return;
       </div>
 
       {/* Services Table View */}
-      {loading ? (
+      {loading && services.length === 0 ? (
         <div className="p-12 text-center text-xs text-slate-500 flex items-center justify-center space-x-2">
           <RefreshCw className="w-4 h-4 animate-spin text-purple-600" />
           <span>{language === 'en' ? 'Loading IT services...' : 'Đang tải danh sách dịch vụ IT...'}</span>

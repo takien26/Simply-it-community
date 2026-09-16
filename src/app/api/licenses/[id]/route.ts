@@ -182,7 +182,21 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    await prisma.license.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      // 1. Unlink documents referencing this license
+      await tx.document.updateMany({
+        where: { licenseId: id },
+        data: { licenseId: null },
+      });
+
+      // 2. Delete all assignments for this license
+      await tx.licenseAssignment.deleteMany({
+        where: { licenseId: id },
+      });
+
+      // 3. Delete the license
+      await tx.license.delete({ where: { id } });
+    });
 
     await createAuditLog({
       action: 'DELETE',

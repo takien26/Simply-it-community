@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '@/lib/i18n/context';
+import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
 import {
   Layers,
   Plus,
@@ -535,6 +536,9 @@ export default function CategoriesPage() {
   const handleDeleteCategory = async (cat: any) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa danh mục "${cat.name}" không?`)) return;
 
+    // 0ms Optimistic removal
+    setCategories((prev) => prev.filter((c) => c.id !== cat.id));
+
     try {
       let url = `/api/categories/${cat.id}`;
       if (activeTab === 'licenses') {
@@ -544,9 +548,14 @@ export default function CategoriesPage() {
       }
 
       await fetch(url, { method: 'DELETE' });
+      invalidateClientCache('/api/categories');
+      invalidateClientCache('/api/master-data');
+      triggerDataRefresh('master-data');
+      triggerDataRefresh('categories');
       loadAllData();
     } catch (err) {
       console.error('Delete category error:', err);
+      loadAllData();
     }
   };
 
@@ -607,6 +616,8 @@ export default function CategoriesPage() {
         });
       }
 
+      invalidateClientCache('/api/master-data');
+      triggerDataRefresh('master-data');
       setIsSimpleModalOpen(false);
       loadAllData();
     } catch (err) {
@@ -619,6 +630,15 @@ export default function CategoriesPage() {
     const itemName = activeTab === 'companies' ? item : item.name;
     if (!confirm(`Bạn có chắc chắn muốn xóa "${itemName}" không?`)) return;
 
+    // 0ms Optimistic removal
+    if (activeTab === 'vendors') {
+      setVendors((prev) => prev.filter((v) => v.id !== item.id));
+    } else if (activeTab === 'companies') {
+      setCompanies((prev) => prev.filter((c) => c !== item));
+    } else if (activeTab === 'locations') {
+      setLocations((prev) => prev.filter((l) => l.id !== item.id));
+    }
+
     try {
       if (activeTab === 'vendors') {
         await fetch(`/api/vendors/${item.id}`, { method: 'DELETE' });
@@ -627,9 +647,12 @@ export default function CategoriesPage() {
       } else if (activeTab === 'locations') {
         await fetch(`/api/locations/${item.id}`, { method: 'DELETE' });
       }
+      invalidateClientCache('/api/master-data');
+      triggerDataRefresh('master-data');
       loadAllData();
     } catch (err) {
       console.error('Delete simple error:', err);
+      loadAllData();
     }
   };
 

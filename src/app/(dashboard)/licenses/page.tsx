@@ -12,7 +12,7 @@ import { useLanguage } from '@/lib/i18n/context';
 import { DocumentQuickPreviewModal } from '@/components/documents/document-quick-preview-modal';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { fetchWithSwr, invalidateClientCache, useAutoRefresh } from '@/lib/client-cache';
+import { fetchWithSwr, invalidateClientCache, useAutoRefresh, triggerDataRefresh } from '@/lib/client-cache';
 import { getStoredBaseCurrency, getStoredCurrencies, convertCurrencyAmount } from '@/lib/currency-store';
 import {
   Eye,
@@ -375,41 +375,43 @@ export default function LicensesPage() {
       if (forceFresh) {
         invalidateClientCache('/api/licenses');
       }
-      // 1. Fetch Licenses with SWR Cache (0ms instant render)
-      fetchWithSwr<any>('/api/licenses?pageSize=300', (licRes) => {
-        if (licRes && (licRes.success || licRes.data || licRes.licenses)) {
-          const list = licRes.data || licRes.licenses || [];
-          setLicenses(list);
-          setLoading(false);
+      await Promise.all([
+        // 1. Fetch Licenses with SWR Cache (0ms instant render)
+        fetchWithSwr<any>('/api/licenses?pageSize=300', (licRes) => {
+          if (licRes && (licRes.success || licRes.data || licRes.licenses)) {
+            const list = licRes.data || licRes.licenses || [];
+            setLicenses(list);
+            setLoading(false);
 
-          setActiveLicense((prev: any) => {
-            if (!prev) return null;
-            return list.find((l: any) => l.id === prev.id) || prev;
-          });
+            setActiveLicense((prev: any) => {
+              if (!prev) return null;
+              return list.find((l: any) => l.id === prev.id) || prev;
+            });
 
-          setSelectedDetailLicense((prev: any) => {
-            if (!prev) return null;
-            return list.find((l: any) => l.id === prev.id) || prev;
-          });
-        }
-      }, 30000, forceFresh);
+            setSelectedDetailLicense((prev: any) => {
+              if (!prev) return null;
+              return list.find((l: any) => l.id === prev.id) || prev;
+            });
+          }
+        }, 30000, forceFresh),
 
-      // 2. Fetch Assets with SWR Cache
-      fetchWithSwr<any>('/api/assets?pageSize=300', (assetRes) => {
-        if (assetRes && (assetRes.success || assetRes.data)) {
-          setAssets(assetRes.data || assetRes.assets || []);
-        }
-      }, 30000, forceFresh);
+        // 2. Fetch Assets with SWR Cache
+        fetchWithSwr<any>('/api/assets?pageSize=300', (assetRes) => {
+          if (assetRes && (assetRes.success || assetRes.data)) {
+            setAssets(assetRes.data || assetRes.assets || []);
+          }
+        }, 30000, forceFresh),
 
-      // 3. Fetch Master Data with SWR Cache
-      fetchWithSwr<any>('/api/master-data', (masterRes) => {
-        if (masterRes?.data) {
-          const md = masterRes.data;
-          if (md.vendors) setVendors(md.vendors);
-          if (md.users) setUsers(md.users);
-          if (md.companies) setCompanies(md.companies);
-        }
-      }, 60000, forceFresh);
+        // 3. Fetch Master Data with SWR Cache
+        fetchWithSwr<any>('/api/master-data', (masterRes) => {
+          if (masterRes?.data) {
+            const md = masterRes.data;
+            if (md.vendors) setVendors(md.vendors);
+            if (md.users) setUsers(md.users);
+            if (md.companies) setCompanies(md.companies);
+          }
+        }, 60000, forceFresh),
+      ]);
     } catch (error) {
       console.error('Failed to load license data:', error);
       setLoading(false);
@@ -659,7 +661,9 @@ export default function LicensesPage() {
 
       if (res.ok) {
         setIsAddModalOpen(false);
-        loadData();
+        invalidateClientCache('/api/licenses');
+        triggerDataRefresh('licenses');
+        await loadData(true);
       } else {
         const err = await res.json();
         alert(err.error || 'Thêm bản quyền thất bại');
@@ -692,7 +696,9 @@ export default function LicensesPage() {
 
       if (res.ok) {
         setIsEditModalOpen(false);
-        loadData();
+        invalidateClientCache('/api/licenses');
+        triggerDataRefresh('licenses');
+        await loadData(true);
       } else {
         const err = await res.json();
         alert(err.error || 'Cập nhật bản quyền thất bại');
@@ -727,7 +733,9 @@ export default function LicensesPage() {
         setAssignUserId('');
         setAssignAssetId('');
         setAssignNotes('');
-        loadData();
+        invalidateClientCache('/api/licenses');
+        triggerDataRefresh('licenses');
+        await loadData(true);
       } else {
         const err = await res.json();
         alert(err.error || 'Cấp phát license thất bại');
@@ -753,7 +761,9 @@ export default function LicensesPage() {
       });
 
       if (res.ok) {
-        loadData();
+        invalidateClientCache('/api/licenses');
+        triggerDataRefresh('licenses');
+        await loadData(true);
       } else {
         const err = await res.json();
         alert(err.error || 'Thu hồi thất bại');
@@ -769,16 +779,26 @@ export default function LicensesPage() {
   const handleDeleteLicense = async (id: string, name: string) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa bản quyền "${name}"? Thao tác này không thể hoàn tác.`)) return;
 
+    // 0ms Optimistic removal
+    setLicenses((prev) => prev.filter((l) => l.id !== id));
+    if (selectedDetailLicense?.id === id) setSelectedDetailLicense(null);
+    if (activeLicense?.id === id) setActiveLicense(null);
+    if (editingLicenseId === id) setIsEditModalOpen(false);
+
     try {
       const res = await fetch(`/api/licenses/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        loadData();
+        invalidateClientCache('/api/licenses');
+        triggerDataRefresh('licenses');
+        await loadData(true);
       } else {
         const err = await res.json();
         alert(err.error || 'Xóa bản quyền thất bại');
+        await loadData(true);
       }
     } catch {
       alert('Lỗi kết nối khi xóa');
+      await loadData(true);
     }
   };
 
@@ -954,7 +974,9 @@ export default function LicensesPage() {
           status: 'PAID',
           notes: '',
         });
-        loadData();
+        invalidateClientCache('/api/licenses');
+        triggerDataRefresh('licenses');
+        await loadData(true);
       } else {
         alert('Lưu lịch sử thanh toán thất bại');
       }
@@ -985,7 +1007,9 @@ export default function LicensesPage() {
       if (res.ok) {
         const data = await res.json();
         setSelectedDetailLicense(data.data);
-        loadData();
+        invalidateClientCache('/api/licenses');
+        triggerDataRefresh('licenses');
+        await loadData(true);
       }
     } catch {
       alert('Lỗi kết nối');
@@ -1358,7 +1382,7 @@ export default function LicensesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {loading ? (
+              {loading && licenses.length === 0 ? (
                 // Shimmering Skeleton Loader
                 Array.from({ length: 5 }).map((_, idx) => (
                   <tr key={idx} className="animate-pulse">

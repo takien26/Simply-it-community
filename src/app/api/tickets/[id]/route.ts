@@ -331,8 +331,22 @@ export async function DELETE(
 
     const { id } = await params;
 
-    await prisma.ticket.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      // 1. Unlink any tickets merged into this ticket
+      await tx.ticket.updateMany({
+        where: { mergedIntoTicketId: id },
+        data: { mergedIntoTicketId: null },
+      });
+
+      // 2. Delete ticket comments
+      await tx.ticketComment.deleteMany({
+        where: { ticketId: id },
+      });
+
+      // 3. Delete ticket
+      await tx.ticket.delete({
+        where: { id },
+      });
     });
 
     return NextResponse.json({ success: true, message: 'Đã xóa ticket thành công' });

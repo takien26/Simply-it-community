@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
 import {
   KeyRound,
   ArrowUp,
@@ -824,17 +825,25 @@ export default function PasswordsPage() {
   // Delete Password
   const handleDeletePassword = async (id: string, title: string) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản mật khẩu "${title}"?`)) return;
+
+    // 0ms Optimistic removal
+    setPasswords((prev) => prev.filter((p) => p.id !== id));
+    if (selectedPassword?.id === id) setIsDetailModalOpen(false);
+
     try {
       const res = await fetch(`/api/passwords/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        if (selectedPassword?.id === id) setIsDetailModalOpen(false);
         showToast(`🗑️ Đã xóa "${title}"`);
-        loadData();
+        invalidateClientCache('/api/passwords');
+        triggerDataRefresh('passwords');
+        await loadData();
       } else {
         alert('Xóa thất bại');
+        await loadData();
       }
     } catch {
       alert('Lỗi kết nối');
+      await loadData();
     }
   };
 

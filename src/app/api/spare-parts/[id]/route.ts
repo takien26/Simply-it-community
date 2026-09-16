@@ -60,7 +60,12 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    await prisma.sparePart.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.sparePartTransaction.deleteMany({
+        where: { sparePartId: id },
+      });
+      await tx.sparePart.delete({ where: { id } });
+    });
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

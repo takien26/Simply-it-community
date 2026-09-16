@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/lib/i18n/context';
+import { fetchWithSwr, invalidateClientCache, useAutoRefresh, triggerDataRefresh } from '@/lib/client-cache';
 import {
   Boxes,
   Plus,
@@ -150,7 +151,7 @@ export default function SparePartsPage() {
   useEffect(() => {
     loadParts();
     loadDropdowns();
-  }, [lowStockFilter]);
+  }, [loadParts]);
 
   // Debounced search for Assets in Stock-Out Modal
   useEffect(() => {
@@ -194,27 +195,35 @@ export default function SparePartsPage() {
     return () => clearTimeout(timer);
   }, [userSearch, selectedUser]);
 
-  const loadParts = async () => {
-    setLoading(true);
+  const loadParts = useCallback(async (forceFresh = false) => {
     try {
-      const query = lowStockFilter ? '?lowStock=true' : '';
-      const res = await fetch(`/api/spare-parts${query}`);
-      const data = await res.json();
-      if (data.success) {
-        setParts(data.spareParts);
-        if (data.stats) setStats(data.stats);
-        // Refresh drawer part if open
-        if (drawerPart) {
-          const fresh = data.spareParts.find((p: SparePart) => p.id === drawerPart.id);
-          if (fresh) setDrawerPart(fresh);
-        }
+      if (forceFresh) {
+        invalidateClientCache('/api/spare-parts');
       }
+      const query = lowStockFilter ? '?lowStock=true' : '';
+      await fetchWithSwr<any>(`/api/spare-parts${query}`, (data) => {
+        if (data && data.success) {
+          setParts(data.spareParts || []);
+          if (data.stats) setStats(data.stats);
+          setLoading(false);
+          // Refresh drawer part if open
+          if (drawerPart) {
+            const fresh = (data.spareParts || []).find((p: SparePart) => p.id === drawerPart.id);
+            if (fresh) setDrawerPart(fresh);
+          }
+        }
+      }, 30000, forceFresh);
     } catch (e) {
       console.error(e);
-    } finally {
       setLoading(false);
     }
-  };
+  }, [lowStockFilter, drawerPart]);
+
+  // Connect Professional Auto-Refresh & Instant Reactive Sync
+  const { isRefreshing: isAutoRefreshing, refreshNow } = useAutoRefresh({
+    onRefresh: loadParts,
+    scope: 'spare-parts',
+  });
 
   const loadDropdowns = async () => {
     try {
@@ -311,7 +320,9 @@ export default function SparePartsPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         setIsEditOpen(false);
-        loadParts();
+        invalidateClientCache('/api/spare-parts');
+        triggerDataRefresh('spare-parts');
+        await loadParts(true);
         if (drawerPart && drawerPart.id === editId) {
           setDrawerPart({
             ...drawerPart,
@@ -365,7 +376,9 @@ export default function SparePartsPage() {
       if (res.ok && data.success) {
         setIsCreateOpen(false);
         resetCreateForm();
-        loadParts();
+        invalidateClientCache('/api/spare-parts');
+        triggerDataRefresh('spare-parts');
+        await loadParts(true);
       } else {
         alert(data.error || (isEn ? 'Failed to create spare part' : 'Lỗi thêm phụ tùng'));
       }
@@ -435,7 +448,9 @@ export default function SparePartsPage() {
         setIsStockActionOpen(false);
         setActionQty('1');
         setActionNote('');
-        loadParts();
+        invalidateClientCache('/api/spare-parts');
+        triggerDataRefresh('spare-parts');
+        await loadParts(true);
         if (drawerPart && drawerPart.id === selectedPart.id) {
           loadDrawerHistory(selectedPart.id);
         }
@@ -471,13 +486,24 @@ export default function SparePartsPage() {
       ? `Are you sure you want to remove "${name}" from inventory?`
       : `Bạn có chắc chắn muốn xóa phụ tùng "${name}" khỏi kho?`;
     if (!confirm(confirmMsg)) return;
+
+    // 0ms Optimistic removal
+    setParts((prev) => prev.filter((p) => p.id !== id));
+    if (drawerPart?.id === id) setIsDrawerOpen(false);
+    if (editId === id) setIsEditOpen(false);
+
     try {
       const res = await fetch(`/api/spare-parts/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        if (drawerPart?.id === id) setIsDrawerOpen(false);
-        loadParts();
+        invalidateClientCache('/api/spare-parts');
+        triggerDataRefresh('spare-parts');
+        await loadParts(true);
+      } else {
+        await loadParts(true);
       }
-    } catch {}
+    } catch {
+      await loadParts(true);
+    }
   };
 
   const resetCreateForm = () => {
@@ -607,7 +633,7 @@ export default function SparePartsPage() {
 
       {/* Inventory Table */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-        {loading ? (
+        {loading && parts.length === 0 ? (
           <div className="p-12 text-center">
             <Loader2 className="w-7 h-7 text-indigo-600 animate-spin mx-auto mb-2" />
             <p className="text-xs text-slate-400">{isEn ? 'Loading inventory data...' : 'Đang tải dữ liệu kho phụ tùng...'}</p>
