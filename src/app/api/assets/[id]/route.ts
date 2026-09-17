@@ -293,7 +293,7 @@ export async function DELETE(
     }
 
     // 0. Lưu snapshot đối tượng vào Thùng rác (Recycle Bin) trước khi xóa
-    await moveToTrash({
+    const trashResult = await moveToTrash({
       entityType: 'ASSET',
       entityId: id,
       entityName: existing.name,
@@ -301,7 +301,10 @@ export async function DELETE(
       dataSnapshot: existing,
       deletedById: currentUser.userId,
       deletedByName: currentUser.fullName || currentUser.email,
-    }).catch((err) => console.error('Failed to snapshot asset to trash:', err));
+    }).catch((err) => {
+      console.error('Failed to snapshot asset to trash:', err);
+      return null;
+    });
 
     // In a transaction, cascade delete/unlink relations to prevent foreign key errors
     await prisma.$transaction(async (tx) => {
@@ -386,7 +389,13 @@ export async function DELETE(
       changes: { deleted: existing },
     });
 
-    return NextResponse.json({ success: true, message: 'Asset deleted successfully' });
+    return NextResponse.json({
+      success: true,
+      message: 'Đã chuyển thiết bị vào Thùng rác',
+      trashItemId: trashResult?.trashItem?.id || null,
+      assetName: existing.name,
+      assetTag: existing.assetTag,
+    });
   } catch (error) {
     console.error('Delete asset error:', error);
     return NextResponse.json({ error: 'Failed to delete asset' }, { status: 500 });

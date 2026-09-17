@@ -26,6 +26,7 @@ const RealtimeNotificationListener = dynamic(
 );
 
 import { triggerDataRefresh } from '@/lib/client-cache';
+import { TrashUndoToast } from '@/components/common/TrashUndoToast';
 
 export default function DashboardLayout({
   children,
@@ -80,6 +81,9 @@ export default function DashboardLayout({
 
       {/* Global Live Real-time SSE Notification Listener */}
       <RealtimeNotificationListener />
+
+      {/* Global Trash Undo Toast (0ms Instant Recovery) */}
+      <TrashUndoToast />
 
       {/* Mobile-Only Bottom Navigation Bar */}
       <MobileBottomNav />

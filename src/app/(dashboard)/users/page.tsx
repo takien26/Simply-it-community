@@ -7,6 +7,7 @@ import { ManageableDropdown } from '@/components/ui/manageable-dropdown';
 import { useState, useEffect, useRef } from 'react';
 import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
 import { UserOffboardModal, UserOnboardModal } from '@/components/users';
+import { showTrashUndoToast } from '@/components/common/TrashUndoToast';
 import {
   User,
   Users,
@@ -687,8 +688,21 @@ export default function UsersPage() {
       if (res.ok) {
         invalidateClientCache('/api/users');
         invalidateClientCache('/api/master-data');
+        invalidateClientCache('/api/trash');
         triggerDataRefresh('users');
         triggerDataRefresh('master-data');
+        triggerDataRefresh('trash');
+
+        // Show Instant Undo Toast
+        showTrashUndoToast({
+          name: user.fullName || 'Nhân sự',
+          code: user.email,
+          trashItemId: data.trashItemId,
+          onUndo: async () => {
+            loadData();
+          },
+        });
+
         loadData();
       } else {
         alert(data.error || 'Xóa nhân viên thất bại');

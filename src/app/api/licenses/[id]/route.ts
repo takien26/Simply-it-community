@@ -223,7 +223,7 @@ export async function DELETE(
     }
 
     // Lưu snapshot license vào Thùng rác trước khi xóa
-    await moveToTrash({
+    const trashResult = await moveToTrash({
       entityType: 'LICENSE',
       entityId: id,
       entityName: existing.name,
@@ -231,7 +231,10 @@ export async function DELETE(
       dataSnapshot: existing,
       deletedById: currentUser.userId,
       deletedByName: currentUser.fullName || currentUser.email,
-    }).catch((err) => console.error('Failed to snapshot license to trash:', err));
+    }).catch((err) => {
+      console.error('Failed to snapshot license to trash:', err);
+      return null;
+    });
 
     await prisma.$transaction(async (tx) => {
       // 1. Unlink documents referencing this license
@@ -256,7 +259,12 @@ export async function DELETE(
       userId: currentUser.userId,
     });
 
-    return NextResponse.json({ success: true, message: 'Đã xóa license' });
+    return NextResponse.json({
+      success: true,
+      message: 'Đã chuyển bản quyền vào Thùng rác',
+      trashItemId: trashResult?.trashItem?.id || null,
+      licenseName: existing.name,
+    });
   } catch (error) {
     console.error('Delete license error:', error);
     return NextResponse.json({ error: 'Failed to delete license' }, { status: 500 });

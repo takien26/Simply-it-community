@@ -148,7 +148,7 @@ export async function DELETE(
     }
 
     // Lưu snapshot vào Thùng rác
-    await moveToTrash({
+    const trashResult = await moveToTrash({
       entityType: 'USER',
       entityId: id,
       entityName: existingUser.fullName,
@@ -156,14 +156,22 @@ export async function DELETE(
       dataSnapshot: existingUser,
       deletedById: currentUser.userId,
       deletedByName: currentUser.fullName || currentUser.email,
-    }).catch((err) => console.error('Failed to snapshot user to trash:', err));
+    }).catch((err) => {
+      console.error('Failed to snapshot user to trash:', err);
+      return null;
+    });
 
     await prisma.user.update({
       where: { id },
       data: { isActive: false },
     });
 
-    return NextResponse.json({ success: true, message: 'Đã chuyển nhân viên vào Thùng rác' });
+    return NextResponse.json({
+      success: true,
+      message: 'Đã chuyển nhân viên vào Thùng rác',
+      trashItemId: trashResult?.trashItem?.id || null,
+      userName: existingUser.fullName,
+    });
   } catch (error) {
     console.error('Delete user error:', error);
     return NextResponse.json({ error: 'Delete user failed' }, { status: 500 });

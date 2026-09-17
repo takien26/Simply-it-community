@@ -17,6 +17,7 @@ import { DocumentQuickPreviewModal } from '@/components/documents/document-quick
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { fetchWithSwr, invalidateClientCache, useAutoRefresh, triggerDataRefresh } from '@/lib/client-cache';
+import { showTrashUndoToast } from '@/components/common/TrashUndoToast';
 import { getStoredBaseCurrency, getStoredCurrencies, convertCurrencyAmount } from '@/lib/currency-store';
 import {
   Eye,
@@ -1007,7 +1008,7 @@ export default function LicensesPage() {
 
   // Delete License
   const handleDeleteLicense = async (id: string, name: string) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa bản quyền "${name}"? Thao tác này không thể hoàn tác.`)) return;
+    if (!confirm(`Bạn có chắc chắn muốn chuyển bản quyền "${name}" vào Thùng rác? (Có thể khôi phục trong 30 ngày)`)) return;
 
     // 0ms Optimistic removal
     setLicenses((prev) => prev.filter((l) => l.id !== id));
@@ -1017,13 +1018,25 @@ export default function LicensesPage() {
 
     try {
       const res = await fetch(`/api/licenses/${id}`, { method: 'DELETE' });
+      const data = await res.json();
       if (res.ok) {
         invalidateClientCache('/api/licenses');
+        invalidateClientCache('/api/trash');
         triggerDataRefresh('licenses');
+        triggerDataRefresh('trash');
+
+        // Show Instant Undo Toast
+        showTrashUndoToast({
+          name: name || 'Bản quyền',
+          trashItemId: data?.trashItemId,
+          onUndo: async () => {
+            loadData(true);
+          },
+        });
+
         await loadData(true);
       } else {
-        const err = await res.json();
-        alert(err.error || 'Xóa bản quyền thất bại');
+        alert(data.error || 'Xóa bản quyền thất bại');
         await loadData(true);
       }
     } catch {

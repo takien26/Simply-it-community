@@ -73,6 +73,7 @@ import WarrantyInput from '@/components/ui/warranty-input';
 import AssetQrModal from '@/components/assets/asset-qr-modal';
 import BatchQrPrintModal from '@/components/assets/batch-qr-print-modal';
 import AssetHandoverModal from '@/components/assets/asset-handover-modal';
+import { showTrashUndoToast } from '@/components/common/TrashUndoToast';
 import AssetInventoryAuditModal from '@/components/assets/asset-inventory-audit-modal';
 import { AssetAuditCreateModal } from '@/components/assets/AssetAuditCreateModal';
 import {
@@ -734,6 +735,7 @@ export default function AssetsPage() {
   });
 
   const [maintenanceLogs, setMaintenanceLogs] = useState<any[]>([]);
+  const [trashAssetsCount, setTrashAssetsCount] = useState<number>(0);
   const [aiLookupLoading, setAiLookupLoading] = useState(false);
   const aiLookupCacheRef = useRef<Map<string, any>>(new Map());
   const [aiLookupStatus, setAiLookupStatus] = useState<string | null>(null);
@@ -819,6 +821,15 @@ export default function AssetsPage() {
         fetchWithSwr<any>('/api/licenses', (licRes) => {
           if (licRes && (licRes.success || licRes.data || licRes.licenses)) {
             setLicenses(licRes.data || licRes.licenses || []);
+          }
+        }, 30000, forceFresh),
+
+        // 4. Fetch Trash assets count
+        fetchWithSwr<any>('/api/trash?type=ASSET', (trashRes) => {
+          if (trashRes?.pagination?.totalCount !== undefined) {
+            setTrashAssetsCount(trashRes.pagination.totalCount);
+          } else if (Array.isArray(trashRes?.data)) {
+            setTrashAssetsCount(trashRes.data.length);
           }
         }, 30000, forceFresh),
       ]);
@@ -1790,7 +1801,8 @@ export default function AssetsPage() {
   };
 
   const handleDeleteAsset = async (id: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa tài sản này?')) return;
+    const assetToDelete = assets.find((a) => a.id === id);
+    if (!confirm(isEn ? `Are you sure you want to move "${assetToDelete?.name || 'asset'}" to Recycle Bin?` : `Bạn có chắc chắn muốn chuyển tài sản "${assetToDelete?.name || ''}" vào Thùng rác?`)) return;
     // 0ms Optimistic removal
     setAssets((prev) => prev.filter((a) => a.id !== id));
     if (selectedDetailAsset?.id === id) setIsDetailModalOpen(false);
@@ -1798,13 +1810,26 @@ export default function AssetsPage() {
 
     try {
       const res = await fetch(`/api/assets/${id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         invalidateClientCache('/api/assets');
+        invalidateClientCache('/api/trash');
         triggerDataRefresh('assets');
+        triggerDataRefresh('trash');
+
+        // Show Instant Undo Toast
+        showTrashUndoToast({
+          name: assetToDelete?.name || 'Thiết bị',
+          code: assetToDelete?.assetTag,
+          trashItemId: data.trashItemId,
+          onUndo: async () => {
+            await loadData(true);
+          },
+        });
+
         await loadData(true);
       } else {
-        const errorData = await res.json().catch(() => ({}));
-        alert(`❌ ${errorData.error || 'Xóa tài sản thất bại'}`);
+        alert(`❌ ${data.error || 'Xóa tài sản thất bại'}`);
         await loadData(true);
       }
     } catch {
@@ -2602,6 +2627,21 @@ export default function AssetsPage() {
                 {autoScannedAssetsCount}
               </span>
             </button>
+
+            {/* QUICK LINK TO RECYCLE BIN */}
+            <Link
+              href="/trash?type=ASSET"
+              className="px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-700 dark:text-slate-300 hover:text-rose-600 border border-slate-200 dark:border-slate-700 hover:border-rose-200"
+              title={isEn ? 'View deleted assets in Recycle Bin (kept 30 days)' : 'Xem các thiết bị trong Thùng rác (lưu 30 ngày)'}
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+              <span>{isEn ? 'Recycle Bin' : 'Thùng rác'}</span>
+              {trashAssetsCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-black bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300">
+                  {trashAssetsCount}
+                </span>
+              )}
+            </Link>
 
             <span className="text-[11px] font-bold text-slate-400">{language === 'en' ? 'Warranty Filter:' : 'Lọc nhanh bảo hành:'}</span>
             {[
