@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Loader2,
   AlertTriangle,
+  ArrowRightLeft,
   X,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
@@ -367,6 +368,38 @@ export function LicenseAssignModal({
                           );
                         })()}
                       </div>
+
+                      {/* Cảnh báo cấp phát chéo pháp nhân */}
+                      {(() => {
+                        if (!assignUserId) return null;
+                        const selectedUser = users.find((u: any) => u.id === assignUserId);
+                        if (!selectedUser) return null;
+
+                        let targetComp = targetLicense?.companyName || '';
+                        if (selectedBatchId && Array.isArray(batches)) {
+                          const b = batches.find((x: any) => x.id === selectedBatchId);
+                          if (b?.companyName) targetComp = b.companyName;
+                        }
+                        const userComp = selectedUser.companyName || selectedUser.company || '';
+
+                        if (targetComp && userComp && targetComp.trim().toLowerCase() !== userComp.trim().toLowerCase()) {
+                          return (
+                            <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 rounded-xl text-xs space-y-1 animate-in fade-in">
+                              <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300 text-[11px]">
+                                <ArrowRightLeft className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span>Cảnh báo: Cấp phát chéo pháp nhân!</span>
+                              </div>
+                              <p className="text-[10.5px] text-amber-700 dark:text-amber-400 leading-snug">
+                                Nhân sự <strong>{selectedUser.fullName || selectedUser.name}</strong> thuộc <strong>{userComp}</strong> nhưng đang được gán vào gói bản quyền do <strong>{targetComp}</strong> chi trả.
+                              </p>
+                              <p className="text-[10px] text-amber-600 dark:text-amber-500 font-medium">
+                                💡 Dữ liệu này sẽ tự động ghi nhận vào Ma trận Bù trừ Quyết toán Chi phí Tập đoàn.
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
 
                       {/* Ghi chú */}
                       <div>

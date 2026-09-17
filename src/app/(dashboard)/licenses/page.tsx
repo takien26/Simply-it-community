@@ -3,6 +3,8 @@ import {
   LicenseDetailModal,
   LicenseAssignModal,
   LicenseFormModal,
+  CrossCompanyMatrix,
+  LicenseIntegrationModal,
 } from '@/components/licenses';
 import { LicenseGroup, groupLicenses } from '@/components/licenses/types';
 import { exportConglomerateExcel, exportSingleLicenseExcel } from '@/components/licenses/license-excel-export';
@@ -22,6 +24,8 @@ import {
   Plus,
   Search,
   Key,
+  Cloud,
+  ArrowRightLeft,
   Trash2,
   Edit2,
   AlertTriangle,
@@ -117,6 +121,8 @@ export default function LicensesPage() {
     'Chi nhánh Miền Nam (TP.HCM)',
   ]);
   const [loading, setLoading] = useState(true);
+  const [activeMainTab, setActiveMainTab] = useState<'LIST' | 'MATRIX'>('LIST');
+  const [isIntegrationModalOpen, setIsIntegrationModalOpen] = useState(false);
 
   // Dynamic Currencies & Exchange Rates
   const [currencies, setCurrencies] = useState<CurrencyConfig[]>(DEFAULT_CURRENCIES);
@@ -1321,6 +1327,16 @@ export default function LicensesPage() {
 
           <button
             type="button"
+            onClick={() => setIsIntegrationModalOpen(true)}
+            className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+            title="Kết nối Microsoft 365, Google Workspace, Adobe CC qua Cloud API để đối soát và phát hiện license lãng phí"
+          >
+            <Cloud className="w-4 h-4" />
+            <span className="hidden sm:inline font-extrabold">Tích Hợp Cloud M365</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleOpenAdd}
             className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-2xl text-xs font-bold shadow-md shadow-purple-600/20 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
           >
@@ -1330,8 +1346,50 @@ export default function LicensesPage() {
         </div>
       </div>
 
-      {/* ==================== 2. TOP KPI BAR ĐA TIỀN TỆ ==================== */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* ==================== VIEW SWITCHER: DANH SÁCH VS MA TRẬN BÙ TRỪ ==================== */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/60 rounded-2xl w-fit border border-slate-200 dark:border-slate-700">
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('LIST')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            activeMainTab === 'LIST'
+              ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>{language === 'en' ? 'Licenses & Batches' : 'Danh Sách Bản Quyền & Đợt Mua'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('MATRIX')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            activeMainTab === 'MATRIX'
+              ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <ArrowRightLeft className="w-3.5 h-3.5" />
+          <span>{language === 'en' ? 'Cross-Company Chargeback Matrix' : 'Ma Trận Bù Trừ Đa Công Ty (Tập Đoàn)'}</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-extrabold">
+            Mới
+          </span>
+        </button>
+      </div>
+
+      {activeMainTab === 'MATRIX' ? (
+        <CrossCompanyMatrix
+          licenses={licenses}
+          users={users}
+          companies={companies}
+          selectedCurrency={selectedCurrency}
+          isEn={language === 'en'}
+        />
+      ) : (
+        <>
+          {/* ==================== 2. TOP KPI BAR ĐA TIỀN TỆ ==================== */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* KPI 1: Tổng số License & Seats */}
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xs flex items-center justify-between">
           <div className="space-y-0.5">
@@ -2418,6 +2476,8 @@ export default function LicensesPage() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* ==================== MODAL 1: THÊM MỚI / SỬA BẢN QUYỀN (BÓC TÁCH COMPONENT) ==================== */}
       <LicenseFormModal
@@ -3338,6 +3398,13 @@ export default function LicensesPage() {
           </div>
         </div>
       )}
+
+      {/* ==================== MODAL: CỔNG TÍCH HỢP CLOUD (M365, GOOGLE, ADOBE) ==================== */}
+      <LicenseIntegrationModal
+        isOpen={isIntegrationModalOpen}
+        onClose={() => setIsIntegrationModalOpen(false)}
+        isEn={language === 'en'}
+      />
 
     </div>
   );
