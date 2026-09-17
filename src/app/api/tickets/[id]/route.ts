@@ -355,3 +355,6 @@ export async function DELETE(
     return NextResponse.json({ error: 'Failed to delete ticket' }, { status: 500 });
   }
 }
+
+export const PUT = PATCH;
+

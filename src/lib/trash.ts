@@ -109,12 +109,28 @@ export async function restoreFromTrash(trashId: string, currentUserId?: string) 
 
   switch (trashItem.entityType) {
     case 'ASSET': {
+      // Preserve original ID if available and not taken
+      let targetId: string | undefined = undefined;
+      if (snapshot.id) {
+        const idExists = await prisma.asset.findUnique({ where: { id: snapshot.id } });
+        if (!idExists) targetId = snapshot.id;
+      }
+
       // Kiểm tra trùng lặp assetTag
       let assetTag = snapshot.assetTag;
       if (assetTag) {
         const existingTag = await prisma.asset.findUnique({ where: { assetTag } });
         if (existingTag) {
           assetTag = `${assetTag}-RESTORED-${Date.now().toString().slice(-4)}`;
+        }
+      }
+
+      // Kiểm tra trùng lặp serialNumber nếu có
+      let serialNumber = snapshot.serialNumber || null;
+      if (serialNumber) {
+        const existingSerial = await prisma.asset.findUnique({ where: { serialNumber } });
+        if (existingSerial) {
+          serialNumber = `${serialNumber}-RESTORED-${Date.now().toString().slice(-4)}`;
         }
       }
 
@@ -136,18 +152,31 @@ export async function restoreFromTrash(trashId: string, currentUserId?: string) 
         const c = await prisma.assetCategory.findUnique({ where: { id: categoryId } });
         if (!c) categoryId = null;
       }
+      if (!categoryId) {
+        const defaultCategory = await prisma.assetCategory.findFirst({ orderBy: { createdAt: 'asc' } });
+        categoryId = defaultCategory?.id;
+      }
+
+      const purchasePrice = snapshot.purchasePrice !== undefined && snapshot.purchasePrice !== null
+        ? snapshot.purchasePrice
+        : snapshot.purchaseCost !== undefined && snapshot.purchaseCost !== null
+        ? snapshot.purchaseCost
+        : null;
+      const purchaseCurrency = snapshot.purchaseCurrency || snapshot.currency || 'VND';
 
       restoredEntity = await prisma.asset.create({
         data: {
+          ...(targetId ? { id: targetId } : {}),
           assetTag: assetTag || `TAG-${Date.now()}`,
           name: snapshot.name || trashItem.entityName,
+          brand: snapshot.brand || null,
           model: snapshot.model || null,
-          serialNumber: snapshot.serialNumber || null,
+          serialNumber,
           status: 'AVAILABLE',
           condition: snapshot.condition || 'GOOD',
           purchaseDate: snapshot.purchaseDate ? new Date(snapshot.purchaseDate) : null,
-          purchaseCost: snapshot.purchaseCost !== undefined && snapshot.purchaseCost !== null ? snapshot.purchaseCost : null,
-          currency: snapshot.currency || 'VND',
+          purchasePrice,
+          purchaseCurrency,
           warrantyExpiry: snapshot.warrantyExpiry ? new Date(snapshot.warrantyExpiry) : null,
           vendorId,
           locationId,
@@ -184,11 +213,18 @@ export async function restoreFromTrash(trashId: string, currentUserId?: string) 
           roleId = defaultRole?.id;
         }
 
+        let targetId: string | undefined = undefined;
+        if (snapshot.id) {
+          const idExists = await prisma.user.findUnique({ where: { id: snapshot.id } });
+          if (!idExists) targetId = snapshot.id;
+        }
+
         restoredEntity = await prisma.user.create({
           data: {
+            ...(targetId ? { id: targetId } : {}),
             fullName: snapshot.fullName || trashItem.entityName,
             email: snapshot.email,
-            password: snapshot.password || '$2a$10$defaultHashPlaceholder',
+            passwordHash: snapshot.passwordHash || snapshot.password || '$2a$10$defaultHashPlaceholder',
             position: snapshot.position || null,
             department: snapshot.department || null,
             companyName: snapshot.companyName || null,
@@ -202,6 +238,12 @@ export async function restoreFromTrash(trashId: string, currentUserId?: string) 
     }
 
     case 'LICENSE': {
+      let targetId: string | undefined = undefined;
+      if (snapshot.id) {
+        const idExists = await prisma.license.findUnique({ where: { id: snapshot.id } });
+        if (!idExists) targetId = snapshot.id;
+      }
+
       let vendorId = snapshot.vendorId;
       if (vendorId) {
         const v = await prisma.vendor.findUnique({ where: { id: vendorId } });
@@ -210,6 +252,7 @@ export async function restoreFromTrash(trashId: string, currentUserId?: string) 
 
       restoredEntity = await prisma.license.create({
         data: {
+          ...(targetId ? { id: targetId } : {}),
           name: snapshot.name || trashItem.entityName,
           licenseKey: snapshot.licenseKey || null,
           licenseType: snapshot.licenseType || 'SUBSCRIPTION',

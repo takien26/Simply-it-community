@@ -80,6 +80,28 @@ export async function POST(
           }))
         : [];
 
+    // Enforce license seat capacity check (Prevent over-allocation)
+    if (candidateBatches.length > 0) {
+      const totalBatchCapacity = candidateBatches.reduce((sum, b) => sum + b.totalSeats, 0);
+      const totalBatchUsed = candidateBatches.reduce((sum, b) => sum + b.usedCount, 0);
+      const availableSeats = totalBatchCapacity - totalBatchUsed;
+      if (totalBatchCapacity > 0 && availableSeats < targets.length) {
+        return NextResponse.json(
+          { error: `Bản quyền "${license.name}" không đủ chỗ trống (Còn ${Math.max(0, availableSeats)} seats, yêu cầu gán ${targets.length} seats).` },
+          { status: 400 }
+        );
+      }
+    } else if (license.totalSeats > 0) {
+      const currentUsed = license.assignments.length;
+      const remainingSeats = license.totalSeats - currentUsed;
+      if (remainingSeats < targets.length) {
+        return NextResponse.json(
+          { error: `Bản quyền "${license.name}" đã hết chỗ (Đã dùng ${currentUsed}/${license.totalSeats} seats, còn trống ${Math.max(0, remainingSeats)}).` },
+          { status: 400 }
+        );
+      }
+    }
+
     const createdAssignments = [];
 
     for (const target of targets) {

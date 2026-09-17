@@ -2175,26 +2175,33 @@ export default function AssetsPage() {
 
       if (rawPrice > 0) {
         const catName = (asset.category?.name || '').toLowerCase();
+        const customMonths = Number((asset as any).specs?.depreciationMonths);
         const usefulLifeMonths =
-          Number((asset as any).specs?.depreciationMonths) ||
-          (catName.includes('server') ||
-          catName.includes('máy chủ') ||
-          catName.includes('switch') ||
-          catName.includes('router') ||
-          catName.includes('mạng')
-            ? 60
-            : 36);
+          customMonths > 0
+            ? customMonths
+            : (catName.includes('server') ||
+              catName.includes('máy chủ') ||
+              catName.includes('switch') ||
+              catName.includes('router') ||
+              catName.includes('mạng')
+                ? 60
+                : 36);
 
         if (asset.purchaseDate) {
           const purchaseDate = new Date(asset.purchaseDate);
-          const diffMonths = Math.max(
-            0,
-            (now.getFullYear() - purchaseDate.getFullYear()) * 12 +
-              (now.getMonth() - purchaseDate.getMonth())
-          );
-          const depreciationRatio = Math.min(1, diffMonths / usefulLifeMonths);
-          const assetDeprec = priceInSelected * depreciationRatio;
-          totalDepreciation += Math.min(priceInSelected, assetDeprec);
+          if (!isNaN(purchaseDate.getTime())) {
+            const diffMonths = Math.max(
+              0,
+              (now.getFullYear() - purchaseDate.getFullYear()) * 12 +
+                (now.getMonth() - purchaseDate.getMonth())
+            );
+            const depreciationRatio = usefulLifeMonths > 0 ? Math.min(1, Math.max(0, diffMonths / usefulLifeMonths)) : 1;
+            const assetDeprec = priceInSelected * (isNaN(depreciationRatio) ? 0 : depreciationRatio);
+            totalDepreciation += Math.min(priceInSelected, isNaN(assetDeprec) ? 0 : assetDeprec);
+          } else {
+            const deprecRatio = asset.condition === 'NEW' ? 0 : 0.25;
+            totalDepreciation += priceInSelected * deprecRatio;
+          }
         } else {
           const deprecRatio = asset.condition === 'NEW' ? 0 : 0.25;
           totalDepreciation += priceInSelected * deprecRatio;
@@ -2202,7 +2209,8 @@ export default function AssetsPage() {
       }
     });
 
-    const remainingValue = Math.max(0, totalOriginal - totalDepreciation);
+    const safeTotalDeprec = isNaN(totalDepreciation) ? 0 : totalDepreciation;
+    const remainingValue = Math.max(0, totalOriginal - safeTotalDeprec);
 
     return {
       totalCount: displayAssets.length,

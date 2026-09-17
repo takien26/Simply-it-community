@@ -116,7 +116,13 @@ export async function POST(request: NextRequest) {
       notes,
     } = body;
 
-    if (!name || !categoryId) {
+    let finalCategoryId = categoryId;
+    if (!finalCategoryId) {
+      const defaultCategory = await prisma.assetCategory.findFirst({ orderBy: { createdAt: 'asc' } });
+      finalCategoryId = defaultCategory?.id || null;
+    }
+
+    if (!name || !finalCategoryId) {
       return NextResponse.json({ error: 'Tên thiết bị và danh mục là bắt buộc' }, { status: 400 });
     }
 
@@ -171,7 +177,7 @@ export async function POST(request: NextRequest) {
       data: {
         assetTag,
         name,
-        categoryId,
+        categoryId: finalCategoryId,
         brand: brand || null,
         model: model || null,
         serialNumber: serialNumber || null,
