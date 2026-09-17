@@ -35,10 +35,10 @@ export function TrashUndoToast() {
       setIsUndoing(false);
       setIsSuccess(false);
 
-      // Auto dismiss after 9 seconds
+      // Auto dismiss after 4 seconds (tắt nhanh gọn, không vướng màn hình)
       timerRef.current = setTimeout(() => {
         setCurrent(null);
-      }, 9000);
+      }, 4000);
     };
 
     window.addEventListener('simply-trash-deleted', handleTrashEvent);
@@ -83,7 +83,7 @@ export function TrashUndoToast() {
         setTimeout(() => {
           setCurrent(null);
           setIsSuccess(false);
-        }, 2200);
+        }, 1200);
       } else {
         alert(data.error || 'Khôi phục không thành công');
         setIsUndoing(false);
@@ -96,7 +96,24 @@ export function TrashUndoToast() {
 
   return (
     <div className="fixed bottom-5 right-5 z-[99999] animate-in slide-in-from-bottom-5 fade-in duration-200">
-      <div className="bg-slate-950/95 text-white border border-slate-700/80 shadow-2xl rounded-2xl p-3.5 max-w-md flex items-center gap-3.5 backdrop-blur-md">
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `@keyframes simply-toast-shrink { from { width: 100%; } to { width: 0%; } }`,
+        }}
+      />
+      <div className="relative overflow-hidden bg-slate-950/95 text-white border border-slate-700/80 shadow-2xl rounded-2xl p-3.5 max-w-md flex items-center gap-3.5 backdrop-blur-md pb-4">
+        {/* Countdown Progress Bar */}
+        {!isSuccess && !isUndoing && (
+          <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-slate-800/80 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-purple-500 to-indigo-500"
+              style={{
+                animation: 'simply-toast-shrink 4s linear forwards',
+              }}
+            />
+          </div>
+        )}
+
         {/* Icon */}
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold ${
           isSuccess ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
