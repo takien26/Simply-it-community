@@ -267,13 +267,15 @@ async function runQaAudit() {
         assert('Assign seat 2 to asset (200)', assignRes2.status === 200, `Status: ${assignRes2.status}`);
       }
 
-      // 4.4 Try Assign Seat 3 (Should fail: Over-allocation check)
+      // 4.4 Assign Seat 3 (Cho phép vượt hạn mức theo yêu cầu nghiệp vụ / True-up)
       const assignRes3 = await fetch(`${BASE_URL}/api/licenses/${testLicId}/assign`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({ userId: adminUser.id }),
       });
-      assert('Prevent over-allocation when seats full (400/422)', assignRes3.status >= 400, `Over-allocation was allowed! Status: ${assignRes3.status}`);
+      assert('Allow over-allocation when seats full (200 OK)', assignRes3.status === 200, `Status: ${assignRes3.status}`);
+      const assign3Data = await assignRes3.json();
+      assert('Response flags isOverAllocated = true', assign3Data.isOverAllocated === true, 'isOverAllocated missing');
 
       // 4.5 Soft delete license to Trash
       const deleteLicRes = await fetch(`${BASE_URL}/api/licenses/${testLicId}`, {

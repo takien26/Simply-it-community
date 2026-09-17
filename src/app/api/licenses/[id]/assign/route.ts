@@ -80,25 +80,14 @@ export async function POST(
           }))
         : [];
 
-    // Enforce license seat capacity check (Prevent over-allocation)
-    if (candidateBatches.length > 0) {
-      const totalBatchCapacity = candidateBatches.reduce((sum, b) => sum + b.totalSeats, 0);
-      const totalBatchUsed = candidateBatches.reduce((sum, b) => sum + b.usedCount, 0);
-      const availableSeats = totalBatchCapacity - totalBatchUsed;
-      if (totalBatchCapacity > 0 && availableSeats < targets.length) {
-        return NextResponse.json(
-          { error: `Bản quyền "${license.name}" không đủ chỗ trống (Còn ${Math.max(0, availableSeats)} seats, yêu cầu gán ${targets.length} seats).` },
-          { status: 400 }
-        );
-      }
-    } else if (license.totalSeats > 0) {
-      const currentUsed = license.assignments.length;
-      const remainingSeats = license.totalSeats - currentUsed;
-      if (remainingSeats < targets.length) {
-        return NextResponse.json(
-          { error: `Bản quyền "${license.name}" đã hết chỗ (Đã dùng ${currentUsed}/${license.totalSeats} seats, còn trống ${Math.max(0, remainingSeats)}).` },
-          { status: 400 }
-        );
+    // Check if assignment exceeds total seats (Cho phép vượt hạn mức theo thực tế nghiệp vụ ITAM / True-up)
+    let isOverAllocated = false;
+    let overCount = 0;
+    if (license.totalSeats > 0) {
+      const projectedTotalUsed = license.assignments.length + targets.length;
+      if (projectedTotalUsed > license.totalSeats) {
+        isOverAllocated = true;
+        overCount = projectedTotalUsed - license.totalSeats;
       }
     }
 
@@ -200,7 +189,11 @@ export async function POST(
     return NextResponse.json({
       success: true,
       data: createdAssignments,
-      message: `Đã cấp phát thành công ${createdAssignments.length} seats cho nhân sự / máy tính`,
+      isOverAllocated,
+      overCount,
+      message: isOverAllocated
+        ? `Đã cấp phát thành công ${createdAssignments.length} seats (Đang vượt hạn mức +${overCount} seats - True-up)`
+        : `Đã cấp phát thành công ${createdAssignments.length} seats cho nhân sự / máy tính`,
     });
   } catch (error) {
     console.error('Assign license error:', error);
