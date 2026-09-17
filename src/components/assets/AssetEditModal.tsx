@@ -17,6 +17,7 @@ import {
   Plus,
   Clock,
   Building,
+  User,
   Key,
   Check,
   ShieldCheck,
@@ -28,6 +29,7 @@ import { useLanguage } from '@/lib/i18n/context';
 import { numberToVietnameseWords } from '@/lib/utils';
 import CurrencyInput from '@/components/ui/currency-input';
 import { ManageableDropdown } from './ManageableDropdown';
+import { ManageableDropdown as SearchableSelect } from '@/components/ui/manageable-dropdown';
 import { getCategoryFields, getFriendlySpecLabel, formatPrice, renderCategoryIcon } from './types';
 
 export interface AssetEditModalProps {
@@ -126,6 +128,13 @@ export const AssetEditModal: React.FC<AssetEditModalProps> = ({
   const [selectedLicenseIds, setSelectedLicenseIds] = useState<string[]>([]);
   const [aiLookupLoading, setAiLookupLoading] = useState(false);
   const [aiLookupStatus, setAiLookupStatus] = useState<string | null>(null);
+
+  const userDropdownItems = (users || []).map((u: any) => ({
+    id: u.id,
+    name: u.fullName || u.email || 'Nhân sự',
+    subtitle: `${u.companyName ? `[${u.companyName}] ` : ''}${u.department || 'Staff'} • ${u.email || ''}`,
+    icon: <User className="w-3.5 h-3.5 text-blue-600" />,
+  }));
 
   // Subform for Admin adding license from edit modal
   const [showAdminAddLicForm, setShowAdminAddLicForm] = useState(false);
@@ -711,19 +720,17 @@ export const AssetEditModal: React.FC<AssetEditModalProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{txt('Người đang sử dụng:', 'Assigned User:', '使用者:')}</label>
-                        <select
-                          value={editFormData.assignedUserId || ''}
-                          onChange={(e) => setEditFormData({ ...editFormData, assignedUserId: e.target.value })}
-                          className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                        >
-                          <option value="">-- {txt('Trong kho IT (Chưa cấp phát)', 'In IT Stock (Unassigned)', 'IT倉庫内（未割当）')} --</option>
-                          {users.map((u) => (
-                            <option key={u.id} value={u.id}>
-                              👤 {u.fullName} {u.companyName ? `[${u.companyName}]` : ''} ({u.department || 'Staff'})
-                            </option>
-                          ))}
-                        </select>
+                        <SearchableSelect
+                          label={txt('Người đang sử dụng:', 'Assigned User:', '使用者:')}
+                          placeholder={`-- ${txt('Trong kho IT (Chưa cấp phát)', 'In IT Stock (Unassigned)', 'IT倉庫内（未割当）')} --`}
+                          searchPlaceholder={txt('🔍 Tìm kiếm nhân viên, phòng ban, email...', 'Search user, department, email...', 'ユーザーを検索...')}
+                          items={userDropdownItems}
+                          selectedValue={editFormData.assignedUserId || ''}
+                          onSelect={(val) => setEditFormData((prev: any) => ({ ...prev, assignedUserId: val }))}
+                          allowEmpty={true}
+                          emptyLabel={`-- ${txt('Trong kho IT (Chưa cấp phát)', 'In IT Stock (Unassigned)', 'IT倉庫内（未割当）')} --`}
+                          themeColor="blue"
+                        />
                       </div>
                     </div>
                   </div>

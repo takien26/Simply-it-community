@@ -9,6 +9,8 @@ import {
   Building2,
   Handshake,
   X,
+  User,
+  Laptop,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 import CurrencyInput from '@/components/ui/currency-input';
@@ -158,6 +160,20 @@ export function ServiceFormModal({
     id: c,
     name: c,
     icon: <Building2 className="w-3.5 h-3.5 text-indigo-600" />,
+  }));
+
+  const userDropdownItems = (users || []).map((u: any) => ({
+    id: u.id,
+    name: u.fullName || u.email || 'Nhân sự',
+    subtitle: `${u.companyName ? `[${u.companyName}] ` : ''}${u.department || 'Nhân sự'} • ${u.email || ''}`,
+    icon: <User className="w-3.5 h-3.5 text-purple-600" />,
+  }));
+
+  const assetDropdownItems = (assets || []).map((a: any) => ({
+    id: a.id,
+    name: `[${a.assetTag || 'TAG'}] ${a.name || 'Thiết bị'}`,
+    subtitle: `${a.brand || ''} ${a.model || ''} • ${a.companyName || ''}`.trim(),
+    icon: <Laptop className="w-3.5 h-3.5 text-blue-600" />,
   }));
 
   const handleAddVendor = (name: string) => onAddVendor && onAddVendor(name);
@@ -708,42 +724,34 @@ export function ServiceFormModal({
                 </div>
               </div>
 
-              {/* Row 6: Gán Người Phụ Trách & Thiết Bị Liên Quan */}
+              {/* Row 6: Gán Người Phụ Trách & Thiết Bị Liên Quan (Có Tìm Kiếm Nhanh) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-2xl">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    👤 Nhân viên / IT phụ trách dịch vụ:
-                  </label>
-                  <select
-                    value={formData.assignedUserId}
-                    onChange={(e) => setFormData({ ...formData, assignedUserId: e.target.value })}
-                    className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
-                  >
-                    <option value="">-- Chưa gán người phụ trách --</option>
-                    {users.map((u: any) => (
-                      <option key={u.id} value={u.id}>
-                        👤 {u.fullName} ({u.department || 'Nhân sự'}) - {u.email}
-                      </option>
-                    ))}
-                  </select>
+                  <ManageableDropdown
+                    label="👤 Nhân viên / IT phụ trách dịch vụ:"
+                    placeholder="-- Chưa gán người phụ trách --"
+                    searchPlaceholder="🔍 Tìm nhanh nhân viên, phòng ban, email..."
+                    items={userDropdownItems}
+                    selectedValue={formData.assignedUserId}
+                    onSelect={(val) => setFormData({ ...formData, assignedUserId: val })}
+                    allowEmpty={true}
+                    emptyLabel="-- Chưa gán người phụ trách --"
+                    themeColor="purple"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    💻 Thiết bị / Máy chủ kết nối:
-                  </label>
-                  <select
-                    value={formData.assignedAssetId}
-                    onChange={(e) => setFormData({ ...formData, assignedAssetId: e.target.value })}
-                    className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
-                  >
-                    <option value="">-- Chưa gán thiết bị/máy chủ --</option>
-                    {assets.map((a: any) => (
-                      <option key={a.id} value={a.id}>
-                        💻 [{a.assetTag}] {a.name} ({a.brand || ''} {a.model || ''})
-                      </option>
-                    ))}
-                  </select>
+                  <ManageableDropdown
+                    label="💻 Thiết bị / Máy chủ kết nối:"
+                    placeholder="-- Chưa gán thiết bị/máy chủ --"
+                    searchPlaceholder="🔍 Tìm nhanh thiết bị, mã Tag, model..."
+                    items={assetDropdownItems}
+                    selectedValue={formData.assignedAssetId}
+                    onSelect={(val) => setFormData({ ...formData, assignedAssetId: val })}
+                    allowEmpty={true}
+                    emptyLabel="-- Chưa gán thiết bị/máy chủ --"
+                    themeColor="blue"
+                  />
                 </div>
               </div>
 
