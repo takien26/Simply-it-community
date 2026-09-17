@@ -20,6 +20,8 @@ import {
   Sparkles,
   Info,
   Laptop,
+  Zap,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { ReconciliationReport, CloudAssignedUser } from '@/lib/license-connectors/types';
 import { formatPrice } from './types';
@@ -44,6 +46,8 @@ export function LicenseIntegrationModal({
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [report, setReport] = useState<ReconciliationReport | null>(null);
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [assigningFifo, setAssigningFifo] = useState(false);
+  const [autoAssignResult, setAutoAssignResult] = useState<any | null>(null);
 
   // Form states
   const [m365Config, setM365Config] = useState({
@@ -161,6 +165,31 @@ export function LicenseIntegrationModal({
       setTestResult({ success: false, message: err?.message || 'Không thể đồng bộ' });
     } finally {
       setSyncing(false);
+    }
+  };
+
+  // Tự động khớp công ty & phân bổ vào các đợt theo FIFO
+  const handleAutoAssign = async (dryRun: boolean = false) => {
+    try {
+      setAssigningFifo(true);
+      setAutoAssignResult(null);
+      const res = await fetch(`/api/licenses/integrations/${activeProvider}/auto-assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun, autoReclaim: true }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAutoAssignResult(data);
+        // Tự động chạy lại sync để cập nhật lại số lượng đối soát thời gian thực
+        handleSyncAndReconcile();
+      } else {
+        alert(data.error || 'Lỗi khi tự động phân bổ.');
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Không thể thực hiện phân bổ.');
+    } finally {
+      setAssigningFifo(false);
     }
   };
 
@@ -558,17 +587,58 @@ export function LicenseIntegrationModal({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={handleExportReconciliationExcel}
-                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5" />
                     <span>Xuất Excel Báo Cáo</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAutoAssign(false)}
+                    disabled={assigningFifo}
+                    className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-purple-500/20 disabled:opacity-50 transition-all hover:scale-102 active:scale-98"
+                    title="Tự động so khớp nhân sự với công ty trong Cài đặt và phân bổ vào các đợt mua theo cơ chế FIFO (Hạn gần nhất lấp trước)"
+                  >
+                    <Zap className={`w-3.5 h-3.5 ${assigningFifo ? 'animate-spin' : ''}`} />
+                    <span>{assigningFifo ? 'Đang Phân Bổ FIFO...' : '⚡ Khớp Công Ty & Phân Bổ Đợt (FIFO)'}</span>
+                  </button>
                 </div>
               </div>
+
+              {/* Thông báo kết quả tự động phân bổ nếu vừa chạy */}
+              {autoAssignResult && (
+                <div className="p-4 bg-emerald-50/90 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 rounded-2xl text-xs space-y-2 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>{autoAssignResult.message}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setAutoAssignResult(null)}
+                      className="text-emerald-600 hover:text-emerald-800 text-[11px] font-bold cursor-pointer"
+                    >
+                      ✕ Đóng
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-semibold text-[11px]">
+                    <div className="p-2 bg-white/70 dark:bg-slate-900/70 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300">
+                      🏢 Đúng công ty nhân sự: <strong>{autoAssignResult.stats?.selfAssignedCount || 0}</strong> ghế
+                    </div>
+                    <div className="p-2 bg-white/70 dark:bg-slate-900/70 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
+                      🔄 Mượn chéo (khi cty hết quota): <strong>{autoAssignResult.stats?.crossAssignedCount || 0}</strong> ghế
+                    </div>
+                    <div className="p-2 bg-white/70 dark:bg-slate-900/70 rounded-xl border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300">
+                      ♻️ Giải phóng (nhân sự nghỉ việc): <strong>{autoAssignResult.stats?.reclaimedCount || 0}</strong> ghế
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* 4 Metric Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
