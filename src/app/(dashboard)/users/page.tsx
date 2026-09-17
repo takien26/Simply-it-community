@@ -6,6 +6,7 @@ import { ManageableDropdown } from '@/components/ui/manageable-dropdown';
 
 import { useState, useEffect, useRef } from 'react';
 import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
+import { UserOffboardModal, UserOnboardModal } from '@/components/users';
 import {
   User,
   Users,
@@ -239,18 +240,9 @@ export default function UsersPage() {
   const [selectedLicenseId, setSelectedLicenseId] = useState('');
   const [assignLicenseNotes, setAssignLicenseNotes] = useState('');
 
-  // Offboard (Nghỉ việc) State
-  const [offboardModal, setOffboardModal] = useState<{
-    isOpen: boolean;
-    user: any | null;
-    revokeAll: boolean;
-    loading: boolean;
-  }>({
-    isOpen: false,
-    user: null,
-    revokeAll: true,
-    loading: false,
-  });
+  // Onboard & Offboard States
+  const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
+  const [offboardTargetUserId, setOffboardTargetUserId] = useState<string | null>(null);
 
   // Directory Sync State
   const [isSyncingDirectory, setIsSyncingDirectory] = useState(false);
@@ -266,13 +258,14 @@ export default function UsersPage() {
         if (isAssignAssetModalOpen) setIsAssignAssetModalOpen(false);
         if (isAssignLicenseModalOpen) setIsAssignLicenseModalOpen(false);
         if (isUserDetailModalOpen) setIsUserDetailModalOpen(false);
-        if (offboardModal.isOpen) setOffboardModal({ isOpen: false, user: null, revokeAll: true, loading: false });
+        if (offboardTargetUserId) setOffboardTargetUserId(null);
+        if (isOnboardModalOpen) setIsOnboardModalOpen(false);
         if (syncReport) setSyncReport(null);
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isAddLocationModalOpen, isAddUserModalOpen, isEditUserModalOpen, isAssignAssetModalOpen, isAssignLicenseModalOpen, isUserDetailModalOpen, offboardModal.isOpen, syncReport]);
+  }, [isAddLocationModalOpen, isAddUserModalOpen, isEditUserModalOpen, isAssignAssetModalOpen, isAssignLicenseModalOpen, isUserDetailModalOpen, offboardTargetUserId, isOnboardModalOpen, syncReport]);
 
   
   // Auto-open Detail Modal if URL contains ?id=... or ?userId=...
@@ -581,37 +574,7 @@ export default function UsersPage() {
   };
 
   const handleOpenOffboardModal = (user: any) => {
-    setOffboardModal({
-      isOpen: true,
-      user,
-      revokeAll: true,
-      loading: false,
-    });
-  };
-
-  const handleConfirmOffboard = async () => {
-    if (!offboardModal.user) return;
-    setOffboardModal((prev) => ({ ...prev, loading: true }));
-    try {
-      const res = await fetch(`/api/users/${offboardModal.user.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          isActive: false,
-          revokeAllAssignments: offboardModal.revokeAll,
-        }),
-      });
-      if (res.ok) {
-        setOffboardModal({ isOpen: false, user: null, revokeAll: true, loading: false });
-        loadData();
-      } else {
-        alert('Chuyển trạng thái nghỉ việc thất bại');
-        setOffboardModal((prev) => ({ ...prev, loading: false }));
-      }
-    } catch {
-      alert('Lỗi kết nối');
-      setOffboardModal((prev) => ({ ...prev, loading: false }));
-    }
+    setOffboardTargetUserId(user.id);
   };
 
   const handleReactivateUser = async (user: any) => {
@@ -898,6 +861,16 @@ export default function UsersPage() {
               <span>{language === 'en' ? 'Grid' : 'Lưới'}</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsOnboardModalOpen(true)}
+            className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer transition-all hover:scale-102"
+            title="Quy trình tiếp nhận nhân sự mới, cấp phát combo máy tính & bản quyền"
+          >
+            <span>🚀</span>
+            <span>{language === 'en' ? 'Onboard New Hire' : 'Tiếp Nhận Nhân Sự (Onboard)'}</span>
+          </button>
 
           <button
             onClick={handleOpenAddUser}
@@ -2741,84 +2714,32 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Modal: Xác Nhận Nghỉ Việc (Offboard) */}
-      {offboardModal.isOpen && offboardModal.user && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full border border-slate-200 dark:border-slate-800 p-6 space-y-4 animate-in zoom-in-95">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 flex items-center justify-center text-xl shrink-0">
-                🛑
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  {isEn ? 'Confirm Employee Resignation' : 'Xác Nhận Chuyển Nghỉ Việc'}
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  {isEn
-                    ? `Are you sure you want to mark "${offboardModal.user.fullName}" as resigned?`
-                    : `Bạn có chắc chắn muốn chuyển nhân viên "${offboardModal.user.fullName}" sang trạng thái Nghỉ việc?`}
-                </p>
-              </div>
-            </div>
+      {/* Modal: Quy Trình Nghỉ Việc & Thu Hồi Tài Sản (1-Click Offboard) */}
+      {offboardTargetUserId && (
+        <UserOffboardModal
+          isOpen={Boolean(offboardTargetUserId)}
+          userId={offboardTargetUserId}
+          onClose={() => setOffboardTargetUserId(null)}
+          onSuccess={() => {
+            loadData();
+          }}
+        />
+      )}
 
-            <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-xl space-y-1.5 text-xs text-rose-900 dark:text-rose-200">
-              <div className="font-bold flex items-center gap-1.5">
-                <span>🔒</span>
-                <span>{isEn ? 'Login will be blocked immediately.' : 'Tài khoản sẽ bị KHÓA ĐĂNG NHẬP ngay lập tức.'}</span>
-              </div>
-              <p className="text-[11px] text-rose-700 dark:text-rose-300">
-                {isEn
-                  ? 'Employee will not be able to log in with password, SSO (Microsoft 365), or LDAP.'
-                  : 'Nhân sự sẽ không thể đăng nhập vào hệ thống bằng mật khẩu, SSO Microsoft 365 hoặc LDAP.'}
-              </p>
-            </div>
-
-            {(offboardModal.user.assetAssignments?.length > 0 || offboardModal.user.licenseAssignments?.length > 0) && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl space-y-2 text-xs">
-                <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                  <span>⚠️</span>
-                  <span>{isEn ? 'Assets & Licenses currently held:' : 'Thiết bị & Bản quyền đang nắm giữ:'}</span>
-                </div>
-                <div className="text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
-                  <div>💻 {isEn ? 'Devices:' : 'Thiết bị:'} <strong>{offboardModal.user.assetAssignments?.length || 0}</strong> {isEn ? 'devices' : 'máy'}</div>
-                  <div>🔑 {isEn ? 'Licenses:' : 'Bản quyền:'} <strong>{offboardModal.user.licenseAssignments?.length || 0}</strong> license</div>
-                </div>
-
-                <label className="flex items-center gap-2 pt-2 border-t border-amber-200 dark:border-amber-800 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={offboardModal.revokeAll}
-                    onChange={(e) => setOffboardModal((prev) => ({ ...prev, revokeAll: e.target.checked }))}
-                    className="rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
-                  />
-                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                    {isEn ? 'Automatically revoke all devices & licenses back to inventory' : 'Tự động thu hồi toàn bộ thiết bị & license về kho'}
-                  </span>
-                </label>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                disabled={offboardModal.loading}
-                onClick={() => setOffboardModal({ isOpen: false, user: null, revokeAll: true, loading: false })}
-                className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                {isEn ? 'Cancel' : 'Hủy'}
-              </button>
-              <button
-                type="button"
-                disabled={offboardModal.loading}
-                onClick={handleConfirmOffboard}
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {offboardModal.loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>🛑</span>}
-                <span>{offboardModal.loading ? (isEn ? 'Processing...' : 'Đang xử lý...') : (isEn ? 'Confirm Resigned' : 'Xác Nhận Nghỉ Việc')}</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Modal: Tiếp Nhận Nhân Sự & Cấp Phát Thiết Bị Mới (1-Click Onboard) */}
+      {isOnboardModalOpen && (
+        <UserOnboardModal
+          isOpen={isOnboardModalOpen}
+          onClose={() => setIsOnboardModalOpen(false)}
+          availableAssets={availableAssets}
+          availableLicenses={availableLicenses}
+          companies={companies}
+          locations={locations}
+          roles={roles}
+          onSuccess={() => {
+            loadData();
+          }}
+        />
       )}
 
       {/* Modal: Báo Cáo Đồng Bộ Thư Mục SSO / LDAP */}

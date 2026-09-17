@@ -48,6 +48,7 @@ import {
   getCategoryFields,
   getFriendlySpecLabel,
 } from './types';
+import { AssetTimeline360 } from './AssetTimeline360';
 
 export interface AssetDetailModalProps {
   isOpen: boolean;
@@ -100,6 +101,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const [detailSoftwareFilter, setDetailSoftwareFilter] = useState<'ALL' | 'MATCHED' | 'UNMANAGED' | 'CRACK' | 'OTHER'>('ALL');
   const [detailMaintenanceLogs, setDetailMaintenanceLogs] = useState<any[]>([]);
   const [isUpdatingDepreciation, setIsUpdatingDepreciation] = useState(false);
+  const [mainTab, setMainTab] = useState<'details' | 'timeline'>('details');
 
   const { language: ctxLang } = useLanguage();
   const activeLang = language || ctxLang || 'vi';
@@ -289,8 +291,43 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                 </button>
               </div>
 
+              {/* Tab Switcher: Thông Tin Chi Tiết vs Vòng Đời 360° */}
+              <div className="flex items-center gap-2 px-6 pt-2.5 pb-2 bg-slate-100/90 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setMainTab('details')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    mainTab === 'details'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-2xs border border-slate-200 dark:border-slate-700'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>{txt('Thông Tin Chi Tiết & Khấu Hao', 'Specifications & Financials', '仕様・減価償却詳細')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMainTab('timeline')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    mainTab === 'timeline'
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>🌟 {txt('Vòng Đời 360° (Lifecycle Journey)', '360° Lifecycle Journey', '360° ライフサイクル履歴')}</span>
+                </button>
+              </div>
+
               {/* Scrollable Body */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {mainTab === 'timeline' ? (
+                  <AssetTimeline360
+                    assetId={selectedDetailAsset.id}
+                    asset={selectedDetailAsset}
+                  />
+                ) : (
+                  <>
                 {/* 5 Overview KPI Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                   {/* Trạng thái */}
@@ -1687,6 +1724,8 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                     </p>
                   </div>
                 </div>
+                  </>
+                )}
               </div>
 
               {/* Modal Sticky Footer with Quick Actions & Edit Button */}

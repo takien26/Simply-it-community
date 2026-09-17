@@ -10,3 +10,4 @@ export { BatchQrPrintModal } from './batch-qr-print-modal';
 export { default as AssetHandoverModal } from './asset-handover-modal';
 export { default as AssetInventoryAuditModal } from './asset-inventory-audit-modal';
 export { AssetAuditCreateModal } from './AssetAuditCreateModal';
+export * from './AssetTimeline360';
