@@ -7,6 +7,7 @@ import { ManageableDropdown } from '@/components/ui/manageable-dropdown';
 import { useState, useEffect, useRef } from 'react';
 import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
 import {
+  User,
   Users,
   Plus,
   Search,
@@ -989,77 +990,99 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* Toolbar Search, Company Filter & Tree Department Filter */}
-      <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row gap-2.5 items-center">
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+      {/* Toolbar Search, Company Filter & Tree Department Filter (2 rows layout) */}
+      <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2.5">
+        {/* Row 1: Ô Tìm kiếm nhanh toàn chiều rộng */}
+        <div className="relative w-full">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
           <input
             type="text"
             placeholder={language === 'en' ? 'Search by employee name, title, email, phone, company, department...' : 'Tìm theo tên nhân viên, chức danh, email, SĐT, công ty, bộ phận IT...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all font-medium"
+            className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white dark:focus:bg-slate-800 transition-all font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
           />
           {search && (
             <button
+              type="button"
               onClick={() => setSearch('')}
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs cursor-pointer p-0.5"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
-        {/* Filter Công ty quản lý */}
-        <select
-          value={selectedCompany}
-          onChange={(e) => setSelectedCompany(e.target.value)}
-          className="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 w-full md:w-auto font-bold"
-        >
-          <option value="">{language === 'en' ? '🏢 All Companies' : '🏢 Tất cả công ty quản lý'}</option>
-          {companies.map((c) => (
-            <option key={c} value={c}>
-              🏢 {c}
-            </option>
-          ))}
-        </select>
-
-        {/* Filter Cây Thư Mục Phòng Ban (Hierarchical Tree Select) */}
-        <select
-          value={selectedDeptFilter}
-          onChange={(e) => setSelectedDeptFilter(e.target.value)}
-          className="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 w-full md:w-auto font-bold max-w-xs"
-        >
-          <option value="">{language === 'en' ? '📂 All Departments' : '📂 Tất cả Phòng ban & Bộ phận'}</option>
-
-          {deptTree.map((parent) => (
-            <optgroup key={parent.id} label={`${parent.icon || '📁'} ${parent.name}`}>
-              <option value={`PARENT:${parent.name}`}>
-                {isEn ? `★ All of ${parent.name}` : `★ Toàn bộ ${parent.name}`}
-              </option>
-              {parent.children?.map((child) => (
-                <option key={child.id} value={`CHILD:${child.name}`}>
-                  &nbsp;&nbsp;&nbsp;&nbsp;└ 📂 {child.name}
+        {/* Row 2: Bộ lọc Công ty & Bộ lọc Cơ cấu Phòng ban */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
+            {/* Filter Công ty quản lý */}
+            <select
+              value={selectedCompany}
+              onChange={(e) => setSelectedCompany(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 font-bold min-w-[200px] cursor-pointer"
+            >
+              <option value="">{language === 'en' ? '🏢 All Companies' : '🏢 Tất cả công ty quản lý'}</option>
+              {companies.map((c) => (
+                <option key={c} value={c}>
+                  🏢 {c}
                 </option>
               ))}
-            </optgroup>
-          ))}
-        </select>
+            </select>
+
+            {/* Filter Cây Thư Mục Phòng Ban (Hierarchical Tree Select) */}
+            <select
+              value={selectedDeptFilter}
+              onChange={(e) => setSelectedDeptFilter(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 font-bold min-w-[240px] cursor-pointer"
+            >
+              <option value="">{language === 'en' ? '📂 All Departments' : '📂 Tất cả Phòng ban & Bộ phận'}</option>
+              {deptTree.map((parent) => (
+                <optgroup key={parent.id} label={`${parent.icon || '📁'} ${parent.name}`}>
+                  <option value={`PARENT:${parent.name}`}>
+                    {isEn ? `★ All of ${parent.name}` : `★ Toàn bộ ${parent.name}`}
+                  </option>
+                  {parent.children?.map((child) => (
+                    <option key={child.id} value={`CHILD:${child.name}`}>
+                      &nbsp;&nbsp;&nbsp;&nbsp;└ 📂 {child.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
+          {(search || selectedCompany || selectedDeptFilter || selectedFilter !== 'ALL') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setSelectedCompany('');
+                setSelectedDeptFilter('');
+                setSelectedFilter('ALL');
+              }}
+              className="inline-flex items-center justify-center gap-1 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>{isEn ? 'Reset Filters' : 'Xóa bộ lọc'}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* VIEW 1: CLEAN & SPACIOUS ENTERPRISE TABLE VIEW */}
       {viewMode === 'table' ? (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse min-w-[900px]">
+            <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <tr>
-                  <th className="py-3 px-4 min-w-[200px]">{isEn ? 'EMPLOYEE & TITLE' : 'NHÂN SỰ & CHỨC DANH'}</th>
-                  <th className="py-3 px-4 min-w-[230px]">{isEn ? 'DEPARTMENT & UNIT HIERARCHY' : 'CƠ CẤU PHÒNG BAN & ĐƠN VỊ'}</th>
-                  <th className="py-3 px-4 min-w-[160px]">{isEn ? 'CONTACT' : 'LIÊN HỆ'}</th>
-                  <th className="py-3 px-4 min-w-[170px]">{isEn ? 'ASSIGNED DEVICES' : 'THIẾT BỊ ĐANG GIỮ'}</th>
-                  <th className="py-3 px-4 min-w-[170px]">{isEn ? 'ASSIGNED LICENSES' : 'LICENSE ĐANG GIỮ'}</th>
-                  <th className="py-3 px-4 text-right min-w-[100px]">{isEn ? 'ACTIONS' : 'THAO TÁC'}</th>
+                  <th className="py-3 px-3 min-w-[170px]">{isEn ? 'EMPLOYEE & TITLE' : 'NHÂN SỰ & CHỨC DANH'}</th>
+                  <th className="py-3 px-3 min-w-[190px]">{isEn ? 'DEPARTMENT & UNIT' : 'CƠ CẤU PHÒNG BAN & ĐƠN VỊ'}</th>
+                  <th className="py-3 px-3 min-w-[130px]">{isEn ? 'CONTACT' : 'LIÊN HỆ'}</th>
+                  <th className="py-3 px-3 min-w-[150px]">{isEn ? 'ASSIGNED DEVICES' : 'THIẾT BỊ ĐANG GIỮ'}</th>
+                  <th className="py-3 px-3 min-w-[150px]">{isEn ? 'ASSIGNED LICENSES' : 'LICENSE ĐANG GIỮ'}</th>
+                  <th className="py-3 px-3 text-right min-w-[100px]">{isEn ? 'ACTIONS' : 'THAO TÁC'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1088,18 +1111,19 @@ export default function UsersPage() {
                         className="hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors group cursor-pointer"
                         title={isEn ? 'Click row to view & edit details' : 'Nhấp vào hàng để xem & sửa chi tiết'}
                       >
-                        {/* Cột 1: Nhân Sự & Chức Danh */}
-                        <td className="py-3 px-4">
+                        {/* Cột 1: Nhân Sự & Chức Danh (2 dòng: Dòng 1 Tên & Edit, Dòng 2 Chức danh & Cấp trên) */}
+                        <td className="py-3 px-3">
                           <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                              {u.fullName.charAt(0)}
+                              {u.fullName ? u.fullName.charAt(0).toUpperCase() : 'U'}
                             </div>
-                            <div className="min-w-0 space-y-0.5">
+                            <div className="min-w-0 space-y-1">
+                              {/* Dòng 1: Tên & Trạng thái nghỉ việc & Nút sửa */}
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className={`font-bold text-xs truncate transition-colors ${
                                   u.isActive === false ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white group-hover:text-purple-700'
                                 }`}>
-                                  {u.fullName}
+                                  {u.fullName || (isEn ? 'Unnamed' : 'Chưa đặt tên')}
                                 </span>
                                 {u.isActive === false && (
                                   <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-[10px] font-bold border border-rose-200 shrink-0">
@@ -1117,164 +1141,176 @@ export default function UsersPage() {
                                   <Edit className="w-3 h-3" />
                                 </button>
                               </div>
-                              <div className="text-[11px] text-purple-700 dark:text-purple-400 font-semibold truncate">
-                                {u.position || (isEn ? 'Staff' : 'Nhân viên')}
-                              </div>
-                              {u.manager && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const mgr = users.find((item: any) => item.id === u.manager.id || item.email === u.manager.email);
-                                    if (mgr) {
-                                      setViewingUserDetail(mgr);
+
+                              {/* Dòng 2: Chức vụ & Cấp trên / Báo cáo */}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[11px] text-purple-700 dark:text-purple-400 font-semibold truncate">
+                                  {u.position || (isEn ? 'Staff' : 'Nhân viên')}
+                                </span>
+                                {u.manager && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const mgr = users.find((item: any) => item.id === u.manager.id || item.email === u.manager.email);
+                                      if (mgr) {
+                                        setViewingUserDetail(mgr);
+                                        setIsUserDetailModalOpen(true);
+                                      } else {
+                                        fetch(`/api/users/${u.manager.id}`)
+                                          .then((r) => r.json())
+                                          .then((res) => {
+                                            const item = res.data || res.user || res;
+                                            if (item && item.id) {
+                                              setViewingUserDetail(item);
+                                              setIsUserDetailModalOpen(true);
+                                            }
+                                          });
+                                      }
+                                    }}
+                                    title={isEn ? `Click to view manager: ${u.manager.fullName}` : `Bấm để xem hồ sơ cấp trên: ${u.manager.fullName}`}
+                                    className="text-[10px] text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 transition-all cursor-pointer group shadow-2xs"
+                                  >
+                                    <UserCheck className="w-3 h-3 text-slate-500 shrink-0" />
+                                    <span className="group-hover:underline underline-offset-2">{u.manager.fullName}</span>
+                                    <ExternalLink className="w-2.5 h-2.5 text-slate-400 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                  </button>
+                                )}
+                                {u.directReports && u.directReports.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setViewingUserDetail(u);
                                       setIsUserDetailModalOpen(true);
-                                    } else {
-                                      fetch(`/api/users/${u.manager.id}`)
-                                        .then((r) => r.json())
-                                        .then((res) => {
-                                          const item = res.data || res.user || res;
-                                          if (item && item.id) {
-                                            setViewingUserDetail(item);
-                                            setIsUserDetailModalOpen(true);
-                                          }
-                                        });
-                                    }
-                                  }}
-                                  title={isEn ? `Click to view manager: ${u.manager.fullName}` : `Bấm để xem hồ sơ cấp trên: ${u.manager.fullName}`}
-                                  className="text-[10px] text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 transition-all w-fit cursor-pointer group shadow-2xs"
-                                >
-                                  <UserCheck className="w-3 h-3 text-slate-500 shrink-0" />
-                                  <span className="group-hover:underline underline-offset-2">{isEn ? 'Manager: ' : 'Cấp trên: '}{u.manager.fullName}</span>
-                                  <ExternalLink className="w-2.5 h-2.5 text-slate-400 opacity-60 group-hover:opacity-100 transition-opacity" />
-                                </button>
-                              )}
-                              {u.directReports && u.directReports.length > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setViewingUserDetail(u);
-                                    setIsUserDetailModalOpen(true);
-                                  }}
-                                  title={isEn ? `Manages ${u.directReports.length} team members (Click to view)` : `Quản lý trực tiếp ${u.directReports.length} nhân sự (Bấm để xem)`}
-                                  className="text-[10px] text-blue-800 dark:text-blue-200 font-bold flex items-center gap-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/70 px-2 py-0.5 rounded-lg border border-blue-200/80 hover:border-blue-400 transition-all w-fit cursor-pointer group shadow-2xs"
-                                >
-                                  <Users className="w-3 h-3 text-blue-600 shrink-0" />
-                                  <span className="group-hover:underline underline-offset-2">{u.directReports.length} {isEn ? 'reports' : 'nhân sự trực thuộc'}</span>
-                                  <ExternalLink className="w-2.5 h-2.5 text-blue-600 opacity-60 group-hover:opacity-100 transition-opacity" />
-                                </button>
-                              )}
-                              {u.location && (
-                                <div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md border border-emerald-200/80 w-fit">
-                                  <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
-                                  <span>{u.location.name} {u.location.floor ? `(${u.location.floor})` : ''}</span>
-                                </div>
-                              )}
+                                    }}
+                                    title={isEn ? `Manages ${u.directReports.length} team members (Click to view)` : `Quản lý trực tiếp ${u.directReports.length} nhân sự (Bấm để xem)`}
+                                    className="text-[10px] text-blue-800 dark:text-blue-200 font-bold flex items-center gap-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/70 px-1.5 py-0.5 rounded-md border border-blue-200/80 hover:border-blue-400 transition-all cursor-pointer group shadow-2xs"
+                                  >
+                                    <Users className="w-3 h-3 text-blue-600 shrink-0" />
+                                    <span className="group-hover:underline underline-offset-2">{u.directReports.length}</span>
+                                    <ExternalLink className="w-2.5 h-2.5 text-blue-600 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                  </button>
+                                )}
+                                {u.location && (
+                                  <div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md border border-emerald-200/80">
+                                    <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
+                                    <span>{u.location.name}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </td>
 
-                        {/* Cột 2: Cơ cấu Phòng ban Cha / Con & Công ty */}
-                        <td className="py-3 px-4 text-xs">
+                        {/* Cột 2: Cơ cấu Phòng ban Cha / Con & Công ty (2 dòng: Dòng 1 Công ty, Dòng 2 Phòng ban & Role) */}
+                        <td className="py-3 px-3 text-xs">
                           <div className="space-y-1">
-                            {u.companyName && (
-                              <div className="text-indigo-700 dark:text-indigo-300 font-semibold flex items-center gap-1 text-[11px] truncate">
-                                <Building2 className="w-3 h-3 shrink-0" />
+                            {/* Dòng 1: Công ty */}
+                            {u.companyName ? (
+                              <div className="text-indigo-700 dark:text-indigo-300 font-semibold flex items-center gap-1 text-[11px] truncate" title={u.companyName}>
+                                <Building2 className="w-3.5 h-3.5 shrink-0 text-indigo-500" />
                                 <span className="truncate">{u.companyName}</span>
+                              </div>
+                            ) : (
+                              <div className="text-slate-400 text-[10.5px] italic">
+                                {isEn ? 'No company' : 'Chưa phân công ty'}
                               </div>
                             )}
 
-                            {/* Parent -> Child Tree Badges */}
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span
-                                  className={`px-2 py-0.5 rounded-lg text-[10.5px] font-bold inline-flex items-center gap-1 ${
-                                    isIT
-                                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200'
-                                      : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                                  }`}
-                                >
-                                  <span>{isIT ? '⚡' : '📁'}</span>
-                                  <span>{parent || (isEn ? 'Unassigned' : 'Chưa phân phòng')}</span>
-                                </span>
+                            {/* Dòng 2: Phòng ban & Quyền hạn */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span
+                                className={`px-2 py-0.5 rounded-lg text-[10.5px] font-bold inline-flex items-center gap-1 truncate max-w-[150px] ${
+                                  isIT
+                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200'
+                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                }`}
+                                title={child ? `${parent} / ${child}` : parent}
+                              >
+                                <span>{isIT ? '⚡' : '📁'}</span>
+                                <span className="truncate">{child ? `${parent} / ${child}` : (parent || (isEn ? 'Unassigned' : 'Chưa phân phòng'))}</span>
+                              </span>
 
-                                <span
-                                  className={`font-mono font-bold px-1.5 py-0.5 rounded text-[9.5px] whitespace-nowrap inline-block ${
-                                    u.role?.name === 'Admin'
-                                      ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                                      : u.role?.name === 'Asset Manager'
-                                      ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                                      : 'bg-slate-100 text-slate-600'
-                                  }`}
-                                >
-                                  🛡️ {u.role?.name || 'Staff'}
-                                </span>
-                              </div>
-
-                              {child && (
-                                <div className="flex items-center gap-1 pl-2 text-[10.5px] text-slate-600 dark:text-slate-400 font-medium">
-                                  <CornerDownRight className="w-3 h-3 text-purple-500 shrink-0" />
-                                  <span className="text-purple-900 dark:text-purple-300 font-semibold truncate" title={child}>
-                                    {child}
-                                  </span>
-                                </div>
-                              )}
+                              <span
+                                className={`font-mono font-bold px-1.5 py-0.5 rounded text-[9.5px] whitespace-nowrap inline-block shrink-0 ${
+                                  u.role?.name === 'Admin'
+                                    ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                                    : u.role?.name === 'Asset Manager'
+                                    ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                    : 'bg-slate-100 text-slate-600'
+                                }`}
+                              >
+                                🛡️ {u.role?.name || 'Staff'}
+                              </span>
                             </div>
                           </div>
                         </td>
 
-                        {/* Cột 3: Liên Hệ */}
-                        <td className="py-3 px-4 text-xs">
-                          <div className="space-y-0.5">
+                        {/* Cột 3: Liên Hệ (2 dòng: Dòng 1 Email, Dòng 2 Phone) */}
+                        <td className="py-3 px-3 text-xs">
+                          <div className="space-y-1">
                             <span className="text-slate-700 dark:text-slate-300 block truncate font-medium text-[11px]" title={u.email}>
                               ✉️ {u.email}
                             </span>
-                            {u.phone && (
+                            {u.phone ? (
                               <span className="text-slate-500 font-mono block text-[11px]" title={u.phone}>
                                 📞 {u.phone}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 text-[10.5px] italic block">
+                                {isEn ? 'No phone' : 'Chưa có SĐT'}
                               </span>
                             )}
                           </div>
                         </td>
 
-                        {/* Cột 4: Thiết Bị Đang Giữ */}
-                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                        {/* Cột 4: Thiết Bị Đang Giữ (2 dòng: Dòng 1 Tên máy, Dòng 2 Nút thu hồi & SN) */}
+                        <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
                           <div className="space-y-1.5">
-                            {u.assetAssignments?.length > 0 ? (
+                            {u.assetAssignments?.filter((aa: any) => aa?.asset)?.length > 0 ? (
                               <div className="space-y-1">
-                                {u.assetAssignments.map((aa: any) => (
-                                  <div
-                                    key={aa.asset.id}
-                                    className="flex items-center justify-between gap-1 px-2 py-1 rounded-lg bg-blue-50/80 border border-blue-200 text-[11px]"
-                                  >
-                                    <div className="flex items-center gap-1 truncate">
-                                      <QuickLink
-                                        type="asset"
-                                        id={aa.asset.id}
-                                        label={`[${aa.asset.assetTag}] ${aa.asset.name}`}
-                                        icon="💻"
-                                        showIcon={false}
-                                        className="font-bold text-blue-700 text-[11px] truncate"
-                                      />
-                                    </div>
-                                    <button
-                                      onClick={() => handleRevokeAsset(aa.asset.id)}
-                                      title={isEn ? 'Revoke device to inventory' : 'Thu hồi thiết bị về kho'}
-                                      className="text-[10px] text-rose-600 hover:text-rose-800 font-bold px-1.5 py-0.2 bg-white rounded border border-rose-200 shrink-0 hover:bg-rose-50 cursor-pointer"
+                                {u.assetAssignments
+                                  .filter((aa: any) => aa?.asset)
+                                  .map((aa: any) => (
+                                    <div
+                                      key={aa.asset.id}
+                                      className="p-1.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-[11px] space-y-1"
                                     >
-                                      {isEn ? 'Revoke' : 'Thu hồi'}
-                                    </button>
-                                  </div>
-                                ))}
+                                      {/* Dòng 1: Tên thiết bị & Mã tài sản */}
+                                      <div className="flex items-center gap-1 font-bold text-blue-700 dark:text-blue-300 truncate" title={`[${aa.asset.assetTag}] ${aa.asset.name}`}>
+                                        <span className="shrink-0">💻</span>
+                                        <QuickLink
+                                          type="asset"
+                                          id={aa.asset.id}
+                                          label={`[${aa.asset.assetTag}] ${aa.asset.name}`}
+                                          showIcon={false}
+                                          className="font-bold text-blue-700 dark:text-blue-300 text-[11px] truncate hover:underline"
+                                        />
+                                      </div>
+                                      {/* Dòng 2: Nút thu hồi & Serial */}
+                                      <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-blue-100 dark:border-blue-900/50">
+                                        <span className="text-[10px] text-slate-400 font-mono truncate">{aa.asset.serialNumber ? `SN: ${aa.asset.serialNumber}` : ''}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRevokeAsset(aa.asset.id)}
+                                          title={isEn ? 'Revoke device to inventory' : 'Thu hồi thiết bị về kho'}
+                                          className="text-[10px] text-rose-600 hover:text-rose-800 font-bold px-1.5 py-0.2 bg-white dark:bg-slate-800 rounded border border-rose-200 shrink-0 hover:bg-rose-50 cursor-pointer"
+                                        >
+                                          {isEn ? 'Revoke' : 'Thu hồi'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
                               </div>
                             ) : (
                               <span className="text-slate-400 italic text-[11px] block">{isEn ? 'No devices' : 'Chưa gán máy'}</span>
                             )}
 
                             <button
+                              type="button"
                               onClick={() => handleOpenAssignAsset(u)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 cursor-pointer transition-colors"
                             >
                               <Plus className="w-3 h-3" />
                               <span>{isEn ? 'Assign Device' : 'Gán máy'}</span>
@@ -1282,40 +1318,52 @@ export default function UsersPage() {
                           </div>
                         </td>
 
-                        {/* Cột 5: License Đang Giữ */}
-                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                        {/* Cột 5: License Đang Giữ (2 dòng: Dòng 1 Tên license, Dòng 2 Nút thu hồi) */}
+                        <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
                           <div className="space-y-1.5">
-                            {u.licenseAssignments?.length > 0 ? (
+                            {u.licenseAssignments?.filter((la: any) => la?.license)?.length > 0 ? (
                               <div className="space-y-1">
-                                {u.licenseAssignments.map((la: any) => (
-                                  <div
-                                    key={la.license.id}
-                                    className="flex items-center justify-between gap-1 px-2 py-1 rounded-lg bg-purple-50/80 border border-purple-200 text-[11px]"
-                                  >
-                                    <QuickLink
-                                      type="license"
-                                      id={la.license.id}
-                                      label={la.license.name}
-                                      icon="🔑"
-                                      className="font-bold text-purple-900 text-[11px] truncate"
-                                    />
-                                    <button
-                                      onClick={() => handleRevokeLicense(la.license.id, u.id)}
-                                      title={isEn ? 'Revoke license' : 'Thu hồi license'}
-                                      className="text-[10px] text-rose-600 hover:text-rose-800 font-bold px-1.5 py-0.2 bg-white rounded border border-rose-200 shrink-0 hover:bg-rose-50 cursor-pointer"
+                                {u.licenseAssignments
+                                  .filter((la: any) => la?.license)
+                                  .map((la: any) => (
+                                    <div
+                                      key={la.license.id}
+                                      className="p-1.5 rounded-lg bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-[11px] space-y-1"
                                     >
-                                      {isEn ? 'Revoke' : 'Thu hồi'}
-                                    </button>
-                                  </div>
-                                ))}
+                                      {/* Dòng 1: Tên license trọn vẹn */}
+                                      <div className="flex items-center gap-1 font-bold text-purple-900 dark:text-purple-200 truncate" title={la.license.name}>
+                                        <span className="shrink-0">🔑</span>
+                                        <QuickLink
+                                          type="license"
+                                          id={la.license.id}
+                                          label={la.license.name}
+                                          showIcon={false}
+                                          className="font-bold text-purple-900 dark:text-purple-200 text-[11px] truncate hover:underline"
+                                        />
+                                      </div>
+                                      {/* Dòng 2: Nút thu hồi */}
+                                      <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-purple-100 dark:border-purple-900/50">
+                                        <span className="text-[10px] text-slate-400 font-mono truncate">{la.license.seats ? `${la.license.seats} seats` : ''}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRevokeLicense(la.license.id, u.id)}
+                                          title={isEn ? 'Revoke license' : 'Thu hồi license'}
+                                          className="text-[10px] text-rose-600 hover:text-rose-800 font-bold px-1.5 py-0.2 bg-white dark:bg-slate-800 rounded border border-rose-200 shrink-0 hover:bg-rose-50 cursor-pointer"
+                                        >
+                                          {isEn ? 'Revoke' : 'Thu hồi'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
                               </div>
                             ) : (
                               <span className="text-slate-400 italic text-[11px] block">{isEn ? 'No licenses' : 'Chưa cấp Lic'}</span>
                             )}
 
                             <button
+                              type="button"
                               onClick={() => handleOpenAssignLicense(u)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-md border border-blue-200 cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-md border border-purple-200 cursor-pointer transition-colors"
                             >
                               <Plus className="w-3 h-3" />
                               <span>{isEn ? 'Assign Lic' : 'Gán Lic'}</span>
@@ -1323,15 +1371,16 @@ export default function UsersPage() {
                           </div>
                         </td>
 
-                        {/* Cột 6: Thao Tác */}
-                        <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                        {/* Cột 6: Thao Tác (2 dòng: Dòng 1 Nghỉ việc/Khôi phục, Dòng 2 Reset MK2/Sửa/Xóa) */}
+                        <td className="py-3 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex flex-col items-end gap-1.5">
+                            {/* Dòng 1: Nghỉ việc hoặc Khôi phục */}
                             {u.isActive === false ? (
                               <button
                                 type="button"
                                 onClick={() => handleReactivateUser(u)}
                                 title={isEn ? 'Reactivate employee (restore login access)' : 'Khôi phục công tác (Mở khóa đăng nhập)'}
-                                className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                                className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
                               >
                                 <RotateCcw className="w-3 h-3 text-emerald-600" />
                                 <span>{isEn ? 'Reactivate' : 'Khôi phục'}</span>
@@ -1341,35 +1390,41 @@ export default function UsersPage() {
                                 type="button"
                                 onClick={() => handleOpenOffboardModal(u)}
                                 title={isEn ? 'Mark employee as resigned / offboarded' : 'Chuyển sang trạng thái Nghỉ việc & Khóa tài khoản'}
-                                className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                                className="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
                               >
                                 <span>🛑</span>
                                 <span>{isEn ? 'Resign' : 'Nghỉ việc'}</span>
                               </button>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => handleResetSecondaryPassword(u)}
-                              title={isEn ? 'Reset secondary password' : 'Reset Mật Khẩu Cấp 2 khi người dùng quên'}
-                              className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
-                            >
-                              <KeyRound className="w-3 h-3 text-amber-600" />
-                              <span>{isEn ? 'Reset Sec-Pwd' : 'Reset MK2'}</span>
-                            </button>
-                            <button
-                              onClick={() => handleOpenEditUser(u)}
-                              title={isEn ? 'Edit employee details' : 'Chỉnh sửa toàn bộ thông tin nhân viên'}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-xl transition-all cursor-pointer"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteUser(u)}
-                              title={isEn ? 'Delete employee from system' : 'Xóa nhân viên khỏi hệ thống'}
-                              className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl transition-all cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+
+                            {/* Dòng 2: Nút thao tác nhanh Reset MK2, Sửa, Xóa */}
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleResetSecondaryPassword(u)}
+                                title={isEn ? 'Reset secondary password' : 'Reset Mật Khẩu Cấp 2 khi người dùng quên'}
+                                className="px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-md text-[10px] font-bold flex items-center gap-0.5 transition-all cursor-pointer shrink-0"
+                              >
+                                <KeyRound className="w-2.5 h-2.5 text-amber-600" />
+                                <span>{isEn ? 'MK2' : 'MK2'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditUser(u)}
+                                title={isEn ? 'Edit employee details' : 'Chỉnh sửa toàn bộ thông tin nhân viên'}
+                                className="p-1 text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-md transition-all cursor-pointer"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(u)}
+                                title={isEn ? 'Delete employee from system' : 'Xóa nhân viên khỏi hệ thống'}
+                                className="p-1 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-md transition-all cursor-pointer"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>
