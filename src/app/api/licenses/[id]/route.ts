@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
+import { moveToTrash } from '@/lib/trash';
 
 // GET /api/licenses/[id]
 export async function GET(
@@ -216,6 +217,22 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const existing = await prisma.license.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'License not found' }, { status: 404 });
+    }
+
+    // Lưu snapshot license vào Thùng rác trước khi xóa
+    await moveToTrash({
+      entityType: 'LICENSE',
+      entityId: id,
+      entityName: existing.name,
+      entityCode: existing.licenseKey ? `KEY: ${existing.licenseKey.slice(0, 8)}...` : null,
+      dataSnapshot: existing,
+      deletedById: currentUser.userId,
+      deletedByName: currentUser.fullName || currentUser.email,
+    }).catch((err) => console.error('Failed to snapshot license to trash:', err));
+
     await prisma.$transaction(async (tx) => {
       // 1. Unlink documents referencing this license
       await tx.document.updateMany({

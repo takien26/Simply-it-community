@@ -38,6 +38,7 @@ import {
   Wifi,
   ScanLine,
   UserCheck,
+  Trash2,
 } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { useLanguage } from '@/lib/i18n/context';
@@ -364,6 +365,7 @@ export function Sidebar({
     { label: t('nav.documents', 'Hóa đơn & Hợp đồng'), href: '/documents', icon: FileText, permission: 'documents.view' },
     { label: t('nav.categories', 'Quản lý Danh mục'), href: '/categories', icon: Layers, permission: 'categories.view' },
     { label: t('nav.users', 'Nhân sự & Cấp phát'), href: '/users', icon: Users, permission: 'users.view' },
+    { label: t('nav.trash', 'Thùng rác (Recycle Bin)'), href: '/trash', icon: Trash2, permission: 'settings.view' },
     { label: t('nav.settings', 'Cài đặt hệ thống'), href: '/settings', icon: Settings, permission: 'settings.view' },
   ];
 

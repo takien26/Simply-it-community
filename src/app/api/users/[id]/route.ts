@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import { moveToTrash } from '@/lib/trash';
 
 // GET /api/users/[id] - Get user details with asset assignments
 export async function GET(
@@ -141,12 +142,28 @@ export async function DELETE(
       return NextResponse.json({ error: 'Không thể tự xóa tài khoản của chính mình' }, { status: 400 });
     }
 
+    const existingUser = await prisma.user.findUnique({ where: { id } });
+    if (!existingUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Lưu snapshot vào Thùng rác
+    await moveToTrash({
+      entityType: 'USER',
+      entityId: id,
+      entityName: existingUser.fullName,
+      entityCode: existingUser.email,
+      dataSnapshot: existingUser,
+      deletedById: currentUser.userId,
+      deletedByName: currentUser.fullName || currentUser.email,
+    }).catch((err) => console.error('Failed to snapshot user to trash:', err));
+
     await prisma.user.update({
       where: { id },
       data: { isActive: false },
     });
 
-    return NextResponse.json({ success: true, message: 'Đã vô hiệu hóa tài khoản' });
+    return NextResponse.json({ success: true, message: 'Đã chuyển nhân viên vào Thùng rác' });
   } catch (error) {
     console.error('Delete user error:', error);
     return NextResponse.json({ error: 'Delete user failed' }, { status: 500 });

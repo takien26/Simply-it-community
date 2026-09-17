@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
+import { moveToTrash } from '@/lib/trash';
 
 // GET /api/assets/[id]
 export async function GET(
@@ -290,6 +291,17 @@ export async function DELETE(
     if (!existing) {
       return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
     }
+
+    // 0. Lưu snapshot đối tượng vào Thùng rác (Recycle Bin) trước khi xóa
+    await moveToTrash({
+      entityType: 'ASSET',
+      entityId: id,
+      entityName: existing.name,
+      entityCode: existing.assetTag,
+      dataSnapshot: existing,
+      deletedById: currentUser.userId,
+      deletedByName: currentUser.fullName || currentUser.email,
+    }).catch((err) => console.error('Failed to snapshot asset to trash:', err));
 
     // In a transaction, cascade delete/unlink relations to prevent foreign key errors
     await prisma.$transaction(async (tx) => {
