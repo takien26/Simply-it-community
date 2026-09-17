@@ -44,6 +44,8 @@ import {
   MapPin,
   UserCheck,
   ExternalLink,
+  MoreVertical,
+  Eye,
 } from 'lucide-react';
 
 // ==================== HIERARCHICAL DEPARTMENTS MASTER STRUCTURE ====================
@@ -248,10 +250,48 @@ export default function UsersPage() {
   const [isSyncingDirectory, setIsSyncingDirectory] = useState(false);
   const [syncReport, setSyncReport] = useState<any | null>(null);
 
+  // Right-Click Context Menu State
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    user: any | null;
+  }>({ isOpen: false, x: 0, y: 0, user: null });
+
+  const handleRowContextMenu = (e: React.MouseEvent, user: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const menuWidth = 260;
+    const menuHeight = 320;
+    const x = Math.min(e.clientX, window.innerWidth - menuWidth - 10);
+    const y = Math.min(e.clientY, window.innerHeight - menuHeight - 10);
+    setContextMenu({
+      isOpen: true,
+      x: Math.max(10, x),
+      y: Math.max(10, y),
+      user,
+    });
+  };
+
+  // Auto-close Context Menu on click outside or scroll
+  useEffect(() => {
+    if (!contextMenu.isOpen) return;
+    const handleClose = () => {
+      setContextMenu((prev) => ({ ...prev, isOpen: false }));
+    };
+    window.addEventListener('click', handleClose);
+    window.addEventListener('scroll', handleClose, true);
+    return () => {
+      window.removeEventListener('click', handleClose);
+      window.removeEventListener('scroll', handleClose, true);
+    };
+  }, [contextMenu.isOpen]);
+
   // Global ESC Key Listener
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        if (contextMenu.isOpen) setContextMenu((prev) => ({ ...prev, isOpen: false }));
         if (isAddLocationModalOpen) setIsAddLocationModalOpen(false);
         if (isAddUserModalOpen) setIsAddUserModalOpen(false);
         if (isEditUserModalOpen) setIsEditUserModalOpen(false);
@@ -265,7 +305,7 @@ export default function UsersPage() {
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isAddLocationModalOpen, isAddUserModalOpen, isEditUserModalOpen, isAssignAssetModalOpen, isAssignLicenseModalOpen, isUserDetailModalOpen, offboardTargetUserId, isOnboardModalOpen, syncReport]);
+  }, [contextMenu.isOpen, isAddLocationModalOpen, isAddUserModalOpen, isEditUserModalOpen, isAssignAssetModalOpen, isAssignLicenseModalOpen, isUserDetailModalOpen, offboardTargetUserId, isOnboardModalOpen, syncReport]);
 
   
   // Auto-open Detail Modal if URL contains ?id=... or ?userId=...
@@ -1043,370 +1083,278 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* VIEW 1: CLEAN & SPACIOUS ENTERPRISE TABLE VIEW */}
+      {/* QUICK TIP BANNER */}
+      <div className="text-[11.5px] text-slate-500 dark:text-slate-400 flex items-center justify-between px-2 py-1 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-800">
+        <span className="flex items-center gap-1.5 truncate">
+          <span className="text-purple-600 font-bold">💡 Mẹo:</span>
+          <span>{isEn ? 'Right-click on any row (or click ⋮) to open quick actions (assign devices, licenses, offboard, reset MK2...)' : 'Nhấp chuột phải vào bất kỳ hàng nào (hoặc bấm nút ⋮) để mở menu thao tác: Cấp máy, Gán lic, Reset MK2, Nghỉ việc...'}</span>
+        </span>
+        <span className="font-semibold text-slate-700 dark:text-slate-300 shrink-0 ml-2">
+          {filteredUsers.length} {isEn ? 'employees' : 'nhân sự'}
+        </span>
+      </div>
+
+      {/* VIEW 1: COMPACT 1-PAGE ENTERPRISE TABLE VIEW */}
       {viewMode === 'table' ? (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+          <table className="w-full table-fixed text-left text-xs border-collapse">
+            <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider select-none">
+              <tr>
+                <th className="py-3 px-3 w-[30%]">{isEn ? 'EMPLOYEE & CONTACT' : 'NHÂN SỰ & LIÊN HỆ'}</th>
+                <th className="py-3 px-3 w-[24%]">{isEn ? 'ORGANIZATION & ROLE' : 'CƠ CẤU ĐƠN VỊ'}</th>
+                <th className="py-3 px-3 w-[22%]">{isEn ? 'ASSIGNED DEVICES' : 'THIẾT BỊ ĐANG GIỮ'}</th>
+                <th className="py-3 px-3 w-[18%]">{isEn ? 'LICENSES' : 'BẢN QUYỀN (LICENSES)'}</th>
+                <th className="py-3 px-2 text-center w-[6%]">{isEn ? 'ACTIONS' : 'THAO TÁC'}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {loading && users.length === 0 ? (
                 <tr>
-                  <th className="py-3 px-3 min-w-[170px]">{isEn ? 'EMPLOYEE & TITLE' : 'NHÂN SỰ & CHỨC DANH'}</th>
-                  <th className="py-3 px-3 min-w-[190px]">{isEn ? 'DEPARTMENT & UNIT' : 'CƠ CẤU PHÒNG BAN & ĐƠN VỊ'}</th>
-                  <th className="py-3 px-3 min-w-[130px]">{isEn ? 'CONTACT' : 'LIÊN HỆ'}</th>
-                  <th className="py-3 px-3 min-w-[150px]">{isEn ? 'ASSIGNED DEVICES' : 'THIẾT BỊ ĐANG GIỮ'}</th>
-                  <th className="py-3 px-3 min-w-[150px]">{isEn ? 'ASSIGNED LICENSES' : 'LICENSE ĐANG GIỮ'}</th>
-                  <th className="py-3 px-3 text-right min-w-[100px]">{isEn ? 'ACTIONS' : 'THAO TÁC'}</th>
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-purple-600" />
+                    <span>{isEn ? 'Loading employee list...' : 'Đang tải danh sách nhân sự...'}</span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {loading && users.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
-                      <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-purple-600" />
-                      <span>{isEn ? 'Loading employee list...' : 'Đang tải danh sách nhân sự...'}</span>
-                    </td>
-                  </tr>
-                ) : filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
-                      {isEn ? 'No matching employees found' : 'Không tìm thấy nhân viên nào phù hợp'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredUsers.map((u) => {
-                    const { parent, child } = parseDeptParts(u.department);
-                    const isIT = u.department?.includes('IT') || u.department?.includes('CNTT');
+              ) : filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                    {isEn ? 'No matching employees found' : 'Không tìm thấy nhân viên nào phù hợp'}
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((u) => {
+                  const { parent, child } = parseDeptParts(u.department);
+                  const isIT = u.department?.includes('IT') || u.department?.includes('CNTT');
 
-                    return (
-                      <tr
-                        key={u.id}
-                        onClick={() => handleOpenEditUser(u)}
-                        className="hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors group cursor-pointer"
-                        title={isEn ? 'Click row to view & edit details' : 'Nhấp vào hàng để xem & sửa chi tiết'}
-                      >
-                        {/* Cột 1: Nhân Sự & Chức Danh (2 dòng: Dòng 1 Tên & Edit, Dòng 2 Chức danh & Cấp trên) */}
-                        <td className="py-3 px-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                              {u.fullName ? u.fullName.charAt(0).toUpperCase() : 'U'}
-                            </div>
-                            <div className="min-w-0 space-y-1">
-                              {/* Dòng 1: Tên & Trạng thái nghỉ việc & Nút sửa */}
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className={`font-bold text-xs truncate transition-colors ${
-                                  u.isActive === false ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white group-hover:text-purple-700'
-                                }`}>
-                                  {u.fullName || (isEn ? 'Unnamed' : 'Chưa đặt tên')}
-                                </span>
-                                {u.isActive === false && (
-                                  <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-[10px] font-bold border border-rose-200 shrink-0">
-                                    🛑 {isEn ? 'Resigned' : 'Nghỉ việc'}
-                                  </span>
-                                )}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenEditUser(u);
-                                  }}
-                                  title={isEn ? 'Edit details' : 'Sửa thông tin'}
-                                  className="text-slate-400 hover:text-purple-600 p-0.5 shrink-0 cursor-pointer"
-                                >
-                                  <Edit className="w-3 h-3" />
-                                </button>
-                              </div>
-
-                              {/* Dòng 2: Chức vụ & Cấp trên / Báo cáo */}
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[11px] text-purple-700 dark:text-purple-400 font-semibold truncate">
-                                  {u.position || (isEn ? 'Staff' : 'Nhân viên')}
-                                </span>
-                                {u.manager && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const mgr = users.find((item: any) => item.id === u.manager.id || item.email === u.manager.email);
-                                      if (mgr) {
-                                        setViewingUserDetail(mgr);
-                                        setIsUserDetailModalOpen(true);
-                                      } else {
-                                        fetch(`/api/users/${u.manager.id}`)
-                                          .then((r) => r.json())
-                                          .then((res) => {
-                                            const item = res.data || res.user || res;
-                                            if (item && item.id) {
-                                              setViewingUserDetail(item);
-                                              setIsUserDetailModalOpen(true);
-                                            }
-                                          });
-                                      }
-                                    }}
-                                    title={isEn ? `Click to view manager: ${u.manager.fullName}` : `Bấm để xem hồ sơ cấp trên: ${u.manager.fullName}`}
-                                    className="text-[10px] text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 transition-all cursor-pointer group shadow-2xs"
-                                  >
-                                    <UserCheck className="w-3 h-3 text-slate-500 shrink-0" />
-                                    <span className="group-hover:underline underline-offset-2">{u.manager.fullName}</span>
-                                    <ExternalLink className="w-2.5 h-2.5 text-slate-400 opacity-60 group-hover:opacity-100 transition-opacity" />
-                                  </button>
-                                )}
-                                {u.directReports && u.directReports.length > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingUserDetail(u);
-                                      setIsUserDetailModalOpen(true);
-                                    }}
-                                    title={isEn ? `Manages ${u.directReports.length} team members (Click to view)` : `Quản lý trực tiếp ${u.directReports.length} nhân sự (Bấm để xem)`}
-                                    className="text-[10px] text-blue-800 dark:text-blue-200 font-bold flex items-center gap-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/70 px-1.5 py-0.5 rounded-md border border-blue-200/80 hover:border-blue-400 transition-all cursor-pointer group shadow-2xs"
-                                  >
-                                    <Users className="w-3 h-3 text-blue-600 shrink-0" />
-                                    <span className="group-hover:underline underline-offset-2">{u.directReports.length}</span>
-                                    <ExternalLink className="w-2.5 h-2.5 text-blue-600 opacity-60 group-hover:opacity-100 transition-opacity" />
-                                  </button>
-                                )}
-                                {u.location && (
-                                  <div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md border border-emerald-200/80">
-                                    <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
-                                    <span>{u.location.name}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                  return (
+                    <tr
+                      key={u.id}
+                      onClick={() => handleOpenEditUser(u)}
+                      onContextMenu={(e) => handleRowContextMenu(e, u)}
+                      className="hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors group cursor-pointer"
+                      title={isEn ? 'Click to edit. Right-click for quick actions menu' : 'Bấm để sửa thông tin. Nhấp chuột phải để mở menu thao tác'}
+                    >
+                      {/* Cột 1: Nhân Sự & Liên Hệ */}
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                            {u.fullName ? u.fullName.charAt(0).toUpperCase() : 'U'}
                           </div>
-                        </td>
-
-                        {/* Cột 2: Cơ cấu Phòng ban Cha / Con & Công ty (2 dòng: Dòng 1 Công ty, Dòng 2 Phòng ban & Role) */}
-                        <td className="py-3 px-3 text-xs">
-                          <div className="space-y-1">
-                            {/* Dòng 1: Công ty */}
-                            {u.companyName ? (
-                              <div className="text-indigo-700 dark:text-indigo-300 font-semibold flex items-center gap-1 text-[11px] truncate" title={u.companyName}>
-                                <Building2 className="w-3.5 h-3.5 shrink-0 text-indigo-500" />
-                                <span className="truncate">{u.companyName}</span>
-                              </div>
-                            ) : (
-                              <div className="text-slate-400 text-[10.5px] italic">
-                                {isEn ? 'No company' : 'Chưa phân công ty'}
-                              </div>
-                            )}
-
-                            {/* Dòng 2: Phòng ban & Quyền hạn */}
+                          <div className="min-w-0 flex-1">
+                            {/* Dòng 1: Tên + Nghỉ việc badge + Edit icon */}
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span
-                                className={`px-2 py-0.5 rounded-lg text-[10.5px] font-bold inline-flex items-center gap-1 truncate max-w-[150px] ${
-                                  isIT
-                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200'
-                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                                }`}
-                                title={child ? `${parent} / ${child}` : parent}
-                              >
-                                <span>{isIT ? '⚡' : '📁'}</span>
-                                <span className="truncate">{child ? `${parent} / ${child}` : (parent || (isEn ? 'Unassigned' : 'Chưa phân phòng'))}</span>
+                              <span className={`font-bold text-xs truncate transition-colors ${
+                                u.isActive === false ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white group-hover:text-purple-700'
+                              }`}>
+                                {u.fullName || (isEn ? 'Unnamed' : 'Chưa đặt tên')}
                               </span>
+                              {u.isActive === false && (
+                                <span className="px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-[9.5px] font-bold border border-rose-200 shrink-0">
+                                  🛑 {isEn ? 'Resigned' : 'Nghỉ việc'}
+                                </span>
+                              )}
+                            </div>
 
-                              <span
-                                className={`font-mono font-bold px-1.5 py-0.5 rounded text-[9.5px] whitespace-nowrap inline-block shrink-0 ${
-                                  u.role?.name === 'Admin'
-                                    ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                                    : u.role?.name === 'Asset Manager'
-                                    ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                                    : 'bg-slate-100 text-slate-600'
-                                }`}
-                              >
-                                🛡️ {u.role?.name || 'Staff'}
+                            {/* Dòng 2: Chức vụ & Quản lý */}
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                              <span className="text-purple-700 dark:text-purple-400 font-semibold truncate shrink-0">
+                                {u.position || (isEn ? 'Staff' : 'Nhân viên')}
                               </span>
+                              {u.manager && (
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-0.5 truncate" title={`Cấp trên: ${u.manager.fullName}`}>
+                                  <span>👤</span>
+                                  <span className="truncate">{u.manager.fullName}</span>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Dòng 3: Email & Điện thoại */}
+                            <div className="flex items-center gap-2 text-[10.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                              {u.email && (
+                                <span className="truncate text-slate-600 dark:text-slate-300" title={u.email}>
+                                  ✉️ {u.email}
+                                </span>
+                              )}
+                              {u.phone && (
+                                <span className="font-mono text-slate-500 shrink-0" title={u.phone}>
+                                  📞 {u.phone}
+                                </span>
+                              )}
                             </div>
                           </div>
-                        </td>
+                        </div>
+                      </td>
 
-                        {/* Cột 3: Liên Hệ (2 dòng: Dòng 1 Email, Dòng 2 Phone) */}
-                        <td className="py-3 px-3 text-xs">
-                          <div className="space-y-1">
-                            <span className="text-slate-700 dark:text-slate-300 block truncate font-medium text-[11px]" title={u.email}>
-                              ✉️ {u.email}
+                      {/* Cột 2: Cơ Cấu Đơn Vị */}
+                      <td className="py-2.5 px-3 text-xs">
+                        <div className="space-y-1 min-w-0">
+                          {/* Công ty */}
+                          {u.companyName ? (
+                            <div className="text-indigo-700 dark:text-indigo-300 font-semibold flex items-center gap-1 text-[11px] truncate" title={u.companyName}>
+                              <Building2 className="w-3.5 h-3.5 shrink-0 text-indigo-500" />
+                              <span className="truncate">{u.companyName}</span>
+                            </div>
+                          ) : (
+                            <div className="text-slate-400 text-[10.5px] italic">
+                              {isEn ? 'No company' : 'Chưa phân công ty'}
+                            </div>
+                          )}
+
+                          {/* Phòng ban & Role */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1 truncate max-w-[150px] ${
+                                isIT
+                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200'
+                                  : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                              }`}
+                              title={child ? `${parent} / ${child}` : parent}
+                            >
+                              <span>{isIT ? '⚡' : '📁'}</span>
+                              <span className="truncate">{child ? `${parent} / ${child}` : (parent || (isEn ? 'Unassigned' : 'Chưa phân phòng'))}</span>
                             </span>
-                            {u.phone ? (
-                              <span className="text-slate-500 font-mono block text-[11px]" title={u.phone}>
-                                📞 {u.phone}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 text-[10.5px] italic block">
-                                {isEn ? 'No phone' : 'Chưa có SĐT'}
-                              </span>
-                            )}
-                          </div>
-                        </td>
 
-                        {/* Cột 4: Thiết Bị Đang Giữ (2 dòng: Dòng 1 Tên máy, Dòng 2 Nút thu hồi & SN) */}
-                        <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
-                          <div className="space-y-1.5">
-                            {u.assetAssignments?.filter((aa: any) => aa?.asset)?.length > 0 ? (
-                              <div className="space-y-1">
-                                {u.assetAssignments
-                                  .filter((aa: any) => aa?.asset)
-                                  .map((aa: any) => (
-                                    <div
-                                      key={aa.asset.id}
-                                      className="p-1.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-[11px] space-y-1"
-                                    >
-                                      {/* Dòng 1: Tên thiết bị & Mã tài sản */}
-                                      <div className="flex items-center gap-1 font-bold text-blue-700 dark:text-blue-300 truncate" title={`[${aa.asset.assetTag}] ${aa.asset.name}`}>
-                                        <span className="shrink-0">💻</span>
-                                        <QuickLink
-                                          type="asset"
-                                          id={aa.asset.id}
-                                          label={`[${aa.asset.assetTag}] ${aa.asset.name}`}
-                                          showIcon={false}
-                                          className="font-bold text-blue-700 dark:text-blue-300 text-[11px] truncate hover:underline"
-                                        />
-                                      </div>
-                                      {/* Dòng 2: Nút thu hồi & Serial */}
-                                      <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-blue-100 dark:border-blue-900/50">
-                                        <span className="text-[10px] text-slate-400 font-mono truncate">{aa.asset.serialNumber ? `SN: ${aa.asset.serialNumber}` : ''}</span>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRevokeAsset(aa.asset.id)}
-                                          title={isEn ? 'Revoke device to inventory' : 'Thu hồi thiết bị về kho'}
-                                          className="text-[10px] text-rose-600 hover:text-rose-800 font-bold px-1.5 py-0.2 bg-white dark:bg-slate-800 rounded border border-rose-200 shrink-0 hover:bg-rose-50 cursor-pointer"
-                                        >
-                                          {isEn ? 'Revoke' : 'Thu hồi'}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 italic text-[11px] block">{isEn ? 'No devices' : 'Chưa gán máy'}</span>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAssignAsset(u)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 cursor-pointer transition-colors"
+                            <span
+                              className={`font-mono font-bold px-1.5 py-0.2 rounded text-[9.5px] whitespace-nowrap inline-block shrink-0 ${
+                                u.role?.name === 'Admin'
+                                  ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                                  : u.role?.name === 'Asset Manager'
+                                  ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
                             >
-                              <Plus className="w-3 h-3" />
-                              <span>{isEn ? 'Assign Device' : 'Gán máy'}</span>
-                            </button>
+                              🛡️ {u.role?.name || 'Staff'}
+                            </span>
                           </div>
-                        </td>
+                        </div>
+                      </td>
 
-                        {/* Cột 5: License Đang Giữ (2 dòng: Dòng 1 Tên license, Dòng 2 Nút thu hồi) */}
-                        <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
-                          <div className="space-y-1.5">
-                            {u.licenseAssignments?.filter((la: any) => la?.license)?.length > 0 ? (
-                              <div className="space-y-1">
-                                {u.licenseAssignments
-                                  .filter((la: any) => la?.license)
-                                  .map((la: any) => (
-                                    <div
-                                      key={la.license.id}
-                                      className="p-1.5 rounded-lg bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-[11px] space-y-1"
-                                    >
-                                      {/* Dòng 1: Tên license trọn vẹn */}
-                                      <div className="flex items-center gap-1 font-bold text-purple-900 dark:text-purple-200 truncate" title={la.license.name}>
-                                        <span className="shrink-0">🔑</span>
-                                        <QuickLink
-                                          type="license"
-                                          id={la.license.id}
-                                          label={la.license.name}
-                                          showIcon={false}
-                                          className="font-bold text-purple-900 dark:text-purple-200 text-[11px] truncate hover:underline"
-                                        />
-                                      </div>
-                                      {/* Dòng 2: Nút thu hồi */}
-                                      <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-purple-100 dark:border-purple-900/50">
-                                        <span className="text-[10px] text-slate-400 font-mono truncate">{la.license.seats ? `${la.license.seats} seats` : ''}</span>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRevokeLicense(la.license.id, u.id)}
-                                          title={isEn ? 'Revoke license' : 'Thu hồi license'}
-                                          className="text-[10px] text-rose-600 hover:text-rose-800 font-bold px-1.5 py-0.2 bg-white dark:bg-slate-800 rounded border border-rose-200 shrink-0 hover:bg-rose-50 cursor-pointer"
-                                        >
-                                          {isEn ? 'Revoke' : 'Thu hồi'}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 italic text-[11px] block">{isEn ? 'No licenses' : 'Chưa cấp Lic'}</span>
-                            )}
+                      {/* Cột 3: Thiết Bị Đang Giữ (Compact Chips) */}
+                      <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {u.assetAssignments?.filter((aa: any) => aa?.asset)?.length > 0 ? (
+                            u.assetAssignments
+                              .filter((aa: any) => aa?.asset)
+                              .map((aa: any) => (
+                                <span
+                                  key={aa.asset.id}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-[10.5px] text-blue-700 dark:text-blue-300 group/chip max-w-full"
+                                  title={`[${aa.asset.assetTag || 'TS'}] ${aa.asset.name} ${aa.asset.serialNumber ? `(SN: ${aa.asset.serialNumber})` : ''}`}
+                                >
+                                  <Laptop className="w-2.5 h-2.5 text-blue-500 shrink-0" />
+                                  <QuickLink
+                                    type="asset"
+                                    id={aa.asset.id}
+                                    label={`[${aa.asset.assetTag || 'TS'}] ${aa.asset.name}`}
+                                    showIcon={false}
+                                    className="font-bold truncate max-w-[110px] hover:underline"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRevokeAsset(aa.asset.id);
+                                    }}
+                                    title={isEn ? 'Revoke device' : 'Thu hồi thiết bị'}
+                                    className="text-slate-400 hover:text-rose-600 opacity-60 group-hover/chip:opacity-100 transition-opacity p-0.5"
+                                  >
+                                    <X className="w-2.5 h-2.5" />
+                                  </button>
+                                </span>
+                              ))
+                          ) : (
+                            <span className="text-slate-400 italic text-[10.5px]">{isEn ? 'None' : 'Chưa gán máy'}</span>
+                          )}
 
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAssignLicense(u)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-md border border-purple-200 cursor-pointer transition-colors"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span>{isEn ? 'Assign Lic' : 'Gán Lic'}</span>
-                            </button>
-                          </div>
-                        </td>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAssignAsset(u)}
+                            title={isEn ? 'Assign hardware device' : 'Cấp phát thiết bị (Gán máy)'}
+                            className="inline-flex items-center justify-center w-5 h-5 rounded-md text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/60 border border-dashed border-blue-300 hover:border-blue-500 transition-colors cursor-pointer shrink-0"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
 
-                        {/* Cột 6: Thao Tác (2 dòng: Dòng 1 Nghỉ việc/Khôi phục, Dòng 2 Reset MK2/Sửa/Xóa) */}
-                        <td className="py-3 px-3 text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex flex-col items-end gap-1.5">
-                            {/* Dòng 1: Nghỉ việc hoặc Khôi phục */}
-                            {u.isActive === false ? (
-                              <button
-                                type="button"
-                                onClick={() => handleReactivateUser(u)}
-                                title={isEn ? 'Reactivate employee (restore login access)' : 'Khôi phục công tác (Mở khóa đăng nhập)'}
-                                className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
-                              >
-                                <RotateCcw className="w-3 h-3 text-emerald-600" />
-                                <span>{isEn ? 'Reactivate' : 'Khôi phục'}</span>
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenOffboardModal(u)}
-                                title={isEn ? 'Mark employee as resigned / offboarded' : 'Chuyển sang trạng thái Nghỉ việc & Khóa tài khoản'}
-                                className="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
-                              >
-                                <span>🛑</span>
-                                <span>{isEn ? 'Resign' : 'Nghỉ việc'}</span>
-                              </button>
-                            )}
+                      {/* Cột 4: License Đang Giữ (Compact Chips) */}
+                      <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {u.licenseAssignments?.filter((la: any) => la?.license)?.length > 0 ? (
+                            u.licenseAssignments
+                              .filter((la: any) => la?.license)
+                              .map((la: any) => (
+                                <span
+                                  key={la.license.id}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 text-[10.5px] text-purple-800 dark:text-purple-300 group/chip max-w-full"
+                                  title={la.license.name}
+                                >
+                                  <Key className="w-2.5 h-2.5 text-purple-500 shrink-0" />
+                                  <QuickLink
+                                    type="license"
+                                    id={la.license.id}
+                                    label={la.license.name}
+                                    showIcon={false}
+                                    className="font-bold truncate max-w-[110px] hover:underline"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRevokeLicense(la.license.id, u.id);
+                                    }}
+                                    title={isEn ? 'Revoke license' : 'Thu hồi bản quyền'}
+                                    className="text-slate-400 hover:text-rose-600 opacity-60 group-hover/chip:opacity-100 transition-opacity p-0.5"
+                                  >
+                                    <X className="w-2.5 h-2.5" />
+                                  </button>
+                                </span>
+                              ))
+                          ) : (
+                            <span className="text-slate-400 italic text-[10.5px]">{isEn ? 'None' : 'Chưa cấp Lic'}</span>
+                          )}
 
-                            {/* Dòng 2: Nút thao tác nhanh Reset MK2, Sửa, Xóa */}
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleResetSecondaryPassword(u)}
-                                title={isEn ? 'Reset secondary password' : 'Reset Mật Khẩu Cấp 2 khi người dùng quên'}
-                                className="px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-md text-[10px] font-bold flex items-center gap-0.5 transition-all cursor-pointer shrink-0"
-                              >
-                                <KeyRound className="w-2.5 h-2.5 text-amber-600" />
-                                <span>{isEn ? 'MK2' : 'MK2'}</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditUser(u)}
-                                title={isEn ? 'Edit employee details' : 'Chỉnh sửa toàn bộ thông tin nhân viên'}
-                                className="p-1 text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-md transition-all cursor-pointer"
-                              >
-                                <Edit className="w-3 h-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteUser(u)}
-                                title={isEn ? 'Delete employee from system' : 'Xóa nhân viên khỏi hệ thống'}
-                                className="p-1 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-md transition-all cursor-pointer"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAssignLicense(u)}
+                            title={isEn ? 'Assign license' : 'Cấp bản quyền (Gán Lic)'}
+                            className="inline-flex items-center justify-center w-5 h-5 rounded-md text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/60 border border-dashed border-purple-300 hover:border-purple-500 transition-colors cursor-pointer shrink-0"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Cột 5: Thao Tác (3-Dots Menu & Context Trigger) */}
+                      <td className="py-2.5 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const menuWidth = 260;
+                            const menuHeight = 320;
+                            const x = Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 10);
+                            const y = Math.min(rect.bottom + 5, window.innerHeight - menuHeight - 10);
+                            setContextMenu({
+                              isOpen: true,
+                              x: Math.max(10, x),
+                              y: Math.max(10, y),
+                              user: u,
+                            });
+                          }}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          title={isEn ? 'Actions menu (or right-click row)' : 'Menu thao tác (hoặc nhấp chuột phải)'}
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       ) : (
         /* VIEW 2: GRID VIEW */
@@ -2842,6 +2790,135 @@ export default function UsersPage() {
                 {isEn ? 'Close' : 'Đóng'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING RIGHT-CLICK CONTEXT MENU (MENU CHUỘT PHẢI & THAO TÁC) */}
+      {contextMenu.isOpen && contextMenu.user && (
+        <div
+          className="fixed z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-1.5 w-64 backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 select-none"
+          style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header Thông tin nhân sự */}
+          <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+            <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+              {contextMenu.user.fullName}
+            </div>
+            <div className="text-[10px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
+              <span>{contextMenu.user.position || (isEn ? 'Staff' : 'Nhân sự')}</span>
+              {contextMenu.user.companyName && (
+                <>
+                  <span>•</span>
+                  <span className="text-indigo-600 dark:text-indigo-400 truncate">{contextMenu.user.companyName}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Danh mục Thao tác nhanh */}
+          <div className="space-y-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                setViewingUserDetail(contextMenu.user);
+                setIsUserDetailModalOpen(true);
+              }}
+              className="w-full px-2.5 py-1.5 rounded-xl text-left font-medium text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 flex items-center gap-2 transition-colors cursor-pointer"
+            >
+              <Eye className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+              <span>{isEn ? 'View Profile & 360° Assets' : 'Xem Hồ Sơ & Tài Sản 360°'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                handleOpenEditUser(contextMenu.user);
+              }}
+              className="w-full px-2.5 py-1.5 rounded-xl text-left font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-2 transition-colors cursor-pointer"
+            >
+              <Edit className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>{isEn ? 'Edit Information' : 'Chỉnh Sửa Thông Tin'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                handleOpenAssignAsset(contextMenu.user);
+              }}
+              className="w-full px-2.5 py-1.5 rounded-xl text-left font-medium text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-2 transition-colors cursor-pointer"
+            >
+              <Laptop className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>{isEn ? 'Assign Hardware Device' : 'Cấp Phát Thiết Bị (Gán Máy)'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                handleOpenAssignLicense(contextMenu.user);
+              }}
+              className="w-full px-2.5 py-1.5 rounded-xl text-left font-medium text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-300 flex items-center gap-2 transition-colors cursor-pointer"
+            >
+              <Key className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>{isEn ? 'Assign Software License' : 'Cấp Bản Quyền (Gán Lic)'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                handleResetSecondaryPassword(contextMenu.user);
+              }}
+              className="w-full px-2.5 py-1.5 rounded-xl text-left font-medium text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-2 transition-colors cursor-pointer"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span>{isEn ? 'Reset Level 2 Password (MK2)' : 'Reset Mật Khẩu Cấp 2 (MK2)'}</span>
+            </button>
+
+            <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+
+            {contextMenu.user.isActive === false ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                  handleReactivateUser(contextMenu.user);
+                }}
+                className="w-full px-2.5 py-1.5 rounded-xl text-left font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>{isEn ? 'Reactivate Employee' : 'Khôi Phục Công Tác'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                  handleOpenOffboardModal(contextMenu.user);
+                }}
+                className="w-full px-2.5 py-1.5 rounded-xl text-left font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <span className="text-xs">🛑</span>
+                <span>{isEn ? '1-Click Offboard Employee' : 'Quy Trình Nghỉ Việc (Offboard)'}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setContextMenu((prev) => ({ ...prev, isOpen: false }));
+                handleDeleteUser(contextMenu.user);
+              }}
+              className="w-full px-2.5 py-1.5 rounded-xl text-left font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+              <span>{isEn ? 'Delete Employee' : 'Xóa Nhân Viên Khỏi Hệ Thống'}</span>
+            </button>
           </div>
         </div>
       )}
