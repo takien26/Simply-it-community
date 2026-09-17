@@ -259,6 +259,72 @@ function cleanSubDept(fullDept: string | null | undefined): string {
   return fullDept;
 }
 
+function getTeamIcon(code: string | undefined): string {
+  switch ((code || '').toUpperCase()) {
+    case 'IT-GROUP':
+    case 'IT-ALL':
+      return '⚡';
+    case 'IT-HELPDESK':
+      return '🎧';
+    case 'IT-SYSTEM':
+      return '🖥️';
+    case 'IT-NETWORK':
+      return '🌐';
+    case 'IT-APPLICATION':
+    case 'IT-APP':
+      return '💻';
+    case 'IT-SECURITY':
+    case 'IT-SEC':
+      return '🛡️';
+    case 'IT-HARDWARE':
+      return '🔧';
+    case 'IT-ONSITE':
+      return '🏭';
+    case 'IT-LEAD':
+      return '🏛️';
+    default:
+      return '🏢';
+  }
+}
+
+function isUserInITDept(u: any): boolean {
+  if (!u) return false;
+  const dept = (u.department || '').toLowerCase();
+  const pos = (u.position || '').toLowerCase();
+
+  // Loại trừ các phòng ban ngoài CNTT (kể cả có quyền Admin)
+  const isNonITDept =
+    dept.includes('giám đốc') || dept.includes('giam doc') || dept.includes('hđqt') ||
+    dept.includes('kế toán') || dept.includes('ke toan') || dept.includes('tài chính') ||
+    dept.includes('kinh doanh') || dept.includes('bán hàng') ||
+    dept.includes('nhân sự') || dept.includes('nhan su') || dept.includes('hành chính') ||
+    dept.includes('marketing') || dept.includes('truyền thông') || dept.includes('sản xuất') ||
+    dept.includes('tự động hóa') || dept.includes('tu dong hoa');
+
+  if (isNonITDept && !dept.includes('it') && !dept.includes('cntt') && !dept.includes('công nghệ thông tin')) {
+    return false;
+  }
+
+  return (
+    dept.includes('it') ||
+    dept.includes('cntt') ||
+    dept.includes('công nghệ thông tin') ||
+    dept.includes('cong nghe thong tin') ||
+    dept.includes('helpdesk') ||
+    dept.includes('system') ||
+    dept.includes('hệ thống') ||
+    dept.includes('network') ||
+    dept.includes('mạng') ||
+    dept.includes('bảo mật') ||
+    dept.includes('an ninh mạng') ||
+    pos.includes('it') ||
+    pos.includes('cntt') ||
+    pos.includes('helpdesk') ||
+    pos.includes('system admin') ||
+    pos.includes('kỹ sư hệ thống')
+  );
+}
+
 
 const RULE_NAME_EN_MAP: Record<string, string> = {
   '5. An Toàn Thông Tin, Mã Độc & Bảo Mật': '5. Cybersecurity, Malware & Security Incidents',
@@ -485,14 +551,8 @@ export function SupportOrgSettingsTab() {
     loadData();
   }, []);
 
-  // Filter ONLY IT Users for team assignment
-  const itPersonnel = masterData.users.filter((u: any) =>
-    u.department?.includes('IT') ||
-    u.department?.includes('CNTT') ||
-    u.role?.name === 'Admin' ||
-    u.role?.name === 'Asset Manager' ||
-    u.role?.name === 'Ticket Issue'
-  );
+  // Filter STRICTLY users belonging to Ban CNTT (excludes non-IT dept even if Admin)
+  const itPersonnel = masterData.users.filter(isUserInITDept);
 
   // ==================== RULES ACTIONS ====================
   const handleOpenCreateRule = () => {
@@ -958,39 +1018,95 @@ export function SupportOrgSettingsTab() {
     const selectedTeam = masterData.teams.find((t) => t.id === selectedTeamId || t.code === selectedTeamId);
     const isAllTeam = !selectedTeamId || selectedTeam?.code === 'IT-ALL' || selectedTeam?.code === 'IT-GROUP';
 
-    let memberUsers: any[] = [];
     if (isAllTeam) {
-      memberUsers = itPersonnel;
-    } else {
-      const members = selectedTeam?.members || [];
-      memberUsers = members
-        .map((m: any) => {
-          if (m.user) return m.user;
-          return masterData.users.find((u) => u.id === m.userId);
-        })
-        .filter(Boolean);
+      return (
+        <>
+          <option value="">-- Không gán riêng (Cả Team cùng nhận vào Hàng đợi) --</option>
+          {itPersonnel.length > 0 ? (
+            <optgroup label={`── ⚡ TẤT CẢ ĐỘI NGŨ BAN CNTT (${itPersonnel.length} nhân sự) ──`}>
+              {itPersonnel.map((u: any) => (
+                <option key={u.id} value={u.id}>
+                  👤 {u.fullName} {u.position ? `(${u.position})` : u.department ? `· ${cleanSubDept(u.department)}` : ''}
+                </option>
+              ))}
+            </optgroup>
+          ) : (
+            <option disabled value="__NONE__">
+              ⚠️ Chưa có nhân sự nào thuộc Ban CNTT
+            </option>
+          )}
+        </>
+      );
     }
 
-    const groupLabel = isAllTeam
-      ? `── ⚡ TẤT CẢ ĐỘI NGŨ IT TẬP ĐOÀN (${memberUsers.length} nhân sự) ──`
-      : `── 👥 THÀNH VIÊN TRỰC THUỘC [${selectedTeam?.name || 'Team'}] (${memberUsers.length} nhân sự) ──`;
+    // A specific IT Team is selected!
+    // 1. Direct members registered in SupportTeam
+    const dbMembers = (selectedTeam?.members || [])
+      .map((m: any) => m.user || masterData.users.find((u) => u.id === m.userId))
+      .filter((u: any) => u && isUserInITDept(u));
+
+    // 2. Members from itPersonnel whose department matches this team's keywords
+    const teamCode = (selectedTeam?.code || '').toUpperCase();
+    const teamName = (selectedTeam?.name || '').toLowerCase();
+
+    const teamKeywords: Record<string, string[]> = {
+      'IT-HELPDESK': ['helpdesk', 'hỗ trợ kỹ thuật', 'l1', 'l2', 'euc', 'đầu cuối'],
+      'IT-SYSTEM': ['system', 'hệ thống', 'cloud', 'server', 'máy chủ', 'active directory'],
+      'IT-NETWORK': ['network', 'mạng', 'infra', 'wifi', 'switch', 'router', 'firewall', 'vpn'],
+      'IT-APPLICATION': ['application', 'ứng dụng', 'erp', 'bravo', 'sap', 'phần mềm nghiệp vụ', 'app'],
+      'IT-SECURITY': ['security', 'bảo mật', 'an toàn thông tin', 'cybersecurity', 'an ninh'],
+      'IT-HARDWARE': ['hardware', 'phần cứng', 'thiết bị', 'sửa chữa', 'bảo dưỡng'],
+      'IT-ONSITE': ['onsite', 'on-site', 'nhà máy', 'chi nhánh', 'xưởng'],
+      'IT-LEAD': ['lead', 'lãnh đạo', 'cio', 'director', 'trưởng ban', 'phó ban'],
+    };
+
+    const keywords = teamKeywords[teamCode] || [teamName];
+
+    const matchedFromDept = itPersonnel.filter((u: any) => {
+      const uDept = (u.department || '').toLowerCase();
+      const uPos = (u.position || '').toLowerCase();
+      return keywords.some((kw) => uDept.includes(kw) || uPos.includes(kw));
+    });
+
+    // Merge direct members & matched from department, deduplicate by id
+    const specificMembersMap = new Map<string, any>();
+    dbMembers.forEach((u: any) => {
+      if (u?.id) specificMembersMap.set(u.id, u);
+    });
+    matchedFromDept.forEach((u: any) => {
+      if (u?.id) specificMembersMap.set(u.id, u);
+    });
+
+    const specificMembers = Array.from(specificMembersMap.values());
+    const otherITMembers = itPersonnel.filter((u) => !specificMembersMap.has(u.id));
 
     return (
       <>
         <option value="">-- Không gán riêng (Cả Team cùng nhận vào Hàng đợi) --</option>
 
-        {memberUsers.length > 0 ? (
-          <optgroup label={groupLabel}>
-            {memberUsers.map((u: any) => (
+        {specificMembers.length > 0 ? (
+          <optgroup label={`── 👥 NHÂN SỰ THUỘC [${selectedTeam?.name || 'Team'}] (${specificMembers.length} người) ──`}>
+            {specificMembers.map((u: any) => (
               <option key={u.id} value={u.id}>
-                👤 {u.fullName} {u.position ? `(${u.position})` : ''}
+                🎯 {u.fullName} {u.position ? `(${u.position})` : u.department ? `· ${cleanSubDept(u.department)}` : ''}
               </option>
             ))}
           </optgroup>
         ) : (
-          <option disabled value="__NONE__">
-            ⚠️ Team này chưa có thành viên riêng (Cả Team sẽ cùng nhận)
-          </option>
+          <>
+            <option disabled value="__NONE__">
+              ⚠️ Team [{selectedTeam?.name || 'này'}] chưa có nhân sự riêng (Cả Team sẽ cùng nhận qua Hàng đợi)
+            </option>
+            {otherITMembers.length > 0 && (
+              <optgroup label={`── ⚡ ĐIỀU PHỐI TỪ ĐỘI NGŨ CNTT KHÁC (${otherITMembers.length} người) ──`}>
+                {otherITMembers.map((u: any) => (
+                  <option key={u.id} value={u.id}>
+                    👤 {u.fullName} {u.position ? `(${u.position})` : u.department ? `· ${cleanSubDept(u.department)}` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </>
         )}
       </>
     );
@@ -2239,7 +2355,7 @@ export function SupportOrgSettingsTab() {
                     <option value="">-- Chọn Team IT --</option>
                     {masterData.teams.map((t) => (
                       <option key={t.id} value={t.id}>
-                        🏢 {t.name} ({t.code})
+                        {getTeamIcon(t.code)} {t.name} ({t.code})
                       </option>
                     ))}
                   </select>

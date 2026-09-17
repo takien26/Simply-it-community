@@ -10,7 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const teams = await prisma.supportTeam.findMany({
+    let teams = await prisma.supportTeam.findMany({
       include: {
         parent: { select: { id: true, name: true, code: true } },
         children: { select: { id: true, name: true, code: true } },
@@ -24,6 +24,71 @@ export async function GET() {
       },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
+
+    if (teams.length === 0) {
+      // Auto-create standard enterprise IT teams
+      const rootGroup = await prisma.supportTeam.upsert({
+        where: { code: 'IT-GROUP' },
+        update: {},
+        create: {
+          name: 'Ban Công Nghệ Thông Tin (IT Group)',
+          code: 'IT-GROUP',
+          description: 'Ban CNTT Tập đoàn - Quản lý và điều phối toàn bộ dịch vụ IT',
+          sortOrder: 1,
+        },
+      });
+
+      const standardTeams = [
+        { code: 'IT-HELPDESK', name: 'Hỗ Trợ Kỹ Thuật & Helpdesk L1/L2', desc: 'Tiếp nhận yêu cầu ban đầu, hỗ trợ máy tính, máy in, phần mềm văn phòng', sort: 2, qCode: 'Q-HELPDESK', qName: 'Hàng Đợi Helpdesk & Hỗ Trợ Đầu Cuối' },
+        { code: 'IT-SYSTEM', name: 'Quản Trị Hệ Thống & Cloud (System Admin)', desc: 'Quản trị máy chủ Server, Active Directory/Domain, Microsoft 365, Email, Sao lưu dữ liệu', sort: 3, qCode: 'Q-SYSTEM', qName: 'Hàng Đợi Máy Chủ, M365 & Hệ Thống' },
+        { code: 'IT-NETWORK', name: 'Hạ Tầng Mạng & Viễn Thông (Network & Infra)', desc: 'Quản trị mạng WiFi, Switch, Router, Firewall, VPN, đường truyền Internet', sort: 4, qCode: 'Q-NETWORK', qName: 'Hàng Đợi Sự Cố Mạng & WiFi & VPN' },
+        { code: 'IT-APPLICATION', name: 'Ứng Dụng Nghiệp Vụ, ERP & Bravo (Application)', desc: 'Hỗ trợ ERP (SAP/Bravo/FAST), phần mềm Kế toán, CRM, Hóa đơn điện tử, CSDL SQL', sort: 5, qCode: 'Q-APPLICATION', qName: 'Hàng Đợi Phần Mềm Nghiệp Vụ & ERP' },
+        { code: 'IT-SECURITY', name: 'An Toàn Thông Tin & Bảo Mật (Cybersecurity)', desc: 'Quản lý Antivirus Endpoint (EDR), chính sách bảo mật, chống mã độc/Phishing', sort: 6, qCode: 'Q-SECURITY', qName: 'Hàng Đợi An Ninh & Cảnh Báo Mã Độc' },
+        { code: 'IT-HARDWARE', name: 'Quản Lý Thiết Bị & Phần Cứng (Hardware & EUC)', desc: 'Sửa chữa phần cứng laptop, PC, thay thế linh kiện, bảo dưỡng máy in', sort: 7, qCode: 'Q-HARDWARE', qName: 'Hàng Đợi Sửa Chữa & Thay Thế Linh Kiện' },
+        { code: 'IT-ONSITE', name: 'Đội IT On-site Nhà Máy & Chi Nhánh', desc: 'Hỗ trợ trực tiếp người dùng tại nhà máy, kho vận và văn phòng chi nhánh', sort: 8, qCode: 'Q-ONSITE', qName: 'Hàng Đợi IT On-site Chi Nhánh' },
+        { code: 'IT-LEAD', name: 'Ban Lãnh Đạo CNTT (CIO / IT Director)', desc: 'Ban điều hành và quản lý chiến lược công nghệ thông tin', sort: 9, qCode: 'Q-LEAD', qName: 'Hàng Đợi Ban Lãnh Đạo CNTT' },
+      ];
+
+      for (const t of standardTeams) {
+        const team = await prisma.supportTeam.upsert({
+          where: { code: t.code },
+          update: {},
+          create: {
+            code: t.code,
+            name: t.name,
+            description: t.desc,
+            parentId: rootGroup.id,
+            sortOrder: t.sort,
+          },
+        });
+
+        await prisma.supportQueue.upsert({
+          where: { code: t.qCode },
+          update: {},
+          create: {
+            code: t.qCode,
+            name: t.qName,
+            teamId: team.id,
+            isDefault: t.code === 'IT-HELPDESK',
+          },
+        });
+      }
+
+      teams = await prisma.supportTeam.findMany({
+        include: {
+          parent: { select: { id: true, name: true, code: true } },
+          children: { select: { id: true, name: true, code: true } },
+          members: {
+            include: {
+              user: { select: { id: true, fullName: true, email: true, department: true, position: true, avatarUrl: true } },
+            },
+          },
+          queues: { select: { id: true, name: true, code: true, isDefault: true, isActive: true } },
+          _count: { select: { tickets: true, incidents: true, members: true } },
+        },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      });
+    }
 
     return NextResponse.json({ success: true, data: teams });
   } catch (error) {
