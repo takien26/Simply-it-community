@@ -57,6 +57,8 @@ export function GeneralSettingsTab({
   const zipInputRef = useRef<HTMLInputElement>(null);
 
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingCollapsedLogo, setUploadingCollapsedLogo] = useState(false);
+  const fileCollapsedInputRef = useRef<HTMLInputElement>(null);
   const [sampleDataStats, setSampleDataStats] = useState<any>(null);
   const [loadingSampleData, setLoadingSampleData] = useState(false);
   const [sampleToast, setSampleToast] = useState<string | null>(null);
@@ -181,6 +183,37 @@ export function GeneralSettingsTab({
     } finally {
       setUploadingLogo(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleFileUploadCollapsed = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingCollapsedLogo(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          handleChange('app.logo_collapsed', data.url);
+        }
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Tải ảnh thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi tải ảnh');
+    } finally {
+      setUploadingCollapsedLogo(false);
+      if (fileCollapsedInputRef.current) fileCollapsedInputRef.current.value = '';
     }
   };
 
@@ -551,6 +584,7 @@ export function GeneralSettingsTab({
   };
 
   const currentLogo = getSettingValue('app.logo');
+  const currentLogoCollapsed = getSettingValue('app.logo_collapsed');
   const currentPrimaryColor = getSettingValue('app.primary_color') || '#2563EB';
 
   return (
@@ -695,85 +729,180 @@ export function GeneralSettingsTab({
         </div>
 
         {/* LOGO UPLOAD & PICKER SECTION */}
-        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+        <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
           <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold text-slate-800">
-              {isEn ? 'Brand Logo (Upload image or paste URL)' : 'Logo Thương hiệu (Tải ảnh từ máy tính hoặc dán URL)'}
+            <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <Palette className="w-4 h-4 text-blue-600" />
+              <span>{isEn ? 'Brand Logo & Sidebar Display Modes' : 'Logo Thương Hiệu & Xem Trước Thanh Menu (Mở Rộng / Thu Gọn)'}</span>
             </label>
-            {currentLogo && (
-              <button
-                type="button"
-                onClick={() => handleChange('app.logo', '')}
-                className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1 cursor-pointer"
-              >
-                <Trash2 className="w-3 h-3" />
-                <span>{isEn ? 'Reset logo (Use default)' : 'Xóa logo (Dùng icon mặc định)'}</span>
-              </button>
-            )}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            {/* Live Preview Box (Sidebar Style) */}
-            <div className="flex items-center gap-3 p-3 bg-slate-900 text-white rounded-xl border border-slate-800 shrink-0">
-              {currentLogo ? (
-                <div className="w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700 shrink-0">
-                  <img
-                    src={currentLogo}
-                    alt="Logo Preview"
-                    className="w-full h-full object-contain p-1"
-                    onError={(e) => {
-                      (e.target as any).style.display = 'none';
-                    }}
-                  />
+          {/* DUAL LIVE PREVIEW BOXES */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            {/* 1. Expanded Preview */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                {isEn ? '1. Expanded Sidebar Preview (256px)' : '1. Xem trước khi Mở Rộng (256px):'}
+              </span>
+              <div className="flex items-center gap-3 p-3 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-md">
+                {currentLogo ? (
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700/60 p-1 shrink-0">
+                    <img
+                      src={currentLogo}
+                      alt="Logo Preview"
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        (e.target as any).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    style={{ backgroundColor: currentPrimaryColor }}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md shrink-0 font-black text-white text-base"
+                  >
+                    {(getSettingValue('app.name') || 'S').charAt(0)}
+                  </div>
+                )}
+                <div className="text-xs min-w-0 flex-1">
+                  <p className="font-extrabold text-white leading-tight truncate">{getSettingValue('app.name') || 'SIMPLY IT'}</p>
+                  <p className="text-[10px] text-cyan-400 mt-0.5 truncate">{getSettingValue('app.company_name') || 'Do Less - Achieve More'}</p>
+                  <span className="text-[9px] text-emerald-400 font-mono mt-0.5 block">{isEn ? '● Full Sidebar Mode' : '● Chế độ Mở rộng đầy đủ'}</span>
                 </div>
-              ) : (
-                <div
-                  style={{ backgroundColor: currentPrimaryColor }}
-                  className="w-12 h-12 rounded-lg flex items-center justify-center shadow-md shrink-0"
-                >
-                  <Laptop className="w-6 h-6 text-white" />
-                </div>
-              )}
-              <div className="text-xs">
-                <p className="font-bold text-white leading-tight">{getSettingValue('app.name') || 'IT Asset Hub'}</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">{getSettingValue('app.company_name') || 'Công ty TechCorp'}</p>
-                <span className="text-[9px] text-emerald-400 font-mono">{isEn ? '● Sidebar Preview' : '● Xem trước Sidebar'}</span>
               </div>
             </div>
 
-            {/* Upload & Path Controls */}
-            <div className="flex-1 space-y-2 w-full">
-              <div className="flex items-center gap-2">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif,image/x-icon"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="logo-file-picker"
-                />
-                <label
-                  htmlFor="logo-file-picker"
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs transition-colors shrink-0"
-                >
-                  {uploadingLogo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                  <span>{uploadingLogo ? (isEn ? 'Uploading...' : 'Đang tải lên...') : (isEn ? '📂 Choose image file' : '📂 Chọn file ảnh từ máy tính')}</span>
-                </label>
-
-                <input
-                  type="text"
-                  placeholder={isEn ? 'Or paste URL: https://example.com/logo.png' : 'Hoặc dán URL: https://example.com/logo.png'}
-                  value={currentLogo}
-                  onChange={(e) => handleChange('app.logo', e.target.value)}
-                  className="flex-1 p-2 bg-white border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-blue-500"
-                />
+            {/* 2. Collapsed Preview */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                {isEn ? '2. Collapsed Sidebar Preview (68px)' : '2. Xem trước khi Thu Gọn (68px):'}
+              </span>
+              <div className="flex items-center gap-3 p-3 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-md">
+                <div className="w-[68px] flex items-center justify-center py-1">
+                  {(currentLogoCollapsed || currentLogo) ? (
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700/60 p-1 shrink-0 shadow-inner">
+                      <img
+                        src={currentLogoCollapsed || currentLogo}
+                        alt="Collapsed Logo Preview"
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          (e.target as any).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      style={{ backgroundColor: currentPrimaryColor }}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md shrink-0 font-black text-white text-base"
+                    >
+                      {(getSettingValue('app.name') || 'S').charAt(0)}
+                    </div>
+                  )}
+                </div>
+                <div className="text-xs min-w-0 flex-1 border-l border-slate-800 pl-3">
+                  <span className="text-[11px] font-bold text-slate-300 block">
+                    {currentLogoCollapsed ? (isEn ? 'Using dedicated icon' : 'Đang dùng icon vuông riêng') : (isEn ? 'Auto using main logo' : 'Tự động kế thừa từ logo chính')}
+                  </span>
+                  <span className="text-[9px] text-purple-400 font-mono mt-0.5 block">{isEn ? '● Centered 40x40 Icon' : '● Căn giữa khung 68px sắc nét'}</span>
+                </div>
               </div>
+            </div>
+          </div>
 
-              <p className="text-[11px] text-slate-500">
-                {isEn
-                  ? '💡 Supported formats: PNG, JPG, SVG, WebP, ICO (Recommended: 1:1 square or transparent background).'
-                  : '💡 Hỗ trợ các định dạng ảnh: PNG, JPG, SVG, WebP, ICO (Kích thước đề xuất: vuông hoặc tỉ lệ 1:1 hoặc chữ nhật nhỏ, nền trong suốt).'}
-              </p>
+          {/* MAIN LOGO CONTROLS */}
+          <div className="pt-3 border-t border-slate-200/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-800">
+                {isEn ? 'Main Logo (Full header display)' : 'Logo Chính (Hiển thị khi mở rộng & toàn hệ thống):'}
+              </label>
+              {currentLogo && (
+                <button
+                  type="button"
+                  onClick={() => handleChange('app.logo', '')}
+                  className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>{isEn ? 'Reset main logo' : 'Xóa logo chính'}</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif,image/x-icon"
+                onChange={handleFileUpload}
+                className="hidden"
+                id="logo-file-picker"
+              />
+              <label
+                htmlFor="logo-file-picker"
+                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0"
+              >
+                {uploadingLogo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                <span>{uploadingLogo ? (isEn ? 'Uploading...' : 'Đang tải lên...') : (isEn ? '📂 Upload Main Logo' : '📂 Tải Logo Chính Từ Máy')}</span>
+              </label>
+
+              <input
+                type="text"
+                placeholder={isEn ? 'Or paste URL: https://example.com/logo.png' : 'Hoặc dán URL logo chính: https://example.com/logo.png'}
+                value={currentLogo}
+                onChange={(e) => handleChange('app.logo', e.target.value)}
+                className="flex-1 p-2 bg-white border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* COLLAPSED / SQUARE LOGO CONTROLS */}
+          <div className="pt-3 border-t border-slate-200/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-xs font-bold text-slate-800">
+                  {isEn ? 'Collapsed Mode Logo (Optional 1:1 Square Icon / Favicon):' : 'Logo Khi Thu Gọn (Tùy chọn Biểu tượng vuông 1:1):'}
+                </label>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {isEn
+                    ? '💡 Recommended if your main logo is a wide rectangular banner. If empty, the system automatically scales your main logo.'
+                    : '💡 Khuyên dùng khi logo chính của bạn dạng chữ ngang dài. Nếu để trống, hệ thống sẽ tự động co giãn logo chính cân đối.'}
+                </p>
+              </div>
+              {currentLogoCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => handleChange('app.logo_collapsed', '')}
+                  className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>{isEn ? 'Remove icon logo' : 'Xóa icon thu gọn'}</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <input
+                type="file"
+                ref={fileCollapsedInputRef}
+                accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif,image/x-icon"
+                onChange={handleFileUploadCollapsed}
+                className="hidden"
+                id="logo-collapsed-file-picker"
+              />
+              <label
+                htmlFor="logo-collapsed-file-picker"
+                className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs transition-colors shrink-0"
+              >
+                {uploadingCollapsedLogo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                <span>{uploadingCollapsedLogo ? (isEn ? 'Uploading...' : 'Đang tải lên...') : (isEn ? '📂 Upload Square Icon' : '📂 Tải Icon Vuông Khi Thu Gọn')}</span>
+              </label>
+
+              <input
+                type="text"
+                placeholder={isEn ? 'Or paste square icon URL: https://example.com/icon.png' : 'Hoặc dán URL icon vuông: https://example.com/icon.png'}
+                value={currentLogoCollapsed}
+                onChange={(e) => handleChange('app.logo_collapsed', e.target.value)}
+                className="flex-1 p-2 bg-white border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-purple-500"
+              />
             </div>
           </div>
         </div>

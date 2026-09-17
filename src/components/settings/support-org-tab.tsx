@@ -34,6 +34,9 @@ import {
   FolderTree,
   Clock,
   RotateCcw,
+  Copy,
+  ExternalLink,
+  MousePointerClick,
 } from 'lucide-react';
 
 interface Team {
@@ -433,6 +436,54 @@ export function SupportOrgSettingsTab() {
   const [editingQueueId, setEditingQueueId] = useState<string | null>(null);
 
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
+
+  // Context Menu State (Chuột phải mở menu thao tác nhanh)
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    type: 'RULE' | 'TEAM' | 'QUEUE' | 'SLA';
+    item: any;
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    type: 'QUEUE',
+    item: null,
+  });
+
+  const handleContextMenu = (e: React.MouseEvent, type: 'RULE' | 'TEAM' | 'QUEUE' | 'SLA', item: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const menuWidth = 230;
+    const menuHeight = 190;
+    const x = Math.min(e.clientX, window.innerWidth - menuWidth - 12);
+    const y = Math.min(e.clientY, window.innerHeight - menuHeight - 12);
+    setContextMenu({
+      visible: true,
+      x: Math.max(10, x),
+      y: Math.max(10, y),
+      type,
+      item,
+    });
+  };
+
+  useEffect(() => {
+    const handleCloseMenu = () => {
+      setContextMenu((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+    };
+    window.addEventListener('click', handleCloseMenu);
+    window.addEventListener('scroll', handleCloseMenu, true);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleCloseMenu();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('click', handleCloseMenu);
+      window.removeEventListener('scroll', handleCloseMenu, true);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   // Team / Scope Form state
   const [teamForm, setTeamForm] = useState({
@@ -1377,30 +1428,37 @@ export function SupportOrgSettingsTab() {
       {/* TAB 1: LUẬT PHÂN TUYẾN (ROUTING RULES) */}
       {activeTab === 'RULES' && (
         <div className="space-y-4">
-          <div className="p-3 bg-purple-50/70 dark:bg-purple-950/30 rounded-2xl border border-purple-100 dark:border-purple-900 text-xs text-purple-900 dark:text-purple-200 flex items-center justify-between">
+          <div className="p-3 bg-purple-50/70 dark:bg-purple-950/30 rounded-2xl border border-purple-100 dark:border-purple-900 text-xs text-purple-900 dark:text-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span>{isEn ? (
               <>🛡️ <strong>Visible to IT Manager & Admin only:</strong> Rules are evaluated automatically by <strong>Priority (lowest number first)</strong>. Matching rules will route directly to that Team.</>
             ) : (
               <>🛡️ <strong>Chỉ IT Manager & Admin thấy:</strong> Các luật được quét tự động theo thứ tự <strong>Ưu tiên (Số nhỏ chạy trước)</strong>. Khớp luật nào sẽ chuyển ngay vào Team đó.</>
             )}</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white text-purple-700 rounded-lg text-[11px] font-bold shrink-0 border border-purple-200 shadow-2xs">
+              <MousePointerClick className="w-3.5 h-3.5" />
+              <span>{isEn ? 'Tip: Click card to edit, right-click for options' : '💡 Mẹo: Nhấp vào thẻ để sửa, chuột phải để mở thao tác'}</span>
+            </span>
           </div>
 
           <div className="space-y-3">
             {rules.map((r) => (
               <div
                 key={r.id}
-                className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center md:justify-between gap-4 ${
+                onClick={() => handleOpenEditRule(r)}
+                onContextMenu={(e) => handleContextMenu(e, 'RULE', r)}
+                className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center md:justify-between gap-4 cursor-pointer hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-md group ${
                   r.isActive
                     ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs'
                     : 'bg-slate-50/70 border-slate-200 opacity-60'
                 }`}
+                title={isEn ? 'Click to edit, right-click for options' : 'Nhấp để sửa luật phân tuyến, chuột phải để mở menu thao tác'}
               >
                 <div className="space-y-2 flex-1">
                   <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="font-mono font-black text-xs px-2.5 py-0.5 rounded-lg bg-purple-100 text-purple-800 border border-purple-200 shadow-2xs">
+                    <span className="font-mono font-black text-xs px-2.5 py-0.5 rounded-lg bg-purple-100 text-purple-800 border border-purple-200 shadow-2xs group-hover:bg-purple-200 transition-colors">
                       {isEn ? 'Priority' : 'Ưu tiên'} #{r.priority}
                     </span>
-                    <h4 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <h4 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2 group-hover:text-purple-700 transition-colors">
                       <span>{getLocalizedRuleName(r.name, isEn)}</span>
                       {!r.isActive && (
                         <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-600 text-[10px] font-bold">
@@ -1456,7 +1514,10 @@ export function SupportOrgSettingsTab() {
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => handleToggleRuleActive(r)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleRuleActive(r);
+                      }}
                       title={r.isActive ? 'Tạm ngắt luật này' : 'Kích hoạt luật này'}
                       className={`p-1.5 rounded-xl border transition-colors cursor-pointer ${
                         r.isActive ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-slate-400 bg-slate-100 border-slate-200'
@@ -1467,7 +1528,10 @@ export function SupportOrgSettingsTab() {
 
                     <button
                       type="button"
-                      onClick={() => handleOpenEditRule(r)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEditRule(r);
+                      }}
                       title="Chỉnh sửa sâu luật phân tuyến"
                       className="p-1.5 text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-xl transition-colors cursor-pointer"
                     >
@@ -1476,7 +1540,10 @@ export function SupportOrgSettingsTab() {
 
                     <button
                       type="button"
-                      onClick={() => handleDeleteRule(r)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteRule(r);
+                      }}
                       title="Xóa luật này"
                       className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl transition-colors cursor-pointer"
                     >
@@ -1525,10 +1592,16 @@ export function SupportOrgSettingsTab() {
                     const isAllTeam = t.code === 'IT-ALL';
 
                     return (
-                      <tr key={t.id} className="hover:bg-purple-50/30 transition-colors">
+                      <tr
+                        key={t.id}
+                        onClick={() => handleOpenEditTeam(t)}
+                        onContextMenu={(e) => handleContextMenu(e, 'TEAM', t)}
+                        className="hover:bg-purple-50/50 dark:hover:bg-purple-950/30 transition-colors cursor-pointer group"
+                        title={isEn ? 'Click to edit, right-click for options' : 'Nhấp để sửa Team & Thành viên, chuột phải để mở menu thao tác'}
+                      >
                         <td className="py-3.5 px-4 font-bold text-purple-900 dark:text-purple-300">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-[11px] px-2 py-0.5 rounded-lg bg-purple-100 text-purple-800 font-bold border border-purple-200">
+                            <span className="font-mono text-[11px] px-2 py-0.5 rounded-lg bg-purple-100 text-purple-800 font-bold border border-purple-200 group-hover:underline">
                               {t.code}
                             </span>
                             <span className="font-bold text-slate-900 dark:text-white text-xs">{t.name}</span>
@@ -1574,7 +1647,10 @@ export function SupportOrgSettingsTab() {
                           <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
-                              onClick={() => handleOpenEditTeam(t)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditTeam(t);
+                              }}
                               title={isEn ? 'Edit Team & Member assignments' : 'Chỉnh sửa Team & Phân công thành viên'}
                               className="p-1.5 text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-xl transition-colors cursor-pointer"
                             >
@@ -1584,7 +1660,10 @@ export function SupportOrgSettingsTab() {
                             {!isAllTeam && (
                               <button
                                 type="button"
-                                onClick={() => handleDeleteTeam(t)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTeam(t);
+                                }}
                                 title={isEn ? 'Delete this Team' : 'Xóa Team này'}
                                 className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl transition-colors cursor-pointer"
                               >
@@ -1606,8 +1685,12 @@ export function SupportOrgSettingsTab() {
       {/* TAB 3: HÀNG ĐỢI (QUEUES) */}
       {activeTab === 'QUEUES' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 gap-2">
             <span>{isEn ? 'Each Team can have multiple dedicated queues. The ' : 'Mỗi Team có thể có nhiều Hàng đợi chuyên trách. Hàng đợi '}<strong>Fallback Queue</strong>{isEn ? ' is the safe pickup queue when no Rule matches.' : ' là nơi tiếp nhận an toàn khi không khớp Rule nào.'}</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 text-purple-700 rounded-lg text-[11px] font-bold shrink-0 border border-purple-200">
+              <MousePointerClick className="w-3.5 h-3.5" />
+              <span>{isEn ? 'Tip: Click row to edit, right-click for actions' : '💡 Mẹo: Nhấp vào dòng để sửa, chuột phải để mở thao tác'}</span>
+            </span>
           </div>
 
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs">
@@ -1624,8 +1707,14 @@ export function SupportOrgSettingsTab() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {masterData.queues.map((q) => (
-                  <tr key={q.id} className="hover:bg-purple-50/30 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-purple-600">{q.code}</td>
+                  <tr
+                    key={q.id}
+                    onClick={() => handleOpenEditQueue(q)}
+                    onContextMenu={(e) => handleContextMenu(e, 'QUEUE', q)}
+                    className="hover:bg-purple-50/50 dark:hover:bg-purple-950/30 transition-colors cursor-pointer group"
+                    title={isEn ? 'Click to edit, right-click for options' : 'Nhấp để sửa hàng đợi, chuột phải để mở menu thao tác'}
+                  >
+                    <td className="py-3.5 px-4 font-mono font-bold text-purple-600 group-hover:underline">{q.code}</td>
                     <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">{q.name}</td>
                     <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300 font-semibold">{q.team?.name || 'N/A'}</td>
                     <td className="py-3.5 px-4">
@@ -1648,7 +1737,10 @@ export function SupportOrgSettingsTab() {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           type="button"
-                          onClick={() => handleOpenEditQueue(q)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditQueue(q);
+                          }}
                           title={isEn ? 'Edit queue' : 'Sửa hàng đợi'}
                           className="p-1.5 text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-xl transition-colors cursor-pointer"
                         >
@@ -1657,7 +1749,10 @@ export function SupportOrgSettingsTab() {
                         {!q.isDefault && (
                           <button
                             type="button"
-                            onClick={() => handleDeleteQueue(q)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteQueue(q);
+                            }}
                             title={isEn ? 'Delete queue' : 'Xóa hàng đợi'}
                             className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl transition-colors cursor-pointer"
                           >
@@ -1771,15 +1866,18 @@ export function SupportOrgSettingsTab() {
                     return (
                       <tr
                         key={policy.id}
-                        className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors ${
+                        onClick={() => handleOpenEditSla(policy)}
+                        onContextMenu={(e) => handleContextMenu(e, 'SLA', policy)}
+                        className={`hover:bg-purple-50/50 dark:hover:bg-purple-950/30 transition-colors cursor-pointer group ${
                           !policy.isActive ? 'opacity-50 bg-slate-50/30' : ''
                         }`}
+                        title={isEn ? 'Click to edit, right-click for options' : 'Nhấp để sửa quy chuẩn SLA, chuột phải để mở menu thao tác'}
                       >
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-2.5">
                             <span className="text-lg shrink-0">{policy.icon || '⏱️'}</span>
                             <div className="min-w-0">
-                              <strong className="block font-bold text-slate-900 dark:text-white truncate">
+                              <strong className="block font-bold text-slate-900 dark:text-white truncate group-hover:text-purple-700 transition-colors">
                                 {policy.name}
                               </strong>
                               <span className="font-mono text-[10.5px] font-bold text-slate-400">
@@ -1820,7 +1918,10 @@ export function SupportOrgSettingsTab() {
                         <td className="py-3.5 px-4 text-center">
                           <button
                             type="button"
-                            onClick={() => handleToggleSlaPolicy(policy.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleSlaPolicy(policy.id);
+                            }}
                             className={`px-2.5 py-1 rounded-full text-[10.5px] font-bold transition-all cursor-pointer ${
                               policy.isActive
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
@@ -1835,7 +1936,10 @@ export function SupportOrgSettingsTab() {
                           <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
-                              onClick={() => handleOpenEditSla(policy)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditSla(policy);
+                              }}
                               title={isEn ? 'Edit this SLA policy' : 'Chỉnh sửa quy chuẩn SLA này'}
                               className="p-1.5 text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-xl transition-colors cursor-pointer"
                             >
@@ -1844,7 +1948,10 @@ export function SupportOrgSettingsTab() {
 
                             <button
                               type="button"
-                              onClick={() => handleDeleteSlaPolicy(policy)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSlaPolicy(policy);
+                              }}
                               title={isEn ? 'Delete this SLA policy' : 'Xóa quy chuẩn SLA này'}
                               className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl transition-colors cursor-pointer"
                             >
@@ -2680,6 +2787,156 @@ export function SupportOrgSettingsTab() {
                 <span>{editingSlaId ? 'Cập Nhật Quy Chuẩn SLA' : 'Lưu Quy Chuẩn SLA Mới'}</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* GLOBAL RIGHT-CLICK CONTEXT MENU */}
+      {contextMenu.visible && contextMenu.item && (
+        <div
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          className="fixed z-50 min-w-[220px] bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 animate-in fade-in zoom-in-95 duration-100"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center justify-between">
+            <span>
+              {contextMenu.type === 'RULE' && (isEn ? 'Routing Rule Actions' : 'Thao Tác Luật Phân Tuyến')}
+              {contextMenu.type === 'TEAM' && (isEn ? 'Support Team Actions' : 'Thao Tác Team IT')}
+              {contextMenu.type === 'QUEUE' && (isEn ? 'Queue Actions' : 'Thao Tác Hàng Đợi')}
+              {contextMenu.type === 'SLA' && (isEn ? 'SLA Policy Actions' : 'Thao Tác Quy Chuẩn SLA')}
+            </span>
+            <span className="font-mono text-purple-600">
+              {contextMenu.item.code || `#${contextMenu.item.priority || ''}`}
+            </span>
+          </div>
+
+          <div className="py-1 space-y-0.5">
+            {/* Edit action */}
+            <button
+              type="button"
+              onClick={() => {
+                const item = contextMenu.item;
+                setContextMenu((prev) => ({ ...prev, visible: false }));
+                if (contextMenu.type === 'RULE') handleOpenEditRule(item);
+                if (contextMenu.type === 'TEAM') handleOpenEditTeam(item);
+                if (contextMenu.type === 'QUEUE') handleOpenEditQueue(item);
+                if (contextMenu.type === 'SLA') handleOpenEditSla(item);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-purple-50 hover:text-purple-700 dark:hover:bg-purple-950/40 dark:hover:text-purple-300 transition-colors cursor-pointer"
+            >
+              <Edit className="w-4 h-4 text-purple-600" />
+              <span>{isEn ? 'Edit / Configure' : 'Chỉnh sửa / Cấu hình chi tiết'}</span>
+            </button>
+
+            {/* Copy code if code exists */}
+            {contextMenu.item.code && (
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(contextMenu.item.code);
+                  setContextMenu((prev) => ({ ...prev, visible: false }));
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <Copy className="w-4 h-4 text-slate-500" />
+                <span>{isEn ? 'Copy Code' : 'Sao chép mã'} ({contextMenu.item.code})</span>
+              </button>
+            )}
+
+            {/* Toggle Active for Rule */}
+            {contextMenu.type === 'RULE' && (
+              <button
+                type="button"
+                onClick={() => {
+                  const item = contextMenu.item;
+                  setContextMenu((prev) => ({ ...prev, visible: false }));
+                  handleToggleRuleActive(item);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <Power className="w-4 h-4 text-amber-600" />
+                <span>{contextMenu.item.isActive ? (isEn ? 'Disable Rule' : 'Tạm ngắt kích hoạt') : (isEn ? 'Enable Rule' : 'Bật kích hoạt luật')}</span>
+              </button>
+            )}
+
+            {/* Toggle Active for SLA */}
+            {contextMenu.type === 'SLA' && (
+              <button
+                type="button"
+                onClick={() => {
+                  const id = contextMenu.item.id;
+                  setContextMenu((prev) => ({ ...prev, visible: false }));
+                  handleToggleSlaPolicy(id);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <Power className="w-4 h-4 text-amber-600" />
+                <span>{contextMenu.item.isActive ? (isEn ? 'Pause Policy' : 'Tạm dừng quy chuẩn') : (isEn ? 'Activate Policy' : 'Bật áp dụng quy chuẩn')}</span>
+              </button>
+            )}
+
+            <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
+
+            {/* Delete action */}
+            {contextMenu.type === 'RULE' && (
+              <button
+                type="button"
+                onClick={() => {
+                  const item = contextMenu.item;
+                  setContextMenu((prev) => ({ ...prev, visible: false }));
+                  handleDeleteRule(item);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isEn ? 'Delete Rule' : 'Xóa luật phân tuyến'}</span>
+              </button>
+            )}
+
+            {contextMenu.type === 'TEAM' && contextMenu.item.code !== 'IT-ALL' && contextMenu.item.code !== 'IT-GROUP' && (
+              <button
+                type="button"
+                onClick={() => {
+                  const item = contextMenu.item;
+                  setContextMenu((prev) => ({ ...prev, visible: false }));
+                  handleDeleteTeam(item);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isEn ? 'Delete Team' : 'Xóa Team này'}</span>
+              </button>
+            )}
+
+            {contextMenu.type === 'QUEUE' && !contextMenu.item.isDefault && (
+              <button
+                type="button"
+                onClick={() => {
+                  const item = contextMenu.item;
+                  setContextMenu((prev) => ({ ...prev, visible: false }));
+                  handleDeleteQueue(item);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isEn ? 'Delete Queue' : 'Xóa hàng đợi'}</span>
+              </button>
+            )}
+
+            {contextMenu.type === 'SLA' && (
+              <button
+                type="button"
+                onClick={() => {
+                  const item = contextMenu.item;
+                  setContextMenu((prev) => ({ ...prev, visible: false }));
+                  handleDeleteSlaPolicy(item);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isEn ? 'Delete Policy' : 'Xóa quy chuẩn SLA'}</span>
+              </button>
+            )}
           </div>
         </div>
       )}

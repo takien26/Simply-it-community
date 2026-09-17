@@ -83,6 +83,7 @@ export function Sidebar({
   const [appName, setAppName] = useState('SIMPLY IT');
   const [companyName, setCompanyName] = useState('Do Less - Achieve More');
   const [appLogo, setAppLogo] = useState('/logo-icon.png');
+  const [appLogoCollapsed, setAppLogoCollapsed] = useState<string>('');
   const [logoError, setLogoError] = useState(false);
   const [primaryColor, setPrimaryColor] = useState('#1976D2');
   const [notifSummary, setNotifSummary] = useState<{ ticketsTotal: number; licensesExpiring: number; servicesExpiring: number }>({
@@ -192,10 +193,12 @@ export function Sidebar({
           const appNameSetting = data.data.find((s: any) => s.key === 'app.name');
           const companySetting = data.data.find((s: any) => s.key === 'app.company_name');
           const logoSetting = data.data.find((s: any) => s.key === 'app.logo');
+          const logoCollapsedSetting = data.data.find((s: any) => s.key === 'app.logo_collapsed');
           const colorSetting = data.data.find((s: any) => s.key === 'app.primary_color');
           if (appNameSetting?.value) setAppName(appNameSetting.value);
           if (companySetting?.value) setCompanyName(companySetting.value);
           if (logoSetting?.value) setAppLogo(logoSetting.value);
+          if (logoCollapsedSetting?.value) setAppLogoCollapsed(logoCollapsedSetting.value);
           if (colorSetting?.value) setPrimaryColor(colorSetting.value);
         }
       })
@@ -411,13 +414,23 @@ export function Sidebar({
         }`}
       >
         {/* Brand Header */}
-        <div className="p-3 border-b border-slate-800 flex items-center justify-between gap-2 h-16 shrink-0">
-          <div className="flex items-center space-x-3 min-w-0 flex-1 overflow-hidden">
-            {appLogo && !logoError ? (
-              <div className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center overflow-hidden border border-slate-700/50 p-1.5 shrink-0 shadow-inner">
+        <div
+          className={`border-b border-slate-800 flex items-center h-16 shrink-0 transition-all ${
+            isExpanded ? 'px-3 py-2 justify-between gap-2' : 'justify-center p-2'
+          }`}
+        >
+          <Link
+            href="/dashboard"
+            className={`flex items-center min-w-0 transition-all group ${
+              isExpanded ? 'space-x-3 flex-1 overflow-hidden' : 'justify-center'
+            }`}
+            title={!isExpanded ? `${appName} — ${companyName}` : undefined}
+          >
+            {((!isExpanded && appLogoCollapsed ? appLogoCollapsed : appLogo) && !logoError) ? (
+              <div className="w-10 h-10 rounded-xl bg-slate-800/90 flex items-center justify-center overflow-hidden border border-slate-700/60 p-1.5 shrink-0 shadow-inner group-hover:border-blue-500/50 transition-colors">
                 <img
-                  src={appLogo}
-                  alt="SIMPLY IT Logo"
+                  src={!isExpanded && appLogoCollapsed ? appLogoCollapsed : appLogo}
+                  alt={appName}
                   className="w-full h-full object-contain"
                   onError={() => setLogoError(true)}
                 />
@@ -425,9 +438,9 @@ export function Sidebar({
             ) : (
               <div
                 style={{ backgroundColor: primaryColor || '#1976D2' }}
-                className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0 font-extrabold text-white text-lg"
+                className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0 font-extrabold text-white text-lg group-hover:scale-105 transition-transform"
               >
-                S
+                {appName.charAt(0) || 'S'}
               </div>
             )}
 
@@ -437,7 +450,7 @@ export function Sidebar({
                 <p className="text-[10px] text-cyan-400 font-medium truncate" title={companyName}>{companyName}</p>
               </div>
             )}
-          </div>
+          </Link>
 
           {/* Pin / Unpin Button */}
           {isExpanded && (
