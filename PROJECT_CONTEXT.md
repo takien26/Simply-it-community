@@ -1,117 +1,59 @@
-# 🧠 BỐI CẢNH DỰ ÁN & TIẾN ĐỘ PHÁT TRIỂN (PROJECT CONTEXT & MEMORY)
+# Simply IT - Project Context & AI Memory Handover (Bàn Giao Ngữ Cảnh)
 
-> **Mục đích**: File này lưu trữ toàn bộ ngữ cảnh trao đổi, kiến trúc hệ thống, lịch sử công việc và quy ước phát triển của dự án **Simply IT**. Khi chuyển sang máy tính khác hoặc mở phiên làm việc mới, AI Agent chỉ cần đọc file này là hiểu ngay 100% bối cảnh và tiếp tục công việc liền mạch mà không cần giải thích lại từ đầu.
-
----
-
-## 📌 1. Tổng Quan Dự Án & Công Nghệ
-
-- **Tên dự án**: **Simply IT** (Hệ thống Quản lý Tài sản CNTT & Dịch vụ IT Doanh nghiệp - IT Asset & Service Management).
-- **Mã nguồn trên GitHub**:
-  - Repo 1 (Community): `https://github.com/takien26/Simply-it-community.git`
-  - Repo 2 (Mirror): `https://github.com/takien26/Simply-IT.git`
-  - **Quy ước đồng bộ**: Bất kỳ thay đổi nào cũng phải đồng bộ và push lên cả 2 repository trên!
-- **Công nghệ nền tảng (Tech Stack)**:
-  - **Framework**: Next.js 15 (App Router, Server Actions, Dynamic API Routes)
-  - **Frontend**: React 19, Tailwind CSS, Lucide Icons, Radix UI, Framer Motion
-  - **Database & ORM**: Prisma ORM, SQLite (hoặc PostgreSQL cho bản doanh nghiệp)
-  - **Agent thu thập phần cứng**: PowerShell 5.1+ (`public/scripts/get_system_info.ps1` & `simply-it-collector.ps1`), WMI/CIM, tương thích Windows 10/11 & GPO/Domain.
-  - **Đóng gói ứng dụng**: Electron / C# Launcher (`SimplyIT_Server.exe`, `SimplyIT_Community_Launcher.cs`).
+> 📌 **Mục đích tài liệu:** Lưu giữ toàn bộ ngữ cảnh, tư duy thiết kế, các quyết định nghiệp vụ đã thống nhất và hướng dẫn dành cho AI Assistant (Antigravity / Gemini) khi chuyển đổi sang máy tính mới hoặc bắt đầu phiên làm việc mới.
 
 ---
 
-## 🎯 2. Trạng Thái Hiện Tại (Phiên bản v1.0.1 - Cập nhật ngày 12/09/2026)
-
-Hệ thống vừa hoàn thành nâng cấp lớn từ v1.0.0 lên **v1.0.1** với các module cốt lõi sau:
-
-### A. Quản lý Vòng Đời Nhân Sự & Chặn Đăng Nhập Nghỉ Việc
-- Thêm tab `🛑 Nghỉ việc` trên trang Người dùng (`/users`).
-- **Chặn đăng nhập 3 lớp**:
-  - Mật khẩu nội bộ: từ chối 403 nếu `isActive = false`.
-  - Microsoft 365 SSO: nhận diện `accountEnabled = false` qua Graph API.
-  - Active Directory / LDAP: kiểm tra `userAccountControl & 2`.
-- **Tự động thu hồi tài sản**: Tùy chọn thu hồi toàn bộ thiết bị và license về kho khi nhân viên nghỉ việc.
-- **Directory Sync**: Nút bấm và API `POST /api/users/sync-directory` đồng bộ trạng thái nhân sự từ M365/AD.
-
-### B. Menu Chuột Phải Thao Tác Nhanh (Context Menu)
-- Nhấp chuột phải vào bất kỳ hàng nào trên bảng tài sản (`/assets`) sẽ mở ngay menu nổi với 8 thao tác: Xem chi tiết, Chỉnh sửa, Điều chuyển, In PDF bàn giao, In tem QR, Bảo trì, Copy mã, Xóa.
-- Tự động giới hạn toạ độ trong màn hình, tự đóng khi click ra ngoài/cuộn/Escape.
-
-### C. Khung Chat AI Nổi Kéo Thả (Draggable Floating Chat)
-- Cho phép người dùng nhấn giữ kéo nút chat AI và khung hội thoại đi bất kỳ vị trí nào trên màn hình để không che khuất dữ liệu bên dưới.
-- Tự động lưu toạ độ vào `localStorage` (`simply:chat-pos`), phân biệt click và drag (> 4px).
-
-### D. Khắc phục triệt để lỗi Cấu hình SMTP
-- **Sửa lỗi mất thông tin khi F5**: Do API trả về `{ success: true, data: settings }` trong khi frontend đọc `dataSettings.settings`. Đã đồng bộ chuẩn cả hai trường.
-- **Sửa lỗi `connect ECONNREFUSED 127.0.0.1`**: Nút "Gửi thư thử nghiệm" hiện truyền đầy đủ host/port/user từ form lên API, phân loại lỗi tiếng Việt rõ ràng, ngăn chặn `nodemailer` tự fallback về localhost.
-
-### E. Tự động Nhận diện & Cập nhật Danh mục Thiết bị (Laptop / Desktop / Server)
-- **Agent thu thập**: Kiểm tra `Win32_Battery` (nếu có pin -> Laptop) và `Win32_SystemEnclosure.ChassisTypes` (8..14, 30..32 -> Laptop; 17, 23, 28, 29 -> Server).
-- **Backend API (`/api/v1/auto-scan/collect` & `/api/auto-scan/collect`)**:
-  - Sử dụng module [src/lib/device-detection.ts](file:///F:/OneDrive%20-%20GELEX/Documents/GitHub/Simply-it-community/src/lib/device-detection.ts) nhận diện đa tầng (pin, chassis, model Lenovo `21S6...`, `ThinkPad`, `Latitude`...).
-  - Gán chuẩn danh mục `Laptop` / `PC / Máy tính để bàn` / `Máy chủ`.
-  - **Cập nhật cả thiết bị cũ**: Khi máy quét lại, nếu danh mục trước đó là chung chung (`Thiết bị văn phòng`, `Khác`, trống), hệ thống tự động đổi sang đúng danh mục thực tế (`Laptop`).
-
-### F. Kiến Trúc Cổng Mạng Kép (Dual-Port HTTP 3000 & HTTPS 3443) & Chuẩn Docker
-- **2 Cổng cố định bắt buộc duy trì**:
-  - **HTTP (3000)**: Dành cho truy cập nội bộ, dashboard web, API, và script agent.
-  - **HTTPS (3443)**: Tích hợp SSL tự ký (`selfsigned`), bắt buộc cho camera điện thoại/tablet quét mã vạch và QR kiểm kê (`/scan`, `/assets/audit`).
-- **Đóng gói Docker chuẩn Production**:
-  - `Dockerfile`: Phải luôn copy `server.js`, `next.config.ts`, `tsconfig.json` trong runner stage; `EXPOSE 3000` và `EXPOSE 3443`.
-  - `docker-compose.yml`: Phải luôn ánh xạ `"3000:3000"` và `"3443:3443"`, đặt biến môi trường `PORT=3000` và `HTTPS_PORT=3443`.
-  - Chống lỗi định dạng Windows `CRLF`: Bắt buộc giữ định dạng dòng `LF` cho các file shell script (`.sh`), có cấu hình `.gitattributes` và lệnh `sed -i 's/\r$//'` trong `Dockerfile`.
-  - Hướng dẫn tường lửa Ubuntu UFW: `sudo ufw allow 3000/tcp && sudo ufw allow 3443/tcp`.
+## 1. Thông Tin Tổng Quan & Triết Lý Phát Triển
+- **Dự án:** Simply IT - Hệ thống Quản trị Tài sản CNTT (ITAM) & Helpdesk Service Desk cho Doanh nghiệp / Tập đoàn.
+- **Tech Stack:**
+  - **Framework:** Next.js 15 (App Router), React 19, Tailwind CSS.
+  - **Database & ORM:** PostgreSQL, Prisma ORM (`prisma/schema.prisma`).
+  - **Server Runtime:** Node.js (`server.js` tùy chỉnh hỗ trợ cả HTTP :3001 và HTTPS :3443).
+  - **Client Caching:** Hệ thống SWR tự viết (`src/lib/client-cache.ts`) tối ưu độ trễ 0ms, BroadcastChannel và custom events cho Reactive Sync giữa các tab/modal.
+- **Triết lý làm việc (Ponytail Senior Dev Mode):**
+  - Đơn giản, thực dụng, tôn trọng nghiệp vụ thực tế, không over-engineering.
+  - Giao diện phản hồi 0ms (Optimistic UI) cho các thao tác xóa, thêm, sửa.
+  - Mọi logic phi vụn vặt đều phải có kiểm thử tự động xác minh (`scripts/qa-system-audit.js`).
 
 ---
 
-## 📂 3. Cấu Trúc Thư Mục & Các File Trọng Tâm
+## 2. Các Quyết Định Nghiệp Vụ Cốt Lõi Đã Thống Nhất Cùng User
 
-```text
-Simply-it-community/
-├── public/scripts/
-│   ├── get_system_info.ps1         # Script PowerShell thu thập phần cứng & phần mềm máy trạm
-│   └── simply-it-collector.ps1     # Bản sao đồng bộ của script thu thập
-├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── auto-scan/collect/  # API nhận dữ liệu từ script thu thập
-│   │   │   ├── v1/auto-scan/       # API v1 chuẩn hoá thu thập dữ liệu
-│   │   │   ├── settings/           # API đọc/ghi cài đặt hệ thống (SMTP, chung)
-│   │   │   ├── email/test/         # API kiểm tra kết nối SMTP
-│   │   │   └── users/sync-directory # API đồng bộ nhân sự M365/AD
-│   │   ├── assets/                 # Trang Quản lý tài sản (bảng, filter, context menu)
-│   │   ├── users/                  # Trang Quản lý người dùng (tab Đang làm việc / Nghỉ việc)
-│   │   └── settings/               # Trang Cấu hình hệ thống (Tab Email, LDAP, Tổ chức)
-│   ├── components/
-│   │   ├── chat/
-│   │   │   └── DraggableFloatingChat.tsx # Widget chat AI kéo thả nổi
-│   │   └── settings/
-│   │       └── email-settings-tab.tsx    # Giao diện cấu hình SMTP
-│   ├── lib/
-│   │   ├── db.ts                   # Khởi tạo Prisma Client
-│   │   ├── email.ts                # Gửi email & kiểm tra kết nối SMTP
-│   │   ├── device-detection.ts     # Nhận diện chủng loại thiết bị & map category
-│   │   ├── license-reconciliation.ts # Đối soát phần mềm quét được với License kho
-│   │   └── auth.ts                 # Xác thực người dùng, chặn tài khoản nghỉ việc
-│   └── types/                      # TypeScript definitions
-├── prisma/
-│   └── schema.prisma               # Schema cơ sở dữ liệu (Asset, User, Category, License...)
-├── CHANGELOG.md                    # Lịch sử thay đổi chi tiết từng phiên bản
-└── PROJECT_CONTEXT.md              # Bối cảnh dự án này
-```
+### 🗑️ 2.1. Thùng Rác (Recycle Bin) & Khôi Phục Tức Thì
+- **Thời gian lưu trữ mặc định:** **30 ngày** (có thể cấu hình trong bảng `system_settings`).
+- **Cơ chế Soft-Delete:** Khi xóa Tài sản, Bản quyền, Nhân sự... hệ thống chụp lại bản snapshot đầy đủ lưu vào bảng `TrashItem`, xóa khỏi bảng chính để bảo đảm tính toàn vẹn.
+- **Auto-Purge:** Tự động quét dọn vĩnh viễn các mục có `expiresAt < now()`.
+- **0ms Undo Toast (`TrashUndoToast.tsx`):**
+  - Khi người dùng xóa bất kỳ mục nào, popup nổi ở góc phải màn hình trong **4 giây** kèm thanh tiến trình thu nhỏ dần.
+  - Bấm **`[ ↩️ Hoàn tác ]`** sẽ phục hồi bản ghi ngay lập tức tại chỗ và xóa cache để bảng hiển thị lại thiết bị/nhân sự mà không cần tải lại trang.
+- **Phím tắt nhanh trên trang Tài sản:** Nút `🗑️ Thùng rác (N)` trực tiếp trên thanh filter của trang `/assets`.
+
+### 🔑 2.2. Cho Phép Vượt Định Mức Bản Quyền (License Over-Allocation / True-up)
+- **Quy tắc:** Trong thực tế IT doanh nghiệp, việc cấp phát license vượt số chỗ mua (over-allocation) là **HOÀN TOÀN ĐƯỢC PHÉP** (phục vụ cấp phát khẩn cấp, thời gian ân hạn hoặc đối soát True-up cuối năm).
+- **Hành vi hệ thống:** Không chặn lỗi 400. Hệ thống cho phép gán tiếp, cập nhật số `usedSeats` chính xác (ví dụ: `5/2 seats`), và trả về cờ `isOverAllocated: true` kèm thông báo ghi nhận vượt hạn mức.
+
+### 💰 2.3. Khấu Hao Tài Chính & Tiền Tệ
+- Tính khấu hao theo phương pháp đường thẳng (Straight-Line).
+- Đã bọc an toàn chống chia cho 0 (`usefulLifeMonths <= 0`) để không bao giờ bị vỡ giao diện hiển thị `NaN ₫`.
+- Hỗ trợ đa tiền tệ (VND, USD, EUR, JPY, SGD) với tỉ giá hối đoái.
+
+### 👥 2.4. Quy Trình Nghỉ Việc (Offboarding)
+- Khi nhân viên nghỉ việc: Thu hồi toàn bộ máy tính về trạng thái `AVAILABLE`, thu hồi các bản quyền phần mềm (`revokedAt`), khóa tài khoản đăng nhập (`isActive = false`) và từ chối đăng nhập (HTTP 403).
 
 ---
 
-## ⚡ 4. Hướng Dẫn Bắt Đầu Nhanh Khi Chuyển Sang Máy Tính Mới
+## 3. Cấu Trúc Mã Nguồn Quan Trọng
+- `src/lib/trash.ts`: Thư viện xử lý Thùng rác, snapshot dữ liệu, tính ngày hết hạn và khôi phục.
+- `src/components/common/TrashUndoToast.tsx`: Toast hoàn tác 0ms nổi trên màn hình.
+- `src/lib/client-cache.ts`: Quản lý bộ nhớ đệm SWR và đồng bộ revalidation đa tab.
+- `src/app/api/system/backup/`: Hệ thống sao lưu và phục hồi toàn bộ database + upload qua file `.zip`.
+- `scripts/qa-system-audit.js`: Kịch bản kiểm thử tự động toàn diện 52 ca test qua 9 module (100% PASS).
 
-Khi bạn mở dự án trên máy tính mới hoặc mở một cửa sổ chat AI mới, bạn chỉ cần gửi câu lệnh ngắn gọn:
+---
 
-> **"Hãy đọc file `PROJECT_CONTEXT.md` và `AGENTS.md` để tiếp tục công việc của dự án Simply IT."**
-
-AI sẽ ngay lập tức:
-1. Đọc toàn bộ kiến trúc và các tính năng vừa thực hiện.
-2. Nắm rõ quy tắc kiểm tra `npm run build` trước khi hoàn tất.
-3. Luôn đồng bộ mã nguồn sang cả 2 repository (`Simply-it-community` và `Simply IT`).
-4. Tuân theo nguyên tắc phát triển tối giản, hiệu quả (Lazy Senior Dev / Ponytail rule).
-5. Luôn bảo toàn kiến trúc 2 cổng mạng: HTTP (cổng 3000) và HTTPS (cổng 3443), đảm bảo Dockerfile luôn đóng gói đủ server.js và chống lỗi format dòng CRLF.
-
+## 4. Hướng Dẫn Cho AI Khi Bắt Đầu Phiên Mới
+Khi người dùng mở một phiên làm việc mới trên máy mới:
+1. Đọc file này để nắm trọn vẹn phong cách, các quy tắc và quyết định đã thống nhất.
+2. Kiểm tra trạng thái Git (`git status`, `git log -n 5`) để biết commit gần nhất.
+3. Luôn trả lời ngắn gọn, trực diện, đúng trọng tâm kỹ thuật bằng tiếng Việt.
