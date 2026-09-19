@@ -15,8 +15,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canManageUsers = await hasPermission(currentUser.userId, 'users.update');
-    const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleName === 'admin' || canManageUsers;
+    const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleName === 'admin';
 
     if (!isAdmin) {
       return NextResponse.json({ error: 'Forbidden: Chỉ Quản trị viên (Admin) mới có quyền Reset mật khẩu cấp 2 của người dùng' }, { status: 403 });

@@ -3,21 +3,45 @@ import { prisma } from '@/lib/db';
 import { reconcileSoftwareLicenses } from '@/lib/license-reconciliation';
 import { detectDeviceType, resolveCategoryForDevice, isGenericSerial } from '@/lib/device-detection';
 
+import { checkRateLimit } from '@/lib/rate-limit';
+
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'local';
+    const rateLimit = checkRateLimit(`v1_scan_collect:${ip}`, 60, 60_000);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { success: false, error: 'Quá nhiều yêu cầu quét tự động. Vui lòng thử lại sau.' },
+        { status: 429 }
+      );
+    }
+
     // PostgreSQL rejects \u0000 in JSONB (error 22P05) — strip null bytes from raw payload
     const rawText = await request.text();
     const cleanText = rawText.replace(/\\u0000/gi, '').replace(/\0/g, '');
     let body: any;
     try {
       body = JSON.parse(cleanText);
-    } catch (parseErr) {
+    } catch {
       return NextResponse.json(
         { success: false, error: 'Dữ liệu quét máy trạm gửi lên không đúng định dạng JSON' },
         { status: 400 }
       );
+    }
+
+    // Validate Agent Secret if configured
+    const configuredSecret = (await prisma.systemSetting.findUnique({ where: { key: 'agent.scan_secret' } }))?.value || process.env.AGENT_SECRET;
+    if (configuredSecret) {
+      const headerSecret = request.headers.get('x-agent-secret');
+      const bodySecret = body.agentSecret;
+      if (headerSecret !== configuredSecret && bodySecret !== configuredSecret) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized: Mã bảo mật Agent Secret không hợp lệ' },
+          { status: 401 }
+        );
+      }
     }
     const {
       hostname,

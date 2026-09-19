@@ -72,6 +72,18 @@ export async function GET(
       return NextResponse.json({ error: 'Không tìm thấy ticket' }, { status: 404 });
     }
 
+    const isStaffOrStakeholder = ticket.createdById === currentUser.userId || ticket.assignedToId === currentUser.userId;
+    const canViewAllTickets = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'tickets.view'));
+
+    if (!isStaffOrStakeholder && !canViewAllTickets) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xem ticket này' }, { status: 403 });
+    }
+
+    // Ẩn các ghi chú nội bộ (isInternal: true) đối với người dùng không phải Quản trị viên / Kỹ thuật viên IT
+    if (!canViewAllTickets) {
+      ticket.comments = ticket.comments.filter((c) => !c.isInternal);
+    }
+
     return NextResponse.json(ticket);
   } catch (error) {
     console.error('Get ticket error:', error);

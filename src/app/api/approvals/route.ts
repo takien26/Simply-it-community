@@ -98,8 +98,11 @@ export async function POST(request: NextRequest) {
 
     const currentYear = new Date().getFullYear();
 
+    // Chặn người dùng tự chọn chính mình làm Quản lý phê duyệt (Prevent self-approval)
+    const safeManagerId = managerId && managerId !== currentUser.userId ? managerId : null;
+
     // If requester has a direct manager, status is PENDING_MANAGER, otherwise PENDING_IT
-    const initialStatus: ApprovalStatus = managerId ? 'PENDING_MANAGER' : 'PENDING_IT';
+    const initialStatus: ApprovalStatus = safeManagerId ? 'PENDING_MANAGER' : 'PENDING_IT';
 
     let approval: any = null;
     let attempts = 0;
@@ -124,7 +127,7 @@ export async function POST(request: NextRequest) {
             currency: currency || 'VND',
             quantity: quantity && !isNaN(Number(quantity)) ? Number(quantity) : 1,
             requesterId: currentUser.userId,
-            managerId: managerId || null,
+            managerId: safeManagerId,
           },
           include: {
             requester: { select: { id: true, fullName: true, email: true } },
@@ -167,13 +170,16 @@ export async function POST(request: NextRequest) {
       }
     })();
 
-    // Broadcast real-time SSE event
-    broadcastRealtimeEvent({
-      type: 'APPROVAL_REQUESTED',
-      title: `📋 Yêu cầu cấp máy mới: ${approval.code}`,
-      message: `${approval.requester?.fullName || 'Nhân viên'} gửi yêu cầu: "${approval.title}"`,
-      data: { approvalId: approval.id, code: approval.code },
-    });
+    // Broadcast real-time SSE event (Chỉ gửi thông báo tới người quản lý duyệt nếu có)
+    if (safeManagerId) {
+      broadcastRealtimeEvent({
+        type: 'APPROVAL_REQUESTED',
+        targetUserId: safeManagerId,
+        title: `📋 Yêu cầu cấp máy mới: ${approval.code}`,
+        message: `${approval.requester?.fullName || 'Nhân viên'} gửi yêu cầu: "${approval.title}"`,
+        data: { approvalId: approval.id, code: approval.code },
+      });
+    }
 
     return NextResponse.json({ success: true, approval }, { status: 201 });
   } catch (error: any) {

@@ -170,10 +170,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const canCreate = await hasPermission(user.userId, 'users.create');
-    if (!canCreate && user.roleName !== 'Admin') {
+    const isCallerAdmin = user.roleName === 'Admin';
+    const canCreate = isCallerAdmin || (await hasPermission(user.userId, 'users.create'));
+    if (!canCreate) {
       return NextResponse.json({ error: 'Bạn không có quyền import nhân sự' }, { status: 403 });
     }
+    const hasPermissionAssignRole = isCallerAdmin || (await hasPermission(user.userId, 'users.permissions'));
 
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
@@ -361,9 +363,11 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Resolve Role ID
+      // 1.1: Mặc định tất cả nhân sự import từ Excel là quyền user (Staff)
+      // Chỉ khi người thực hiện có quyền Admin hoặc users.permissions thì mới được phép gán role từ Excel,
+      // và chỉ được add quyền ngang hoặc thấp hơn vai trò của chính mình (chỉ Admin mới được gán vai trò Admin).
       let assignedRoleId = defaultRoleId;
-      if (roleName) {
+      if (hasPermissionAssignRole && roleName) {
         const cleanRole = roleName.toLowerCase().trim();
         const matchedRole = allRoles.find((r) =>
           r.name.toLowerCase() === cleanRole ||
@@ -371,7 +375,11 @@ export async function POST(req: NextRequest) {
           (cleanRole.includes('it') && r.name.toLowerCase().includes('it'))
         );
         if (matchedRole) {
-          assignedRoleId = matchedRole.id;
+          const isTargetRoleAdmin = matchedRole.name.toLowerCase().includes('admin');
+          // Không cho phép gán vai trò Admin nếu người import không phải là Admin
+          if (!isTargetRoleAdmin || isCallerAdmin) {
+            assignedRoleId = matchedRole.id;
+          }
         }
       }
 
@@ -385,8 +393,21 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        const existing = await prisma.user.findUnique({ where: { email } });
+        const existing = await prisma.user.findUnique({
+          where: { email },
+          include: { role: true },
+        });
         if (existing) {
+          // Bảo vệ tài khoản Quản trị viên: Người không phải Admin không được phép sửa đổi/khóa tài khoản Admin qua Excel
+          if (existing.role?.name?.toLowerCase().includes('admin') && !isCallerAdmin) {
+            errors.push({ row: r, error: `Không thể cập nhật tài khoản Quản trị viên (${email}) khi không có quyền Admin` });
+            failedCount++;
+            continue;
+          }
+
+          // Nếu người import không có quyền gán role, giữ nguyên vai trò hiện tại của người dùng
+          const finalRoleId = hasPermissionAssignRole ? assignedRoleId : existing.roleId;
+
           // Smart update existing user profile
           await prisma.user.update({
             where: { id: existing.id },
@@ -398,7 +419,7 @@ export async function POST(req: NextRequest) {
               ...(phone ? { phone } : {}),
               ...(locationId ? { locationId } : {}),
               ...(managerId ? { managerId } : {}),
-              ...(assignedRoleId ? { roleId: assignedRoleId } : {}),
+              roleId: finalRoleId,
               isActive,
             },
           });

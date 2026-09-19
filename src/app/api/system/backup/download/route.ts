@@ -38,10 +38,8 @@ export async function GET(request: NextRequest) {
     const permissions = user?.role?.permissions.map((p) => p.permission.code) || [];
     const isAllowed =
       roleName === 'Admin' ||
-      roleName === 'Asset Manager' ||
       roleName.toLowerCase().includes('admin') ||
       permissions.includes('settings.backup') ||
-      permissions.includes('settings.view') ||
       permissions.includes('*');
 
     if (!isAllowed) {

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canView = await hasPermission(user.userId, 'settings.view');
+    const canView = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.view'));
     if (!canView) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xem cấu hình Webhook' }, { status: 403 });
     }
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canUpdate = await hasPermission(user.userId, 'settings.update');
+    const canUpdate = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.update'));
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền cấu hình Webhook' }, { status: 403 });
     }
@@ -79,7 +79,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canUpdate = await hasPermission(user.userId, 'settings.update');
+    const canUpdate = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.update'));
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền cấu hình Webhook' }, { status: 403 });
     }
@@ -125,6 +125,11 @@ export async function DELETE(request: NextRequest) {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canDelete = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.update'));
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa cấu hình Webhook' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

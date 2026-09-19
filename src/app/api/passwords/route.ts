@@ -110,9 +110,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
     }
 
-    const allowed = await hasPermission(user.userId, 'passwords.view');
+    const allowed = user.roleName === 'Admin' || (await hasPermission(user.userId, 'passwords.manage'));
     if (!allowed) {
-      return NextResponse.json({ error: 'Bạn không có quyền thao tác kho mật khẩu' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền thêm tài khoản mật khẩu mới' }, { status: 403 });
     }
 
     const body = await req.json();

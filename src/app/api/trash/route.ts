@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import { getTrashRetentionDays, autoPurgeExpiredTrash } from '@/lib/trash';
 
 // GET /api/trash - Lấy danh sách mục trong Thùng rác kèm thống kê
@@ -9,6 +10,11 @@ export async function GET(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canViewTrash = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'settings.update'));
+    if (!canViewTrash) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền truy cập thùng rác hệ thống' }, { status: 403 });
     }
 
     // Tự động dọn dẹp các mục đã quá hạn lưu trữ

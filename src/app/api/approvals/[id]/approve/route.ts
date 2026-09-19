@@ -40,6 +40,11 @@ export async function POST(
 
     // 1. Manager Approval Step
     if (approval.status === 'PENDING_MANAGER') {
+      // Chặn người tạo đơn tự duyệt đơn của chính mình (Prevent self-approval)
+      if (approval.requesterId === currentUser.userId && !isAdmin) {
+        return NextResponse.json({ error: 'Forbidden: Bạn không thể tự phê duyệt yêu cầu do chính mình tạo' }, { status: 403 });
+      }
+
       const isDirectManager = approval.managerId === currentUser.userId;
       if (!isDirectManager && !isAdmin) {
         return NextResponse.json({ error: 'Bạn không có quyền duyệt yêu cầu này' }, { status: 403 });

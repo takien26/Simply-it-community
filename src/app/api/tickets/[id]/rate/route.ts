@@ -42,12 +42,28 @@ export async function POST(
       return NextResponse.json({ error: 'Không tìm thấy Ticket' }, { status: 404 });
     }
 
+    // Chỉ cho phép đánh giá khi Ticket đã hoàn thành (RESOLVED hoặc CLOSED)
+    if (ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED') {
+      return NextResponse.json(
+        { error: 'Chỉ có thể đánh giá mức độ hài lòng khi Ticket đã được giải quyết hoặc đã đóng' },
+        { status: 400 }
+      );
+    }
+
     // Only creator or admin can submit CSAT rating
     const isAdmin = currentUser.roleName === 'Admin' || (Array.isArray((currentUser as any).permissions) && (currentUser as any).permissions.includes('*'));
     if (ticket.createdById !== currentUser.userId && !isAdmin) {
       return NextResponse.json(
         { error: 'Chỉ người tạo yêu cầu mới có quyền đánh giá chất lượng phục vụ của Ticket này' },
         { status: 403 }
+      );
+    }
+
+    // Không cho phép đánh giá lại nhiều lần nếu đã chấm điểm (trừ khi là Admin)
+    if (ticket.rating !== null && !isAdmin) {
+      return NextResponse.json(
+        { error: 'Ticket này đã được đánh giá trước đó, không thể đánh giá lại' },
+        { status: 400 }
       );
     }
 

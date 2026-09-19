@@ -15,6 +15,11 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const canView = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'assets.view'));
+    if (!canView) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xem lịch sử điều chuyển tài sản' }, { status: 403 });
+    }
+
     const { id } = await params;
     const asset = await prisma.asset.findUnique({
       where: { id },
@@ -73,7 +78,9 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canUpdate = await hasPermission(currentUser.userId, 'assets.update');
+    const canUpdate = currentUser.roleName === 'Admin' ||
+      (await hasPermission(currentUser.userId, 'assets.assign')) ||
+      (await hasPermission(currentUser.userId, 'assets.update'));
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền điều chuyển tài sản' }, { status: 403 });
     }

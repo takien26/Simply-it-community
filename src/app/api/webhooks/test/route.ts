@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,11 +9,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const canTest = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.update'));
+    if (!canTest) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền kiểm tra kết nối Webhook' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { webhookUrl, provider } = body;
 
     if (!webhookUrl) {
       return NextResponse.json({ error: 'Missing webhook URL' }, { status: 400 });
+    }
+
+    try {
+      const parsedUrl = new URL(webhookUrl);
+      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        return NextResponse.json({ error: 'Webhook URL phải bắt đầu bằng http:// hoặc https://' }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ error: 'Webhook URL không hợp lệ' }, { status: 400 });
     }
 
     let payload: any;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import ExcelJS from 'exceljs';
 
 export async function GET(request: NextRequest) {
@@ -8,6 +9,11 @@ export async function GET(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canExport = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'licenses.export'));
+    if (!canExport) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xuất dữ liệu bản quyền license' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

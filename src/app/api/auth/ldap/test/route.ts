@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 import { testLdapConnection, LdapConfig } from '@/lib/ldap';
 
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ success: false, message: 'Bạn cần đăng nhập với quyền quản trị để kiểm tra kết nối LDAP' }, { status: 401 });
+      return NextResponse.json({ success: false, message: 'Bạn cần đăng nhập để kiểm tra kết nối LDAP' }, { status: 401 });
+    }
+
+    const canTest = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.ldap'));
+    if (!canTest) {
+      return NextResponse.json({ success: false, message: 'Forbidden: Bạn cần quyền Quản trị viên để kiểm tra kết nối LDAP' }, { status: 403 });
     }
 
     const body = await req.json();

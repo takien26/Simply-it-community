@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const category = (formData.get('category') as string) || 'doc';
+    const rawCategory = (formData.get('category') as string) || 'doc';
+    const cleanCategory = rawCategory.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 20) || 'doc';
 
     if (!file) {
       return NextResponse.json({ error: 'Không tìm thấy file tải lên' }, { status: 400 });
@@ -62,8 +63,13 @@ export async function POST(request: NextRequest) {
     }
 
     const rawBaseName = path.basename(file.name, rawExt).replace(/[^a-zA-Z0-9_-]/g, '_');
-    const safeName = `${category}_${Date.now()}_${rawBaseName.slice(0, 40)}${cleanExt}`;
+    const safeName = `${cleanCategory}_${Date.now()}_${rawBaseName.slice(0, 40)}${cleanExt}`;
     const filePath = path.join(uploadDir, safeName);
+
+    // Verify filePath stays within uploadDir (Anti Path Traversal)
+    if (!filePath.startsWith(uploadDir + path.sep) && filePath !== uploadDir) {
+      return NextResponse.json({ error: 'Đường dẫn file không hợp lệ' }, { status: 400 });
+    }
 
     fs.writeFileSync(filePath, buffer);
 
