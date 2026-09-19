@@ -235,7 +235,7 @@ export const DEFAULT_SLA_POLICIES: SlaPolicy[] = [
     resolutionTimeHours: 2,
     description: 'Hỗ trợ đặc biệt ưu tiên tức thì cho Hội đồng Quản trị và Ban Tổng Giám đốc.',
     color: 'purple',
-    icon: '👑',
+    icon: '⭐',
     isDefault: false,
     isActive: true,
   },
@@ -2694,7 +2694,7 @@ export function SupportOrgSettingsTab() {
                     Biểu Tượng Icon:
                   </label>
                   <div className="flex flex-wrap gap-1.5">
-                    {['🔥', '⚡', '🟡', '🟢', '👑', '🖥️', '🌐', '💼', '🛡️', '🚀', '⏳', '☕'].map((emoji) => (
+                    {['🔥', '⚡', '🟡', '🟢', '⭐', '🖥️', '🌐', '💼', '🛡️', '🚀', '⏳', '🎯'].map((emoji) => (
                       <button
                         key={emoji}
                         type="button"

@@ -464,8 +464,8 @@ export function RbacSettingsTab({
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-sm leading-tight">{r.name}</span>
                           {r.name === 'Super Admin' ? (
-                            <span className="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded font-mono font-bold flex items-center gap-0.5">
-                              👑 Root
+                            <span className="text-[9px] bg-amber-50 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded font-mono font-semibold flex items-center gap-1">
+                              <ShieldCheck className="w-2.5 h-2.5 text-amber-600" /> Root
                             </span>
                           ) : r.isSystem ? (
                             <span className="text-[9px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-mono">

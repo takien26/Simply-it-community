@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
           data: {
             ticketId: ticket.id,
             userId: authorId,
-            content: `🤖 [👑 Enterprise Auto-Close]: Ticket đã được hệ thống tự động đóng sau ${autoCloseDays} ngày ở trạng thái "Đã giải quyết" do không có phản hồi thêm từ người yêu cầu.`,
+            content: `[Hệ thống tự động đóng]: Ticket đã được hệ thống tự động đóng sau ${autoCloseDays} ngày ở trạng thái "Đã giải quyết" do không có phản hồi thêm từ người yêu cầu.`,
             isInternal: false,
           },
         });

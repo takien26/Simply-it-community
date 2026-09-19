@@ -100,7 +100,7 @@ export async function POST(
       data: {
         ticketId: targetTicketId,
         userId: currentUser.userId,
-        content: `🔀 [👑 Enterprise] Đã tiếp nhận và gộp ticket con #${sourceTicket.ticketNumber} ("${sourceTicket.title}") của người yêu cầu: ${sourceTicket.createdBy?.fullName || 'N/A'}.\n\n📌 Lý do gộp: ${mergeReason}`,
+        content: `[Gộp Ticket]: Đã tiếp nhận và gộp ticket con #${sourceTicket.ticketNumber} ("${sourceTicket.title}") của người yêu cầu: ${sourceTicket.createdBy?.fullName || 'N/A'}.\n\nLý do gộp: ${mergeReason}`,
         isInternal: false,
       },
     });
