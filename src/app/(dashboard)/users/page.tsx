@@ -603,12 +603,13 @@ export default function UsersPage() {
         body: JSON.stringify(payload),
       });
 
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setIsEditUserModalOpen(false);
         setEditingUserId(null);
         loadData();
       } else {
-        alert('Cập nhật thất bại');
+        alert(data.error || 'Cập nhật thất bại');
       }
     } catch {
       alert('Lỗi kết nối');
@@ -817,7 +818,7 @@ export default function UsersPage() {
   const noAssignmentsCount = activeUsers.filter(
     (u) => (!u.assetAssignments || u.assetAssignments.length === 0) && (!u.licenseAssignments || u.licenseAssignments.length === 0)
   ).length;
-  const adminCount = activeUsers.filter((u) => u.role?.name === 'Admin').length;
+  const adminCount = activeUsers.filter((u) => u.role?.name === 'Admin' || u.role?.name === 'Super Admin').length;
   const managersCount = activeUsers.filter(
     (u) => (u.directReports && u.directReports.length > 0) || users.some((x) => x.managerId === u.id)
   ).length;
@@ -854,7 +855,7 @@ export default function UsersPage() {
     if (selectedFilter === 'WITH_LICENSES') return u.licenseAssignments?.length > 0;
     if (selectedFilter === 'NO_ASSIGNMENTS') return (!u.assetAssignments || u.assetAssignments.length === 0) && (!u.licenseAssignments || u.licenseAssignments.length === 0);
     if (selectedFilter === 'MANAGERS') return (u.directReports && u.directReports.length > 0) || users.some((x) => x.managerId === u.id);
-    if (selectedFilter === 'ADMIN') return u.role?.name === 'Admin';
+    if (selectedFilter === 'ADMIN') return u.role?.name === 'Admin' || u.role?.name === 'Super Admin';
     return true;
   });
 
@@ -1299,14 +1300,16 @@ export default function UsersPage() {
 
                             <span
                               className={`font-mono font-bold px-1.5 py-0.2 rounded text-[9.5px] whitespace-nowrap inline-block shrink-0 ${
-                                u.role?.name === 'Admin'
+                                u.role?.name === 'Super Admin'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700 shadow-xs'
+                                  : u.role?.name === 'Admin'
                                   ? 'bg-rose-100 text-rose-700 border border-rose-200'
                                   : u.role?.name === 'Asset Manager'
                                   ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
                                   : 'bg-slate-100 text-slate-600'
                               }`}
                             >
-                              🛡️ {u.role?.name || 'Staff'}
+                              {u.role?.name === 'Super Admin' ? '👑' : '🛡️'} {u.role?.name || 'Staff'}
                             </span>
                           </div>
                         </div>
@@ -2496,8 +2499,12 @@ export default function UsersPage() {
                     <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
                       {viewingUserDetail.fullName}
                     </h2>
-                    <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 text-[10.5px] font-bold border border-blue-200 dark:border-blue-800">
-                      🛡️ {viewingUserDetail.role?.name || 'Staff'}
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold border ${
+                      viewingUserDetail.role?.name === 'Super Admin'
+                        ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700 shadow-xs'
+                        : 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                    }`}>
+                      {viewingUserDetail.role?.name === 'Super Admin' ? '👑' : '🛡️'} {viewingUserDetail.role?.name || 'Staff'}
                     </span>
                     {viewingUserDetail.isActive !== false ? (
                       <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import {
+  hasPermission,
+  getRoleLevel,
+  canAssignRole,
+  isAdminOrAbove,
+} from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
@@ -28,29 +33,44 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { fullName: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
-        { department: { contains: search, mode: 'insensitive' } },
       ];
     }
-
-    if (department) where.department = department;
+    if (department && department !== 'ALL') {
+      where.department = department;
+    }
 
     const users = await prisma.user.findMany({
       where,
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        isActive: true,
-        department: true,
-        position: true,
-        companyName: true,
-        phone: true,
-        managerId: true,
-        manager: { select: { id: true, fullName: true, email: true, position: true, phone: true } },
-        directReports: { select: { id: true, fullName: true, email: true, position: true } },
-        locationId: true,
-        location: { select: { id: true, name: true, building: true, floor: true } },
-        role: { select: { id: true, name: true } },
+      include: {
+        role: true,
+        manager: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            position: true,
+            phone: true,
+            department: true,
+          },
+        },
+        directReports: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            position: true,
+            phone: true,
+            department: true,
+          },
+        },
+        location: {
+          select: {
+            id: true,
+            name: true,
+            building: true,
+            floor: true,
+          },
+        },
         assetAssignments: {
           where: { returnedAt: null },
           include: {
@@ -97,7 +117,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canCreateUser = await hasPermission(currentUser.userId, 'users.create');
+    const canCreateUser = isAdminOrAbove(currentUser.roleName) || (await hasPermission(currentUser.userId, 'users.create'));
     if (!canCreateUser) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền tạo tài khoản người dùng' }, { status: 403 });
     }
@@ -124,6 +144,18 @@ export async function POST(request: NextRequest) {
     if (!targetRoleId) {
       const anyRole = await prisma.role.findFirst();
       targetRoleId = anyRole?.id;
+    }
+
+    // HIERARCHY RULE: Chỉ gán vai trò có cấp bậc ngang hoặc thấp hơn mình
+    const callerLevel = getRoleLevel(currentUser.roleName);
+    if (targetRoleId) {
+      const targetRole = await prisma.role.findUnique({ where: { id: targetRoleId } });
+      const targetRoleLevel = getRoleLevel(targetRole?.name);
+      if (!canAssignRole(callerLevel, targetRoleLevel)) {
+        return NextResponse.json({
+          error: `Forbidden: Bạn chỉ được tạo người dùng với vai trò có cấp bậc ngang hoặc thấp hơn cấp bậc của mình (Cấp của bạn: ${callerLevel}, Cấp vai trò được chọn: ${targetRoleLevel})`,
+        }, { status: 403 });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password || 'Staff@123', 10);

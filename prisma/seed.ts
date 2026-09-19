@@ -416,6 +416,16 @@ async function main() {
   console.log(`✅ Created ${permissions.length} permissions`);
 
   // ============ ROLES ============
+  const superAdminRole = await prisma.role.upsert({
+    where: { name: 'Super Admin' },
+    update: { description: 'Quản trị viên Tối cao - Toàn quyền tuyệt đối', isSystem: true },
+    create: {
+      name: 'Super Admin',
+      description: 'Quản trị viên Tối cao - Toàn quyền tuyệt đối',
+      isSystem: true,
+    },
+  });
+
   const adminRole = await prisma.role.upsert({
     where: { name: 'Admin' },
     update: {},
@@ -446,11 +456,16 @@ async function main() {
     },
   });
 
-  console.log('✅ Created roles: Admin, Asset Manager, Staff');
+  console.log('✅ Created roles: Super Admin, Admin, Asset Manager, Staff');
 
   // ============ ROLE PERMISSIONS ============
-  // Admin gets ALL permissions
+  // Super Admin & Admin get ALL permissions
   for (const perm of permissions) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: superAdminRole.id, permissionId: perm.id } },
+      update: {},
+      create: { roleId: superAdminRole.id, permissionId: perm.id },
+    });
     await prisma.rolePermission.upsert({
       where: { roleId_permissionId: { roleId: adminRole.id, permissionId: perm.id } },
       update: {},
@@ -503,18 +518,18 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: 'admin@company.com' },
-    update: {},
+    update: { roleId: superAdminRole.id },
     create: {
       email: 'admin@company.com',
       passwordHash: hashedPassword,
       fullName: 'System Admin',
-      roleId: adminRole.id,
+      roleId: superAdminRole.id,
       department: 'IT',
       isActive: true,
     },
   });
 
-  console.log('✅ Created admin user: admin@company.com / Admin@123');
+  console.log('✅ Created root admin user: admin@company.com / Admin@123 (Super Admin)');
 
   // ============ ASSET CATEGORIES ============
   const categories = [

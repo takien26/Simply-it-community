@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import {
+  hasPermission,
+  getRoleLevel,
+  isSuperAdmin,
+  canAssignRole,
+  ensureDefaultRolesAndPermissions,
+} from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 
 // GET /api/roles - List all roles with their permissions
@@ -10,6 +16,9 @@ export async function GET() {
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Tự động đảm bảo các Role & Permission mặc định luôn sẵn sàng trong CSDL
+    await ensureDefaultRolesAndPermissions(prisma);
 
     const [roles, allPermissions] = await Promise.all([
       prisma.role.findMany({
@@ -34,6 +43,7 @@ export async function GET() {
           name: r.name,
           description: r.description,
           isSystem: r.isSystem,
+          level: getRoleLevel(r.name),
           userCount: r._count.users,
           permissionCodes: r.permissions.map((p) => p.permission.code),
         })),
@@ -59,6 +69,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền quản lý vai trò và phân quyền' }, { status: 403 });
     }
 
+    const callerLevel = getRoleLevel(currentUser.roleName);
+    const callerIsSuperAdmin = isSuperAdmin(currentUser.roleName);
+
     const body = await request.json();
     const { id, name, description, permissionCodes } = body;
 
@@ -66,8 +79,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tên vai trò là bắt buộc' }, { status: 400 });
     }
 
+    // Hierarchy check: Caller không thể tạo hoặc đặt tên vai trò cao hơn cấp bậc của mình
+    const targetRoleLevel = getRoleLevel(name);
+    if (!canAssignRole(callerLevel, targetRoleLevel)) {
+      return NextResponse.json({
+        error: `Forbidden: Bạn chỉ được tạo hoặc quản lý vai trò có cấp bậc ngang hoặc thấp hơn cấp bậc của mình (Cấp hiện tại: ${callerLevel})`,
+      }, { status: 403 });
+    }
+
     let role;
     if (id) {
+      const existing = await prisma.role.findUnique({ where: { id } });
+      if (!existing) {
+        return NextResponse.json({ error: 'Không tìm thấy vai trò cần cập nhật' }, { status: 404 });
+      }
+
+      // Bảo vệ System Roles: Chỉ Super Admin mới được sửa thông tin System Roles
+      if (existing.isSystem && !callerIsSuperAdmin) {
+        return NextResponse.json({
+          error: 'Forbidden: Chỉ Quản trị viên Tối cao (Super Admin) mới có quyền chỉnh sửa các vai trò cốt lõi của hệ thống',
+        }, { status: 403 });
+      }
+
       // Update existing role
       role = await prisma.role.update({
         where: { id },
@@ -119,6 +152,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa vai trò' }, { status: 403 });
     }
 
+    const callerLevel = getRoleLevel(currentUser.roleName);
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -135,8 +170,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Không tìm thấy vai trò' }, { status: 404 });
     }
 
-    if (role.isSystem) {
-      return NextResponse.json({ error: 'Không thể xóa vai trò mặc định của hệ thống' }, { status: 400 });
+    if (role.isSystem || ['Super Admin', 'Admin', 'Asset Manager', 'Staff'].includes(role.name)) {
+      return NextResponse.json({ error: 'Không thể xóa vai trò mặc định cốt lõi của hệ thống' }, { status: 400 });
+    }
+
+    const targetRoleLevel = getRoleLevel(role.name);
+    if (targetRoleLevel >= callerLevel) {
+      return NextResponse.json({
+        error: 'Forbidden: Bạn không thể xóa vai trò có cấp bậc cao hơn hoặc ngang bằng vai trò của bạn',
+      }, { status: 403 });
     }
 
     if (role._count.users > 0) {

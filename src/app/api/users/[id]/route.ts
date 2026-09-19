@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { hasPermission } from '@/lib/permissions';
+import {
+  hasPermission,
+  getRoleLevel,
+  isSuperAdmin,
+  isAdminOrAbove,
+  canModifyUser,
+  canDeleteUser,
+  canAssignRole,
+} from '@/lib/permissions';
 import bcrypt from 'bcryptjs';
 import { moveToTrash } from '@/lib/trash';
 
@@ -18,7 +26,7 @@ export async function GET(
 
     const { id } = await params;
     const isSelf = id === currentUser.userId;
-    const canViewUsers = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.view'));
+    const canViewUsers = isAdminOrAbove(currentUser.roleName) || (await hasPermission(currentUser.userId, 'users.view'));
     if (!isSelf && !canViewUsers) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xem thông tin người dùng này' }, { status: 403 });
     }
@@ -63,26 +71,67 @@ export async function PUT(
     }
 
     const { id } = await params;
-
     const isSelf = id === currentUser.userId;
-    const isAdmin = currentUser.roleName === 'Admin';
-    const canManageUsers = isAdmin || (await hasPermission(currentUser.userId, 'users.update'));
+
+    const callerLevel = getRoleLevel(currentUser.roleName);
+    const callerIsSuperAdmin = isSuperAdmin(currentUser.roleName);
+    const callerIsAdminOrAbove = isAdminOrAbove(currentUser.roleName);
+    const canManageUsers = callerIsAdminOrAbove || (await hasPermission(currentUser.userId, 'users.update'));
 
     if (!isSelf && !canManageUsers) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền chỉnh sửa thông tin người dùng này' }, { status: 403 });
     }
 
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+      include: { role: true },
+    });
+    if (!targetUser) {
+      return NextResponse.json({ error: 'Không tìm thấy người dùng' }, { status: 404 });
+    }
+
+    const targetLevel = getRoleLevel(targetUser.role?.name);
+
+    // HIERARCHY RULE: Không được sửa người có cấp bậc cao hơn mình (trừ khi chính chủ tự sửa thông tin cá nhân cơ bản)
+    if (!isSelf && !canModifyUser(callerLevel, targetLevel)) {
+      return NextResponse.json({
+        error: `Forbidden: Bạn không có quyền chỉnh sửa tài khoản có cấp bậc cao hơn bạn (Cấp của bạn: ${callerLevel}, Cấp đối tượng: ${targetLevel})`,
+      }, { status: 403 });
+    }
+
     const body = await request.json();
     const { fullName, email, department, position, companyName, phone, roleId, password, isActive, managerId, locationId, revokeAllAssignments } = body;
 
-    // Role elevation guard: only Admin can change roleId
-    if (roleId !== undefined && !isAdmin) {
-      return NextResponse.json({ error: 'Forbidden: Chỉ Quản trị viên (Admin) mới có quyền thay đổi vai trò hệ thống' }, { status: 403 });
+    // Self-elevation guard: Người dùng không được tự đổi roleId hoặc tự đổi isActive của chính mình
+    if (isSelf && roleId !== undefined && roleId !== targetUser.roleId) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không thể tự thay đổi vai trò của chính mình' }, { status: 403 });
+    }
+    if (isSelf && isActive !== undefined && isActive !== targetUser.isActive) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không thể tự thay đổi trạng thái hoạt động của chính mình' }, { status: 403 });
     }
 
-    // Account activation guard: only managers with users.update can change isActive
+    // Role elevation guard: Chỉ gán vai trò ngang hoặc thấp hơn mình
+    if (roleId !== undefined && roleId !== targetUser.roleId) {
+      const newRole = await prisma.role.findUnique({ where: { id: roleId } });
+      if (!newRole) {
+        return NextResponse.json({ error: 'Vai trò mới không tồn tại' }, { status: 400 });
+      }
+      const newRoleLevel = getRoleLevel(newRole.name);
+      if (!canAssignRole(callerLevel, newRoleLevel)) {
+        return NextResponse.json({
+          error: `Forbidden: Bạn chỉ được gán vai trò có cấp bậc ngang hoặc thấp hơn vai trò của bạn. Không thể gán vai trò '${newRole.name}' (Cấp ${newRoleLevel}) khi cấp của bạn là ${callerLevel}`,
+        }, { status: 403 });
+      }
+    }
+
+    // Account activation guard
     if (isActive !== undefined && !canManageUsers) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền thay đổi trạng thái hoạt động của tài khoản' }, { status: 403 });
+    }
+
+    // Bảo vệ Super Admin: Không ai được khóa Super Admin (trừ chính Super Admin)
+    if (isActive === false && targetLevel >= 100 && !callerIsSuperAdmin) {
+      return NextResponse.json({ error: 'Forbidden: Không thể khóa hoặc vô hiệu hóa Quản trị viên Tối cao (Super Admin)' }, { status: 403 });
     }
 
     const data: Record<string, unknown> = {};
@@ -167,15 +216,29 @@ export async function DELETE(
       return NextResponse.json({ error: 'Không thể tự xóa tài khoản của chính mình' }, { status: 400 });
     }
 
-    const isAdmin = currentUser.roleName === 'Admin';
-    const canDeleteUser = isAdmin || (await hasPermission(currentUser.userId, 'users.delete'));
-    if (!canDeleteUser) {
-      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa hoặc vô hiệu hóa tài khoản này' }, { status: 403 });
+    const callerLevel = getRoleLevel(currentUser.roleName);
+    const callerIsSuperAdmin = isSuperAdmin(currentUser.roleName);
+    const callerIsAdminOrAbove = isAdminOrAbove(currentUser.roleName);
+    const canDeleteUserPerm = callerIsAdminOrAbove || (await hasPermission(currentUser.userId, 'users.delete'));
+    if (!canDeleteUserPerm) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa hoặc vô hiệu hóa tài khoản' }, { status: 403 });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { id } });
+    const existingUser = await prisma.user.findUnique({
+      where: { id },
+      include: { role: true },
+    });
     if (!existingUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const targetLevel = getRoleLevel(existingUser.role?.name);
+
+    // HIERARCHY RULE: Cấm xóa người có quyền cao hơn mình hoặc xóa Super Admin
+    if (!canDeleteUser(callerLevel, targetLevel, callerIsSuperAdmin)) {
+      return NextResponse.json({
+        error: `Forbidden: Bạn không thể xóa hoặc vô hiệu hóa người dùng có cấp bậc quyền hạn cao hơn hoặc ngang bằng bạn (Cấp của bạn: ${callerLevel}, Cấp đối tượng: ${targetLevel})`,
+      }, { status: 403 });
     }
 
     // Lưu snapshot vào Thùng rác

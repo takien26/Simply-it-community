@@ -1,5 +1,24 @@
 import { prisma } from './db';
 import { getCurrentUser } from './auth';
+import {
+  isAdminOrAbove,
+  isSuperAdmin,
+  getRoleLevel,
+  canDeleteUser,
+  canModifyUser,
+  canAssignRole,
+  ensureDefaultRolesAndPermissions,
+} from './rbac-defaults';
+
+export {
+  isAdminOrAbove,
+  isSuperAdmin,
+  getRoleLevel,
+  canDeleteUser,
+  canModifyUser,
+  canAssignRole,
+  ensureDefaultRolesAndPermissions,
+};
 
 export type PermissionCode = string;
 
@@ -27,7 +46,7 @@ export async function getUserPermissions(userId: string): Promise<Set<string>> {
 
   if (!user) return new Set();
 
-  if (user.role?.name === 'Admin') {
+  if (isAdminOrAbove(user.role?.name)) {
     const allPerms = await prisma.permission.findMany({ select: { code: true } });
     const fullSet = new Set<string>(allPerms.map((p) => p.code));
     fullSet.add('*');
@@ -62,7 +81,7 @@ export async function hasPermission(
     where: { id: userId },
     include: { role: true },
   });
-  if (user?.role?.name === 'Admin') return true;
+  if (isAdminOrAbove(user?.role?.name)) return true;
   const permissions = await getUserPermissions(userId);
   return permissions.has(permissionCode) || permissions.has('*');
 }
@@ -78,7 +97,7 @@ export async function hasAnyPermission(
     where: { id: userId },
     include: { role: true },
   });
-  if (user?.role?.name === 'Admin') return true;
+  if (isAdminOrAbove(user?.role?.name)) return true;
   const permissions = await getUserPermissions(userId);
   return permissionCodes.some((code) => permissions.has(code) || permissions.has('*'));
 }
@@ -94,7 +113,7 @@ export async function hasAllPermissions(
     where: { id: userId },
     include: { role: true },
   });
-  if (user?.role?.name === 'Admin') return true;
+  if (isAdminOrAbove(user?.role?.name)) return true;
   const permissions = await getUserPermissions(userId);
   return permissionCodes.every((code) => permissions.has(code) || permissions.has('*'));
 }

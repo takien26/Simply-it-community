@@ -89,8 +89,8 @@ export async function authenticate(
           }
           if (!targetRole) {
             targetRole = (await prisma.role.findFirst({ where: { name: 'Staff' } })) ||
-                         (await prisma.role.findFirst({ where: { isSystem: true } })) ||
-                         (await prisma.role.findFirst());
+                         (await prisma.role.findFirst({ where: { isSystem: true, name: { notIn: ['Super Admin', 'Admin'] } } })) ||
+                         (await prisma.role.findFirst({ where: { name: { notIn: ['Super Admin', 'Admin'] } } }));
           }
 
           if (!targetRole) {

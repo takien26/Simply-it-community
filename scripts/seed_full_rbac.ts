@@ -129,23 +129,30 @@ async function main() {
   }
   console.log(`✅ Đã đồng bộ ${fullPermissions.length} quyền hạn chi tiết trong CSDL`);
 
-  // ==================== 2. CHUẨN HÓA 3 VAI TRÒ CHÍNH (ROLES) ====================
+  // ==================== 2. CHUẨN HÓA CÁC VAI TRÒ HỆ THỐNG (ROLES) ====================
 
-  // 1. ADMIN (Toàn quyền 100%)
+  // 1. SUPER ADMIN (Toàn quyền 100% - Root Authority)
+  const superAdminRole = await prisma.role.upsert({
+    where: { name: 'Super Admin' },
+    update: { description: 'Quản trị viên Tối cao - Toàn quyền tuyệt đối hệ thống', isSystem: true },
+    create: { name: 'Super Admin', description: 'Quản trị viên Tối cao - Toàn quyền tuyệt đối hệ thống', isSystem: true },
+  });
+
+  // 2. ADMIN (Toàn quyền vận hành 100%)
   const adminRole = await prisma.role.upsert({
     where: { name: 'Admin' },
     update: { description: 'Quản trị viên Hệ thống - Toàn quyền quản lý và cấu hình', isSystem: true },
     create: { name: 'Admin', description: 'Quản trị viên Hệ thống - Toàn quyền quản lý và cấu hình', isSystem: true },
   });
 
-  // 2. ASSET MANAGER / IT SPECIALIST (Kỹ thuật viên & Quản lý IT)
+  // 3. ASSET MANAGER / IT SPECIALIST (Kỹ thuật viên & Quản lý IT)
   const itManagerRole = await prisma.role.upsert({
     where: { name: 'Asset Manager' },
     update: { description: 'Kỹ thuật viên IT & Quản trị viên Tài sản', isSystem: true },
     create: { name: 'Asset Manager', description: 'Kỹ thuật viên IT & Quản trị viên Tài sản', isSystem: true },
   });
 
-  // 3. STAFF / USER (Nhân viên thông thường)
+  // 4. STAFF / USER (Nhân viên thông thường)
   const staffRole = await prisma.role.upsert({
     where: { name: 'Staff' },
     update: { description: 'Nhân viên công ty - Xem tài sản được cấp, tạo ticket hỗ trợ & đọc tài liệu hướng dẫn', isSystem: true },
@@ -155,15 +162,20 @@ async function main() {
   // ==================== 3. GÁN QUYỀN CHO CÁC VAI TRÒ ====================
   const allDbPerms = await prisma.permission.findMany();
 
-  // 1. ADMIN -> Gán FULL 100% quyền
+  // 1. SUPER ADMIN & ADMIN -> Gán FULL 100% quyền
   for (const perm of allDbPerms) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: superAdminRole.id, permissionId: perm.id } },
+      update: {},
+      create: { roleId: superAdminRole.id, permissionId: perm.id },
+    });
     await prisma.rolePermission.upsert({
       where: { roleId_permissionId: { roleId: adminRole.id, permissionId: perm.id } },
       update: {},
       create: { roleId: adminRole.id, permissionId: perm.id },
     });
   }
-  console.log('✅ Admin: Đã gán toàn bộ 100% quyền');
+  console.log('✅ Super Admin & Admin: Đã gán toàn bộ 100% quyền');
 
   // 2. IT SPECIALIST / ASSET MANAGER -> Gán các quyền IT chuyên nghiệp
   const itExcludedCodes = ['settings.backup', 'users.permissions']; // Các quyền siêu nhạy cảm chỉ Super Admin mới có

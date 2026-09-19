@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { hasPermission } from '@/lib/permissions';
+import {
+  hasPermission,
+  getRoleLevel,
+  isSuperAdmin,
+  isAdminOrAbove,
+  canDeleteUser,
+} from '@/lib/permissions';
 
 export async function POST(
   req: NextRequest,
@@ -19,21 +25,15 @@ export async function POST(
       return NextResponse.json({ error: 'Bạn không thể tự thực hiện thủ tục thôi việc cho chính mình' }, { status: 400 });
     }
 
-    const canOffboard = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.delete'));
+    const canOffboard = isAdminOrAbove(currentUser.roleName) || (await hasPermission(currentUser.userId, 'users.delete'));
     if (!canOffboard) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền thực hiện thủ tục thôi việc cho nhân sự' }, { status: 403 });
     }
-    const body = await req.json().catch(() => ({}));
-
-    const revokeAssetIds: string[] = Array.isArray(body.revokeAssetIds) ? body.revokeAssetIds : [];
-    const revokeLicenseIds: string[] = Array.isArray(body.revokeLicenseIds) ? body.revokeLicenseIds : [];
-    const transferTicketToUserId: string | null = body.transferTicketToUserId || null;
-    const closeRemainingTickets: boolean = Boolean(body.closeRemainingTickets);
-    const notes: string = body.notes || 'Thủ tục thôi việc / Chấm dứt hợp đồng lao động';
 
     const targetUser = await prisma.user.findUnique({
       where: { id },
       include: {
+        role: true,
         location: true,
       },
     });
@@ -41,6 +41,23 @@ export async function POST(
     if (!targetUser) {
       return NextResponse.json({ error: 'Không tìm thấy người dùng' }, { status: 404 });
     }
+
+    const callerLevel = getRoleLevel(currentUser.roleName);
+    const callerIsSuperAdmin = isSuperAdmin(currentUser.roleName);
+    const targetLevel = getRoleLevel(targetUser.role?.name);
+
+    if (!canDeleteUser(callerLevel, targetLevel, callerIsSuperAdmin)) {
+      return NextResponse.json({
+        error: `Forbidden: Bạn không thể thực hiện thủ tục thôi việc cho người có cấp bậc quyền hạn cao hơn hoặc ngang bằng bạn (Cấp của bạn: ${callerLevel}, Cấp đối tượng: ${targetLevel})`,
+      }, { status: 403 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const revokeAssetIds: string[] = Array.isArray(body.revokeAssetIds) ? body.revokeAssetIds : [];
+    const revokeLicenseIds: string[] = Array.isArray(body.revokeLicenseIds) ? body.revokeLicenseIds : [];
+    const transferTicketToUserId: string | null = body.transferTicketToUserId || null;
+    const closeRemainingTickets: boolean = Boolean(body.closeRemainingTickets);
+    const notes: string = body.notes || 'Thủ tục thôi việc / Chấm dứt hợp đồng lao động';
 
     const now = new Date();
     const revokedAssetsDetails: any[] = [];

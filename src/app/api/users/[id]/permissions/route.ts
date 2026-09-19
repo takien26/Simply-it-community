@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import {
+  hasPermission,
+  getRoleLevel,
+  isSuperAdmin,
+} from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 
 // GET /api/users/[id]/permissions - Get specific overrides
@@ -48,6 +52,30 @@ export async function POST(
     }
 
     const { id: userId } = await params;
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true },
+    });
+    if (!targetUser) {
+      return NextResponse.json({ error: 'Không tìm thấy người dùng' }, { status: 404 });
+    }
+
+    const callerLevel = getRoleLevel(currentUser.roleName);
+    const targetLevel = getRoleLevel(targetUser.role?.name);
+
+    if (targetLevel > callerLevel) {
+      return NextResponse.json({
+        error: `Forbidden: Bạn không thể can thiệp phân quyền của người dùng có cấp bậc cao hơn bạn (Cấp của bạn: ${callerLevel}, Cấp đối tượng: ${targetLevel})`,
+      }, { status: 403 });
+    }
+
+    if (targetLevel >= 100 && !isSuperAdmin(currentUser.roleName)) {
+      return NextResponse.json({
+        error: 'Forbidden: Chỉ Quản trị viên Tối cao (Super Admin) mới có thể can thiệp phân quyền của Super Admin',
+      }, { status: 403 });
+    }
+
     const body = await request.json();
     const { grantedCodes, revokedCodes } = body as { grantedCodes?: string[]; revokedCodes?: string[] };
 

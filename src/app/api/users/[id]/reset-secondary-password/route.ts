@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import {
+  isAdminOrAbove,
+  isSuperAdmin,
+  getRoleLevel,
+} from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
 
@@ -15,20 +19,40 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleName === 'admin';
-
-    if (!isAdmin) {
+    if (!isAdminOrAbove(currentUser.roleName)) {
       return NextResponse.json({ error: 'Forbidden: Chỉ Quản trị viên (Admin) mới có quyền Reset mật khẩu cấp 2 của người dùng' }, { status: 403 });
     }
 
     const { id } = await params;
     const targetUser = await prisma.user.findUnique({
       where: { id },
-      select: { id: true, fullName: true, email: true, secondaryPasswordHash: true },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        secondaryPasswordHash: true,
+        role: { select: { name: true } },
+      },
     });
 
     if (!targetUser) {
       return NextResponse.json({ error: 'Không tìm thấy người dùng' }, { status: 404 });
+    }
+
+    const callerLevel = getRoleLevel(currentUser.roleName);
+    const targetLevel = getRoleLevel(targetUser.role?.name);
+
+    // HIERARCHY RULE: Không được reset mật khẩu của người có quyền cao hơn mình
+    if (targetLevel > callerLevel) {
+      return NextResponse.json({
+        error: `Forbidden: Bạn không thể Reset mật khẩu của người dùng có cấp bậc cao hơn bạn (Cấp của bạn: ${callerLevel}, Cấp đối tượng: ${targetLevel})`,
+      }, { status: 403 });
+    }
+
+    if (targetLevel >= 100 && !isSuperAdmin(currentUser.roleName)) {
+      return NextResponse.json({
+        error: 'Forbidden: Chỉ Quản trị viên Tối cao (Super Admin) mới có thể can thiệp vào tài khoản Super Admin',
+      }, { status: 403 });
     }
 
     // Reset secondary password hash to null

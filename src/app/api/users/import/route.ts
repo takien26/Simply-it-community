@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import {
+  hasPermission,
+  getRoleLevel,
+  isSuperAdmin,
+  isAdminOrAbove,
+  canAssignRole,
+} from '@/lib/permissions';
 import { createAuditLog } from '@/lib/audit';
 import { getActiveLicense } from '@/lib/license';
 import * as ExcelJS from 'exceljs';
@@ -170,12 +176,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const isCallerAdmin = user.roleName === 'Admin';
-    const canCreate = isCallerAdmin || (await hasPermission(user.userId, 'users.create'));
+    const callerLevel = getRoleLevel(user.roleName);
+    const callerIsSuperAdmin = isSuperAdmin(user.roleName);
+    const isCallerAdminOrAbove = isAdminOrAbove(user.roleName);
+    const canCreate = isCallerAdminOrAbove || (await hasPermission(user.userId, 'users.create'));
     if (!canCreate) {
       return NextResponse.json({ error: 'Bạn không có quyền import nhân sự' }, { status: 403 });
     }
-    const hasPermissionAssignRole = isCallerAdmin || (await hasPermission(user.userId, 'users.permissions'));
+    const hasPermissionAssignRole = isCallerAdminOrAbove || (await hasPermission(user.userId, 'users.permissions'));
 
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
@@ -364,20 +372,21 @@ export async function POST(req: NextRequest) {
       }
 
       // 1.1: Mặc định tất cả nhân sự import từ Excel là quyền user (Staff)
-      // Chỉ khi người thực hiện có quyền Admin hoặc users.permissions thì mới được phép gán role từ Excel,
-      // và chỉ được add quyền ngang hoặc thấp hơn vai trò của chính mình (chỉ Admin mới được gán vai trò Admin).
+      // Chỉ khi người thực hiện có quyền Admin/Super Admin hoặc users.permissions thì mới được phép gán role từ Excel,
+      // và chỉ được add quyền ngang hoặc thấp hơn vai trò của chính mình (chỉ Super Admin mới gán được Super Admin).
       let assignedRoleId = defaultRoleId;
       if (hasPermissionAssignRole && roleName) {
         const cleanRole = roleName.toLowerCase().trim();
         const matchedRole = allRoles.find((r) =>
           r.name.toLowerCase() === cleanRole ||
+          (cleanRole.includes('super') && r.name.toLowerCase().includes('super')) ||
           (cleanRole.includes('admin') && r.name.toLowerCase().includes('admin')) ||
           (cleanRole.includes('it') && r.name.toLowerCase().includes('it'))
         );
         if (matchedRole) {
-          const isTargetRoleAdmin = matchedRole.name.toLowerCase().includes('admin');
-          // Không cho phép gán vai trò Admin nếu người import không phải là Admin
-          if (!isTargetRoleAdmin || isCallerAdmin) {
+          const targetRoleLevel = getRoleLevel(matchedRole.name);
+          // HIERARCHY RULE: Không cho phép gán vai trò cao hơn cấp bậc của caller
+          if (canAssignRole(callerLevel, targetRoleLevel)) {
             assignedRoleId = matchedRole.id;
           }
         }
@@ -398,9 +407,17 @@ export async function POST(req: NextRequest) {
           include: { role: true },
         });
         if (existing) {
-          // Bảo vệ tài khoản Quản trị viên: Người không phải Admin không được phép sửa đổi/khóa tài khoản Admin qua Excel
-          if (existing.role?.name?.toLowerCase().includes('admin') && !isCallerAdmin) {
-            errors.push({ row: r, error: `Không thể cập nhật tài khoản Quản trị viên (${email}) khi không có quyền Admin` });
+          const existingLevel = getRoleLevel(existing.role?.name);
+
+          // HIERARCHY RULE: Người dùng không được phép sửa đổi/khóa/ghi đè tài khoản có cấp bậc cao hơn mình
+          if (existingLevel > callerLevel) {
+            errors.push({ row: r, error: `Không thể chỉnh sửa hoặc ghi đè tài khoản có cấp bậc cao hơn bạn (${email})` });
+            failedCount++;
+            continue;
+          }
+
+          if (existingLevel >= 100 && !callerIsSuperAdmin) {
+            errors.push({ row: r, error: `Không thể can thiệp tài khoản Quản trị viên Tối cao (${email})` });
             failedCount++;
             continue;
           }
