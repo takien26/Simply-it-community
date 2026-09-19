@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/context';
 import { fetchWithSwr, invalidateClientCache, useAutoRefresh, triggerDataRefresh } from '@/lib/client-cache';
 import { getStoredBaseCurrency, getStoredCurrencies, convertCurrencyAmount } from '@/lib/currency-store';
+import { formatAssetSpecsForExport, formatDeviceNameAndModel } from '@/lib/asset-formatter';
 import {
   Sparkles,
   Plus,
@@ -2019,7 +2020,8 @@ export default function AssetsPage() {
       const subCell = sheet.getCell('A2');
       const filterCompanyText = selectedCompany ? ` | Công ty: ${selectedCompany}` : '';
       const filterCatText = selectedCategory ? ` | Danh mục: ${categories.find((c) => c.id === selectedCategory)?.name || ''}` : '';
-      subCell.value = `Thời gian xuất: ${new Date().toLocaleString('vi-VN')} | Tổng số lượng: ${displayAssets.length} {isEn ? (displayAssets.length === 1 ? 'device' : 'devices') : 'thiết bị'} lọc${filterCompanyText}${filterCatText}`;
+      const deviceCountText = isEn ? (displayAssets.length === 1 ? 'device' : 'devices') : 'thiết bị';
+      subCell.value = `Thời gian xuất: ${new Date().toLocaleString('vi-VN')} | Tổng số lượng: ${displayAssets.length} ${deviceCountText} lọc${filterCompanyText}${filterCatText}`;
       subCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF475569' } };
       subCell.alignment = { vertical: 'middle', horizontal: 'center' };
       sheet.getRow(2).height = 20;
@@ -2078,11 +2080,8 @@ export default function AssetsPage() {
         const holderName = assignedUser ? assignedUser.fullName : 'Sẵn sàng trong kho';
         const holderDept = assignedUser?.department || (assignedUser ? 'Nhân sự' : 'Kho IT');
 
-        const specsObj = asset.specs && typeof asset.specs === 'object' ? asset.specs : {};
-        const specsText = Object.entries(specsObj)
-          .filter(([k]) => !['autoScanned', 'source', 'paymentHistory'].includes(k))
-          .map(([k, v]) => `${k}: ${v}`)
-          .join(', ');
+        const specsText = formatAssetSpecsForExport(asset.specs);
+        const nameAndModel = formatDeviceNameAndModel(asset.name, asset.brand, asset.model);
 
         const contractInvoice = [asset.contractNumber, asset.invoiceNumber].filter(Boolean).join(' / ') || '—';
 
@@ -2094,7 +2093,7 @@ export default function AssetsPage() {
         const row = sheet.addRow([
           index + 1,
           asset.assetTag,
-          `${asset.name}${asset.brand || asset.model ? ` (${[asset.brand, asset.model].filter(Boolean).join(' - ')})` : ''}`,
+          nameAndModel,
           asset.category?.name || 'Chưa phân loại',
           asset.serialNumber || '—',
           statusMap[asset.status] || asset.status,
@@ -2113,11 +2112,13 @@ export default function AssetsPage() {
         row.alignment = { vertical: 'middle' };
         row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
         row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
         row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
         row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
         row.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
         row.getCell(12).numFmt = '#,##0 "₫"';
         row.getCell(13).alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(15).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
 
         if (index % 2 === 1) {
           row.eachCell((c) => {
@@ -2127,21 +2128,21 @@ export default function AssetsPage() {
       });
 
       sheet.columns = [
-        { width: 6 },
-        { width: 14 },
-        { width: 32 },
-        { width: 20 },
-        { width: 18 },
-        { width: 20 },
-        { width: 18 },
-        { width: 25 },
-        { width: 24 },
-        { width: 22 },
-        { width: 20 },
-        { width: 18 },
-        { width: 15 },
-        { width: 22 },
-        { width: 35 },
+        { width: 6 },  // STT
+        { width: 15 }, // Tag
+        { width: 36 }, // Tên & Model
+        { width: 18 }, // Danh mục
+        { width: 18 }, // Serial
+        { width: 20 }, // Trạng thái
+        { width: 18 }, // Tình trạng
+        { width: 25 }, // Công ty quản lý
+        { width: 24 }, // Người đang giữ
+        { width: 22 }, // Phòng ban người dùng
+        { width: 20 }, // Vị trí
+        { width: 18 }, // Giá mua
+        { width: 16 }, // Bảo hành
+        { width: 22 }, // HĐ / Hóa đơn
+        { width: 55 }, // Specs
       ];
 
       const buffer = await workbook.xlsx.writeBuffer();

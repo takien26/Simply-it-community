@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
@@ -35,6 +35,18 @@ export default function DashboardLayout({
 }) {
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+  const [excelModalTab, setExcelModalTab] = useState<'ASSET' | 'LICENSE' | 'USER' | 'SERVICE'>('ASSET');
+
+  useEffect(() => {
+    const handleOpenExcel = (e: any) => {
+      if (e?.detail?.tab) {
+        setExcelModalTab(e.detail.tab);
+      }
+      setIsExcelModalOpen(true);
+    };
+    window.addEventListener('simply:open-excel-modal', handleOpenExcel);
+    return () => window.removeEventListener('simply:open-excel-modal', handleOpenExcel);
+  }, []);
 
   const handleGlobalRefresh = () => {
     triggerDataRefresh();
@@ -68,6 +80,7 @@ export default function DashboardLayout({
       {isExcelModalOpen && (
         <ExcelImportModal
           isOpen={isExcelModalOpen}
+          defaultType={excelModalTab}
           onClose={() => setIsExcelModalOpen(false)}
           onSuccess={handleGlobalRefresh}
         />

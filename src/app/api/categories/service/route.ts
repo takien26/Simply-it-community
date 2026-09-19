@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { moveToTrash } from '@/lib/trash';
 
 const DEFAULT_SERVICE_CATEGORIES = [
   {
@@ -219,10 +220,32 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'Thiếu ID danh mục' }, { status: 400 });
 
     let list = await getStoredServiceCategories();
-    list = list.filter((item: any) => item.id !== id);
-    await saveStoredServiceCategories(list);
+    const catToDelete = list.find((item: any) => item.id === id);
+    let trashItemId: string | undefined = undefined;
 
-    return NextResponse.json({ success: true, message: 'Đã xóa danh mục dịch vụ' });
+    if (catToDelete) {
+      const { trashItem } = await moveToTrash({
+        entityType: 'CATEGORY',
+        entityId: catToDelete.id,
+        entityName: catToDelete.name,
+        entityCode: catToDelete.icon || '💼',
+        dataSnapshot: {
+          ...catToDelete,
+          categoryType: 'SERVICE',
+        },
+        deletedById: user.userId,
+        deletedByName: user.fullName,
+      });
+      trashItemId = trashItem.id;
+      list = list.filter((item: any) => item.id !== id);
+      await saveStoredServiceCategories(list);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Đã xóa danh mục dịch vụ và chuyển vào thùng rác',
+      trashItemId,
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Lỗi khi xóa danh mục' }, { status: 500 });
   }

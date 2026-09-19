@@ -116,45 +116,62 @@ export async function POST(request: NextRequest) {
     }
 
     const currentYear = new Date().getFullYear();
-    const count = await prisma.incident.count();
-    const incidentNumber = `INC-${currentYear}-${String(count + 1).padStart(4, '0')}`;
 
-    const incident = await prisma.incident.create({
-      data: {
-        incidentNumber,
-        title,
-        description,
-        severity: severity || 'MEDIUM_P3',
-        status: 'INVESTIGATING',
-        impact: impact || null,
-        affectedServices: Array.isArray(affectedServices) ? affectedServices : [],
-        affectedLocations: Array.isArray(affectedLocations) ? affectedLocations : [],
-        workaround: workaround || null,
-        teamId: teamId || null,
-        assignedToId: assignedToId || null,
-        createdById: currentUser.userId,
-        // Link initial tickets if provided
-        ...(ticketIds && Array.isArray(ticketIds) && ticketIds.length > 0
-          ? {
-              tickets: {
-                connect: ticketIds.map((id: string) => ({ id })),
+    let incident: any = null;
+    let attempts = 0;
+    while (attempts < 5) {
+      attempts++;
+      const count = await prisma.incident.count();
+      const numPart = attempts === 1
+        ? String(count + 1).padStart(4, '0')
+        : `${String(count + attempts).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
+      const incidentNumber = `INC-${currentYear}-${numPart}`;
+
+      try {
+        incident = await prisma.incident.create({
+          data: {
+            incidentNumber,
+            title,
+            description,
+            severity: severity || 'MEDIUM_P3',
+            status: 'INVESTIGATING',
+            impact: impact || null,
+            affectedServices: Array.isArray(affectedServices) ? affectedServices : [],
+            affectedLocations: Array.isArray(affectedLocations) ? affectedLocations : [],
+            workaround: workaround || null,
+            teamId: teamId || null,
+            assignedToId: assignedToId || null,
+            createdById: currentUser.userId,
+            // Link initial tickets if provided
+            ...(ticketIds && Array.isArray(ticketIds) && ticketIds.length > 0
+              ? {
+                  tickets: {
+                    connect: ticketIds.map((id: string) => ({ id })),
+                  },
+                }
+              : {}),
+            updates: {
+              create: {
+                userId: currentUser.userId,
+                content: `Sự cố ${incidentNumber} được khởi tạo với mức độ ${severity || 'MEDIUM_P3'}.`,
+                statusChange: 'INVESTIGATING',
               },
-            }
-          : {}),
-        updates: {
-          create: {
-            userId: currentUser.userId,
-            content: `Sự cố ${incidentNumber} được khởi tạo với mức độ ${severity || 'MEDIUM_P3'}.`,
-            statusChange: 'INVESTIGATING',
+            },
           },
-        },
-      },
-      include: {
-        createdBy: { select: { id: true, fullName: true } },
-        team: { select: { id: true, name: true } },
-        tickets: { select: { id: true, ticketNumber: true, title: true } },
-      },
-    });
+          include: {
+            createdBy: { select: { id: true, fullName: true } },
+            team: { select: { id: true, name: true } },
+            tickets: { select: { id: true, ticketNumber: true, title: true } },
+          },
+        });
+        break;
+      } catch (createErr: any) {
+        if (createErr.code === 'P2002' && attempts < 5) {
+          continue;
+        }
+        throw createErr;
+      }
+    }
 
     return NextResponse.json({ success: true, data: incident }, { status: 201 });
   } catch (error) {

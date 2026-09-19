@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
@@ -107,21 +107,26 @@ export async function GET() {
       }),
     ]);
 
-    const defaultCompanies = [
-      'Tập đoàn Công nghệ Mẫu',
-      'Công ty Cổ phần Công nghệ ABC',
-      'Chi nhánh Miền Nam',
-      'Chi nhánh Miền Trung',
-      'Chi nhánh Hà Nội',
-      'Chi nhánh Công nghệ Phụ trợ',
-      'Trung tâm Nghiên cứu & Phát triển R&D',
-    ];
-
-    const allCompaniesSet = new Set<string>([
-      ...defaultCompanies,
-      ...distinctUserCompanies.map((u) => u.companyName!).filter(Boolean),
-      ...distinctAssetCompanies.map((a) => a.companyName!).filter(Boolean),
-    ]);
+    const compSetting = await prisma.systemSetting.findUnique({
+      where: { key: 'corporate.companies' },
+    });
+    let allCompanies: string[] = [];
+    if (compSetting?.value) {
+      try {
+        const parsed = JSON.parse(compSetting.value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          allCompanies = parsed;
+        }
+      } catch {}
+    }
+    if (allCompanies.length === 0) {
+      allCompanies = Array.from(
+        new Set([
+          ...distinctUserCompanies.map((u) => u.companyName!).filter(Boolean),
+          ...distinctAssetCompanies.map((a) => a.companyName!).filter(Boolean),
+        ])
+      );
+    }
 
     const defaultDepts = [
       'IT / Kỹ thuật',
@@ -149,7 +154,7 @@ export async function GET() {
         services,
         supportTeams,
         supportQueues,
-        companies: Array.from(allCompaniesSet),
+        companies: allCompanies,
         departments: Array.from(allDeptsSet),
       },
     };

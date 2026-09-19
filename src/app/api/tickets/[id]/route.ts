@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
+import { moveToTrash } from '@/lib/trash';
 
 const STATUS_LABELS: Record<string, string> = {
   OPEN: 'Mới mở',
@@ -331,6 +332,31 @@ export async function DELETE(
 
     const { id } = await params;
 
+    const existing = await prisma.ticket.findUnique({
+      where: { id },
+      include: {
+        comments: true,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Ticket không tồn tại' }, { status: 404 });
+    }
+
+    // 0. Lưu snapshot ticket vào Thùng rác (Recycle Bin) trước khi xóa
+    const trashResult = await moveToTrash({
+      entityType: 'TICKET',
+      entityId: id,
+      entityName: existing.title,
+      entityCode: existing.ticketNumber,
+      dataSnapshot: existing,
+      deletedById: currentUser.userId,
+      deletedByName: currentUser.fullName || currentUser.email,
+    }).catch((err) => {
+      console.error('Failed to snapshot ticket to trash:', err);
+      return null;
+    });
+
     await prisma.$transaction(async (tx) => {
       // 1. Unlink any tickets merged into this ticket
       await tx.ticket.updateMany({
@@ -349,7 +375,14 @@ export async function DELETE(
       });
     });
 
-    return NextResponse.json({ success: true, message: 'Đã xóa ticket thành công' });
+    return NextResponse.json({
+      success: true,
+      message: trashResult
+        ? `Đã chuyển ticket vào Thùng rác (Lưu trữ ${trashResult.retentionDays} ngày)`
+        : 'Đã xóa ticket thành công',
+      inTrash: !!trashResult,
+      trashItemId: trashResult?.trashItem?.id || null,
+    });
   } catch (error) {
     console.error('Delete ticket error:', error);
     return NextResponse.json({ error: 'Failed to delete ticket' }, { status: 500 });

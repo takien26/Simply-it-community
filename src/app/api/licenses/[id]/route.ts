@@ -123,6 +123,20 @@ export async function PUT(
       finalSpecs = { ...(finalSpecs && typeof finalSpecs === 'object' ? finalSpecs : {}), batchName: body.batchName };
     }
 
+    if (body.purchaseDate) {
+      const d = new Date(body.purchaseDate);
+      if (isNaN(d.getTime())) {
+        return NextResponse.json({ error: 'Ngày mua (purchaseDate) không hợp lệ' }, { status: 400 });
+      }
+    }
+
+    if (body.expiryDate) {
+      const d = new Date(body.expiryDate);
+      if (isNaN(d.getTime())) {
+        return NextResponse.json({ error: 'Ngày hết hạn (expiryDate) không hợp lệ' }, { status: 400 });
+      }
+    }
+
     const updated = await prisma.license.update({
       where: { id },
       data: {

@@ -200,7 +200,9 @@ export function SsoSettingsTab({
             ) : (
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             )}
-            <span>{ssoTestResult.message}</span>
+            <div className="flex-1 min-w-0">
+              <span className="whitespace-pre-line leading-relaxed">{ssoTestResult.message}</span>
+            </div>
           </div>
         )}
 
@@ -218,7 +220,9 @@ export function SsoSettingsTab({
             ) : (
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             )}
-            <span>{ssoSyncResult.message}</span>
+            <div className="flex-1 min-w-0">
+              <span className="whitespace-pre-line leading-relaxed">{ssoSyncResult.message}</span>
+            </div>
           </div>
         )}
 
@@ -241,9 +245,21 @@ export function SsoSettingsTab({
           <input
             type="text"
             readOnly
-            value={redirectUri}
+            value={getSettingValue('sso.ms365_redirect_uri') || redirectUri}
             className="w-full px-3 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-mono text-indigo-950 select-all outline-none"
           />
+          <div className="pt-1">
+            <label className="block text-[11px] font-semibold text-indigo-950 mb-1">
+              {isEn ? 'Custom Redirect URI override (Optional, for reverse proxies or fixed domain):' : 'Tùy chỉnh Redirect URI cố định (Tùy chọn, khi dùng Nginx / Reverse Proxy / Tên miền riêng):'}
+            </label>
+            <input
+              type="text"
+              placeholder={`VD: https://it.hayen.vn/api/auth/sso/ms365/callback (Mặc định: ${redirectUri})`}
+              value={getSettingValue('sso.ms365_redirect_uri')}
+              onChange={(e) => handleChange('sso.ms365_redirect_uri', e.target.value)}
+              className="w-full px-2.5 py-1.5 bg-white/90 border border-indigo-200 rounded-lg text-[11px] font-mono outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
         </div>
 
         {/* Credentials Fields */}
@@ -276,17 +292,45 @@ export function SsoSettingsTab({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Directory (Tenant) ID
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-slate-700">
+                Directory (Tenant) ID <span className="text-slate-400 font-normal">(GUID hoặc tên miền)</span>
+              </label>
+              {/directory.*tenant/i.test(getSettingValue('sso.ms365_tenant_id') || '') && (
+                <button
+                  type="button"
+                  onClick={() => handleChange('sso.ms365_tenant_id', 'common')}
+                  className="text-[11px] text-amber-700 hover:text-amber-800 font-semibold bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded border border-amber-200 cursor-pointer"
+                >
+                  ⚡ Đổi sang 'common' (Khắc phục nhanh)
+                </button>
+              )}
+            </div>
             <input
               type="text"
-              placeholder={isEn ? 'common or Tenant directory ID' : 'common hoặc ID thư mục Tenant'}
-              value={getSettingValue('sso.ms365_tenant_id') || 'common'}
+              placeholder="VD: 84a7e3d1-42b8-47bc-926f-998811223344 hoặc common"
+              value={getSettingValue('sso.ms365_tenant_id') ?? 'common'}
               onChange={(e) => handleChange('sso.ms365_tenant_id', e.target.value)}
-              className="w-full p-2.5 border border-slate-300 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500"
+              className={`w-full p-2.5 border rounded-xl text-sm font-mono outline-none focus:ring-2 ${
+                /directory.*tenant/i.test(getSettingValue('sso.ms365_tenant_id') || '')
+                  ? 'border-rose-400 bg-rose-50/50 text-rose-900 focus:ring-rose-500'
+                  : 'border-slate-300 focus:ring-indigo-500'
+              }`}
             />
-            <p className="text-[11px] text-slate-500 mt-1">{isEn ? <>Use <code>common</code> to support all organizational Microsoft accounts or enter your specific Tenant ID.</> : <>Để <code>common</code> nếu muốn hỗ trợ mọi tài khoản Microsoft công ty hoặc nhập Tenant ID cụ thể của công ty bạn.</>}</p>
+            {/directory.*tenant/i.test(getSettingValue('sso.ms365_tenant_id') || '') ? (
+              <p className="text-[11px] text-rose-600 font-medium mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>Bạn đang nhập nhãn chữ thay vì mã ID thực tế. Hãy dán mã GUID 36 ký tự từ Azure Overview (hoặc bấm nút màu cam ở trên để tạm đổi thành <code>common</code>).</span>
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-500 mt-1">
+                {isEn ? (
+                  <>36-character GUID from Azure Portal (Overview &gt; Directory (tenant) ID), company domain (e.g. <code>hayen.vn</code>), or <code>common</code>.</>
+                ) : (
+                  <>Mã GUID 36 ký tự từ Azure Portal (Overview &gt; Directory (tenant) ID), hoặc tên miền công ty (VD: <code>hayen.vn</code>), hoặc điền <code>common</code> nếu là app đa tổ chức.</>
+                )}
+              </p>
+            )}
           </div>
         </div>
 

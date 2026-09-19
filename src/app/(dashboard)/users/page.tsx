@@ -27,6 +27,7 @@ import {
   Edit,
   Save,
   FileSpreadsheet,
+  Upload,
   LayoutGrid,
   List,
   ShieldCheck,
@@ -863,191 +864,256 @@ export default function UsersPage() {
   return (
     <div className="space-y-4">
       {/* Header & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-              {language === 'en' ? 'Employees & IT Asset Directory' : 'Danh Sách Nhân Sự & Cấp Phát Tài Sản'}
+      {/* Header & Quick Actions */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+              {language === 'en' ? 'Employees & Asset Directory' : 'Nhân Sự & Cấp Phát Tài Sản'}
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-bold">
+            <span className="px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold">
               {activeCount} {language === 'en' ? 'active' : 'đang làm việc'}
             </span>
             {resignedCount > 0 && (
-              <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 text-xs font-bold border border-rose-200">
+              <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold">
                 🛑 {resignedCount} {language === 'en' ? 'resigned' : 'nghỉ việc'}
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {language === 'en' ? 'Manage department hierarchy, subsidiaries, hardware assets, software licenses, and offboarding' : 'Quản lý cơ cấu phòng ban, công ty thành viên, cấp phát tài sản và thủ tục nghỉ việc'}
+          <p className="text-xs text-slate-500 mt-0.5 truncate">
+            {language === 'en'
+              ? 'Manage department hierarchy, corporate subsidiaries, assets, licenses, and onboarding/offboarding'
+              : 'Quản lý cơ cấu phòng ban, công ty thành viên, cấp phát tài sản và thủ tục tiếp nhận/nghỉ việc'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled={isSyncingDirectory}
-            onClick={handleSyncDirectory}
-            title={language === 'en' ? 'Sync accounts from Microsoft 365 & Active Directory / LDAP' : 'Đồng bộ tài khoản từ Microsoft 365 & Active Directory / LDAP'}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
-          >
-            <RotateCcw className={`w-3.5 h-3.5 ${isSyncingDirectory ? 'animate-spin text-purple-600' : ''}`} />
-            <span>{isSyncingDirectory ? (language === 'en' ? 'Syncing...' : 'Đang đồng bộ...') : (language === 'en' ? 'Sync Directory' : 'Đồng Bộ Thư Mục')}</span>
-          </button>
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
+          {/* Utilities Toolbar Group */}
+          <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+            <button
+              type="button"
+              disabled={isSyncingDirectory}
+              onClick={handleSyncDirectory}
+              title={language === 'en' ? 'Sync accounts from Microsoft 365 & Active Directory / LDAP' : 'Đồng bộ tài khoản từ Microsoft 365 & Active Directory / LDAP'}
+              className="px-2.5 py-1.5 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${isSyncingDirectory ? 'animate-spin text-purple-600' : 'text-slate-500'}`} />
+              <span className="hidden md:inline">{isSyncingDirectory ? (language === 'en' ? 'Syncing...' : 'Đang đồng bộ...') : (language === 'en' ? 'Sync' : 'Đồng Bộ')}</span>
+            </button>
 
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <a
+              href="/api/export/users"
+              download
+              className="px-2.5 py-1.5 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              title={language === 'en' ? 'Export users and assets to Excel' : 'Xuất danh sách nhân sự & thiết bị ra file Excel'}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden md:inline">{language === 'en' ? 'Export' : 'Xuất Excel'}</span>
+            </a>
+
+            <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+
             <button
               onClick={() => setViewMode('table')}
               className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                viewMode === 'table' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+                viewMode === 'table' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs' : 'text-slate-500 hover:text-slate-900'
               }`}
+              title={language === 'en' ? 'Table View' : 'Xem dạng Bảng'}
             >
               <List className="w-3.5 h-3.5" />
-              <span>{language === 'en' ? 'Table' : 'Bảng'}</span>
             </button>
             <button
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                viewMode === 'grid' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+                viewMode === 'grid' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs' : 'text-slate-500 hover:text-slate-900'
               }`}
+              title={language === 'en' ? 'Grid View' : 'Xem dạng Lưới'}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span>{language === 'en' ? 'Grid' : 'Lưới'}</span>
             </button>
           </div>
 
+          {/* Primary Action Buttons */}
           <button
             type="button"
             onClick={() => setIsOnboardModalOpen(true)}
-            className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer transition-all hover:scale-102"
+            className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition-all hover:scale-102 shrink-0"
             title="Quy trình tiếp nhận nhân sự mới, cấp phát combo máy tính & bản quyền"
           >
             <span>🚀</span>
-            <span>{language === 'en' ? 'Onboard New Hire' : 'Tiếp Nhận Nhân Sự (Onboard)'}</span>
+            <span>{language === 'en' ? 'Onboard New Hire' : 'Tiếp Nhận Nhân Sự'}</span>
           </button>
 
           <button
             onClick={handleOpenAddUser}
-            className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer transition-all"
+            className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition-all hover:scale-102 shrink-0"
           >
-            <UserPlus className="w-4 h-4" />
-            <span>{t('users.add_btn', '+ Thêm Nhân Viên')}</span>
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>{t('users.add_btn', '+ Thêm Tài Khoản')}</span>
           </button>
         </div>
       </div>
 
-      {/* Quick Filter Status Badges */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-        <button
-          type="button"
-          onClick={() => setSelectedFilter('ALL')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-            selectedFilter === 'ALL'
-              ? 'bg-slate-900 border-slate-900 text-white shadow-2xs'
-              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          {language === 'en' ? '👥 Active' : '👥 Đang làm việc'} ({activeCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setSelectedFilter(selectedFilter === 'WITH_ASSETS' ? 'ALL' : 'WITH_ASSETS')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-            selectedFilter === 'WITH_ASSETS'
-              ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
-              : 'bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100'
-          }`}
-        >
-          {language === 'en' ? '💻 With Devices' : '💻 Đang giữ máy'} ({withAssetsCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setSelectedFilter(selectedFilter === 'WITH_LICENSES' ? 'ALL' : 'WITH_LICENSES')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-            selectedFilter === 'WITH_LICENSES'
-              ? 'bg-purple-600 border-purple-600 text-white shadow-2xs'
-              : 'bg-purple-50 border-purple-200 text-purple-800 hover:bg-purple-100'
-          }`}
-        >
-          {language === 'en' ? '🔑 With Licenses' : '🔑 Đang giữ Lic'} ({withLicCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setSelectedFilter(selectedFilter === 'NO_ASSIGNMENTS' ? 'ALL' : 'NO_ASSIGNMENTS')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-            selectedFilter === 'NO_ASSIGNMENTS'
-              ? 'bg-amber-600 border-amber-600 text-white shadow-2xs'
-              : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
-          }`}
-        >
-          {language === 'en' ? '⚪ No Assignments' : '⚪ Chưa gán gì'} ({noAssignmentsCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setSelectedFilter(selectedFilter === 'MANAGERS' ? 'ALL' : 'MANAGERS')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-            selectedFilter === 'MANAGERS'
-              ? 'bg-purple-600 border-purple-600 text-white shadow-2xs'
-              : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
-          }`}
-        >
-          {language === 'en' ? 'Managers' : 'Cấp quản lý'} ({managersCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setSelectedFilter(selectedFilter === 'ADMIN' ? 'ALL' : 'ADMIN')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-            selectedFilter === 'ADMIN'
-              ? 'bg-rose-600 border-rose-600 text-white shadow-2xs'
-              : 'bg-rose-50 border-rose-200 text-rose-800 hover:bg-rose-100'
-          }`}
-        >
-          🛡️ Admin ({adminCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setSelectedFilter(selectedFilter === 'RESIGNED' ? 'ALL' : 'RESIGNED')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-            selectedFilter === 'RESIGNED'
-              ? 'bg-rose-700 border-rose-700 text-white shadow-2xs'
-              : 'bg-rose-50 border-rose-200 text-rose-800 hover:bg-rose-100'
-          }`}
-        >
-          🛑 {language === 'en' ? 'Resigned' : 'Nghỉ việc'} ({resignedCount})
-        </button>
-      </div>
+      {/* Unified Search, Status Tabs & Filters */}
+      <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-3 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-2.5">
+        {/* Row 1: Segmented Status Pills */}
+        <div className="flex items-center gap-1 p-1 bg-slate-100/90 dark:bg-slate-800/80 rounded-xl border border-slate-200/70 dark:border-slate-700/70 overflow-x-auto text-xs">
+          <button
+            type="button"
+            onClick={() => setSelectedFilter('ALL')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedFilter === 'ALL'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>👥</span>
+            <span>{language === 'en' ? 'Active' : 'Đang làm việc'}</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              selectedFilter === 'ALL' ? 'bg-purple-100 text-purple-800' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {activeCount}
+            </span>
+          </button>
 
-      {/* Toolbar Search, Company Filter & Tree Department Filter (2 rows layout) */}
-      <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2.5">
-        {/* Row 1: Ô Tìm kiếm nhanh toàn chiều rộng */}
-        <div className="relative w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-          <input
-            type="text"
-            placeholder={language === 'en' ? 'Search by employee name, title, email, phone, company, department...' : 'Tìm theo tên nhân viên, chức danh, email, SĐT, công ty, bộ phận IT...'}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white dark:focus:bg-slate-800 transition-all font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs cursor-pointer p-0.5"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setSelectedFilter(selectedFilter === 'WITH_ASSETS' ? 'ALL' : 'WITH_ASSETS')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedFilter === 'WITH_ASSETS'
+                ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>💻</span>
+            <span>{language === 'en' ? 'With Devices' : 'Đang giữ máy'}</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              selectedFilter === 'WITH_ASSETS' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {withAssetsCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedFilter(selectedFilter === 'WITH_LICENSES' ? 'ALL' : 'WITH_LICENSES')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedFilter === 'WITH_LICENSES'
+                ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-400 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>🔑</span>
+            <span>{language === 'en' ? 'With Licenses' : 'Đang giữ Lic'}</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              selectedFilter === 'WITH_LICENSES' ? 'bg-purple-100 text-purple-800' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {withLicCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedFilter(selectedFilter === 'NO_ASSIGNMENTS' ? 'ALL' : 'NO_ASSIGNMENTS')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedFilter === 'NO_ASSIGNMENTS'
+                ? 'bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>⚪</span>
+            <span>{language === 'en' ? 'No Assignments' : 'Chưa gán gì'}</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              selectedFilter === 'NO_ASSIGNMENTS' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {noAssignmentsCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedFilter(selectedFilter === 'MANAGERS' ? 'ALL' : 'MANAGERS')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedFilter === 'MANAGERS'
+                ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>👔</span>
+            <span>{language === 'en' ? 'Managers' : 'Cấp quản lý'}</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              selectedFilter === 'MANAGERS' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {managersCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedFilter(selectedFilter === 'ADMIN' ? 'ALL' : 'ADMIN')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedFilter === 'ADMIN'
+                ? 'bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-400 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>🛡️</span>
+            <span>Admin</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              selectedFilter === 'ADMIN' ? 'bg-rose-100 text-rose-800' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {adminCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedFilter(selectedFilter === 'RESIGNED' ? 'ALL' : 'RESIGNED')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedFilter === 'RESIGNED'
+                ? 'bg-white dark:bg-slate-900 text-rose-800 dark:text-rose-400 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>🛑</span>
+            <span>{language === 'en' ? 'Resigned' : 'Nghỉ việc'}</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              selectedFilter === 'RESIGNED' ? 'bg-rose-200 text-rose-900' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {resignedCount}
+            </span>
+          </button>
         </div>
 
-        {/* Row 2: Bộ lọc Công ty & Bộ lọc Cơ cấu Phòng ban */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
-            {/* Filter Công ty quản lý */}
+        {/* Row 2: Search Input + Company Select + Department Select + Reset + Quick Tip */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
+            {/* Search Input */}
+            <div className="relative flex-1 sm:max-w-xs md:max-w-sm">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+              <input
+                type="text"
+                placeholder={language === 'en' ? 'Search by name, title, email, phone, company...' : 'Tìm theo tên nhân viên, chức danh, email, SĐT, công ty...'}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white dark:focus:bg-slate-800 transition-all font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs cursor-pointer p-0.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Company Select */}
             <select
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 font-bold min-w-[200px] cursor-pointer"
+              className="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 font-bold sm:w-48 cursor-pointer"
             >
               <option value="">{language === 'en' ? '🏢 All Companies' : '🏢 Tất cả công ty quản lý'}</option>
               {companies.map((c) => (
@@ -1057,11 +1123,11 @@ export default function UsersPage() {
               ))}
             </select>
 
-            {/* Filter Cây Thư Mục Phòng Ban (Hierarchical Tree Select) */}
+            {/* Department Select */}
             <select
               value={selectedDeptFilter}
               onChange={(e) => setSelectedDeptFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 font-bold min-w-[240px] cursor-pointer"
+              className="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 font-bold sm:w-56 cursor-pointer"
             >
               <option value="">{language === 'en' ? '📂 All Departments' : '📂 Tất cả Phòng ban & Bộ phận'}</option>
               {deptTree.map((parent) => (
@@ -1077,35 +1143,37 @@ export default function UsersPage() {
                 </optgroup>
               ))}
             </select>
+
+            {/* Reset Button */}
+            {(search || selectedCompany || selectedDeptFilter || selectedFilter !== 'ALL') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setSelectedCompany('');
+                  setSelectedDeptFilter('');
+                  setSelectedFilter('ALL');
+                }}
+                className="inline-flex items-center justify-center gap-1 px-2.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
+                title={isEn ? 'Reset all filters' : 'Xóa toàn bộ bộ lọc'}
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>{isEn ? 'Reset' : 'Xóa lọc'}</span>
+              </button>
+            )}
           </div>
 
-          {(search || selectedCompany || selectedDeptFilter || selectedFilter !== 'ALL') && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch('');
-                setSelectedCompany('');
-                setSelectedDeptFilter('');
-                setSelectedFilter('ALL');
-              }}
-              className="inline-flex items-center justify-center gap-1 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>{isEn ? 'Reset Filters' : 'Xóa bộ lọc'}</span>
-            </button>
-          )}
+          {/* Tip & Counter Badge */}
+          <div className="flex items-center justify-between sm:justify-end gap-3 text-xs shrink-0 pt-1 lg:pt-0">
+            <span className="text-[11px] text-slate-400 hidden xl:inline-flex items-center gap-1">
+              <span className="text-purple-600 font-bold">💡 Mẹo:</span>
+              <span>Chuột phải vào hàng để thao tác nhanh</span>
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs border border-slate-200 dark:border-slate-700">
+              {filteredUsers.length} <span className="font-normal text-slate-500">/ {users.length} {isEn ? 'employees' : 'nhân sự'}</span>
+            </span>
+          </div>
         </div>
-      </div>
-
-      {/* QUICK TIP BANNER */}
-      <div className="text-[11.5px] text-slate-500 dark:text-slate-400 flex items-center justify-between px-2 py-1 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-800">
-        <span className="flex items-center gap-1.5 truncate">
-          <span className="text-purple-600 font-bold">💡 Mẹo:</span>
-          <span>{isEn ? 'Right-click on any row (or click ⋮) to open quick actions (assign devices, licenses, offboard, reset MK2...)' : 'Nhấp chuột phải vào bất kỳ hàng nào (hoặc bấm nút ⋮) để mở menu thao tác: Cấp máy, Gán lic, Reset MK2, Nghỉ việc...'}</span>
-        </span>
-        <span className="font-semibold text-slate-700 dark:text-slate-300 shrink-0 ml-2">
-          {filteredUsers.length} {isEn ? 'employees' : 'nhân sự'}
-        </span>
       </div>
 
       {/* VIEW 1: COMPACT 1-PAGE ENTERPRISE TABLE VIEW */}
@@ -1859,6 +1927,36 @@ export default function UsersPage() {
 
             {/* Modal Scrollable Body */}
             <form id="add-user-form" onSubmit={handleCreateUser} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+              {/* Quick Excel Import Banner */}
+              <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <FileSpreadsheet className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-emerald-950 block">
+                      {isEn ? 'Import multiple employees via Excel?' : 'Nhập danh sách nhiều nhân sự bằng Excel?'}
+                    </span>
+                    <span className="text-[11px] text-emerald-700">
+                      {isEn
+                        ? 'Download template, fill in staff details, and batch import in seconds.'
+                        : 'Tải file mẫu, điền danh sách và nhập hàng loạt vào hệ thống chỉ trong vài giây.'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddUserModalOpen(false);
+                    window.dispatchEvent(new CustomEvent('simply:open-excel-modal', { detail: { tab: 'USER' } }));
+                  }}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-all shrink-0 hover:scale-102"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{isEn ? 'Import Excel File' : 'Nhập Bằng File Excel'}</span>
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">{isEn ? 'Full Name (*)' : 'Họ và tên (*)'}</label>

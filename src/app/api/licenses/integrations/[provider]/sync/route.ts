@@ -36,7 +36,7 @@ export async function POST(
       await prisma.systemSetting.upsert({
         where: { key: 'license.m365_last_synced_at' },
         update: { value: new Date().toISOString() },
-        create: { key: 'license.m365_last_synced_at', value: new Date().toISOString() },
+        create: { key: 'license.m365_last_synced_at', value: new Date().toISOString(), label: 'M365 Last Synced At', group: 'license' },
       });
 
       return NextResponse.json(report);

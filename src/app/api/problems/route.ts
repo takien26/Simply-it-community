@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { createAuditLog } from '@/lib/audit';
+import { moveToTrash } from '@/lib/trash';
 import { ProblemPriority, ProblemStatus } from '@prisma/client';
 
 // GET — List problems with linked incidents
@@ -97,34 +99,51 @@ export async function POST(request: NextRequest) {
     }
 
     const currentYear = new Date().getFullYear();
-    const count = await prisma.problem.count();
-    const problemNumber = `PRB-${currentYear}-${String(count + 1).padStart(4, '0')}`;
 
-    const problem = await prisma.problem.create({
-      data: {
-        problemNumber,
-        title,
-        description,
-        priority: priority || 'MEDIUM',
-        status: status || 'OPEN',
-        rootCause: rootCause || null,
-        permanentSolution: permanentSolution || null,
-        workaround: workaround || null,
-        createdById: currentUser.userId,
-        assignedToId: assignedToId || null,
-        ...(incidentIds && Array.isArray(incidentIds) && incidentIds.length > 0
-          ? {
-              incidents: {
-                connect: incidentIds.map((id: string) => ({ id })),
-              },
-            }
-          : {}),
-      },
-      include: {
-        createdBy: { select: { id: true, fullName: true } },
-        incidents: { select: { id: true, incidentNumber: true, title: true } },
-      },
-    });
+    let problem: any = null;
+    let attempts = 0;
+    while (attempts < 5) {
+      attempts++;
+      const count = await prisma.problem.count();
+      const numPart = attempts === 1
+        ? String(count + 1).padStart(4, '0')
+        : `${String(count + attempts).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
+      const problemNumber = `PRB-${currentYear}-${numPart}`;
+
+      try {
+        problem = await prisma.problem.create({
+          data: {
+            problemNumber,
+            title,
+            description,
+            priority: priority || 'MEDIUM',
+            status: status || 'OPEN',
+            rootCause: rootCause || null,
+            permanentSolution: permanentSolution || null,
+            workaround: workaround || null,
+            createdById: currentUser.userId,
+            assignedToId: assignedToId || null,
+            ...(incidentIds && Array.isArray(incidentIds) && incidentIds.length > 0
+              ? {
+                  incidents: {
+                    connect: incidentIds.map((id: string) => ({ id })),
+                  },
+                }
+              : {}),
+          },
+          include: {
+            createdBy: { select: { id: true, fullName: true } },
+            incidents: { select: { id: true, incidentNumber: true, title: true } },
+          },
+        });
+        break;
+      } catch (createErr: any) {
+        if (createErr.code === 'P2002' && attempts < 5) {
+          continue;
+        }
+        throw createErr;
+      }
+    }
 
     return NextResponse.json({ success: true, data: problem }, { status: 201 });
   } catch (error) {
@@ -204,8 +223,43 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Problem ID is required' }, { status: 400 });
     }
 
+    const existing = await prisma.problem.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Vấn đề lỗi không tồn tại' }, { status: 404 });
+    }
+
+    // Lưu snapshot problem vào Thùng rác trước khi xóa
+    const trashResult = await moveToTrash({
+      entityType: 'PROBLEM',
+      entityId: id,
+      entityName: existing.title,
+      entityCode: existing.problemNumber,
+      dataSnapshot: existing,
+      deletedById: currentUser.userId,
+      deletedByName: currentUser.fullName || currentUser.email,
+    }).catch((err) => {
+      console.error('Failed to snapshot problem to trash:', err);
+      return null;
+    });
+
     await prisma.problem.delete({ where: { id } });
-    return NextResponse.json({ success: true });
+
+    await createAuditLog({
+      action: 'DELETE',
+      entityType: 'Problem',
+      entityId: id,
+      userId: currentUser.userId,
+      changes: { title: existing.title, problemNumber: existing.problemNumber },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: trashResult
+        ? `Đã chuyển vấn đề lỗi vào Thùng rác (Lưu trữ ${trashResult.retentionDays} ngày)`
+        : 'Đã xóa vấn đề lỗi thành công',
+      inTrash: !!trashResult,
+      trashItemId: trashResult?.trashItem?.id || null,
+    });
   } catch (error) {
     console.error('Delete problem error:', error);
     return NextResponse.json({ error: 'Failed to delete problem' }, { status: 500 });

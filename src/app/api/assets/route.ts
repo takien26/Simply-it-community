@@ -20,8 +20,9 @@ export async function GET(request: NextRequest) {
     const condition = searchParams.get('condition') as AssetCondition | null;
     const locationId = searchParams.get('locationId');
     const companyName = searchParams.get('companyName');
-    const page = parseInt(searchParams.get('page') || '1');
-    const pageSize = parseInt(searchParams.get('pageSize') || '50');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const rawPageSize = parseInt(searchParams.get('pageSize') || '50', 10) || 50;
+    const pageSize = Math.max(1, Math.min(100, rawPageSize));
 
     // Build filter query
     const where: Record<string, unknown> = {};
@@ -164,13 +165,19 @@ export async function POST(request: NextRequest) {
     let parsedPurchaseDate: Date = new Date();
     if (purchaseDate) {
       const d = new Date(purchaseDate);
-      if (!isNaN(d.getTime())) parsedPurchaseDate = d;
+      if (isNaN(d.getTime()) || d.getFullYear() < 1980 || d.getFullYear() > 2100) {
+        return NextResponse.json({ error: 'Ngày mua (purchaseDate) không hợp lệ' }, { status: 400 });
+      }
+      parsedPurchaseDate = d;
     }
 
     let parsedWarrantyExpiry: Date | null = null;
     if (warrantyExpiry) {
       const d = new Date(warrantyExpiry);
-      if (!isNaN(d.getTime())) parsedWarrantyExpiry = d;
+      if (isNaN(d.getTime()) || d.getFullYear() < 1980 || d.getFullYear() > 2100) {
+        return NextResponse.json({ error: 'Ngày hết hạn bảo hành (warrantyExpiry) không hợp lệ' }, { status: 400 });
+      }
+      parsedWarrantyExpiry = d;
     }
 
     const asset = await prisma.asset.create({

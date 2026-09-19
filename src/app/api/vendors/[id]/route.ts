@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { moveToTrash } from '@/lib/trash';
 import { VendorContact } from '../route';
 
 function parseVendorContacts(vendor: any) {
@@ -108,12 +109,31 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const vendor = await prisma.vendor.findUnique({ where: { id } });
+    if (!vendor) {
+      return NextResponse.json({ error: 'Vendor not found' }, { status: 404 });
+    }
+
+    const { trashItem } = await moveToTrash({
+      entityType: 'VENDOR',
+      entityId: vendor.id,
+      entityName: vendor.name,
+      entityCode: vendor.phone || vendor.email || 'VENDOR',
+      dataSnapshot: vendor,
+      deletedById: currentUser.userId,
+      deletedByName: currentUser.fullName,
+    });
+
     await prisma.vendor.update({
       where: { id },
       data: { isActive: false },
     });
 
-    return NextResponse.json({ success: true, message: 'Vendor deactivated' });
+    return NextResponse.json({
+      success: true,
+      message: 'Vendor moved to trash',
+      trashItemId: trashItem.id,
+    });
   } catch (error) {
     console.error('Delete vendor error:', error);
     return NextResponse.json({ error: 'Failed to delete vendor' }, { status: 500 });

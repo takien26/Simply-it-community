@@ -46,6 +46,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tên và Webhook URL không được để trống' }, { status: 400 });
     }
 
+    try {
+      const parsedUrl = new URL(webhookUrl);
+      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        return NextResponse.json({ error: 'Webhook URL phải bắt đầu bằng http:// hoặc https://' }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ error: 'Webhook URL không đúng định dạng URL' }, { status: 400 });
+    }
+
     const webhook = await prisma.webhookConfig.create({
       data: {
         name,
@@ -80,6 +89,17 @@ export async function PUT(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
+    }
+
+    if (webhookUrl) {
+      try {
+        const parsedUrl = new URL(webhookUrl);
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+          return NextResponse.json({ error: 'Webhook URL phải bắt đầu bằng http:// hoặc https://' }, { status: 400 });
+        }
+      } catch {
+        return NextResponse.json({ error: 'Webhook URL không đúng định dạng URL' }, { status: 400 });
+      }
     }
 
     const updated = await prisma.webhookConfig.update({

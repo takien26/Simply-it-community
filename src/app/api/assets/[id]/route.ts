@@ -193,6 +193,20 @@ export async function PUT(
       }
     }
 
+    if (body.purchaseDate) {
+      const d = new Date(body.purchaseDate);
+      if (isNaN(d.getTime()) || d.getFullYear() < 1980 || d.getFullYear() > 2100) {
+        return NextResponse.json({ error: 'Ngày mua (purchaseDate) không hợp lệ' }, { status: 400 });
+      }
+    }
+
+    if (body.warrantyExpiry) {
+      const d = new Date(body.warrantyExpiry);
+      if (isNaN(d.getTime()) || d.getFullYear() < 1980 || d.getFullYear() > 2100) {
+        return NextResponse.json({ error: 'Ngày hết hạn bảo hành (warrantyExpiry) không hợp lệ' }, { status: 400 });
+      }
+    }
+
     const updated = await prisma.asset.update({
       where: { id },
       data: {

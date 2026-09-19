@@ -181,6 +181,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let parsedDocDate: Date | null = null;
+    if (documentDate) {
+      const d = new Date(documentDate);
+      if (isNaN(d.getTime()) || d.getFullYear() < 1980 || d.getFullYear() > 2100) {
+        return NextResponse.json({ error: 'Ngày tài liệu (documentDate) không hợp lệ' }, { status: 400 });
+      }
+      parsedDocDate = d;
+    }
+
     let finalVendorName = vendorName;
     if (vendorId && !finalVendorName) {
       const v = await prisma.vendor.findUnique({ where: { id: vendorId } });
@@ -201,7 +210,7 @@ export async function POST(request: NextRequest) {
         assetId: assetId || null,
         licenseId: licenseId || null,
         serviceId: serviceId || null,
-        documentDate: documentDate ? new Date(documentDate) : null,
+        documentDate: parsedDocDate,
         amount: amount !== undefined && amount !== '' && !isNaN(Number(amount)) ? Number(amount) : null,
         amountCurrency: 'VND',
         fileUrl: finalFileUrl,

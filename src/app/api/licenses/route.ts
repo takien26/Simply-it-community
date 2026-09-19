@@ -19,8 +19,9 @@ export async function GET(request: NextRequest) {
     const licenseType = searchParams.get('licenseType') as LicenseType | null;
     const vendorId = searchParams.get('vendorId');
     const companyName = searchParams.get('companyName');
-    const page = parseInt(searchParams.get('page') || '1');
-    const pageSize = parseInt(searchParams.get('pageSize') || '50');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const rawPageSize = parseInt(searchParams.get('pageSize') || '50', 10) || 50;
+    const pageSize = Math.max(1, Math.min(100, rawPageSize));
 
     const where: Record<string, unknown> = {};
 
@@ -167,11 +168,22 @@ export async function POST(request: NextRequest) {
     const initialSeatsUsed = targetPairs.length;
     const totalSeatsNum = totalSeats ? Number(totalSeats) : Math.max(1, initialSeatsUsed);
 
-    if (initialSeatsUsed > totalSeatsNum) {
-      return NextResponse.json(
-        { error: `Số lượng gán ban đầu (${initialSeatsUsed}) vượt quá tổng số seats (${totalSeatsNum})` },
-        { status: 400 }
-      );
+    let parsedPurchaseDate: Date | null = null;
+    if (purchaseDate) {
+      const d = new Date(purchaseDate);
+      if (isNaN(d.getTime()) || d.getFullYear() < 1980 || d.getFullYear() > 2100) {
+        return NextResponse.json({ error: 'Ngày mua (purchaseDate) không hợp lệ' }, { status: 400 });
+      }
+      parsedPurchaseDate = d;
+    }
+
+    let parsedExpiryDate: Date | null = null;
+    if (expiryDate) {
+      const d = new Date(expiryDate);
+      if (isNaN(d.getTime()) || d.getFullYear() < 1980 || d.getFullYear() > 2100) {
+        return NextResponse.json({ error: 'Ngày hết hạn (expiryDate) không hợp lệ' }, { status: 400 });
+      }
+      parsedExpiryDate = d;
     }
 
     let finalSpecs = body.specs && typeof body.specs === 'object' ? { ...body.specs } : {};
@@ -186,8 +198,8 @@ export async function POST(request: NextRequest) {
         licenseType: (licenseType as LicenseType) || 'PERPETUAL',
         totalSeats: totalSeatsNum,
         usedSeats: initialSeatsUsed,
-        purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
-        expiryDate: expiryDate ? new Date(expiryDate) : null,
+        purchaseDate: parsedPurchaseDate,
+        expiryDate: parsedExpiryDate,
         purchasePrice: purchasePrice ? Number(purchasePrice) : null,
         purchaseCurrency: body.purchaseCurrency || 'VND',
         vendorId: vendorId || null,

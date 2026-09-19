@@ -24,6 +24,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Kích thước file vượt quá 25MB' }, { status: 400 });
     }
 
+    const rawExt = path.extname(file.name) || '';
+    const cleanExt = rawExt.toLowerCase();
+
+    // Whitelist các định dạng file an toàn cho hệ thống tài liệu & tài sản IT
+    const ALLOWED_EXTENSIONS = new Set([
+      // Ảnh & Đồ họa
+      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg', '.ico',
+      // Văn bản, Hợp đồng, Hóa đơn & Bảng tính Office
+      '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.csv', '.txt', '.rtf',
+      // File nén & sao lưu
+      '.zip', '.rar', '.7z', '.tar', '.gz',
+      // Dữ liệu cấu hình
+      '.json', '.xml'
+    ]);
+
+    // Danh sách đen các định dạng thực thi nguy hiểm
+    const DANGEROUS_EXTENSIONS = new Set([
+      '.exe', '.bat', '.cmd', '.ps1', '.sh', '.vbs', '.js', '.mjs', '.cjs',
+      '.php', '.phtml', '.php3', '.php4', '.php5', '.phps',
+      '.cgi', '.pl', '.jar', '.msi', '.dll', '.com', '.scr', '.hta',
+      '.vbe', '.wsf', '.wsh', '.reg', '.iso', '.bin'
+    ]);
+
+    if (!cleanExt || DANGEROUS_EXTENSIONS.has(cleanExt) || !ALLOWED_EXTENSIONS.has(cleanExt)) {
+      return NextResponse.json(
+        { error: `Định dạng file "${rawExt || 'không có phần mở rộng'}" không được phép tải lên vì lý do an toàn bảo mật.` },
+        { status: 400 }
+      );
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const uploadDir = path.join(process.cwd(), 'public', 'uploads');
 
@@ -31,9 +61,8 @@ export async function POST(request: NextRequest) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    const ext = path.extname(file.name) || '';
-    const rawBaseName = path.basename(file.name, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
-    const safeName = `${category}_${Date.now()}_${rawBaseName.slice(0, 40)}${ext.toLowerCase()}`;
+    const rawBaseName = path.basename(file.name, rawExt).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const safeName = `${category}_${Date.now()}_${rawBaseName.slice(0, 40)}${cleanExt}`;
     const filePath = path.join(uploadDir, safeName);
 
     fs.writeFileSync(filePath, buffer);

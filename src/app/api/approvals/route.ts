@@ -97,31 +97,48 @@ export async function POST(request: NextRequest) {
     }
 
     const currentYear = new Date().getFullYear();
-    const count = await prisma.approvalRequest.count();
-    const code = `AR-${currentYear}-${String(count + 1).padStart(4, '0')}`;
 
     // If requester has a direct manager, status is PENDING_MANAGER, otherwise PENDING_IT
     const initialStatus: ApprovalStatus = managerId ? 'PENDING_MANAGER' : 'PENDING_IT';
 
-    const approval = await prisma.approvalRequest.create({
-      data: {
-        code,
-        type,
-        status: initialStatus,
-        title,
-        description: description || null,
-        justification: justification || null,
-        estimatedCost: estimatedCost ? Number(estimatedCost) : null,
-        currency: currency || 'VND',
-        quantity: quantity ? Number(quantity) : 1,
-        requesterId: currentUser.userId,
-        managerId: managerId || null,
-      },
-      include: {
-        requester: { select: { id: true, fullName: true, email: true } },
-        manager: { select: { id: true, fullName: true, email: true } },
-      },
-    });
+    let approval: any = null;
+    let attempts = 0;
+    while (attempts < 5) {
+      attempts++;
+      const count = await prisma.approvalRequest.count();
+      const numPart = attempts === 1
+        ? String(count + 1).padStart(4, '0')
+        : `${String(count + attempts).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
+      const code = `AR-${currentYear}-${numPart}`;
+
+      try {
+        approval = await prisma.approvalRequest.create({
+          data: {
+            code,
+            type,
+            status: initialStatus,
+            title,
+            description: description || null,
+            justification: justification || null,
+            estimatedCost: estimatedCost && !isNaN(Number(estimatedCost)) ? Number(estimatedCost) : null,
+            currency: currency || 'VND',
+            quantity: quantity && !isNaN(Number(quantity)) ? Number(quantity) : 1,
+            requesterId: currentUser.userId,
+            managerId: managerId || null,
+          },
+          include: {
+            requester: { select: { id: true, fullName: true, email: true } },
+            manager: { select: { id: true, fullName: true, email: true } },
+          },
+        });
+        break;
+      } catch (createErr: any) {
+        if (createErr.code === 'P2002' && attempts < 5) {
+          continue;
+        }
+        throw createErr;
+      }
+    }
 
     // Send email notification to Manager or IT
     (async () => {

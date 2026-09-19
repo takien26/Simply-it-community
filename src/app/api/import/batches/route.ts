@@ -11,8 +11,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const pageSize = parseInt(searchParams.get('pageSize') || '10');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const rawPageSize = parseInt(searchParams.get('pageSize') || '10', 10) || 10;
+    const pageSize = Math.max(1, Math.min(100, rawPageSize));
 
     const [batches, total] = await Promise.all([
       prisma.importBatch.findMany({

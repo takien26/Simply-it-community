@@ -22,10 +22,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=sso_misconfigured', request.url));
     }
 
-    const tenant = tenantId?.value || 'common';
-    const protocol = request.headers.get('x-forwarded-proto') || 'http';
-    const host = request.headers.get('host') || 'localhost:3000';
-    const redirectUri = `${protocol}://${host}/api/auth/sso/ms365/callback`;
+    let tenant = tenantId?.value?.trim() || 'common';
+    if (/directory.*tenant/i.test(tenant) || tenant.toLowerCase() === 'tenant id') {
+      tenant = 'common';
+    }
+    const customRedirectUri = await prisma.systemSetting.findUnique({ where: { key: 'sso.ms365_redirect_uri' } });
+    let redirectUri = customRedirectUri?.value?.trim();
+    if (!redirectUri) {
+      const protocol = request.headers.get('x-forwarded-proto') || (request.url.startsWith('https') ? 'https' : 'http');
+      const host = request.headers.get('host') || 'localhost:3000';
+      redirectUri = `${protocol}://${host}/api/auth/sso/ms365/callback`;
+    }
 
     // 1. Exchange code for token
     const tokenParams = new URLSearchParams({
@@ -176,9 +183,10 @@ export async function GET(request: NextRequest) {
     });
 
     const cookieStore = await cookies();
+    const isHttps = request.url.startsWith('https://') || request.headers.get('x-forwarded-proto') === 'https';
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isHttps,
       sameSite: 'lax' as const,
       path: '/',
       maxAge: 30 * 24 * 60 * 60, // 30 days

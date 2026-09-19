@@ -107,7 +107,10 @@ export async function POST(request: NextRequest) {
       if (clientId && clientSecret && isSsoActive) {
         ssoScanned = true;
         try {
-          const tenant = tenantId || 'common';
+          let tenant = (tenantId || 'common').trim();
+          if (/directory.*tenant/i.test(tenant) || tenant.toLowerCase() === 'tenant id') {
+            tenant = 'common';
+          }
           const tokenParams = new URLSearchParams({
             client_id: clientId,
             client_secret: clientSecret,
@@ -123,7 +126,12 @@ export async function POST(request: NextRequest) {
 
           const tokenData = await tokenRes.json();
           if (!tokenRes.ok || !tokenData.access_token) {
-            ssoError = `Lỗi xác thực Microsoft Entra ID: ${tokenData.error_description || tokenData.error || 'Token request failed'}`;
+            const rawErr = tokenData.error_description || tokenData.error || 'Token request failed';
+            if (rawErr.includes('AADSTS900023')) {
+              ssoError = `Lỗi xác thực Microsoft Entra ID (AADSTS900023): Mã Tenant ID "${tenant}" không hợp lệ. Vui lòng kiểm tra lại cấu hình SSO và điền mã GUID (36 ký tự) từ Azure Portal.`;
+            } else {
+              ssoError = `Lỗi xác thực Microsoft Entra ID: ${rawErr}`;
+            }
           } else {
             // Fetch users with full profile attributes from Microsoft Graph
             let graphUsersRes = await fetch(

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
+import { moveToTrash } from '@/lib/trash';
 
 // PUT /api/categories/[id]
 export async function PUT(
@@ -58,6 +59,11 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const category = await prisma.assetCategory.findUnique({ where: { id } });
+    if (!category) {
+      return NextResponse.json({ error: 'Không tìm thấy danh mục' }, { status: 404 });
+    }
+
     // Check if category has assets
     const assetCount = await prisma.asset.count({ where: { categoryId: id } });
     if (assetCount > 0) {
@@ -67,12 +73,29 @@ export async function DELETE(
       );
     }
 
+    const { trashItem } = await moveToTrash({
+      entityType: 'CATEGORY',
+      entityId: category.id,
+      entityName: category.name,
+      entityCode: category.icon || '📦',
+      dataSnapshot: {
+        ...category,
+        categoryType: 'ASSET',
+      },
+      deletedById: currentUser.userId,
+      deletedByName: currentUser.fullName,
+    });
+
     await prisma.assetCategory.update({
       where: { id },
       data: { isActive: false },
     });
 
-    return NextResponse.json({ success: true, message: 'Đã xóa danh mục' });
+    return NextResponse.json({
+      success: true,
+      message: 'Đã xóa danh mục và chuyển vào thùng rác',
+      trashItemId: trashItem.id,
+    });
   } catch (error) {
     console.error('Delete category error:', error);
     return NextResponse.json({ error: 'Delete failed' }, { status: 500 });

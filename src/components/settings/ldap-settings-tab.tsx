@@ -32,6 +32,44 @@ export function LdapSettingsTab({
   const [syncingLdap, setSyncingLdap] = React.useState(false);
   const [ldapSyncResult, setLdapSyncResult] = React.useState<{ success: boolean; message: string; importedCount?: number } | null>(null);
 
+  const handleSwitchToLdaps = (suggestedUrl?: string) => {
+    let newUrl = suggestedUrl;
+    if (!newUrl) {
+      const current = getSettingValue('ldap.server_url');
+      let host = 'localhost';
+      try {
+        const clean = current.replace(/^ldaps?:\/\//i, '').split('/')[0].split(':')[0];
+        if (clean) host = clean;
+      } catch {}
+      newUrl = `ldaps://${host}:636`;
+    }
+    handleChange('ldap.server_url', newUrl);
+    setTimeout(() => {
+      handleTestLdap();
+    }, 150);
+  };
+
+  const handleSwitchToUpn = (suggestedBindDn: string) => {
+    if (suggestedBindDn) {
+      handleChange('ldap.bind_dn', suggestedBindDn);
+      setTimeout(() => {
+        handleTestLdap();
+      }, 150);
+    }
+  };
+
+  const handleApplyRecommendedConfig = (suggestedUrl?: string, suggestedBindDn?: string) => {
+    if (suggestedUrl) {
+      handleChange('ldap.server_url', suggestedUrl);
+    }
+    if (suggestedBindDn) {
+      handleChange('ldap.bind_dn', suggestedBindDn);
+    }
+    setTimeout(() => {
+      handleTestLdap();
+    }, 150);
+  };
+
   const handleSyncLdapNow = async () => {
     const serverUrl = getSettingValue('ldap.server_url');
     const baseDn = getSettingValue('ldap.base_dn');
@@ -174,7 +212,41 @@ export function LdapSettingsTab({
             ) : (
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             )}
-            <span>{ldapTestResult.message || (ldapTestResult as any).error}</span>
+            <div className="flex-1 min-w-0">
+              <span className="whitespace-pre-line leading-relaxed">{ldapTestResult.message || (ldapTestResult as any).error}</span>
+              {/* Quick action buttons if suggested configuration available */}
+              {((ldapTestResult as any)?.suggestedUrl || (ldapTestResult as any)?.suggestedBindDn) && (
+                <div className="mt-2.5 pt-2.5 border-t border-current/10 flex flex-wrap gap-2">
+                  {(ldapTestResult as any)?.suggestedUrl && (ldapTestResult as any)?.suggestedBindDn && (
+                    <button
+                      type="button"
+                      onClick={() => handleApplyRecommendedConfig((ldapTestResult as any).suggestedUrl, (ldapTestResult as any).suggestedBindDn)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                    >
+                      <span>⚡ {isEn ? 'Apply Recommended Settings & Test Again' : 'Áp dụng toàn bộ cấu hình khuyến nghị & Thử lại'}</span>
+                    </button>
+                  )}
+                  {(ldapTestResult as any)?.suggestedUrl && getSettingValue('ldap.server_url') !== (ldapTestResult as any).suggestedUrl && (
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchToLdaps((ldapTestResult as any)?.suggestedUrl)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                    >
+                      <span>⚡ {isEn ? 'Switch to Secure LDAPS (Port 636)' : 'Đổi sang LDAPS (Cổng 636)'}</span>
+                    </button>
+                  )}
+                  {(ldapTestResult as any)?.suggestedBindDn && getSettingValue('ldap.bind_dn') !== (ldapTestResult as any).suggestedBindDn && (
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchToUpn((ldapTestResult as any).suggestedBindDn)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                    >
+                      <span>⚡ {isEn ? `Use UPN Format (${(ldapTestResult as any).suggestedBindDn})` : `Đổi sang định dạng UPN (${(ldapTestResult as any).suggestedBindDn})`}</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -192,7 +264,20 @@ export function LdapSettingsTab({
             ) : (
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             )}
-            <span>{ldapSyncResult.message}</span>
+            <div className="flex-1 min-w-0">
+              <span className="whitespace-pre-line leading-relaxed">{ldapSyncResult.message}</span>
+              {(ldapSyncResult?.message && (ldapSyncResult.message.includes('636') || ldapSyncResult.message.includes('ECONNRESET'))) && !ldapSyncResult.success && (
+                <div className="mt-2 pt-2 border-t border-rose-200/80">
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchToLdaps()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                  >
+                    <span>⚡ {isEn ? 'Switch to Secure LDAPS (Port 636) & Test Again' : 'Tự động đổi sang LDAPS (Cổng 636 Mã Hóa) & Thử lại'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -204,12 +289,16 @@ export function LdapSettingsTab({
             </label>
             <input
               type="text"
-              placeholder="VD: ldap://192.168.1.10:389 hoặc ldaps://dc.company.com:636"
+              placeholder="VD: ldaps://dc.company.com:636 hoặc ldap://192.168.1.10:389"
               value={getSettingValue('ldap.server_url')}
               onChange={(e) => handleChange('ldap.server_url', e.target.value)}
               className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500"
             />
-            <p className="text-[10px] text-slate-400 mt-1">{isEn ? 'Standard ports: 389 (LDAP) or 636 (LDAPS SSL/TLS)' : 'Cổng tiêu chuẩn: 389 (LDAP) hoặc 636 (LDAPS SSL/TLS)'}</p>
+            <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+              {isEn
+                ? 'Standard ports: 389 (LDAP) or 636 (LDAPS SSL/TLS). Active Directory requires LDAPS (port 636) by default.'
+                : 'Cổng chuẩn: 389 (LDAP) hoặc 636 (LDAPS SSL). Máy chủ Windows Server AD mặc định yêu cầu LDAPS (cổng 636 mã hóa) để tránh lỗi ngắt kết nối (ECONNRESET).'}
+            </p>
           </div>
 
           <div>

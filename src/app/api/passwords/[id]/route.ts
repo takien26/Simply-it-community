@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { createAuditLog } from '@/lib/audit';
+import { moveToTrash } from '@/lib/trash';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -69,8 +71,48 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
     const { id } = await params;
+    const existing = await prisma.passwordEntry.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Không tìm thấy tài khoản mật khẩu' }, { status: 404 });
+    }
+
+    // Lưu snapshot vào Thùng rác trước khi xóa
+    const trashResult = await moveToTrash({
+      entityType: 'PASSWORD',
+      entityId: id,
+      entityName: existing.title,
+      entityCode: existing.username || null,
+      dataSnapshot: existing,
+      deletedById: user.userId,
+      deletedByName: user.fullName || user.email,
+    }).catch((err) => {
+      console.error('Failed to snapshot password to trash:', err);
+      return null;
+    });
+
     await prisma.passwordEntry.delete({ where: { id } });
-    return NextResponse.json({ success: true, message: 'Đã xóa tài khoản mật khẩu' });
+
+    await createAuditLog({
+      action: 'DELETE',
+      entityType: 'PasswordEntry',
+      entityId: id,
+      userId: user.userId,
+      changes: {
+        title: existing.title,
+        username: existing.username,
+        url: existing.url,
+        category: existing.category,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: trashResult
+        ? `Đã chuyển tài khoản mật khẩu vào Thùng rác (Lưu trữ ${trashResult.retentionDays} ngày)`
+        : 'Đã xóa tài khoản mật khẩu thành công',
+      inTrash: !!trashResult,
+      trashItemId: trashResult?.trashItem?.id || null,
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -53,7 +53,9 @@ export async function GET(request: NextRequest) {
         LICENSE: items.filter((i) => i.entityType === 'LICENSE').length,
         TICKET: items.filter((i) => i.entityType === 'TICKET').length,
         DOCUMENT: items.filter((i) => i.entityType === 'DOCUMENT').length,
-        OTHER: items.filter((i) => !['ASSET', 'USER', 'LICENSE', 'TICKET', 'DOCUMENT'].includes(i.entityType)).length,
+        CATEGORY: items.filter((i) => i.entityType === 'CATEGORY').length,
+        VENDOR: items.filter((i) => i.entityType === 'VENDOR').length,
+        OTHER: items.filter((i) => !['ASSET', 'USER', 'LICENSE', 'TICKET', 'DOCUMENT', 'CATEGORY', 'VENDOR'].includes(i.entityType)).length,
       },
     };
 

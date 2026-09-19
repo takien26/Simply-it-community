@@ -21,6 +21,7 @@ import { showTrashUndoToast } from '@/components/common/TrashUndoToast';
 import { getStoredBaseCurrency, getStoredCurrencies, convertCurrencyAmount } from '@/lib/currency-store';
 import {
   Eye,
+  Crown,
   Copy,
   Plus,
   Search,

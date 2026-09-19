@@ -10,7 +10,15 @@ export async function POST(request: NextRequest) {
     // PostgreSQL rejects \u0000 in JSONB (error 22P05) — strip null bytes from raw payload
     const rawText = await request.text();
     const cleanText = rawText.replace(/\\u0000/gi, '').replace(/\0/g, '');
-    const body = JSON.parse(cleanText);
+    let body: any;
+    try {
+      body = JSON.parse(cleanText);
+    } catch (parseErr) {
+      return NextResponse.json(
+        { success: false, error: 'Dữ liệu quét máy trạm gửi lên không đúng định dạng JSON' },
+        { status: 400 }
+      );
+    }
     const {
       hostname,
       serialNumber,

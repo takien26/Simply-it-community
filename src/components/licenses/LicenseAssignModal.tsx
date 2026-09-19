@@ -375,7 +375,7 @@ export function LicenseAssignModal({
                         const selectedUser = users.find((u: any) => u.id === assignUserId);
                         if (!selectedUser) return null;
 
-                        let targetComp = targetLicense?.companyName || '';
+                        let targetComp = activeLicense?.companyName || '';
                         if (selectedBatchId && Array.isArray(batches)) {
                           const b = batches.find((x: any) => x.id === selectedBatchId);
                           if (b?.companyName) targetComp = b.companyName;

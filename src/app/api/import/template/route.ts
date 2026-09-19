@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { generateAssetTemplate, generateLicenseTemplate, generateServiceTemplate } from '@/lib/services/excel-import';
+import { generateAssetTemplate, generateLicenseTemplate, generateServiceTemplate, generateUserTemplate } from '@/lib/services/excel-import';
 
-// GET /api/import/template?type=ASSET|LICENSE
+// GET /api/import/template?type=ASSET|LICENSE|SERVICE|USER
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
@@ -22,6 +22,9 @@ export async function GET(request: NextRequest) {
     } else if (type === 'SERVICE') {
       buffer = await generateServiceTemplate();
       fileName = 'Mau_Import_Dich_Vu_IT.xlsx';
+    } else if (type === 'USER') {
+      buffer = await generateUserTemplate();
+      fileName = 'Mau_Import_Nhan_Su.xlsx';
     } else {
       buffer = await generateAssetTemplate();
       fileName = 'Mau_Import_Tai_San.xlsx';

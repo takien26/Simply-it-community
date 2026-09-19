@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '@/lib/i18n/context';
 import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
+import { showTrashUndoToast } from '@/components/common/TrashUndoToast';
 import {
   Layers,
   Plus,
@@ -553,15 +554,34 @@ export default function CategoriesPage() {
         url = `/api/categories/service?id=${cat.id}`;
       }
 
-      await fetch(url, { method: 'DELETE' });
-      invalidateClientCache('/api/categories');
-      invalidateClientCache('/api/master-data');
-      triggerDataRefresh('master-data');
-      triggerDataRefresh('categories');
-      loadAllData();
+      const res = await fetch(url, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        invalidateClientCache('/api/categories');
+        invalidateClientCache('/api/master-data');
+        invalidateClientCache('/api/trash');
+        triggerDataRefresh('master-data');
+        triggerDataRefresh('categories');
+        triggerDataRefresh('trash');
+
+        if (data.trashItemId) {
+          showTrashUndoToast({
+            name: cat.name || (isEn ? 'Category' : 'Danh mục'),
+            code: cat.icon || '🏷️',
+            trashItemId: data.trashItemId,
+            onUndo: async () => {
+              await loadAllData();
+            },
+          });
+        }
+      } else {
+        alert(data.error || (isEn ? 'Failed to delete category' : 'Xóa danh mục thất bại'));
+      }
+      await loadAllData();
     } catch (err) {
       console.error('Delete category error:', err);
-      loadAllData();
+      await loadAllData();
     }
   };
 
@@ -646,19 +666,39 @@ export default function CategoriesPage() {
     }
 
     try {
+      let res: Response | null = null;
+      let data: any = null;
       if (activeTab === 'vendors') {
-        await fetch(`/api/vendors/${item.id}`, { method: 'DELETE' });
+        res = await fetch(`/api/vendors/${item.id}`, { method: 'DELETE' });
+        data = await res.json().catch(() => ({}));
       } else if (activeTab === 'companies') {
-        await fetch(`/api/companies?name=${encodeURIComponent(item)}`, { method: 'DELETE' });
+        res = await fetch(`/api/companies?name=${encodeURIComponent(item)}`, { method: 'DELETE' });
+        data = await res.json().catch(() => ({}));
       } else if (activeTab === 'locations') {
-        await fetch(`/api/locations/${item.id}`, { method: 'DELETE' });
+        res = await fetch(`/api/locations/${item.id}`, { method: 'DELETE' });
+        data = await res.json().catch(() => ({}));
+      }
+      if (res && !res.ok) {
+        alert(data?.error || data?.message || (isEn ? 'Failed to delete' : 'Xóa thất bại'));
+      } else if (data?.trashItemId) {
+        invalidateClientCache('/api/trash');
+        triggerDataRefresh('trash');
+        showTrashUndoToast({
+          name: item.name || item,
+          code: '🏢',
+          trashItemId: data.trashItemId,
+          onUndo: async () => {
+            await loadAllData();
+          },
+        });
       }
       invalidateClientCache('/api/master-data');
       triggerDataRefresh('master-data');
-      loadAllData();
+      await loadAllData();
     } catch (err) {
       console.error('Delete simple error:', err);
-      loadAllData();
+      alert(isEn ? 'Network error while deleting' : 'Lỗi kết nối khi xóa dữ liệu');
+      await loadAllData();
     }
   };
 

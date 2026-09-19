@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { createAuditLog } from '@/lib/audit';
+import { moveToTrash } from '@/lib/trash';
 import { DocumentType } from '@prisma/client';
 
 // GET /api/documents/[id]
@@ -56,6 +58,19 @@ export async function PUT(
       return NextResponse.json({ error: 'Không tìm thấy tài liệu' }, { status: 404 });
     }
 
+    let finalDocDate: Date | null | undefined = undefined;
+    if (body.documentDate !== undefined) {
+      if (body.documentDate === null || body.documentDate === '') {
+        finalDocDate = null;
+      } else {
+        const d = new Date(body.documentDate);
+        if (isNaN(d.getTime())) {
+          return NextResponse.json({ error: 'Ngày tài liệu (documentDate) không hợp lệ' }, { status: 400 });
+        }
+        finalDocDate = d;
+      }
+    }
+
     let finalVendorName = body.vendorName !== undefined ? body.vendorName : existing.vendorName;
     if (body.vendorId && body.vendorId !== existing.vendorId) {
       const v = await prisma.vendor.findUnique({ where: { id: body.vendorId } });
@@ -83,7 +98,7 @@ export async function PUT(
         assetId: body.assetId !== undefined ? (body.assetId || null) : existing.assetId,
         licenseId: body.licenseId !== undefined ? (body.licenseId || null) : existing.licenseId,
         serviceId: body.serviceId !== undefined ? (body.serviceId || null) : existing.serviceId,
-        documentDate: body.documentDate ? new Date(body.documentDate) : null,
+        ...(finalDocDate !== undefined ? { documentDate: finalDocDate } : {}),
         amount: body.amount !== undefined && body.amount !== '' && !isNaN(Number(body.amount)) ? Number(body.amount) : null,
         fileUrl: body.fileUrl !== undefined ? body.fileUrl : (primaryFile?.url || existing.fileUrl),
         fileName: body.fileName !== undefined ? body.fileName : (primaryFile?.name || existing.fileName),
@@ -120,9 +135,43 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const existing = await prisma.document.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Không tìm thấy tài liệu' }, { status: 404 });
+    }
+
+    // Lưu snapshot document vào Thùng rác trước khi xóa
+    const trashResult = await moveToTrash({
+      entityType: 'DOCUMENT',
+      entityId: id,
+      entityName: existing.title,
+      entityCode: existing.contractNumber || existing.invoiceNumber || existing.fileName || null,
+      dataSnapshot: existing,
+      deletedById: currentUser.userId,
+      deletedByName: currentUser.fullName || currentUser.email,
+    }).catch((err) => {
+      console.error('Failed to snapshot document to trash:', err);
+      return null;
+    });
+
     await prisma.document.delete({ where: { id } });
 
-    return NextResponse.json({ success: true, message: 'Đã xóa tài liệu thành công' });
+    await createAuditLog({
+      action: 'DELETE',
+      entityType: 'Document',
+      entityId: id,
+      userId: currentUser.userId,
+      changes: { deleted: existing.title },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: trashResult
+        ? `Đã chuyển tài liệu vào Thùng rác (Lưu trữ ${trashResult.retentionDays} ngày)`
+        : 'Đã xóa tài liệu thành công',
+      inTrash: !!trashResult,
+      trashItemId: trashResult?.trashItem?.id || null,
+    });
   } catch (error) {
     console.error('Delete document error:', error);
     return NextResponse.json({ error: 'Xóa tài liệu thất bại' }, { status: 500 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import ExcelJS from 'exceljs';
+import { formatAssetSpecsForExport, formatDeviceNameAndModel } from '@/lib/asset-formatter';
 
 export async function GET(request: NextRequest) {
   try {
@@ -146,11 +147,8 @@ export async function GET(request: NextRequest) {
       const holderName = assignedUser ? assignedUser.fullName : 'Sẵn sàng trong kho';
       const holderDept = assignedUser?.department || (assignedUser ? 'Nhân sự' : 'Kho IT');
 
-      const specsObj = asset.specs && typeof asset.specs === 'object' ? asset.specs : {};
-      const specsText = Object.entries(specsObj)
-        .filter(([k]) => !['autoScanned', 'source', 'paymentHistory'].includes(k))
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(', ');
+      const specsText = formatAssetSpecsForExport(asset.specs);
+      const nameAndModel = formatDeviceNameAndModel(asset.name, asset.brand, asset.model);
 
       const contractInvoice = [asset.contractNumber, asset.invoiceNumber].filter(Boolean).join(' / ') || '—';
 
@@ -162,7 +160,7 @@ export async function GET(request: NextRequest) {
       const row = sheet.addRow([
         index + 1,
         asset.assetTag,
-        `${asset.name}${asset.brand || asset.model ? ` (${[asset.brand, asset.model].filter(Boolean).join(' - ')})` : ''}`,
+        nameAndModel,
         asset.category?.name || 'Chưa phân loại',
         asset.serialNumber || '—',
         statusMap[asset.status] || asset.status,
@@ -181,11 +179,13 @@ export async function GET(request: NextRequest) {
       row.alignment = { vertical: 'middle' };
       row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
       row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(12).numFmt = '#,##0 "₫"';
       row.getCell(13).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(15).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
 
       // Alternate row background
       if (index % 2 === 1) {
@@ -201,9 +201,9 @@ export async function GET(request: NextRequest) {
 
     sheet.columns = [
       { width: 6 },  // STT
-      { width: 14 }, // Tag
-      { width: 32 }, // Tên & Model
-      { width: 20 }, // Danh mục
+      { width: 15 }, // Tag
+      { width: 36 }, // Tên & Model
+      { width: 18 }, // Danh mục
       { width: 18 }, // Serial
       { width: 20 }, // Trạng thái
       { width: 18 }, // Tình trạng
@@ -212,9 +212,9 @@ export async function GET(request: NextRequest) {
       { width: 22 }, // Phòng ban người dùng
       { width: 20 }, // Vị trí
       { width: 18 }, // Giá mua
-      { width: 15 }, // Bảo hành
+      { width: 16 }, // Bảo hành
       { width: 22 }, // HĐ / Hóa đơn
-      { width: 35 }, // Specs
+      { width: 55 }, // Specs
     ];
 
     const buffer = await workbook.xlsx.writeBuffer();

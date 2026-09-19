@@ -14,24 +14,20 @@ async function getStoredCompanies(): Promise<string[]> {
     where: { key: 'corporate.companies' },
   });
 
-  let list: string[] = [];
-  if (setting && setting.value) {
+  if (setting && setting.value !== undefined && setting.value !== null) {
     try {
-      list = JSON.parse(setting.value);
+      const parsed = JSON.parse(setting.value);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
     } catch {
-      list = [];
+      // parse error fall through
     }
   }
 
-  // Also collect any companyName from License
-  const licenses = await prisma.license.findMany({
-    select: { companyName: true },
-    where: { companyName: { not: null } },
-  });
-  const fromLic = licenses.map((l) => l.companyName!).filter(Boolean);
-
-  const combined = Array.from(new Set([...DEFAULT_COMPANIES, ...list, ...fromLic]));
-  return combined;
+  // Only if corporate.companies setting has NEVER been initialized in DB
+  await saveStoredCompanies(DEFAULT_COMPANIES);
+  return DEFAULT_COMPANIES;
 }
 
 async function saveStoredCompanies(companies: string[]) {
@@ -108,11 +104,21 @@ export async function PUT(request: NextRequest) {
     const updatedList = currentList.map((c) => (c === oldName ? newName : c));
     await saveStoredCompanies(updatedList);
 
-    // Update all licenses that used oldName
-    await prisma.license.updateMany({
-      where: { companyName: oldName },
-      data: { companyName: newName },
-    });
+    // Update all licenses, assets, users that used oldName
+    await Promise.all([
+      prisma.license.updateMany({
+        where: { companyName: oldName },
+        data: { companyName: newName },
+      }),
+      prisma.asset.updateMany({
+        where: { companyName: oldName },
+        data: { companyName: newName },
+      }),
+      prisma.user.updateMany({
+        where: { companyName: oldName },
+        data: { companyName: newName },
+      }),
+    ]);
 
     return NextResponse.json({ success: true, data: newName });
   } catch (error) {
@@ -140,7 +146,23 @@ export async function DELETE(request: NextRequest) {
     const updatedList = currentList.filter((c) => c !== name);
     await saveStoredCompanies(updatedList);
 
-    return NextResponse.json({ success: true, message: 'Company removed from list' });
+    // Cascade clear companyName from all referenced entities
+    await Promise.all([
+      prisma.license.updateMany({
+        where: { companyName: name },
+        data: { companyName: null },
+      }),
+      prisma.asset.updateMany({
+        where: { companyName: name },
+        data: { companyName: null },
+      }),
+      prisma.user.updateMany({
+        where: { companyName: name },
+        data: { companyName: null },
+      }),
+    ]);
+
+    return NextResponse.json({ success: true, message: 'Đã xóa công ty thành công', data: updatedList });
   } catch (error) {
     console.error('Delete company error:', error);
     return NextResponse.json({ error: 'Failed to delete company' }, { status: 500 });

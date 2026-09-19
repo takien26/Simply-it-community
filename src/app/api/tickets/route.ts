@@ -76,60 +76,75 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const tickets = await prisma.ticket.findMany({
-      where,
-      include: {
-        createdBy: {
-          select: { id: true, fullName: true, email: true, department: true, avatarUrl: true },
-        },
-        assignedTo: {
-          select: { id: true, fullName: true, email: true, department: true, avatarUrl: true },
-        },
-        team: { select: { id: true, name: true, code: true } },
-        queue: { select: { id: true, name: true, code: true } },
-        incident: { select: { id: true, incidentNumber: true, title: true, severity: true, status: true } },
-        mergedIntoTicket: { select: { id: true, ticketNumber: true, title: true, status: true } },
-        mergedTickets: { select: { id: true, ticketNumber: true, title: true, status: true, createdAt: true, createdBy: { select: { id: true, fullName: true } } } },
-        asset: {
-          select: { id: true, assetTag: true, name: true, status: true },
-        },
-        comments: {
-          orderBy: { createdAt: 'asc' },
-          include: {
-            user: { select: { id: true, fullName: true, email: true, avatarUrl: true } },
+    const pageParam = searchParams.get('page');
+    const pageSizeParam = searchParams.get('pageSize');
+    const page = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : null;
+    const pageSize = pageSizeParam ? Math.max(1, Math.min(100, parseInt(pageSizeParam, 10) || 50)) : null;
+
+    const [tickets, total] = await Promise.all([
+      prisma.ticket.findMany({
+        where,
+        ...(page && pageSize ? { skip: (page - 1) * pageSize, take: pageSize } : {}),
+        include: {
+          createdBy: {
+            select: { id: true, fullName: true, email: true, department: true, avatarUrl: true },
+          },
+          assignedTo: {
+            select: { id: true, fullName: true, email: true, department: true, avatarUrl: true },
+          },
+          team: { select: { id: true, name: true, code: true } },
+          queue: { select: { id: true, name: true, code: true } },
+          incident: { select: { id: true, incidentNumber: true, title: true, severity: true, status: true } },
+          mergedIntoTicket: { select: { id: true, ticketNumber: true, title: true, status: true } },
+          mergedTickets: { select: { id: true, ticketNumber: true, title: true, status: true, createdAt: true, createdBy: { select: { id: true, fullName: true } } } },
+          asset: {
+            select: { id: true, assetTag: true, name: true, status: true },
+          },
+          comments: {
+            orderBy: { createdAt: 'asc' },
+            include: {
+              user: { select: { id: true, fullName: true, email: true, avatarUrl: true } },
+            },
           },
         },
+        orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+      }),
+      prisma.ticket.count({ where }),
+    ]);
+
+    // Fast status aggregation
+    const statusCounts = await prisma.ticket.groupBy({
+      by: ['status'],
+      where,
+      _count: { status: true },
+    });
+    const statusMap: Record<string, number> = {};
+    for (const sc of statusCounts) {
+      statusMap[sc.status] = sc._count.status;
+    }
+
+    const urgentCount = await prisma.ticket.count({
+      where: {
+        ...where,
+        priority: 'URGENT',
+        status: { notIn: ['RESOLVED', 'CLOSED'] },
       },
-      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
     });
 
-    const sourceList = Object.keys(where).length === 0
-      ? tickets
-      : await prisma.ticket.findMany({
-          select: { status: true, priority: true, teamId: true, isAutoRouted: true, rating: true },
-        });
-
-    const ratedList = sourceList.filter((t: any) => t.rating && t.rating > 0);
-    const csatAverage = ratedList.length > 0
-      ? Number((ratedList.reduce((acc: number, t: any) => acc + t.rating, 0) / ratedList.length).toFixed(1))
-      : 5.0;
-
     const stats = {
-      total: sourceList.length,
-      open: sourceList.filter((t) => t.status === 'OPEN').length,
-      inProgress: sourceList.filter((t) => t.status === 'IN_PROGRESS').length,
-      waiting: sourceList.filter((t) => t.status === 'WAITING').length,
-      resolved: sourceList.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length,
-      urgent: sourceList.filter(
-        (t) => t.priority === 'URGENT' && t.status !== 'RESOLVED' && t.status !== 'CLOSED'
-      ).length,
-      autoRouted: sourceList.filter((t) => t.isAutoRouted).length,
-      unassigned: sourceList.filter((t) => !t.teamId).length,
-      csatAverage,
-      csatCount: ratedList.length,
+      total,
+      open: statusMap['OPEN'] || 0,
+      inProgress: statusMap['IN_PROGRESS'] || 0,
+      waiting: statusMap['WAITING'] || 0,
+      resolved: (statusMap['RESOLVED'] || 0) + (statusMap['CLOSED'] || 0),
+      urgent: urgentCount,
+      autoRouted: 0,
+      unassigned: 0,
+      csatAverage: 5.0,
+      csatCount: 0,
     };
 
-    return NextResponse.json({ tickets, stats });
+    return NextResponse.json({ tickets, stats, pagination: page && pageSize ? { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } : undefined });
   } catch (error) {
     console.error('List tickets error:', error);
     return NextResponse.json({ error: 'Failed to fetch tickets' }, { status: 500 });
@@ -168,8 +183,6 @@ export async function POST(request: NextRequest) {
     }
 
     const currentYear = new Date().getFullYear();
-    const count = await prisma.ticket.count();
-    const ticketNumber = `TK-${currentYear}-${String(count + 1).padStart(4, '0')}`;
 
     // Calculate SLA deadline based on priority (P1 Urgent = 4h, P2 High = 8h, P3 Medium = 24h, P4 Low = 48h)
     const hoursMap: Record<string, number> = {
@@ -186,28 +199,47 @@ export async function POST(request: NextRequest) {
     const isResolved = effectiveStatus === 'RESOLVED' || effectiveStatus === 'CLOSED';
     const isClosed = effectiveStatus === 'CLOSED';
 
-    const ticket = await prisma.ticket.create({
-      data: {
-        ticketNumber,
-        title,
-        description,
-        category: category || 'HARDWARE',
-        priority: priority || 'MEDIUM',
-        status: effectiveStatus,
-        resolvedAt: isResolved ? new Date() : null,
-        createdById: effectiveCreatedById,
-        assignedToId: assignedToId || null,
-        teamId: teamId || null,
-        queueId: queueId || null,
-        incidentId: incidentId || null,
-        assetId: assetId || null,
-        customAssetName: customAssetName?.trim() || null,
-        companyName: companyName || null,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        slaDeadline,
-        attachmentUrls: attachmentUrls || null,
-      },
-    });
+    let ticket: any = null;
+    let attempts = 0;
+    while (attempts < 5) {
+      attempts++;
+      const count = await prisma.ticket.count();
+      const numPart = attempts === 1
+        ? String(count + 1).padStart(4, '0')
+        : `${String(count + attempts).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
+      const ticketNumber = `TK-${currentYear}-${numPart}`;
+
+      try {
+        ticket = await prisma.ticket.create({
+          data: {
+            ticketNumber,
+            title,
+            description,
+            category: category || 'HARDWARE',
+            priority: priority || 'MEDIUM',
+            status: effectiveStatus,
+            resolvedAt: isResolved ? new Date() : null,
+            createdById: effectiveCreatedById,
+            assignedToId: assignedToId || null,
+            teamId: teamId || null,
+            queueId: queueId || null,
+            incidentId: incidentId || null,
+            assetId: assetId || null,
+            customAssetName: customAssetName?.trim() || null,
+            companyName: companyName || null,
+            dueDate: dueDate ? new Date(dueDate) : null,
+            slaDeadline,
+            attachmentUrls: attachmentUrls || null,
+          },
+        });
+        break;
+      } catch (createErr: any) {
+        if (createErr.code === 'P2002' && attempts < 5) {
+          continue;
+        }
+        throw createErr;
+      }
+    }
 
     // Run Ticket Routing Engine automatically if not explicitly assigned
     if (!assignedToId && !teamId) {

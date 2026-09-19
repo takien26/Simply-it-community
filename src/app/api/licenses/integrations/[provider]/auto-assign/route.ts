@@ -71,7 +71,8 @@ export async function POST(
       } catch {}
     }
 
-    // 4. Lấy danh sách Users hiện tại trong DB
+    // 4. Lấy danh sách Users hiện tại trong DB và Role mặc định
+    const defaultRole = await prisma.role.findFirst({ select: { id: true } });
     const dbUsers = await prisma.user.findMany({
       select: { id: true, email: true, fullName: true, companyName: true, department: true },
     });
@@ -277,12 +278,12 @@ export async function POST(
           targetDbUser = await prisma.user.create({
             data: {
               email: emailClean,
-              name: u.displayName || emailClean.split('@')[0],
               fullName: u.displayName || emailClean.split('@')[0],
               companyName: userCompany,
               department: u.department || null,
-              jobTitle: u.jobTitle || null,
+              position: u.jobTitle || null,
               passwordHash: '$2b$10$dummyhashforcloudsyncedaccount1234567890',
+              roleId: defaultRole!.id,
             },
           });
           dbUserByEmail.set(emailClean, targetDbUser);

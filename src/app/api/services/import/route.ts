@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import * as ExcelJS from 'exceljs';
+import { syncCorporateCompanies } from '@/lib/services/excel-import';
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,43 +34,91 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'File Excel không có dữ liệu sheet hợp lệ' }, { status: 400 });
     }
 
+    const headerRow = worksheet.getRow(1);
+    const colMap: Record<string, number> = {};
+    headerRow.eachCell((cell, colNumber) => {
+      const val = cell.value?.toString().trim().toLowerCase() || '';
+      if (val.includes('mã dịch vụ') || val.includes('ma dich vu') || val.includes('service code') || val.includes('mã gói')) {
+        colMap.serviceCode = colNumber;
+      } else if (val.includes('tên gói') || val.includes('ten goi') || val.includes('tên dịch vụ') || val.includes('ten dich vu') || val.includes('service name')) {
+        colMap.name = colNumber;
+      } else if (val.includes('loại dịch vụ') || val.includes('loai dich vu') || val.includes('phân loại') || val.includes('phan loai') || val.includes('service type')) {
+        colMap.serviceType = colNumber;
+      } else if (val.includes('giá cước') || val.includes('gia cuoc') || val.includes('chi phí') || val.includes('chi phi') || val.includes('cost')) {
+        colMap.cost = colNumber;
+      } else if (val.includes('chu kỳ') || val.includes('chu ky') || val.includes('billing cycle')) {
+        colMap.billingCycle = colNumber;
+      } else if (val.includes('bắt đầu') || val.includes('bat dau') || val.includes('start date')) {
+        colMap.startDate = colNumber;
+      } else if (val.includes('gia hạn') || val.includes('gia han') || val.includes('renewal date')) {
+        colMap.renewalDate = colNumber;
+      } else if (val.includes('thuê bao') || val.includes('thue bao') || val.includes('khách hàng') || val.includes('account')) {
+        colMap.accountNumber = colNumber;
+      } else if (val.includes('ip') || val.includes('tĩnh') || val.includes('tinh')) {
+        colMap.ipStatic = colNumber;
+      } else if (val.includes('băng thông') || val.includes('bang thong') || val.includes('bandwidth') || val.includes('thông số')) {
+        colMap.bandwidth = colNumber;
+      } else if (val.includes('nhà mạng') || val.includes('nha mang') || val.includes('nhà cung cấp') || val.includes('nha cung cap') || val.includes('đối tác') || val.includes('vendor')) {
+        colMap.vendorName = colNumber;
+      } else if (val.includes('công ty') || val.includes('cong ty') || val.includes('pháp nhân') || val.includes('phap nhan') || val.includes('company')) {
+        colMap.companyName = colNumber;
+      } else if (val.includes('vị trí') || val.includes('vi tri') || val.includes('địa điểm') || val.includes('lắp đặt') || val.includes('location')) {
+        colMap.locationName = colNumber;
+      } else if (val.includes('hotline') || val.includes('hỗ trợ') || val.includes('ho tro') || val.includes('contact')) {
+        colMap.contactSupport = colNumber;
+      } else if (val.includes('ghi chú') || val.includes('ghi chu') || val.includes('note')) {
+        colMap.notes = colNumber;
+      }
+    });
+
+    const getCellStr = (row: ExcelJS.Row, colIdx?: number, fallbackIdx?: number): string | null => {
+      const idx = colIdx || fallbackIdx;
+      if (!idx) return null;
+      const cell = row.getCell(idx);
+      if (cell.value === null || cell.value === undefined) return null;
+      if (typeof cell.value === 'object') {
+        if ('text' in cell.value && typeof cell.value.text === 'string') return cell.value.text.trim();
+        if ('result' in cell.value) return String(cell.value.result ?? '').trim();
+      }
+      return String(cell.value).trim();
+    };
+
     const rows: any[] = [];
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return; // Skip header
-      const values: any = row.values;
-      // values[1] = Mã dịch vụ
-      // values[2] = Tên gói dịch vụ
-      // values[3] = Phân loại (INTERNET, CLOUD_HOSTING, DOMAIN_SSL, EMAIL_COMMUNICATION, TELECOM_VOIP, MAINTENANCE_SLA, SOFTWARE_SAAS, OTHER)
-      // values[4] = Chi phí (VNĐ)
-      // values[5] = Chu kỳ (MONTHLY, QUARTERLY, SEMI_ANNUAL, ANNUAL, BIENNIAL, TRIENNIAL, ONE_TIME)
-      // values[6] = Ngày bắt đầu (YYYY-MM-DD)
-      // values[7] = Ngày gia hạn (YYYY-MM-DD)
-      // values[8] = Mã thuê bao / KH
-      // values[9] = IP Tĩnh / Cấu hình
-      // values[10] = Băng thông / Thông số
-      // values[11] = Nhà mạng / Đối tác
-      // values[12] = Công ty quản lý
-      // values[13] = Vị trí / Địa điểm
-      // values[14] = Hotline hỗ trợ
-      // values[15] = Ghi chú
+      const serviceCode = getCellStr(row, colMap.serviceCode, 1);
+      const name = getCellStr(row, colMap.name, 2);
+      const serviceType = getCellStr(row, colMap.serviceType, 3);
+      const costRaw = getCellStr(row, colMap.cost, 4);
+      const billingCycle = getCellStr(row, colMap.billingCycle, 5);
+      const startDateRaw = getCellStr(row, colMap.startDate, 6);
+      const renewalDateRaw = getCellStr(row, colMap.renewalDate, 7);
+      const accountNumber = getCellStr(row, colMap.accountNumber, 8);
+      const ipStatic = getCellStr(row, colMap.ipStatic, 9);
+      const bandwidth = getCellStr(row, colMap.bandwidth, 10);
+      const vendorName = getCellStr(row, colMap.vendorName, 11);
+      const companyName = getCellStr(row, colMap.companyName, 12);
+      const locationName = getCellStr(row, colMap.locationName, 13);
+      const contactSupport = getCellStr(row, colMap.contactSupport, 14);
+      const notes = getCellStr(row, colMap.notes, 15);
 
-      if (values[1] || values[2]) {
+      if (serviceCode || name) {
         rows.push({
-          serviceCode: String(values[1] || '').trim(),
-          name: String(values[2] || '').trim(),
-          serviceType: String(values[3] || 'INTERNET').trim().toUpperCase(),
-          cost: values[4] ? parseFloat(String(values[4]).replace(/[^0-9.-]+/g, '')) : null,
-          billingCycle: String(values[5] || 'MONTHLY').trim().toUpperCase(),
-          startDate: values[6] ? new Date(values[6]) : null,
-          renewalDate: values[7] ? new Date(values[7]) : null,
-          accountNumber: values[8] ? String(values[8]).trim() : null,
-          ipStatic: values[9] ? String(values[9]).trim() : null,
-          bandwidth: values[10] ? String(values[10]).trim() : null,
-          vendorName: values[11] ? String(values[11]).trim() : null,
-          companyName: values[12] ? String(values[12]).trim() : null,
-          locationName: values[13] ? String(values[13]).trim() : null,
-          contactSupport: values[14] ? String(values[14]).trim() : null,
-          notes: values[15] ? String(values[15]).trim() : null,
+          serviceCode: serviceCode || '',
+          name: name || '',
+          serviceType: (serviceType || 'INTERNET').toUpperCase(),
+          cost: costRaw ? parseFloat(costRaw.replace(/[^0-9.-]+/g, '')) : null,
+          billingCycle: (billingCycle || 'MONTHLY').toUpperCase(),
+          startDate: startDateRaw ? new Date(startDateRaw) : null,
+          renewalDate: renewalDateRaw ? new Date(renewalDateRaw) : null,
+          accountNumber,
+          ipStatic,
+          bandwidth,
+          vendorName,
+          companyName,
+          locationName,
+          contactSupport,
+          notes,
         });
       }
     });
@@ -83,6 +132,7 @@ export async function POST(req: NextRequest) {
     const errors: string[] = [];
 
     const existingCount = await prisma.iTService.count();
+    const newCompanies = new Set<string>();
 
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
@@ -164,11 +214,19 @@ export async function POST(req: NextRequest) {
           },
         });
 
+        if (r.companyName) {
+          newCompanies.add(r.companyName);
+        }
+
         successCount++;
       } catch (err: any) {
         errorCount++;
         errors.push(`Dòng ${i + 2}: ${err.message}`);
       }
+    }
+
+    if (newCompanies.size > 0) {
+      await syncCorporateCompanies(newCompanies);
     }
 
     return NextResponse.json({

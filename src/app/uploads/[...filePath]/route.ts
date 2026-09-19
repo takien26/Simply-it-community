@@ -28,8 +28,13 @@ export async function GET(
       return new NextResponse('File not found', { status: 404 });
     }
 
+    const baseDir = path.resolve(process.cwd(), 'public', 'uploads');
     const safeRelativePath = path.join(...filePath).replace(/\.\./g, '');
-    const fullPath = path.join(process.cwd(), 'public', 'uploads', safeRelativePath);
+    const fullPath = path.resolve(baseDir, safeRelativePath);
+
+    if (!fullPath.startsWith(baseDir)) {
+      return new NextResponse('Forbidden: Invalid file path', { status: 403 });
+    }
 
     if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
       return new NextResponse('File not found', { status: 404 });

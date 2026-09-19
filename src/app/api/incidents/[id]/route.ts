@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { createAuditLog } from '@/lib/audit';
+import { moveToTrash } from '@/lib/trash';
 
 // GET — Incident detail
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -130,14 +132,52 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
 
+    const existing = await prisma.incident.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Sự cố không tồn tại' }, { status: 404 });
+    }
+
+    // Lưu snapshot sự cố vào Thùng rác trước khi xóa
+    const trashResult = await moveToTrash({
+      entityType: 'INCIDENT',
+      entityId: id,
+      entityName: existing.title,
+      entityCode: existing.incidentNumber,
+      dataSnapshot: existing,
+      deletedById: currentUser.userId,
+      deletedByName: currentUser.fullName || currentUser.email,
+    }).catch((err) => {
+      console.error('Failed to snapshot incident to trash:', err);
+      return null;
+    });
+
     await prisma.$transaction(async (tx) => {
       await tx.ticket.updateMany({
         where: { incidentId: id },
         data: { incidentId: null },
       });
+      await tx.incidentUpdate.deleteMany({
+        where: { incidentId: id },
+      });
       await tx.incident.delete({ where: { id } });
     });
-    return NextResponse.json({ success: true });
+
+    await createAuditLog({
+      action: 'DELETE',
+      entityType: 'Incident',
+      entityId: id,
+      userId: currentUser.userId,
+      changes: { title: existing.title, incidentNumber: existing.incidentNumber },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: trashResult
+        ? `Đã chuyển sự cố vào Thùng rác (Lưu trữ ${trashResult.retentionDays} ngày)`
+        : 'Đã xóa sự cố thành công',
+      inTrash: !!trashResult,
+      trashItemId: trashResult?.trashItem?.id || null,
+    });
   } catch (error) {
     console.error('Delete incident error:', error);
     return NextResponse.json({ error: 'Failed to delete incident' }, { status: 500 });

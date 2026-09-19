@@ -38,7 +38,15 @@ function serveUploadsDirect(req, res) {
   const urlPath = req.url.split('?')[0];
   if (urlPath.startsWith('/uploads/')) {
     const relativePath = decodeURIComponent(urlPath.replace('/uploads/', ''));
-    const safePath = path.join(__dirname, 'public', 'uploads', relativePath.replace(/^(\.\.(\/|\\))+/, ''));
+    const baseDir = path.resolve(__dirname, 'public', 'uploads');
+    const safePath = path.resolve(baseDir, relativePath.replace(/^(\.\.(\/|\\))+/, ''));
+
+    if (!safePath.startsWith(baseDir)) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' });
+      res.end('Forbidden: Invalid file path');
+      return true;
+    }
+
     if (fs.existsSync(safePath) && fs.statSync(safePath).isFile()) {
       const ext = path.extname(safePath).toLowerCase();
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';

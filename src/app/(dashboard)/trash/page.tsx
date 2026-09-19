@@ -20,6 +20,8 @@ import {
   Loader2,
   RefreshCw,
   ShieldAlert,
+  Layers,
+  Building2,
 } from 'lucide-react';
 
 interface TrashItemRecord {
@@ -233,6 +235,20 @@ export default function TrashPage() {
             <span>{isEn ? 'Spare Part' : 'Linh kiện'}</span>
           </span>
         );
+      case 'CATEGORY':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-orange-100 text-orange-800 text-[11px] font-bold border border-orange-200">
+            <Layers className="w-3 h-3" />
+            <span>{isEn ? 'Category' : 'Danh mục'}</span>
+          </span>
+        );
+      case 'VENDOR':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-200">
+            <Building2 className="w-3 h-3" />
+            <span>{isEn ? 'Vendor' : 'Nhà cung cấp'}</span>
+          </span>
+        );
       default:
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-800 text-[11px] font-bold">
@@ -369,6 +385,8 @@ export default function TrashPage() {
             { key: 'ASSET', label: isEn ? 'Devices' : '💻 Thiết bị', count: stats.byType?.ASSET },
             { key: 'USER', label: isEn ? 'Users' : '👤 Nhân sự', count: stats.byType?.USER },
             { key: 'LICENSE', label: isEn ? 'Licenses' : '🔑 Bản quyền', count: stats.byType?.LICENSE },
+            { key: 'CATEGORY', label: isEn ? 'Categories' : '🏷️ Danh mục', count: stats.byType?.CATEGORY },
+            { key: 'VENDOR', label: isEn ? 'Vendors' : '🏢 Nhà cung cấp', count: stats.byType?.VENDOR },
             { key: 'TICKET', label: isEn ? 'Tickets' : '🎫 Phiếu hỗ trợ', count: stats.byType?.TICKET },
             { key: 'DOCUMENT', label: isEn ? 'Documents' : '📄 Tài liệu', count: stats.byType?.DOCUMENT },
           ].map((tab) => (

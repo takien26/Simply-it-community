@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
           prisma.systemSetting.upsert({
             where: { key: 'license.m365_tenant_id' },
             update: { value: String(m365.tenantId).trim() },
-            create: { key: 'license.m365_tenant_id', value: String(m365.tenantId).trim() },
+            create: { key: 'license.m365_tenant_id', value: String(m365.tenantId).trim(), label: 'M365 Tenant ID', group: 'license' },
           })
         );
       }
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
           prisma.systemSetting.upsert({
             where: { key: 'license.m365_client_id' },
             update: { value: String(m365.clientId).trim() },
-            create: { key: 'license.m365_client_id', value: String(m365.clientId).trim() },
+            create: { key: 'license.m365_client_id', value: String(m365.clientId).trim(), label: 'M365 Client ID', group: 'license' },
           })
         );
       }
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
           prisma.systemSetting.upsert({
             where: { key: 'license.m365_client_secret' },
             update: { value: String(m365.clientSecret).trim() },
-            create: { key: 'license.m365_client_secret', value: String(m365.clientSecret).trim() },
+            create: { key: 'license.m365_client_secret', value: String(m365.clientSecret).trim(), label: 'M365 Client Secret', group: 'license' },
           })
         );
       }
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
           prisma.systemSetting.upsert({
             where: { key: 'license.m365_is_demo' },
             update: { value: String(m365.isDemoMode) },
-            create: { key: 'license.m365_is_demo', value: String(m365.isDemoMode) },
+            create: { key: 'license.m365_is_demo', value: String(m365.isDemoMode), label: 'M365 Is Demo', group: 'license' },
           })
         );
       }
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
           prisma.systemSetting.upsert({
             where: { key: 'license.m365_auto_sync' },
             update: { value: String(m365.autoSyncEnabled) },
-            create: { key: 'license.m365_auto_sync', value: String(m365.autoSyncEnabled) },
+            create: { key: 'license.m365_auto_sync', value: String(m365.autoSyncEnabled), label: 'M365 Auto Sync', group: 'license' },
           })
         );
       }
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
           prisma.systemSetting.upsert({
             where: { key: 'license.google_service_account' },
             update: { value: String(google.serviceAccountEmail).trim() },
-            create: { key: 'license.google_service_account', value: String(google.serviceAccountEmail).trim() },
+            create: { key: 'license.google_service_account', value: String(google.serviceAccountEmail).trim(), label: 'Google Service Account', group: 'license' },
           })
         );
       }
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
           prisma.systemSetting.upsert({
             where: { key: 'license.google_admin_email' },
             update: { value: String(google.adminEmail).trim() },
-            create: { key: 'license.google_admin_email', value: String(google.adminEmail).trim() },
+            create: { key: 'license.google_admin_email', value: String(google.adminEmail).trim(), label: 'Google Admin Email', group: 'license' },
           })
         );
       }
@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
           prisma.systemSetting.upsert({
             where: { key: 'license.adobe_client_id' },
             update: { value: String(adobe.clientId).trim() },
-            create: { key: 'license.adobe_client_id', value: String(adobe.clientId).trim() },
+            create: { key: 'license.adobe_client_id', value: String(adobe.clientId).trim(), label: 'Adobe Client ID', group: 'license' },
           })
         );
       }
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
           prisma.systemSetting.upsert({
             where: { key: 'license.adobe_org_id' },
             update: { value: String(adobe.orgId).trim() },
-            create: { key: 'license.adobe_org_id', value: String(adobe.orgId).trim() },
+            create: { key: 'license.adobe_org_id', value: String(adobe.orgId).trim(), label: 'Adobe Org ID', group: 'license' },
           })
         );
       }
