@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 
 // GET /api/webhooks
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canView = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.view'));
+    const canView = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'settings.view'));
     if (!canView) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xem cấu hình Webhook' }, { status: 403 });
     }
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canUpdate = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.update'));
+    const canUpdate = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'settings.update'));
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền cấu hình Webhook' }, { status: 403 });
     }
@@ -79,7 +79,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canUpdate = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.update'));
+    const canUpdate = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'settings.update'));
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền cấu hình Webhook' }, { status: 403 });
     }
@@ -127,7 +127,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canDelete = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.update'));
+    const canDelete = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'settings.update'));
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa cấu hình Webhook' }, { status: 403 });
     }

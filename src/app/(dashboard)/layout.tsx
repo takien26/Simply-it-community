@@ -27,6 +27,7 @@ const RealtimeNotificationListener = dynamic(
 
 import { triggerDataRefresh } from '@/lib/client-cache';
 import { TrashUndoToast } from '@/components/common/TrashUndoToast';
+import { DefaultPasswordBanner } from '@/components/common/DefaultPasswordBanner';
 
 export default function DashboardLayout({
   children,
@@ -66,7 +67,10 @@ export default function DashboardLayout({
           onOpenAIModal={() => setIsAIModalOpen(true)}
           onOpenExcelModal={() => setIsExcelModalOpen(true)}
         />
-        <main className="flex-1 p-3.5 sm:p-6 lg:p-7 pb-24 md:pb-7 max-w-full">{children}</main>
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-7 pb-24 md:pb-7 max-w-full">
+          <DefaultPasswordBanner />
+          {children}
+        </main>
       </div>
 
       {/* Global AI & Excel Modals (Only rendered when opened) */}

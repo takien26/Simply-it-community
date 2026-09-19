@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
-    const allowed = user.roleName === 'Admin' || (await hasPermission(user.userId, 'passwords.create')) || (await hasPermission(user.userId, 'passwords.update'));
+    const allowed = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'passwords.create')) || (await hasPermission(user.userId, 'passwords.update'));
     if (!allowed) return NextResponse.json({ error: 'Forbidden: Bạn không có quyền quản lý thư mục mật khẩu' }, { status: 403 });
 
     const body = await req.json();

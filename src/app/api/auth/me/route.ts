@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { getUserPermissions } from '@/lib/permissions';
+import { getUserPermissions, isAdminOrAbove } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 
 const meCache = new Map<string, { timestamp: number; data: any }>();
@@ -39,11 +39,26 @@ export async function GET() {
 
     const permissions = await getUserPermissions(currentUser.userId);
 
+    let isDefaultPassword = false;
+    if (isAdminOrAbove(user.role?.name)) {
+      const authRecord = await prisma.user.findUnique({
+        where: { id: currentUser.userId },
+        select: { passwordHash: true },
+      });
+      if (authRecord?.passwordHash) {
+        try {
+          const bcrypt = await import('bcryptjs');
+          isDefaultPassword = await bcrypt.default.compare('Admin@123', authRecord.passwordHash);
+        } catch {}
+      }
+    }
+
     const responsePayload = {
       success: true,
       data: {
         ...user,
         permissions: Array.from(permissions),
+        isDefaultPassword,
       },
     };
     meCache.set(currentUser.userId, { timestamp: Date.now(), data: responsePayload });

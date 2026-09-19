@@ -318,7 +318,7 @@ export async function GET(req: NextRequest) {
       const isMentioned = userFullName && c.content.toLowerCase().includes(userFullName.toLowerCase());
       const isSender = c.user.id === user.userId;
 
-      if ((isMentioned || user.roleName === 'Admin') && !isSender) {
+      if ((isMentioned || isAdmin) && !isSender) {
         notifications.push({
           id: `escalate-${c.id}`,
           ticketId: c.ticket.id,

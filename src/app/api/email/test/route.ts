@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { testSmtpConnection, sendEmail, getSmtpConfig, SmtpConfig } from '@/lib/email';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 
 // POST /api/email/test
 // Tests either current saved settings or preview credentials
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canTest = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.update'));
+    const canTest = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'settings.update'));
     if (!canTest) {
       return NextResponse.json({ error: 'Forbidden: Yêu cầu quyền cấu hình hệ thống' }, { status: 403 });
     }

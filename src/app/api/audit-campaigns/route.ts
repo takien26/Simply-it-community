@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 
 const SETTING_KEY_CAMPAIGNS = 'audit_campaigns_list';
 
@@ -12,7 +12,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canAudit = user.roleName === 'Admin' || (await hasPermission(user.userId, 'assets.audit'));
+    const canAudit = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'assets.audit'));
     if (!canAudit) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xem đợt kiểm kê' }, { status: 403 });
     }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canAudit = user.roleName === 'Admin' || (await hasPermission(user.userId, 'assets.audit'));
+    const canAudit = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'assets.audit'));
     if (!canAudit) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền tạo đợt kiểm kê' }, { status: 403 });
     }

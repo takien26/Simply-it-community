@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 
 // GET /api/spare-parts/[id]/transactions
 export async function GET(
@@ -71,7 +71,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canManage = user.roleName === 'Admin' || (await hasPermission(user.userId, 'spare_parts.manage'));
+    const canManage = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'spare_parts.manage'));
     if (!canManage) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền nhập/xuất kho linh kiện' }, { status: 403 });
     }

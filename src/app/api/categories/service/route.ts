@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { moveToTrash } from '@/lib/trash';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 
 const DEFAULT_SERVICE_CATEGORIES = [
   {
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
-    const canCreate = user.roleName === 'Admin' || (await hasPermission(user.userId, 'categories.create'));
+    const canCreate = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'categories.create'));
     if (!canCreate) return NextResponse.json({ error: 'Forbidden: Bạn không có quyền tạo danh mục' }, { status: 403 });
 
     const body = await req.json();
@@ -189,7 +189,7 @@ export async function PUT(req: NextRequest) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
-    const canUpdate = user.roleName === 'Admin' || (await hasPermission(user.userId, 'categories.update'));
+    const canUpdate = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'categories.update'));
     if (!canUpdate) return NextResponse.json({ error: 'Forbidden: Bạn không có quyền sửa danh mục' }, { status: 403 });
 
     const body = await req.json();
@@ -222,7 +222,7 @@ export async function DELETE(req: NextRequest) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
-    const canDelete = user.roleName === 'Admin' || (await hasPermission(user.userId, 'categories.delete'));
+    const canDelete = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'categories.delete'));
     if (!canDelete) return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa danh mục' }, { status: 403 });
 
     const { searchParams } = new URL(req.url);

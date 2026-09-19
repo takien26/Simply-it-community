@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Bạn cần đăng nhập để kiểm tra kết nối SSO' }, { status: 401 });
     }
 
-    const canTest = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.update'));
+    const canTest = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'settings.update'));
     if (!canTest) {
       return NextResponse.json({ success: false, message: 'Forbidden: Bạn cần quyền Quản trị viên để kiểm tra kết nối SSO' }, { status: 403 });
     }

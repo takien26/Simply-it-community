@@ -448,7 +448,7 @@ async function runQaAudit() {
   console.log('\n--- 🔩 TEST SUITE 7: KHO LINH KIỆN & GIAO DỊCH XUẤT NHẬP ---');
   let testPartId = null;
   try {
-    const partCode = `RAM-DDR5-QA-${Date.now().toString().slice(-4)}`;
+    const partCode = `RAM-DDR5-QA-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     // 7.1 Create Spare Part with 10 units
     const createPartRes = await fetch(`${BASE_URL}/api/spare-parts`, {
       method: 'POST',
@@ -567,6 +567,7 @@ async function runQaAudit() {
       await prisma.sparePartTransaction.deleteMany({ where: { sparePartId: testPartId } }).catch(() => {});
       await prisma.sparePart.delete({ where: { id: testPartId } }).catch(() => {});
     }
+    await prisma.sparePart.deleteMany({ where: { sku: { startsWith: 'RAM-DDR5-QA-' } } }).catch(() => {});
     if (testLicId) {
       await prisma.licenseAssignment.deleteMany({ where: { licenseId: testLicId } }).catch(() => {});
       await prisma.license.delete({ where: { id: testLicId } }).catch(() => {});

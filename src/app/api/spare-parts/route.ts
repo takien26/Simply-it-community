@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 
 // GET /api/spare-parts
 export async function GET(request: NextRequest) {
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canManage = user.roleName === 'Admin' || (await hasPermission(user.userId, 'spare_parts.manage'));
+    const canManage = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'spare_parts.manage'));
     if (!canManage) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền quản lý kho linh kiện' }, { status: 403 });
     }
@@ -120,6 +120,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, sparePart: part }, { status: 201 });
   } catch (error: any) {
+    if (error.code === 'P2002') {
+      return NextResponse.json({ error: 'Mã phụ tùng/linh kiện (SKU) đã tồn tại trong hệ thống' }, { status: 400 });
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

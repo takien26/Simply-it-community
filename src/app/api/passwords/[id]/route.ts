@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 import { createAuditLog } from '@/lib/audit';
 import { moveToTrash } from '@/lib/trash';
 import { encrypt, decrypt, encryptOptional, decryptOptional } from '@/lib/crypto';
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
-    const allowed = user.roleName === 'Admin' || (await hasPermission(user.userId, 'passwords.view'));
+    const allowed = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'passwords.view'));
     if (!allowed) return NextResponse.json({ error: 'Forbidden: Bạn không có quyền truy cập kho mật khẩu' }, { status: 403 });
 
     const { id } = await params;
@@ -44,7 +44,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
-    const allowed = user.roleName === 'Admin' || (await hasPermission(user.userId, 'passwords.manage'));
+    const allowed = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'passwords.manage'));
     if (!allowed) return NextResponse.json({ error: 'Forbidden: Bạn không có quyền chỉnh sửa tài khoản mật khẩu' }, { status: 403 });
 
     const { id } = await params;
@@ -92,7 +92,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
-    const allowed = user.roleName === 'Admin' || (await hasPermission(user.userId, 'passwords.manage'));
+    const allowed = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'passwords.manage'));
     if (!allowed) return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa tài khoản mật khẩu' }, { status: 403 });
 
     const { id } = await params;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 import { encrypt, decrypt, encryptOptional, decryptOptional } from '@/lib/crypto';
 
 export async function GET(req: NextRequest) {
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
     }
 
-    const allowed = user.roleName === 'Admin' || (await hasPermission(user.userId, 'passwords.manage'));
+    const allowed = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'passwords.manage'));
     if (!allowed) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền thêm tài khoản mật khẩu mới' }, { status: 403 });
     }

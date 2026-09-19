@@ -236,7 +236,7 @@ async function initServer() {
   setTimeout(triggerEmailInboundPolling, 30000);
   setInterval(triggerEmailInboundPolling, 2 * 60 * 1000);
 
-  // 5. Automated Ticket Auto-Close Engine (👑 Enterprise - Runs every 6 hours)
+  // 5. Automated Ticket Auto-Close Engine (Enterprise - Runs every 6 hours)
   function triggerTicketAutoClose() {
     try {
       const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/ticket-auto-close?run=true`, { headers: { 'x-cron-secret': process.env.CRON_SECRET || 'simply-internal-cron' } }, (res) => {
@@ -253,7 +253,7 @@ async function initServer() {
   setTimeout(triggerTicketAutoClose, 60000);
   setInterval(triggerTicketAutoClose, 6 * 60 * 60 * 1000);
 
-  // 6. Automated Recurring Maintenance Tickets Engine (👑 Enterprise - Runs every 12 hours)
+  // 6. Automated Recurring Maintenance Tickets Engine (Enterprise - Runs every 12 hours)
   function triggerMaintenanceCron() {
     try {
       const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/maintenance`, { headers: { 'x-cron-secret': process.env.CRON_SECRET || 'simply-internal-cron' } }, (res) => {
@@ -295,6 +295,36 @@ async function initServer() {
   // Initial check 90s after startup, then check every 10 minutes
   setTimeout(triggerDirectorySyncCron, 90000);
   setInterval(triggerDirectorySyncCron, 10 * 60 * 1000);
+
+  // 8. Automated Daily Database Backup Engine (Enterprise - Runs daily)
+  let lastDailyBackupDate = '';
+  function triggerDailyBackup() {
+    const today = new Date().toISOString().split('T')[0];
+    if (lastDailyBackupDate === today) return;
+    try {
+      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/backup?run=true`, { headers: { 'x-cron-secret': process.env.CRON_SECRET || 'simply-internal-cron' } }, (res) => {
+        let body = '';
+        res.on('data', (chunk) => { body += chunk; });
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            lastDailyBackupDate = today;
+            try {
+              const data = JSON.parse(body);
+              console.log(`💾 [Backup Engine] Daily automated snapshot created: ${data.filename || today}`);
+            } catch {
+              console.log(`💾 [Backup Engine] Daily automated snapshot completed successfully for ${today}`);
+            }
+          }
+        });
+      });
+      req.on('error', () => {});
+      req.end();
+    } catch (e) {}
+  }
+
+  // Initial check 120s after startup, then check every hour
+  setTimeout(triggerDailyBackup, 120000);
+  setInterval(triggerDailyBackup, 60 * 60 * 1000);
 }
 
 initServer().catch((err) => {

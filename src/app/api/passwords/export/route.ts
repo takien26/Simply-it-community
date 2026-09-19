@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 import { decrypt } from '@/lib/crypto';
 import { createAuditLog } from '@/lib/audit';
 import * as ExcelJS from 'exceljs';
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
-    const allowed = user.roleName === 'Admin' || (await hasPermission(user.userId, 'passwords.export'));
+    const allowed = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'passwords.export'));
     if (!allowed) return NextResponse.json({ error: 'Chỉ Quản trị viên (Admin) mới có quyền trích xuất toàn bộ kho mật khẩu' }, { status: 403 });
 
     const passwords = await prisma.passwordEntry.findMany({

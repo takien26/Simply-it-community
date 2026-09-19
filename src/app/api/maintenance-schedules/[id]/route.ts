@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 import {
   parseScheduleConfig,
   encodeScheduleConfig,
@@ -18,7 +18,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canUpdate = user.roleName === 'Admin' || (await hasPermission(user.userId, 'assets.maintenance.update'));
+    const canUpdate = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'assets.maintenance.update'));
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền sửa lịch bảo trì' }, { status: 403 });
     }
@@ -105,7 +105,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canDelete = user.roleName === 'Admin' || (await hasPermission(user.userId, 'assets.maintenance.delete'));
+    const canDelete = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'assets.maintenance.delete'));
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa lịch bảo trì' }, { status: 403 });
     }
