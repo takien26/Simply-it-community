@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
+import { hasPermission } from '@/lib/permissions';
 
 // POST /api/licenses/[id]/revoke - Revoke an assigned seat
 export async function POST(
@@ -12,6 +13,11 @@ export async function POST(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canRevoke = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'licenses.assign'));
+    if (!canRevoke) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền thu hồi bản quyền license' }, { status: 403 });
     }
 
     const { id: licenseId } = await params;

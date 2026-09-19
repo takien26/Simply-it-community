@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 
 export async function POST(
   req: NextRequest,
@@ -13,6 +14,15 @@ export async function POST(
     }
 
     const { id } = await params;
+
+    if (currentUser.userId === id) {
+      return NextResponse.json({ error: 'Bạn không thể tự thực hiện thủ tục thôi việc cho chính mình' }, { status: 400 });
+    }
+
+    const canOffboard = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.delete'));
+    if (!canOffboard) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền thực hiện thủ tục thôi việc cho nhân sự' }, { status: 403 });
+    }
     const body = await req.json().catch(() => ({}));
 
     const revokeAssetIds: string[] = Array.isArray(body.revokeAssetIds) ? body.revokeAssetIds : [];

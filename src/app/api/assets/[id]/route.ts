@@ -132,6 +132,12 @@ export async function PUT(
         }
         if (!body.status) newStatus = 'IN_USE';
       }
+    } else if (body.status && ['AVAILABLE', 'MAINTENANCE', 'RETIRED', 'LOST'].includes(body.status)) {
+      // Status changed to non-IN_USE without specifying assignedUserId -> auto-close active assignment
+      await prisma.assetAssignment.updateMany({
+        where: { assetId: id, returnedAt: null },
+        data: { returnedAt: new Date() },
+      });
     }
 
     // Handle License Assignments for this Asset

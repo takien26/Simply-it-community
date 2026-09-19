@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { moveToTrash } from '@/lib/trash';
+import { hasPermission } from '@/lib/permissions';
 
 const STATUS_LABELS: Record<string, string> = {
   OPEN: 'Mới mở',
@@ -101,6 +102,13 @@ export async function PATCH(
 
     if (!currentTicket) {
       return NextResponse.json({ error: 'Ticket không tồn tại' }, { status: 404 });
+    }
+
+    const isOwner = currentTicket.createdById === currentUser.userId;
+    const isAssignee = currentTicket.assignedToId === currentUser.userId;
+    const canUpdate = currentUser.roleName === 'Admin' || isOwner || isAssignee || (await hasPermission(currentUser.userId, 'tickets.update'));
+    if (!canUpdate) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền cập nhật ticket này' }, { status: 403 });
     }
 
     const data: any = {};
@@ -341,6 +349,11 @@ export async function DELETE(
 
     if (!existing) {
       return NextResponse.json({ error: 'Ticket không tồn tại' }, { status: 404 });
+    }
+
+    const canDelete = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'tickets.delete'));
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa ticket này' }, { status: 403 });
     }
 
     // 0. Lưu snapshot ticket vào Thùng rác (Recycle Bin) trước khi xóa

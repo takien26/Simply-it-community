@@ -199,14 +199,36 @@ export async function POST(request: NextRequest) {
     const isResolved = effectiveStatus === 'RESOLVED' || effectiveStatus === 'CLOSED';
     const isClosed = effectiveStatus === 'CLOSED';
 
+    // Query the latest ticket for the current year to determine the next sequence number
+    const latestTicket = await prisma.ticket.findFirst({
+      where: {
+        ticketNumber: {
+          startsWith: `TK-${currentYear}-`,
+        },
+      },
+      orderBy: { ticketNumber: 'desc' },
+      select: { ticketNumber: true },
+    });
+
+    let baseSeq = 1;
+    if (latestTicket?.ticketNumber) {
+      const match = latestTicket.ticketNumber.match(/^TK-\d{4}-(\d+)/);
+      if (match && match[1]) {
+        const parsed = parseInt(match[1], 10);
+        if (!isNaN(parsed)) {
+          baseSeq = parsed + 1;
+        }
+      }
+    }
+
     let ticket: any = null;
     let attempts = 0;
     while (attempts < 5) {
       attempts++;
-      const count = await prisma.ticket.count();
+      const currentSeq = baseSeq + attempts - 1;
       const numPart = attempts === 1
-        ? String(count + 1).padStart(4, '0')
-        : `${String(count + attempts).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
+        ? String(currentSeq).padStart(4, '0')
+        : `${String(currentSeq).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
       const ticketNumber = `TK-${currentYear}-${numPart}`;
 
       try {
