@@ -67,6 +67,39 @@ async function initServer() {
     fs.mkdirSync(certDir, { recursive: true });
   }
 
+  // =========================================================================
+  // 🔐 AUTOMATIC PERSISTENT JWT_SECRET ENGINE
+  // Eliminates token forgery risks if admin deploys without setting .env
+  // =========================================================================
+  const jwtSecretFile = path.join(certDir, '.jwt_secret');
+  const INSECURE_DEFAULT_SECRETS = [
+    'simply-it-dev-secret',
+    'itsm-enterprise-super-secret-key-2026',
+    'your-super-secret-jwt-key-change-this-in-production',
+  ];
+
+  const currentSecret = process.env.JWT_SECRET ? process.env.JWT_SECRET.trim() : '';
+  const isWeakOrMissing = !currentSecret || INSECURE_DEFAULT_SECRETS.includes(currentSecret);
+
+  if (isWeakOrMissing) {
+    if (fs.existsSync(jwtSecretFile)) {
+      const saved = fs.readFileSync(jwtSecretFile, 'utf8').trim();
+      if (saved && saved.length >= 32) {
+        process.env.JWT_SECRET = saved;
+      }
+    }
+
+    if (!process.env.JWT_SECRET || INSECURE_DEFAULT_SECRETS.includes(process.env.JWT_SECRET)) {
+      const crypto = require('crypto');
+      const freshSecret = crypto.randomBytes(64).toString('hex');
+      try {
+        fs.writeFileSync(jwtSecretFile, freshSecret, { encoding: 'utf8', mode: 0o600 });
+      } catch {}
+      process.env.JWT_SECRET = freshSecret;
+      console.log('🔒 [Security Engine] Generated unique persistent 512-bit JWT_SECRET in .certificates/.jwt_secret');
+    }
+  }
+
   const keyPath = path.join(certDir, 'localhost.key');
   const certPath = path.join(certDir, 'localhost.crt');
 
