@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
+import { isAdminOrAbove } from '@/lib/permissions';
 
 // POST /api/trash/empty - Dọn sạch thùng rác (tất cả hoặc chỉ mục hết hạn)
 export async function POST(request: NextRequest) {
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (currentUser.roleName !== 'Admin') {
+    if (!isAdminOrAbove(currentUser.roleName)) {
       return NextResponse.json({ error: 'Chỉ Quản trị viên mới có quyền dọn dẹp thùng rác' }, { status: 403 });
     }
 

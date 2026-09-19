@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 
 export async function GET(req: NextRequest) {
   try {
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
     }
 
     const canCreate = await hasPermission(user.userId, 'services.create');
-    if (!canCreate && user.roleName !== 'Admin') {
+    if (!canCreate && !isAdminOrAbove(user.roleName)) {
       return NextResponse.json({ error: 'Bạn không có quyền thêm dịch vụ' }, { status: 403 });
     }
 

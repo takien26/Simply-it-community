@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 import * as ExcelJS from 'exceljs';
 import { syncCorporateCompanies } from '@/lib/services/excel-import';
 
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     }
 
     const canImport = await hasPermission(user.userId, 'services.import');
-    if (!canImport && user.roleName !== 'Admin') {
+    if (!canImport && !isAdminOrAbove(user.roleName)) {
       return NextResponse.json({ error: 'Bạn không có quyền import dịch vụ IT' }, { status: 403 });
     }
 

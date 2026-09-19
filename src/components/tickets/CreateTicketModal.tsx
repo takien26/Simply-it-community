@@ -52,7 +52,7 @@ export default function CreateTicketModal({
 
   const isITStaffOrAdmin = useMemo(() => {
     const roleName = currentUser?.role?.name || '';
-    return roleName === 'Admin' || roleName === 'IT Support' || roleName === 'Asset Manager';
+    return roleName === 'Super Admin' || roleName === 'Admin' || roleName === 'IT Support' || roleName === 'Asset Manager';
   }, [currentUser]);
 
   // Form states
@@ -151,6 +151,7 @@ export default function CreateTicketModal({
           setAllUsers(list);
           const itList = list.filter(
             (u: any) =>
+              u.role?.name === 'Super Admin' ||
               u.role?.name === 'Admin' ||
               u.role?.name === 'IT Support' ||
               u.role?.name === 'Asset Manager' ||

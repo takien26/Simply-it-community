@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { isAdminOrAbove } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import { COMPREHENSIVE_IT_KB, KBArticle } from '@/lib/it-knowledge-base';
 import { DocumentType } from '@prisma/client';
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
 
     const userRole = currentUser.roleName || 'Staff';
-    const isAdmin = userRole === 'Admin' || (Array.isArray((currentUser as any).permissions) && (currentUser as any).permissions.includes('*'));
+    const isAdmin = isAdminOrAbove(userRole) || (Array.isArray((currentUser as any).permissions) && (currentUser as any).permissions.includes('*'));
     const isITStaff = isAdmin || userRole.toLowerCase().includes('it') || userRole.toLowerCase().includes('manager') || userRole.toLowerCase().includes('kỹ thuật');
 
     // 1. Fetch DB documents
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userRole = currentUser.roleName || 'Staff';
-    const isAdmin = userRole === 'Admin' || (Array.isArray((currentUser as any).permissions) && (currentUser as any).permissions.includes('*'));
+    const isAdmin = isAdminOrAbove(userRole) || (Array.isArray((currentUser as any).permissions) && (currentUser as any).permissions.includes('*'));
     const isITStaff = isAdmin || userRole.toLowerCase().includes('it') || userRole.toLowerCase().includes('manager') || userRole.toLowerCase().includes('kỹ thuật');
 
     if (!isITStaff && !isAdmin) {

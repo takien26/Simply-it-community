@@ -244,7 +244,7 @@ export function ChatWidget() {
         if (u) {
           const roleName = u.role?.name || u.roleName || 'Staff';
           setUserRole(roleName);
-          const adminCheck = roleName === 'Admin' || (Array.isArray(u.permissions) && u.permissions.includes('*'));
+          const adminCheck = roleName === 'Super Admin' || roleName === 'Admin' || (Array.isArray(u.permissions) && u.permissions.includes('*'));
           setIsAdmin(adminCheck);
         }
       })

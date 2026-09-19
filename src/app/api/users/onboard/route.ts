@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove, getRoleLevel, canAssignRole } from '@/lib/permissions';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: NextRequest) {
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canOnboard = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.create'));
+    const canOnboard = isAdminOrAbove(currentUser.roleName) || (await hasPermission(currentUser.userId, 'users.create'));
     if (!canOnboard) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền tiếp nhận nhân viên mới' }, { status: 403 });
     }
@@ -55,6 +55,19 @@ export async function POST(req: NextRequest) {
       if (!finalRoleId) {
         const anyRole = await prisma.role.findFirst();
         finalRoleId = anyRole?.id;
+      }
+    }
+
+    if (finalRoleId) {
+      const targetRole = await prisma.role.findUnique({ where: { id: finalRoleId } });
+      const callerLevel = getRoleLevel(currentUser.roleName);
+      const targetRoleLevel = getRoleLevel(targetRole?.name);
+
+      if (!canAssignRole(callerLevel, targetRoleLevel)) {
+        return NextResponse.json(
+          { error: `Bạn không có quyền gán vai trò "${targetRole?.name}". Bạn chỉ có thể gán các vai trò có cấp bậc ngang hoặc thấp hơn vai trò của bạn.` },
+          { status: 403 }
+        );
       }
     }
 

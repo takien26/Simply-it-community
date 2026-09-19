@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import { Prisma, AuditAction } from '@prisma/client';
 
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     }
 
     const canViewAudit = await hasPermission(currentUser.userId, 'audit.view');
-    const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleName === 'admin' || canViewAudit;
+    const isAdmin = isAdminOrAbove(currentUser.roleName) || canViewAudit;
 
     if (!isAdmin) {
       return NextResponse.json({ error: 'Forbidden: Chỉ Quản trị viên (Admin) mới có quyền xem Nhật ký hoạt động hệ thống' }, { status: 403 });

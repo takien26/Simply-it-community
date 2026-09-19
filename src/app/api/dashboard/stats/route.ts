@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { isAdminOrAbove } from '@/lib/permissions';
 
 export async function GET() {
   try {
@@ -40,10 +41,10 @@ export async function GET() {
     });
 
     const isManagementRole =
-      currentUser.roleName === 'Admin' ||
+      isAdminOrAbove(currentUser.roleName) ||
       currentUser.roleName === 'Asset Manager' ||
-      user?.role.name === 'Admin' ||
-      user?.role.name === 'Asset Manager';
+      isAdminOrAbove(user?.role?.name) ||
+      user?.role?.name === 'Asset Manager';
 
     // If User / Staff, return personalized Self-Service Portal stats
     if (!isManagementRole) {

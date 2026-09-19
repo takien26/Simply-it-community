@@ -304,7 +304,8 @@ export default function ApprovalsPage() {
     delivered: approvals.filter((a) => a.status === 'DELIVERED').length,
   };
 
-  const isAdmin = currentUser?.role?.name === 'Admin' || currentUser?.roleName === 'Admin' || currentUser?.role?.name === 'Asset Manager';
+  const userRole = currentUser?.role?.name || currentUser?.roleName || '';
+  const isAdmin = userRole === 'Super Admin' || userRole === 'Admin' || userRole === 'Asset Manager';
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">

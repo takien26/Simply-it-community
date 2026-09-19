@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { getTrashRetentionDays, setTrashRetentionDays } from '@/lib/trash';
+import { isAdminOrAbove } from '@/lib/permissions';
 
 // GET /api/trash/settings - Lấy cấu hình số ngày lưu trữ thùng rác
 export async function GET() {
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (currentUser.roleName !== 'Admin') {
+    if (!isAdminOrAbove(currentUser.roleName)) {
       return NextResponse.json({ error: 'Forbidden: Chỉ Quản trị viên mới có quyền thay đổi cấu hình thùng rác' }, { status: 403 });
     }
 

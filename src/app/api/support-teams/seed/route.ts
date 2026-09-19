@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { isAdminOrAbove } from '@/lib/permissions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,8 +9,8 @@ export async function POST(request: NextRequest) {
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (currentUser.roleName !== 'Admin') {
-      return NextResponse.json({ error: 'Forbidden: Chỉ Quản trị viên (Admin) mới có quyền khởi tạo cấu trúc Team chuẩn' }, { status: 403 });
+    if (!isAdminOrAbove(currentUser.roleName)) {
+      return NextResponse.json({ error: 'Forbidden: Chỉ Quản trị viên mới có quyền khởi tạo cấu trúc Team chuẩn' }, { status: 403 });
     }
 
     // 1. Root IT Group

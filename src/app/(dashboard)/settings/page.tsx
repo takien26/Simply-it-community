@@ -509,7 +509,8 @@ export default function SettingsPage() {
     }
   };
 
-  const isAdmin = currentUser?.role?.name === 'Admin' || currentUser?.roleName === 'Admin';
+  const roleName = currentUser?.role?.name || currentUser?.roleName || '';
+  const isAdmin = roleName === 'Super Admin' || roleName === 'Admin';
 
   if (!loading && currentUser && !isAdmin) {
     return (

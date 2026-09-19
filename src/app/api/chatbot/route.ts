@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { isAdminOrAbove } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import { COMPREHENSIVE_IT_KB, KBArticle } from '@/lib/it-knowledge-base';
 import { getGenAIClient, generateUnifiedTextAI } from '@/lib/ai-config';
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     const userQuery = message.trim().toLowerCase();
     const userRole = user.roleName || 'Staff';
-    const isAdmin = userRole === 'Admin' || (Array.isArray((user as any).permissions) && (user as any).permissions.includes('*'));
+    const isAdmin = isAdminOrAbove(userRole) || (Array.isArray((user as any).permissions) && (user as any).permissions.includes('*'));
     const isITStaff = isAdmin || userRole.toLowerCase().includes('it') || userRole.toLowerCase().includes('manager') || userRole.toLowerCase().includes('kỹ thuật');
 
     // ==================== 1. CONTINUOUS LEARNING: DB DOCUMENTS & RESOLVED TICKETS ====================

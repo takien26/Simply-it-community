@@ -309,7 +309,7 @@ export function Header({
   // Helper check permission access
   const hasAccess = (permission?: string | string[]) => {
     if (!user) return false;
-    if (user.role?.name === 'Admin' || user.permissions?.includes('*')) return true;
+    if (user.role?.name === 'Super Admin' || user.role?.name === 'Admin' || user.permissions?.includes('*')) return true;
     if (!permission) return true;
 
     const userPerms = Array.isArray(user.permissions) ? user.permissions : [];

@@ -463,11 +463,15 @@ export function RbacSettingsTab({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-sm leading-tight">{r.name}</span>
-                          {r.isSystem && (
+                          {r.name === 'Super Admin' ? (
+                            <span className="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded font-mono font-bold flex items-center gap-0.5">
+                              👑 Root
+                            </span>
+                          ) : r.isSystem ? (
                             <span className="text-[9px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-mono">
                               {isEn ? 'System' : 'Hệ thống'}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                         <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{getLocalizedRoleDesc(r.name, r.description, isEn) || (isEn ? 'No description' : 'Chưa có mô tả')}</p>
                         <span className="text-[10px] text-blue-600 font-semibold mt-1 inline-block">
@@ -476,14 +480,16 @@ export function RbacSettingsTab({
                       </div>
 
                       <div className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenRoleModal(r)}
-                          className="p-1 text-slate-400 hover:text-blue-600 rounded hover:bg-white cursor-pointer"
-                          title={isEn ? 'Edit role' : 'Sửa tên vai trò'}
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
+                        {r.name !== 'Super Admin' && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenRoleModal(r)}
+                            className="p-1 text-slate-400 hover:text-blue-600 rounded hover:bg-white cursor-pointer"
+                            title={isEn ? 'Edit role' : 'Sửa tên vai trò'}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         {!r.isSystem && (
                           <button
                             type="button"

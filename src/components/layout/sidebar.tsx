@@ -239,7 +239,7 @@ export function Sidebar({
   // Helper check permission access
   const hasAccess = (permission?: string | string[]) => {
     if (!user) return true; // Show items while loading or if not resolved
-    if (user.role?.name === 'Admin' || user.permissions?.includes('*')) return true;
+    if (user.role?.name === 'Super Admin' || user.role?.name === 'Admin' || user.permissions?.includes('*')) return true;
     if (!permission) return true;
 
     const userPerms = Array.isArray(user.permissions) ? user.permissions : [];

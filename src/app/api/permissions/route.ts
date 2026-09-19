@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
+import { DEFAULT_PERMISSIONS } from '@/lib/rbac-defaults';
 
 // GET /api/permissions - List all permissions grouped by module
 export async function GET() {
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.permissions'));
+    const canManage = isAdminOrAbove(currentUser.roleName) || (await hasPermission(currentUser.userId, 'users.permissions'));
     if (!canManage) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền quản trị phân quyền hệ thống' }, { status: 403 });
     }
@@ -72,13 +73,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Automatically grant to Admin role
-    const adminRole = await prisma.role.findFirst({ where: { name: { in: ['Admin', 'admin', 'Quản trị viên'] } } });
-    if (adminRole) {
+    // Automatically grant to Super Admin and Admin roles
+    const adminRoles = await prisma.role.findMany({
+      where: { name: { in: ['Super Admin', 'Admin', 'admin', 'Quản trị viên'] } },
+    });
+    for (const r of adminRoles) {
       await prisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId: adminRole.id, permissionId: permission.id } },
+        where: { roleId_permissionId: { roleId: r.id, permissionId: permission.id } },
         update: {},
-        create: { roleId: adminRole.id, permissionId: permission.id },
+        create: { roleId: r.id, permissionId: permission.id },
       });
     }
 
@@ -97,7 +100,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.permissions'));
+    const canManage = isAdminOrAbove(currentUser.roleName) || (await hasPermission(currentUser.userId, 'users.permissions'));
     if (!canManage) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền quản trị phân quyền hệ thống' }, { status: 403 });
     }
@@ -114,9 +117,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Không tìm thấy quyền này' }, { status: 404 });
     }
 
+    const isDefault = DEFAULT_PERMISSIONS.some((p) => p.code === existing.code);
+
     let cleanCode = existing.code;
     if (code && code.trim()) {
       cleanCode = code.trim().toLowerCase().replace(/\s+/g, '.');
+      if (isDefault && cleanCode !== existing.code) {
+        return NextResponse.json({ error: 'Không thể thay đổi mã quyền mặc định của hệ thống' }, { status: 400 });
+      }
       if (cleanCode !== existing.code) {
         const duplicate = await prisma.permission.findUnique({ where: { code: cleanCode } });
         if (duplicate) {
@@ -150,7 +158,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.permissions'));
+    const canManage = isAdminOrAbove(currentUser.roleName) || (await hasPermission(currentUser.userId, 'users.permissions'));
     if (!canManage) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền quản trị phân quyền hệ thống' }, { status: 403 });
     }
@@ -165,6 +173,14 @@ export async function DELETE(request: NextRequest) {
     const existing = await prisma.permission.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: 'Không tìm thấy quyền này' }, { status: 404 });
+    }
+
+    const isDefault = DEFAULT_PERMISSIONS.some((p) => p.code === existing.code);
+    if (isDefault) {
+      return NextResponse.json(
+        { error: `Không thể xóa quyền mặc định cốt lõi của hệ thống ("${existing.code}")` },
+        { status: 403 }
+      );
     }
 
     // Delete related role permissions & user permissions first

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -43,7 +43,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const canUpdate = await hasPermission(user.userId, 'services.update');
-    if (!canUpdate && user.roleName !== 'Admin') {
+    if (!canUpdate && !isAdminOrAbove(user.roleName)) {
       return NextResponse.json({ error: 'Bạn không có quyền sửa dịch vụ' }, { status: 403 });
     }
 
@@ -132,7 +132,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     const canDelete = await hasPermission(user.userId, 'services.delete');
-    if (!canDelete && user.roleName !== 'Admin') {
+    if (!canDelete && !isAdminOrAbove(user.roleName)) {
       return NextResponse.json({ error: 'Bạn không có quyền xóa dịch vụ' }, { status: 403 });
     }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveLicense, activateLicense, deactivateLicense } from '@/lib/license';
 import { getCurrentUser } from '@/lib/auth';
+import { isAdminOrAbove } from '@/lib/permissions';
 
 export async function GET() {
   try {
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
-    if (user.roleName !== 'Admin') {
+    if (!isAdminOrAbove(user.roleName)) {
       return NextResponse.json({ error: 'Chỉ Quản trị viên mới có quyền kích hoạt bản quyền' }, { status: 403 });
     }
 
@@ -41,7 +42,7 @@ export async function DELETE() {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
-    if (user.roleName !== 'Admin') {
+    if (!isAdminOrAbove(user.roleName)) {
       return NextResponse.json({ error: 'Chỉ Quản trị viên mới có quyền hủy bản quyền' }, { status: 403 });
     }
 

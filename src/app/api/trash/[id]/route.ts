@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
+import { isAdminOrAbove } from '@/lib/permissions';
 
 // DELETE /api/trash/[id] - Xóa vĩnh viễn mục khỏi Thùng rác (Hard Delete)
 export async function DELETE(
@@ -13,7 +14,7 @@ export async function DELETE(
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (currentUser.roleName !== 'Admin') {
+    if (!isAdminOrAbove(currentUser.roleName)) {
       return NextResponse.json({ error: 'Chỉ Quản trị viên mới có quyền xóa vĩnh viễn dữ liệu' }, { status: 403 });
     }
 
