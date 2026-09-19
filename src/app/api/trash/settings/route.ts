@@ -25,6 +25,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (currentUser.roleName !== 'Admin') {
+      return NextResponse.json({ error: 'Forbidden: Chỉ Quản trị viên mới có quyền thay đổi cấu hình thùng rác' }, { status: 403 });
+    }
+
     const body = await request.json();
     const days = parseInt(body.retentionDays, 10);
     if (isNaN(days) || days < 1 || days > 365) {

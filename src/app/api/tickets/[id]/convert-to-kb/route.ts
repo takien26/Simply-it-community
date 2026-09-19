@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { DocumentType } from '@prisma/client';
+import { hasPermission } from '@/lib/permissions';
 
 export async function POST(
   request: NextRequest,
@@ -12,6 +13,11 @@ export async function POST(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canConvert = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'kb.create'));
+    if (!canConvert) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền thêm tài liệu tri thức (KB)' }, { status: 403 });
     }
 
     const { id } = await params;

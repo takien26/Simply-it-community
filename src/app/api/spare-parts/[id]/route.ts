@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { moveToTrash } from '@/lib/trash';
+import { hasPermission } from '@/lib/permissions';
 
 export async function PUT(
   request: NextRequest,
@@ -11,6 +12,11 @@ export async function PUT(
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canManage = user.roleName === 'Admin' || (await hasPermission(user.userId, 'spare_parts.manage'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền quản lý kho linh kiện' }, { status: 403 });
     }
 
     const { id } = await params;
@@ -58,6 +64,11 @@ export async function DELETE(
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canManage = user.roleName === 'Admin' || (await hasPermission(user.userId, 'spare_parts.manage'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền quản lý kho linh kiện' }, { status: 403 });
     }
 
     const { id } = await params;

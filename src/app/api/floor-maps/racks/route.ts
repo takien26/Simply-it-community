@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -484,6 +485,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const canCreate = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'locations.create'));
+    if (!canCreate) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền thêm tủ rack' }, { status: 403 });
+    }
+
     const body = await request.json();
     const {
       name,
@@ -548,6 +554,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const canUpdate = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'locations.update'));
+    if (!canUpdate) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền sửa tủ rack' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { id, ...updateData } = body;
 
@@ -609,6 +620,11 @@ export async function DELETE(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canDelete = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'locations.delete'));
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa tủ rack' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

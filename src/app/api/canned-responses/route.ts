@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 
 const DEFAULT_TEMPLATES = [
   {
@@ -77,6 +78,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'tickets.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền tạo mẫu trả lời nhanh' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { title, content, shortcut, category } = body;
 
@@ -115,6 +121,11 @@ export async function DELETE(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'tickets.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa mẫu trả lời nhanh' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 
 // GET — List all support teams (with tree structure and members)
 export async function GET() {
@@ -105,6 +106,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.permissions')) || (await hasPermission(currentUser.userId, 'settings.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Yêu cầu quyền Quản trị viên để tạo team' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { name, code, description, parentId, companyScope, locationScope, sortOrder, memberIds } = body;
 
@@ -179,6 +185,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.permissions')) || (await hasPermission(currentUser.userId, 'settings.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Yêu cầu quyền Quản trị viên để sửa team' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { id, name, code, description, parentId, companyScope, locationScope, sortOrder, isActive, memberIds } = body;
 
@@ -238,6 +249,11 @@ export async function DELETE(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.permissions')) || (await hasPermission(currentUser.userId, 'settings.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Yêu cầu quyền Quản trị viên để xóa team' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
+import { hasPermission } from '@/lib/permissions';
 
 // POST /api/assets/[id]/return - Return/Revoke an assigned asset
 export async function POST(
@@ -12,6 +13,11 @@ export async function POST(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canReturn = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'assets.assign'));
+    if (!canReturn) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền thu hồi thiết bị' }, { status: 403 });
     }
 
     const { id: assetId } = await params;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { IncidentSeverity, IncidentStatus } from '@prisma/client';
+import { hasPermission } from '@/lib/permissions';
 
 // GET — List incidents with KPI stats
 export async function GET(request: NextRequest) {
@@ -95,6 +96,11 @@ export async function POST(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'incidents.manage'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền khởi tạo sự cố' }, { status: 403 });
     }
 
     const body = await request.json();

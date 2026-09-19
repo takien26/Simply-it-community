@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { testRouting } from '@/lib/routing-engine';
+import { hasPermission } from '@/lib/permissions';
 
 // GET — List routing rules
 export async function GET() {
@@ -32,6 +33,11 @@ export async function POST(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'settings.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Yêu cầu quyền Cấu hình hệ thống' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -81,6 +87,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'settings.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Yêu cầu quyền Cấu hình hệ thống' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { id, name, description, priority, conditions, targetTeamId, targetQueueId, targetUserId, autoAssign, isActive } = body;
 
@@ -120,6 +131,11 @@ export async function DELETE(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'settings.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Yêu cầu quyền Cấu hình hệ thống' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

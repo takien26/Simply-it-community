@@ -8,6 +8,9 @@ export async function POST(request: NextRequest) {
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (currentUser.roleName !== 'Admin') {
+      return NextResponse.json({ error: 'Forbidden: Chỉ Quản trị viên (Admin) mới có quyền khởi tạo cấu trúc Team chuẩn' }, { status: 403 });
+    }
 
     // 1. Root IT Group
     const rootGroup = await prisma.supportTeam.upsert({

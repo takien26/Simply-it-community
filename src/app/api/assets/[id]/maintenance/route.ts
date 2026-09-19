@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import { MaintenanceType } from '@prisma/client';
 
 // GET /api/assets/[id]/maintenance
@@ -40,6 +41,11 @@ export async function POST(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canCreate = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'assets.maintenance.create')) || (await hasPermission(currentUser.userId, 'assets.update'));
+    if (!canCreate) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền tạo phiếu sửa chữa / bảo trì' }, { status: 403 });
     }
 
     const { id } = await params;
@@ -84,6 +90,11 @@ export async function DELETE(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canDelete = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'assets.maintenance.delete')) || (await hasPermission(currentUser.userId, 'assets.delete'));
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa phiếu sửa chữa / bảo trì' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

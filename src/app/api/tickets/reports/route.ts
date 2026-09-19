@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canView = user.roleName === 'Admin' || (await hasPermission(user.userId, 'reports.view'));
+    if (!canView) {
+      return NextResponse.json({ success: false, error: 'Forbidden: Bạn không có quyền xem báo cáo thống kê' }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);

@@ -2,12 +2,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { testImapConnection, getImapConfig } from '@/lib/email-inbound';
+import { hasPermission } from '@/lib/permissions';
 
 export async function POST(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canTest = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'settings.update'));
+    if (!canTest) {
+      return NextResponse.json({ error: 'Forbidden: Yêu cầu quyền cấu hình hệ thống' }, { status: 403 });
     }
 
     const body = await request.json();

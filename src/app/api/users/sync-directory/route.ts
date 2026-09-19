@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import { createAuditLog } from '@/lib/audit';
 import { getLdapConfig, syncUsersFromLdap, type LdapConfig } from '@/lib/ldap';
 import bcrypt from 'bcryptjs';
@@ -12,6 +13,11 @@ export async function POST(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canSync = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'settings.ldap')) || (await hasPermission(currentUser.userId, 'users.update'));
+    if (!canSync) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền kích hoạt đồng bộ thư mục người dùng' }, { status: 403 });
     }
 
     let provider = 'all';

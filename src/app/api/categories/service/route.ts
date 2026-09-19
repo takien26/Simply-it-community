@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { moveToTrash } from '@/lib/trash';
+import { hasPermission } from '@/lib/permissions';
 
 const DEFAULT_SERVICE_CATEGORIES = [
   {
@@ -156,6 +157,9 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
+    const canCreate = user.roleName === 'Admin' || (await hasPermission(user.userId, 'categories.create'));
+    if (!canCreate) return NextResponse.json({ error: 'Forbidden: Bạn không có quyền tạo danh mục' }, { status: 403 });
+
     const body = await req.json();
     const { name, icon, description, serviceType, customFields } = body;
     if (!name?.trim()) return NextResponse.json({ error: 'Tên danh mục là bắt buộc' }, { status: 400 });
@@ -184,6 +188,9 @@ export async function PUT(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
+
+    const canUpdate = user.roleName === 'Admin' || (await hasPermission(user.userId, 'categories.update'));
+    if (!canUpdate) return NextResponse.json({ error: 'Forbidden: Bạn không có quyền sửa danh mục' }, { status: 403 });
 
     const body = await req.json();
     const { id, name, icon, description, serviceType, customFields } = body;
@@ -214,6 +221,9 @@ export async function DELETE(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
+
+    const canDelete = user.roleName === 'Admin' || (await hasPermission(user.userId, 'categories.delete'));
+    if (!canDelete) return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa danh mục' }, { status: 403 });
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');

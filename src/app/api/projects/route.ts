@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 
 // GET /api/projects - List all projects with aggregated stats
 export async function GET(request: NextRequest) {
@@ -8,6 +9,11 @@ export async function GET(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canView = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'documents.view'));
+    if (!canView) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xem dự án' }, { status: 403 });
     }
 
     // 1. Fetch all registered projects from DB
@@ -135,6 +141,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'documents.upload'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền thêm dự án' }, { status: 403 });
+    }
+
     const body = await request.json();
     const name = body.name?.trim();
     if (!name) {
@@ -182,6 +193,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'documents.upload'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền sửa dự án' }, { status: 403 });
+    }
+
     const { oldName, newName, newCode } = await request.json();
     if (!oldName || !newName) {
       return NextResponse.json({ error: 'Tên cũ và mới là bắt buộc' }, { status: 400 });
@@ -218,6 +234,11 @@ export async function DELETE(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canDelete = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'documents.delete'));
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa dự án' }, { status: 403 });
     }
 
     const name = request.nextUrl.searchParams.get('name');

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import { getGeminiApiKey, getOpenAIApiKey, getAIProvider } from '@/lib/ai-config';
 
 export const dynamic = 'force-dynamic';
@@ -47,6 +48,11 @@ export async function POST(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'settings.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền cấu hình API Key AI' }, { status: 403 });
     }
 
     const body = await request.json();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { moveToTrash } from '@/lib/trash';
+import { hasPermission } from '@/lib/permissions';
 import { VendorContact } from '../route';
 
 function parseVendorContacts(vendor: any) {
@@ -48,6 +49,11 @@ export async function PUT(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canUpdate = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'vendors.update'));
+    if (!canUpdate) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền sửa nhà cung cấp' }, { status: 403 });
     }
 
     const { id } = await params;
@@ -106,6 +112,11 @@ export async function DELETE(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canDelete = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'vendors.delete'));
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa nhà cung cấp' }, { status: 403 });
     }
 
     const { id } = await params;

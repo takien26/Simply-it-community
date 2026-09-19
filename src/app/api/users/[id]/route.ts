@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import bcrypt from 'bcryptjs';
 import { moveToTrash } from '@/lib/trash';
 
@@ -16,6 +17,11 @@ export async function GET(
     }
 
     const { id } = await params;
+    const isSelf = id === currentUser.userId;
+    const canViewUsers = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.view'));
+    if (!isSelf && !canViewUsers) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xem thông tin người dùng này' }, { status: 403 });
+    }
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
@@ -57,8 +63,27 @@ export async function PUT(
     }
 
     const { id } = await params;
+
+    const isSelf = id === currentUser.userId;
+    const isAdmin = currentUser.roleName === 'Admin';
+    const canManageUsers = isAdmin || (await hasPermission(currentUser.userId, 'users.update'));
+
+    if (!isSelf && !canManageUsers) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền chỉnh sửa thông tin người dùng này' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { fullName, email, department, position, companyName, phone, roleId, password, isActive, managerId, locationId, revokeAllAssignments } = body;
+
+    // Role elevation guard: only Admin can change roleId
+    if (roleId !== undefined && !isAdmin) {
+      return NextResponse.json({ error: 'Forbidden: Chỉ Quản trị viên (Admin) mới có quyền thay đổi vai trò hệ thống' }, { status: 403 });
+    }
+
+    // Account activation guard: only managers with users.update can change isActive
+    if (isActive !== undefined && !canManageUsers) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền thay đổi trạng thái hoạt động của tài khoản' }, { status: 403 });
+    }
 
     const data: Record<string, unknown> = {};
     if (fullName) data.fullName = fullName;
@@ -140,6 +165,12 @@ export async function DELETE(
     const { id } = await params;
     if (id === currentUser.userId) {
       return NextResponse.json({ error: 'Không thể tự xóa tài khoản của chính mình' }, { status: 400 });
+    }
+
+    const isAdmin = currentUser.roleName === 'Admin';
+    const canDeleteUser = isAdmin || (await hasPermission(currentUser.userId, 'users.delete'));
+    if (!canDeleteUser) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa hoặc vô hiệu hóa tài khoản này' }, { status: 403 });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { id } });

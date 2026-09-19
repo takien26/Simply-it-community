@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 
 export async function DELETE(
   request: NextRequest,
@@ -10,6 +11,11 @@ export async function DELETE(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canDelete = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'assets.maintenance.delete')) || (await hasPermission(currentUser.userId, 'assets.delete'));
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa phiếu sửa chữa / bảo trì' }, { status: 403 });
     }
 
     const { logId } = await params;

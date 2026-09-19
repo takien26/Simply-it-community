@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { DocumentType } from '@prisma/client';
+import { hasPermission } from '@/lib/permissions';
 
 // GET /api/documents
 export async function GET(request: NextRequest) {
@@ -9,6 +10,11 @@ export async function GET(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canView = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'documents.view'));
+    if (!canView) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xem tài liệu' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -138,6 +144,11 @@ export async function POST(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canUpload = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'documents.upload'));
+    if (!canUpload) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền tải lên tài liệu' }, { status: 403 });
     }
 
     const body = await request.json();

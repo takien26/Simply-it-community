@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
 import { moveToTrash } from '@/lib/trash';
+import { hasPermission } from '@/lib/permissions';
 
 // GET — Incident detail
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -56,6 +57,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'incidents.manage'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền cập nhật sự cố' }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await request.json();
 
@@ -130,6 +137,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'incidents.manage'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa sự cố' }, { status: 403 });
+    }
+
     const { id } = await params;
 
     const existing = await prisma.incident.findUnique({ where: { id } });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,6 +90,11 @@ export async function POST(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canEnrich = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'assets.create')) || (await hasPermission(currentUser.userId, 'assets.update'));
+    if (!canEnrich) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền tra cứu thông số thiết bị' }, { status: 403 });
     }
 
     const body = await request.json();

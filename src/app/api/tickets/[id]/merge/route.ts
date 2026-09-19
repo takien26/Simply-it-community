@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
+import { hasPermission } from '@/lib/permissions';
 
 export async function POST(
   request: NextRequest,
@@ -13,13 +14,9 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Role check: Only IT staff/admin/managers can merge tickets
-    const userRole = (currentUser.roleName || '').toLowerCase();
     const canMerge =
-      userRole.includes('admin') ||
-      userRole.includes('manager') ||
-      userRole.includes('tech') ||
-      userRole.includes('staff');
+      currentUser.roleName === 'Admin' ||
+      (await hasPermission(currentUser.userId, 'tickets.update'));
     if (!canMerge) {
       return NextResponse.json(
         { error: 'Chỉ nhân viên kỹ thuật hoặc quản trị viên mới có quyền gộp ticket' },

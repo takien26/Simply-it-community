@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
 import { moveToTrash } from '@/lib/trash';
 import { ProblemPriority, ProblemStatus } from '@prisma/client';
+import { hasPermission } from '@/lib/permissions';
 
 // GET — List problems with linked incidents
 export async function GET(request: NextRequest) {
@@ -79,6 +80,11 @@ export async function POST(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'problems.manage'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền khởi tạo Problem' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -160,6 +166,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'problems.manage'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền cập nhật Problem' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { id, title, description, priority, status, rootCause, permanentSolution, workaround, assignedToId, linkIncidentIds, unlinkIncidentId } = body;
 
@@ -180,16 +191,15 @@ export async function PUT(request: NextRequest) {
     if (rootCause !== undefined) updateData.rootCause = rootCause;
     if (permanentSolution !== undefined) updateData.permanentSolution = permanentSolution;
     if (workaround !== undefined) updateData.workaround = workaround;
-    if (assignedToId !== undefined) updateData.assignedToId = assignedToId;
+    if (assignedToId !== undefined) updateData.assignedToId = assignedToId || null;
 
-    if (linkIncidentIds && Array.isArray(linkIncidentIds)) {
-      updateData.incidents = {
-        connect: linkIncidentIds.map((iid: string) => ({ id: iid })),
-      };
-    }
     if (unlinkIncidentId) {
       updateData.incidents = {
         disconnect: { id: unlinkIncidentId },
+      };
+    } else if (linkIncidentIds && Array.isArray(linkIncidentIds) && linkIncidentIds.length > 0) {
+      updateData.incidents = {
+        connect: linkIncidentIds.map((incId: string) => ({ id: incId })),
       };
     }
 
@@ -197,7 +207,19 @@ export async function PUT(request: NextRequest) {
       where: { id },
       data: updateData,
       include: {
-        incidents: { select: { id: true, incidentNumber: true, title: true } },
+        createdBy: { select: { id: true, fullName: true, email: true, avatarUrl: true } },
+        assignedTo: { select: { id: true, fullName: true, email: true, avatarUrl: true } },
+        incidents: {
+          select: {
+            id: true,
+            incidentNumber: true,
+            title: true,
+            severity: true,
+            status: true,
+            startedAt: true,
+            resolvedAt: true,
+          },
+        },
       },
     });
 
@@ -208,12 +230,17 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE — Delete Problem
+// DELETE — Delete problem
 export async function DELETE(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'problems.manage'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa Problem' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

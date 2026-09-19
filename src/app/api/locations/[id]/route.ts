@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 
 // PUT /api/locations/[id]
 export async function PUT(
@@ -11,6 +12,11 @@ export async function PUT(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canUpdate = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'locations.update'));
+    if (!canUpdate) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền sửa vị trí' }, { status: 403 });
     }
 
     const { id } = await params;
@@ -47,6 +53,11 @@ export async function DELETE(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canDelete = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'locations.delete'));
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa vị trí' }, { status: 403 });
     }
 
     const { id } = await params;

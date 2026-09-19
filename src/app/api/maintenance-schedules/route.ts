@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import {
   calculateNextRunDate,
   parseScheduleConfig,
@@ -46,6 +47,11 @@ export async function POST(request: NextRequest) {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canCreate = user.roleName === 'Admin' || (await hasPermission(user.userId, 'assets.maintenance.create'));
+    if (!canCreate) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền tạo lịch bảo trì' }, { status: 403 });
     }
 
     const body = await request.json();

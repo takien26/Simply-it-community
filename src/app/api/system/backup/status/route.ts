@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import fs from 'fs';
 import path from 'path';
 
@@ -34,6 +35,11 @@ export async function GET(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canView = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'settings.backup'));
+    if (!canView) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền truy cập trạng thái sao lưu hệ thống' }, { status: 403 });
     }
 
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads');

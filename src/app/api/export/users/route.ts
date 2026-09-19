@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import ExcelJS from 'exceljs';
 
 // GET /api/export/users - Export Staff & Equipment Allocations to Excel
@@ -9,6 +10,11 @@ export async function GET(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canExport = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.export')) || (await hasPermission(currentUser.userId, 'users.view'));
+    if (!canExport) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền trích xuất danh sách nhân sự' }, { status: 403 });
     }
 
     const users = await prisma.user.findMany({

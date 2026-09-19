@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 
 export async function GET() {
   try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const canView = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'licenses.view'));
+    if (!canView) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xem cấu hình tích hợp license' }, { status: 403 });
+    }
+
     const settings = await prisma.systemSetting.findMany({
       where: {
         key: {
@@ -61,6 +72,15 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'licenses.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền cấu hình tích hợp license' }, { status: 403 });
+    }
+
     const body = await req.json();
     const { m365, google, adobe } = body;
 

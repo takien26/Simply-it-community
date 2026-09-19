@@ -1,32 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 
 const DEFAULT_COMPANIES = [
-  'Công ty Cổ phần Tập đoàn ABC',
-  'Công ty TNHH MTV Công Nghệ ABC',
-  'Chi nhánh Miền Bắc (Hà Nội)',
-  'Chi nhánh Miền Nam (TP.HCM)',
+  'Tổng Công Ty (HQ)',
+  'Chi Nhánh Hà Nội',
+  'Chi Nhánh TP.HCM',
+  'Chi Nhánh Đà Nẵng',
+  'Nhà Máy Sản Xuất',
 ];
 
 async function getStoredCompanies(): Promise<string[]> {
   const setting = await prisma.systemSetting.findUnique({
     where: { key: 'corporate.companies' },
   });
-
-  if (setting && setting.value !== undefined && setting.value !== null) {
+  if (setting && setting.value) {
     try {
       const parsed = JSON.parse(setting.value);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
       }
-    } catch {
-      // parse error fall through
-    }
+    } catch {}
   }
-
-  // Only if corporate.companies setting has NEVER been initialized in DB
-  await saveStoredCompanies(DEFAULT_COMPANIES);
   return DEFAULT_COMPANIES;
 }
 
@@ -65,6 +61,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'companies.create'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền thêm công ty' }, { status: 403 });
+    }
+
     const body = await request.json();
     const name = (body.name || '').trim();
     if (!name) {
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       await saveStoredCompanies(currentList);
     }
 
-    return NextResponse.json({ success: true, data: name }, { status: 201 });
+    return NextResponse.json({ success: true, data: name });
   } catch (error) {
     console.error('Create company error:', error);
     return NextResponse.json({ error: 'Failed to create company' }, { status: 500 });
@@ -90,6 +91,11 @@ export async function PUT(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'companies.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền sửa thông tin công ty' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -133,6 +139,11 @@ export async function DELETE(request: NextRequest) {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'companies.delete'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa công ty' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

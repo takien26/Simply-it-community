@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 import mammoth from 'mammoth';
 
 export async function POST(request: NextRequest) {
@@ -7,6 +8,11 @@ export async function POST(request: NextRequest) {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canImport = user.roleName === 'Admin' || (await hasPermission(user.userId, 'settings.update'));
+    if (!canImport) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền cấu hình mẫu email' }, { status: 403 });
     }
 
     const formData = await request.formData();

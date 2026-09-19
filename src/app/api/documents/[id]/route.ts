@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
 import { moveToTrash } from '@/lib/trash';
 import { DocumentType } from '@prisma/client';
+import { hasPermission } from '@/lib/permissions';
 
 // GET /api/documents/[id]
 export async function GET(
@@ -14,6 +15,11 @@ export async function GET(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canView = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'documents.view'));
+    if (!canView) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xem tài liệu' }, { status: 403 });
     }
 
     const { id } = await params;
@@ -48,6 +54,11 @@ export async function PUT(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canUpdate = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'documents.upload'));
+    if (!canUpdate) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền sửa tài liệu' }, { status: 403 });
     }
 
     const { id } = await params;
@@ -132,6 +143,11 @@ export async function DELETE(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canDelete = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'documents.delete'));
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền xóa tài liệu' }, { status: 403 });
     }
 
     const { id } = await params;

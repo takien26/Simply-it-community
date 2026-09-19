@@ -45,6 +45,9 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
+    if (user.roleName !== 'Admin') {
+      return NextResponse.json({ error: 'Forbidden: Chỉ Quản trị viên mới có quyền tạo hoặc dọn dẹp dữ liệu mẫu' }, { status: 403 });
+    }
 
     const body = await req.json();
     const { action } = body;

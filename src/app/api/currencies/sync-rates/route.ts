@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentUser } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { prisma } from '@/lib/db';
 
@@ -22,6 +24,16 @@ interface CurrencyItem {
 
 export async function POST(request: NextRequest) {
   try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canSync = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'settings.update'));
+    if (!canSync) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền đồng bộ tỷ giá tiền tệ' }, { status: 403 });
+    }
+
     const body = await request.json();
     const baseCurrency = (body.baseCurrency || 'VND').toUpperCase();
     const existingCurrencies: CurrencyItem[] = body.currencies || [];

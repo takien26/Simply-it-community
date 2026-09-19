@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 import { syncAndReconcileM365 } from '@/lib/license-connectors/m365-connector';
 
 export async function POST(
@@ -11,6 +12,11 @@ export async function POST(
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canAssign = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'licenses.assign'));
+    if (!canAssign) {
+      return NextResponse.json({ error: 'Forbidden: Bạn không có quyền tự động cấp phát license' }, { status: 403 });
     }
 
     const { provider } = await params;

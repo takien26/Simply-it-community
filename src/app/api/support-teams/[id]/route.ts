@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { hasPermission } from '@/lib/permissions';
 
 // GET — Get single team detail
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -36,6 +37,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.permissions')) || (await hasPermission(currentUser.userId, 'settings.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Yêu cầu quyền Quản trị viên để sửa team' }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await request.json();
 
@@ -65,6 +72,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const canManage = currentUser.roleName === 'Admin' || (await hasPermission(currentUser.userId, 'users.permissions')) || (await hasPermission(currentUser.userId, 'settings.update'));
+    if (!canManage) {
+      return NextResponse.json({ error: 'Forbidden: Yêu cầu quyền Quản trị viên để xóa team' }, { status: 403 });
+    }
+
     const { id } = await params;
 
     await prisma.supportTeam.delete({ where: { id } });
