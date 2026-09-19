@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 import { createAuditLog } from '@/lib/audit';
 import { moveToTrash } from '@/lib/trash';
+import { encrypt, decrypt, encryptOptional, decryptOptional } from '@/lib/crypto';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
+
+    const allowed = await hasPermission(user.userId, 'passwords.view');
+    if (!allowed) return NextResponse.json({ error: 'Bạn không có quyền truy cập kho mật khẩu' }, { status: 403 });
 
     const { id } = await params;
     const item = await prisma.passwordEntry.findUnique({
@@ -21,7 +26,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
 
     if (!item) return NextResponse.json({ error: 'Không tìm thấy tài khoản' }, { status: 404 });
-    return NextResponse.json({ success: true, data: item });
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...item,
+        password: decrypt(item.password),
+        totpSecret: decryptOptional(item.totpSecret),
+      },
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -32,6 +44,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
+    const allowed = await hasPermission(user.userId, 'passwords.view');
+    if (!allowed) return NextResponse.json({ error: 'Bạn không có quyền thao tác kho mật khẩu' }, { status: 403 });
+
     const { id } = await params;
     const body = await req.json();
 
@@ -40,7 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       data: {
         title: body.title !== undefined ? String(body.title).trim() : undefined,
         username: body.username !== undefined ? String(body.username).trim() : undefined,
-        password: body.password !== undefined ? String(body.password) : undefined,
+        password: body.password !== undefined ? encrypt(String(body.password)) : undefined,
         url: body.url !== undefined ? String(body.url).trim() : undefined,
         category: body.category !== undefined ? body.category : undefined,
         groupName: body.groupName !== undefined ? String(body.groupName).trim() : undefined,
@@ -49,7 +64,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         serviceId: body.serviceId !== undefined ? body.serviceId || null : undefined,
         vendorId: body.vendorId !== undefined ? body.vendorId || null : undefined,
         isFavorite: body.isFavorite !== undefined ? Boolean(body.isFavorite) : undefined,
-        totpSecret: body.totpSecret !== undefined ? String(body.totpSecret).trim() : undefined,
+        totpSecret: body.totpSecret !== undefined ? encryptOptional(body.totpSecret ? String(body.totpSecret).trim() : null) : undefined,
         notes: body.notes !== undefined ? String(body.notes).trim() : undefined,
       },
       include: {
@@ -59,7 +74,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       },
     });
 
-    return NextResponse.json({ success: true, data: updated });
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...updated,
+        password: decrypt(updated.password),
+        totpSecret: decryptOptional(updated.totpSecret),
+      },
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -69,6 +91,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
+
+    const allowed = await hasPermission(user.userId, 'passwords.view');
+    if (!allowed) return NextResponse.json({ error: 'Bạn không có quyền thao tác kho mật khẩu' }, { status: 403 });
 
     const { id } = await params;
     const existing = await prisma.passwordEntry.findUnique({ where: { id } });

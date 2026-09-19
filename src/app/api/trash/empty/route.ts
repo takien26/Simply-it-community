@@ -10,6 +10,9 @@ export async function POST(request: NextRequest) {
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (currentUser.roleName !== 'Admin') {
+      return NextResponse.json({ error: 'Chỉ Quản trị viên mới có quyền dọn dẹp thùng rác' }, { status: 403 });
+    }
 
     const body = await request.json().catch(() => ({}));
     const onlyExpired = body.onlyExpired === true;

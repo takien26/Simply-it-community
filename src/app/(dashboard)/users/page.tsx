@@ -1179,7 +1179,8 @@ export default function UsersPage() {
       {/* VIEW 1: COMPACT 1-PAGE ENTERPRISE TABLE VIEW */}
       {viewMode === 'table' ? (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
-          <table className="w-full table-fixed text-left text-xs border-collapse">
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full table-fixed text-left text-xs border-collapse">
             <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider select-none">
               <tr>
                 <th className="py-3 px-3 w-[30%]">{isEn ? 'EMPLOYEE & CONTACT' : 'NHÂN SỰ & LIÊN HỆ'}</th>
@@ -1438,6 +1439,137 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile User Cards (Only visible on screens < 768px) */}
+        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+          {loading && users.length === 0 ? (
+            <div className="py-12 text-center text-slate-400">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-purple-600" />
+              <span>{isEn ? 'Loading employee list...' : 'Đang tải danh sách nhân sự...'}</span>
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="py-12 text-center text-slate-400">
+              {isEn ? 'No matching employees found' : 'Không tìm thấy nhân viên nào phù hợp'}
+            </div>
+          ) : (
+            filteredUsers.map((u) => {
+              const { parent, child } = parseDeptParts(u.department);
+
+              return (
+                <div
+                  key={`mu-${u.id}`}
+                  onClick={() => handleOpenEditUser(u)}
+                  className="p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-blue-50/50 transition-colors cursor-pointer space-y-2.5"
+                >
+                  {/* Top Bar: Avatar, Name & Status */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                        {u.fullName?.charAt(0) || 'U'}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-slate-900 dark:text-white text-xs truncate">
+                          {u.fullName}
+                        </h3>
+                        <p className="text-[11px] text-slate-400 truncate">
+                          {u.email}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                        u.status === 'ACTIVE'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : u.status === 'ONBOARDING'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : u.status === 'OFFBOARDING'
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      }`}
+                    >
+                      {u.status === 'ACTIVE'
+                        ? '● Đang làm việc'
+                        : u.status === 'ONBOARDING'
+                        ? '● Đang Onboard'
+                        : u.status === 'OFFBOARDING'
+                        ? '● Đang bàn giao'
+                        : '● Đã nghỉ việc'}
+                    </span>
+                  </div>
+
+                  {/* Organization info */}
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 flex-wrap">
+                    {u.companyName && (
+                      <span className="font-semibold text-slate-700 dark:text-slate-200">
+                        {u.companyName}
+                      </span>
+                    )}
+                    {parent && (
+                      <>
+                        <span className="text-slate-300">•</span>
+                        <span>{parent}</span>
+                      </>
+                    )}
+                    {child && (
+                      <>
+                        <span className="text-slate-300">/</span>
+                        <span className="text-blue-600 font-medium">{child}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Assigned Devices & Licenses Chips */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[11px] text-slate-400">Thiết bị:</span>
+                      {u.assets?.length > 0 ? (
+                        u.assets.slice(0, 2).map((a: any) => (
+                          <span
+                            key={a.id}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold border border-blue-200/60"
+                          >
+                            <Laptop className="w-2.5 h-2.5" />
+                            <span>{a.assetTag}</span>
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-400 italic text-[10px]">Chưa cấp</span>
+                      )}
+                      {u.assets?.length > 2 && (
+                        <span className="text-[10px] font-bold text-blue-600">
+                          +{u.assets.length - 2}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAssignAsset(u)}
+                        title="Cấp phát thiết bị"
+                        className="p-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 text-[10px] font-bold inline-flex items-center gap-0.5"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Máy</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAssignLicense(u)}
+                        title="Cấp bản quyền"
+                        className="p-1 rounded bg-purple-50 text-purple-600 hover:bg-purple-100 text-[10px] font-bold inline-flex items-center gap-0.5"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Lic</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
       ) : (
         /* VIEW 2: GRID VIEW */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

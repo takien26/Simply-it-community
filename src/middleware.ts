@@ -11,14 +11,20 @@ const publicRoutes = [
   '/api/auto-scan',
   '/api/v1/auto-scan',
   '/api/scripts',
-  '/api/cron',
 ];
 
-// API routes that need auth
-const protectedApiPrefix = '/api/';
+const CRON_SECRET = process.env.CRON_SECRET || 'simply-internal-cron';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Cron routes: require secret header (set by server.js internal calls)
+  if (pathname.startsWith('/api/cron')) {
+    if (request.headers.get('x-cron-secret') !== CRON_SECRET) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    return NextResponse.next();
+  }
 
   // Allow public routes
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
@@ -30,7 +36,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
     pathname.startsWith('/images') ||
-    pathname.includes('.')
+    /\.(ico|png|jpe?g|gif|svg|webp|css|js|woff2?|ttf|eot|map)$/i.test(pathname)
   ) {
     return NextResponse.next();
   }
@@ -47,7 +53,7 @@ export async function middleware(request: NextRequest) {
 
   if (!token) {
     // API routes return 401
-    if (pathname.startsWith(protectedApiPrefix)) {
+    if (pathname.startsWith('/api/')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -57,11 +63,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Verify token against all known valid secrets
+  // Verify token
   const payload = await verifyToken(token);
   if (!payload) {
     // API routes return 401 WITHOUT aggressively deleting the cookie (prevents wiping session on transient network errors)
-    if (pathname.startsWith(protectedApiPrefix)) {
+    if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

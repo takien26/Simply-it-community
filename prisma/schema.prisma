@@ -476,6 +476,7 @@ model Asset {
   @@index([locationId])
   @@index([companyName])
   @@index([createdAt])
+  @@index([status, createdAt])
   @@map("assets")
 }
 
@@ -496,6 +497,7 @@ model AssetAssignment {
   @@index([assetId])
   @@index([userId])
   @@index([returnedAt])
+  @@index([assetId, returnedAt])
   @@map("asset_assignments")
 }
 
@@ -656,6 +658,7 @@ model AuditLog {
   @@index([userId])
   @@index([entityType, entityId])
   @@index([createdAt])
+  @@index([action, createdAt])
   @@map("audit_logs")
 }
 
@@ -768,6 +771,9 @@ model Ticket {
   @@index([mergedIntoTicketId])
   @@index([companyName])
   @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([assignedToId, status])
+  @@index([createdById, status])
   @@map("tickets")
 }
 
@@ -1139,6 +1145,10 @@ model PasswordEntry {
   @@index([groupName])
   @@index([companyName])
   @@index([isFavorite])
+  @@index([isFavorite, updatedAt])
+  @@index([createdById])
+  @@index([assetId])
+  @@index([serviceId])
   @@map("password_entries")
 }
 
@@ -1362,5 +1372,7 @@ model TrashItem {
   @@index([entityType])
   @@index([deletedAt])
   @@index([expiresAt])
+  @@index([entityId])
+  @@index([deletedById])
   @@map("trash_items")
 }

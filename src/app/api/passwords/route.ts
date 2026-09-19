@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
+import { encrypt, decrypt, encryptOptional, decryptOptional } from '@/lib/crypto';
 
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
+    }
+
+    // Password vault requires admin or explicit permission
+    const allowed = await hasPermission(user.userId, 'passwords.view');
+    if (!allowed) {
+      return NextResponse.json({ error: 'Bạn không có quyền truy cập kho mật khẩu' }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -73,9 +81,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const decryptedPasswords = passwords.map((p) => ({
+      ...p,
+      password: decrypt(p.password),
+      totpSecret: decryptOptional(p.totpSecret),
+    }));
+
     return NextResponse.json({
       success: true,
-      data: passwords,
+      data: decryptedPasswords,
       stats: {
         total: passwords.length,
         favorites: passwords.filter((p) => p.isFavorite).length,
@@ -96,6 +110,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
     }
 
+    const allowed = await hasPermission(user.userId, 'passwords.view');
+    if (!allowed) {
+      return NextResponse.json({ error: 'Bạn không có quyền thao tác kho mật khẩu' }, { status: 403 });
+    }
+
     const body = await req.json();
     const { title, username, password, url, category, groupName, companyName, assetId, serviceId, vendorId, isFavorite, totpSecret, notes } = body;
 
@@ -107,7 +126,7 @@ export async function POST(req: NextRequest) {
       data: {
         title: String(title).trim(),
         username: username ? String(username).trim() : null,
-        password: String(password),
+        password: encrypt(String(password)),
         url: url ? String(url).trim() : null,
         category: category || 'GENERAL',
         groupName: groupName ? String(groupName).trim() : 'Mặc định (Root)',
@@ -116,7 +135,7 @@ export async function POST(req: NextRequest) {
         serviceId: serviceId || null,
         vendorId: vendorId || null,
         isFavorite: Boolean(isFavorite),
-        totpSecret: totpSecret ? String(totpSecret).trim() : null,
+        totpSecret: encryptOptional(totpSecret ? String(totpSecret).trim() : null),
         notes: notes ? String(notes).trim() : null,
         createdById: user.userId,
       },
@@ -127,7 +146,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, data: newEntry });
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...newEntry,
+        password: String(password),
+        totpSecret: totpSecret ? String(totpSecret).trim() : null,
+      },
+    });
   } catch (error: any) {
     console.error('Create password error:', error);
     return NextResponse.json({ error: error.message || 'Lỗi tạo mật khẩu mới' }, { status: 500 });

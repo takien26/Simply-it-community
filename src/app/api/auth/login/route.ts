@@ -2,9 +2,19 @@ import { NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth';
 import { PRIMARY_COOKIE_NAME } from '@/lib/jwt';
 import { createAuditLog } from '@/lib/audit';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'local';
+    const rateLimit = checkRateLimit(`login:${ip}`, 10, 60_000);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: 'Quá nhiều yêu cầu đăng nhập. Vui lòng thử lại sau 1 phút.' },
+        { status: 429 }
+      );
+    }
+
     const { email, password } = await request.json();
 
     if (!email || !password) {
@@ -55,9 +65,10 @@ export async function POST(request: Request) {
       },
     });
 
+    const isHttps = new URL(request.url).protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https';
     const cookieOptions = {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production' && isHttps,
       sameSite: 'lax' as const,
       maxAge: 60 * 60 * 24 * 30, // 30 days
       path: '/',

@@ -1575,7 +1575,7 @@ export default function TicketsPage() {
 
       {/* Enterprise High-Density Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="table-fixed w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -1591,8 +1591,8 @@ export default function TicketsPage() {
                 <th className="py-3 px-3 w-[13%]">{isEn ? 'CATEGORY' : 'Phân Loại'}</th>
                 <th className="py-3 px-2.5 w-[10%]">{isEn ? 'PRIORITY' : 'Mức Độ'}</th>
                 <th className="py-3 px-2.5 w-[10%]">{isEn ? 'STATUS' : 'Trạng Thái'}</th>
-                <th className="py-3 px-3 w-[19%]">{isEn ? 'SLA DEADLINE' : 'Hạn SLA & Tiến Độ'}</th>
-                <th className="py-3 px-3 w-[15%]">{isEn ? 'REQUESTER & IT' : 'Người Gửi & IT'}</th>
+                <th className="py-3 px-3 w-[19%]{...}">{isEn ? 'SLA DEADLINE' : 'Hạn SLA & Tiến Độ'}</th>
+                <th className="py-3 px-3 w-[15%]{...}">{isEn ? 'REQUESTER & IT' : 'Người Gửi & IT'}</th>
                 <th className="py-3 px-2.5 w-[9%] text-right whitespace-nowrap">{isEn ? 'ACTIONS' : 'Thao Tác'}</th>
               </tr>
             </thead>
@@ -1736,7 +1736,7 @@ export default function TicketsPage() {
                       {/* Mức Độ */}
                       <td className="py-3 px-2.5">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border ${pri.badge} whitespace-nowrap shadow-2xs`}>
-                          <PriIcon className="w-3 h-3" />
+                          <PriIcon className="w-3.5 h-3.5" />
                           <span>{getPriorityLabel(t.priority, language)}</span>
                         </span>
                       </td>
@@ -1770,7 +1770,7 @@ export default function TicketsPage() {
                       </td>
 
                       {/* Người Gửi & IT Phụ Trách */}
-                      <td className="py-3 px-3 text-[11px]" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5">
                             <span className="text-slate-400 text-[10px]">{isEn ? 'From:' : 'Gửi:'}</span>
@@ -1835,6 +1835,95 @@ export default function TicketsPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Ticket Cards (Only visible on screens < 768px) */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {loading && tickets.length === 0 ? (
+            <div className="py-12 text-center text-slate-400">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
+              <span className="font-semibold text-xs text-slate-500">{isEn ? 'Loading tickets...' : 'Đang tải danh sách ticket...'}</span>
+            </div>
+          ) : filteredTickets.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 space-y-2 px-4">
+              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto text-xl font-bold">
+                🎫
+              </div>
+              <p className="font-bold text-slate-700 text-sm">{isEn ? 'No tickets found' : 'Không tìm thấy ticket nào'}</p>
+              <p className="text-xs text-slate-400">{isEn ? 'No support requests match the current filters.' : 'Không có yêu cầu hỗ trợ nào phù hợp với bộ lọc hiện tại.'}</p>
+            </div>
+          ) : (
+            filteredTickets.map((t) => {
+              const cat = CATEGORY_MAP[t.category] || CATEGORY_MAP.OTHER;
+              const pri = PRIORITY_MAP[t.priority] || PRIORITY_MAP.MEDIUM;
+              const sta = STATUS_MAP[t.status] || STATUS_MAP.OPEN;
+              const PriIcon = pri.icon;
+              const sla = getTicketSLA(t, slaConfig, language);
+
+              return (
+                <div
+                  key={`m-${t.id}`}
+                  onClick={() => {
+                    setSelectedTicket(t);
+                    setIsDetailModalOpen(true);
+                  }}
+                  className="p-3.5 hover:bg-slate-50 transition-colors active:bg-blue-50/50 cursor-pointer space-y-2.5"
+                >
+                  {/* Top Bar: Ticket Number, Status & Priority */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200">
+                        {t.ticketNumber}
+                      </span>
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${sta.badge}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${sta.dot}`} />
+                        <span>{getStatusLabel(t.status, language)}</span>
+                      </span>
+                    </div>
+
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${pri.badge}`}>
+                      <PriIcon className="w-3 h-3" />
+                      <span>{getPriorityLabel(t.priority, language)}</span>
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="font-bold text-slate-900 text-xs leading-snug line-clamp-2">
+                    {t.title}
+                  </h3>
+
+                  {/* Category & SLA info */}
+                  <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold border ${cat.color}`}>
+                      <span>{cat.icon}</span>
+                      <span>{getCategoryLabel(t.category, language)}</span>
+                    </span>
+
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border ${sla.badgeClass}`}>
+                      <span>{sla.icon}</span>
+                      <span>{sla.statusText}</span>
+                    </span>
+                  </div>
+
+                  {/* Footer: Requester, Assignee & Action */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                    <div className="flex items-center gap-2 truncate">
+                      <span>👤 {t.createdBy?.fullName || '—'}</span>
+                      <span>•</span>
+                      <span className="text-indigo-600 font-medium">
+                        {t.assignedTo?.fullName ? `👨‍💻 ${t.assignedTo.fullName}` : (isEn ? 'Unassigned' : 'Chưa gán IT')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0 text-blue-600 font-bold text-xs">
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>{t.comments?.length || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

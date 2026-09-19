@@ -108,6 +108,7 @@ export default function SettingsPage() {
   const [isPinned, setIsPinned] = useState<boolean>(true);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
+  const [isMobileTabMenuOpen, setIsMobileTabMenuOpen] = useState<boolean>(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Core settings state
@@ -550,12 +551,12 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-4 sm:space-y-6 w-full pb-20 md:pb-12">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <span className="p-2 bg-blue-600 text-white rounded-xl shadow-xs text-lg">⚙️</span>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+            <span className="p-2 bg-blue-600 text-white rounded-2xl shadow-xs text-lg">⚙️</span>
             <span>{isEn ? 'System Settings & Configuration' : 'Cài đặt & Cấu hình Hệ thống'}</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
@@ -566,13 +567,149 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* MOBILE SETTINGS TAB SWITCHER (Visible ONLY on mobile < md) */}
+      <div className="md:hidden space-y-2.5 w-full">
+        {/* Active Tab Card with Change Button */}
+        <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <span className="text-xl p-2 bg-blue-50 text-blue-700 rounded-xl border border-blue-100 shrink-0">
+              {currentNavItem?.icon}
+            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold text-slate-900 truncate">
+                  {currentNavItem?.label}
+                </span>
+                {currentNavItem?.badge && (
+                  <span className="text-[9px] px-1.5 py-0.2 rounded-full font-mono bg-amber-100 text-amber-800 border border-amber-200 font-bold shrink-0">
+                    {currentNavItem.badge}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                {currentNavItem?.desc}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsMobileTabMenuOpen(true)}
+            aria-label={isEn ? 'Open settings menu' : 'Mở menu cài đặt'}
+            className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/70 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer active:scale-95 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+          >
+            <span>{isEn ? 'All Tabs' : 'Tất cả mục'}</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Quick Horizontal Scrollable Strip for Fast 1-Touch Switching */}
+        <nav aria-label={isEn ? 'Settings tabs' : 'Các mục cài đặt'} className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar -mx-1 px-1">
+          {navGroups.flatMap((g) => g.items).map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs'
+                }`}
+              >
+                <span className="text-sm">{item.icon}</span>
+                <span className="whitespace-nowrap">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Full Modal Bottom Sheet for Selecting Settings on Mobile */}
+        {isMobileTabMenuOpen && (
+          <div role="dialog" aria-modal="true" aria-label={isEn ? 'System Settings Menu' : 'Danh Mục Cài Đặt Hệ Thống'} className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom duration-200">
+              {/* Modal Header */}
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">⚙️</span>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    {isEn ? 'System Settings Menu' : 'Danh Mục Cài Đặt Hệ Thống'}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileTabMenuOpen(false)}
+                  aria-label={isEn ? 'Close menu' : 'Đóng menu'}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Body with All Groups and Items */}
+              <div className="p-3.5 space-y-4 overflow-y-auto flex-1">
+                {navGroups.map((group) => (
+                  <div key={group.title} className="space-y-1.5">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2">
+                      {group.title}
+                    </div>
+                    <div className="grid grid-cols-1 gap-1">
+                      {group.items.map((item) => {
+                        const isActive = activeTab === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveTab(item.id);
+                              setIsMobileTabMenuOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition-all cursor-pointer ${
+                              isActive
+                                ? 'bg-blue-600 text-white font-bold shadow-xs'
+                                : 'hover:bg-slate-50 text-slate-700 border border-transparent hover:border-slate-200'
+                            }`}
+                          >
+                            <span className="text-xl p-1.5 rounded-xl bg-slate-100/80 text-slate-900 shrink-0">
+                              {item.icon}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="text-xs font-bold truncate">{item.label}</span>
+                                {item.badge && (
+                                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono shrink-0 ${
+                                    isActive ? 'bg-blue-700 text-blue-100' : 'bg-amber-100 text-amber-800'
+                                  }`}>
+                                    {item.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <p className={`text-[11px] font-normal truncate mt-0.5 ${
+                                isActive ? 'text-blue-100' : 'text-slate-400'
+                              }`}>
+                                {item.desc}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Main 2-Column Layout */}
-      <div className="flex items-start gap-6 relative">
-        {/* Left Sidebar Menu */}
+      <div className="flex flex-col md:flex-row items-start gap-4 lg:gap-6 relative">
+        {/* Left Sidebar Menu (Hidden on mobile, pristine on desktop) */}
         <aside
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          className={`shrink-0 transition-all duration-300 ease-in-out z-20 ${
+          className={`hidden md:block shrink-0 transition-all duration-300 ease-in-out z-20 ${
             isExpanded ? 'w-80' : 'w-16'
           }`}
         >
@@ -697,10 +834,10 @@ export default function SettingsPage() {
         </aside>
 
         {/* Right Content Area */}
-        <main className="flex-1 min-w-0 space-y-6">
-          {/* Active Tab Heading Card */}
+        <main className="w-full flex-1 min-w-0 space-y-4 sm:space-y-6">
+          {/* Active Tab Heading Card (Desktop only, mobile has top selector) */}
           {currentNavItem && (
-            <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
+            <div className="hidden md:flex p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="text-2xl p-2 bg-slate-50 rounded-xl border border-slate-100">{currentNavItem.icon}</span>
                 <div>

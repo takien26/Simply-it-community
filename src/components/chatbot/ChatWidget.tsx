@@ -394,7 +394,13 @@ export function ChatWidget() {
         );
       }
 
-      const boldFormatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      const escaped = line
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+      const boldFormatted = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       return (
         <p
           key={idx}
@@ -422,9 +428,9 @@ export function ChatWidget() {
             }
           : {
               position: 'fixed',
-              bottom: '20px',
-              right: '20px',
-              zIndex: 50,
+              bottom: typeof window !== 'undefined' && window.innerWidth < 768 ? '78px' : '20px',
+              right: typeof window !== 'undefined' && window.innerWidth < 768 ? '16px' : '20px',
+              zIndex: 45,
             }
       }
     >

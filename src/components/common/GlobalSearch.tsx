@@ -157,11 +157,11 @@ export function GlobalSearch() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100/90 hover:bg-slate-200 text-slate-500 text-xs font-semibold transition-all border border-slate-200/80 cursor-pointer min-w-[200px] sm:min-w-[240px] shadow-2xs hover:border-blue-300"
+        className="flex items-center gap-2 p-2 sm:px-3.5 sm:py-2 rounded-xl bg-slate-100/90 hover:bg-slate-200 text-slate-500 text-xs font-semibold transition-all border border-slate-200/80 cursor-pointer w-9 h-9 sm:w-auto sm:min-w-[240px] justify-center sm:justify-start shadow-2xs hover:border-blue-300 shrink-0"
         title={t('search.title', 'Tìm kiếm nhanh toàn hệ thống (Ctrl + K)')}
       >
-        <Search className="w-4 h-4 text-slate-400" />
-        <span className="flex-1 text-left text-slate-500">{t('search.trigger', 'Tìm kiếm nhanh...')}</span>
+        <Search className="w-4 h-4 text-slate-500 shrink-0" />
+        <span className="hidden sm:inline flex-1 text-left text-slate-500">{t('search.trigger', 'Tìm kiếm nhanh...')}</span>
         <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white border border-slate-300 rounded-md text-[10px] font-mono text-slate-500 shadow-2xs">
           <Command className="w-2.5 h-2.5" />K
         </kbd>

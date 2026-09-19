@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
+import { decrypt } from '@/lib/crypto';
 import * as ExcelJS from 'exceljs';
 
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
+
+    const allowed = await hasPermission(user.userId, 'passwords.view');
+    if (!allowed) return NextResponse.json({ error: 'Bạn không có quyền truy cập kho mật khẩu' }, { status: 403 });
 
     const passwords = await prisma.passwordEntry.findMany({
       orderBy: [{ groupName: 'asc' }, { title: 'asc' }],
@@ -38,7 +43,7 @@ export async function GET(req: NextRequest) {
         groupName: p.groupName || 'Mặc định (Root)',
         title: p.title,
         username: p.username || '',
-        password: p.password,
+        password: decrypt(p.password),
         url: p.url || '',
         category: p.category,
         companyName: p.companyName || '',

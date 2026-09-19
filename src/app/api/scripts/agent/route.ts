@@ -26,6 +26,15 @@ export async function GET(request: NextRequest) {
 
   serverUrl = serverUrl.replace(/\/+$/, '');
 
+  // Validate serverUrl is a proper HTTP(S) URL to prevent injection
+  try {
+    const u = new URL(serverUrl);
+    if (!['http:', 'https:'].includes(u.protocol)) throw new Error();
+    serverUrl = u.origin;
+  } catch {
+    return NextResponse.json({ error: 'Invalid serverUrl' }, { status: 400 });
+  }
+
   // Read the master script
   let scriptContent = '';
   for (const name of ['get_system_info.ps1', 'simply-it-collector.ps1']) {

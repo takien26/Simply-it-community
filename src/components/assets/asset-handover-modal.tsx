@@ -330,7 +330,10 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
     for (const [key, val] of Object.entries(replacements)) {
       result = result.replaceAll(key, val);
     }
-    return result;
+    return result
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script\s*>/gi, '')
+      .replace(/on\w+\s*=\s*(['"]).*?\1/gi, '')
+      .replace(/javascript\s*:/gi, '');
   };
 
   // Handle Save Template as persistent default

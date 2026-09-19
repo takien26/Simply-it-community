@@ -173,7 +173,7 @@ async function initServer() {
     const today = new Date().toISOString().split('T')[0];
     if (lastDailyAlertDate === today) return;
     try {
-      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/alert-scanner?run=true`, (res) => {
+      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/alert-scanner?run=true`, { headers: { 'x-cron-secret': process.env.CRON_SECRET || 'simply-internal-cron' } }, (res) => {
         if (res.statusCode === 200) {
           lastDailyAlertDate = today;
           console.log(`🔔 [Alert Engine] Daily alert scan completed successfully for ${today}`);
@@ -191,7 +191,7 @@ async function initServer() {
   // 4. Automated Inbound Email-to-Ticket Poller (Runs in background every 2 minutes)
   function triggerEmailInboundPolling() {
     try {
-      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/email-inbound?run=true`, (res) => {
+      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/email-inbound?run=true`, { headers: { 'x-cron-secret': process.env.CRON_SECRET || 'simply-internal-cron' } }, (res) => {
         // Background polling silent response
       });
       req.on('error', () => {});
@@ -206,7 +206,7 @@ async function initServer() {
   // 5. Automated Ticket Auto-Close Engine (👑 Enterprise - Runs every 6 hours)
   function triggerTicketAutoClose() {
     try {
-      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/ticket-auto-close?run=true`, (res) => {
+      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/ticket-auto-close?run=true`, { headers: { 'x-cron-secret': process.env.CRON_SECRET || 'simply-internal-cron' } }, (res) => {
         if (res.statusCode === 200) {
           console.log(`⏱️ [Auto-Close Engine] Ticket auto-close check executed successfully.`);
         }
@@ -223,7 +223,7 @@ async function initServer() {
   // 6. Automated Recurring Maintenance Tickets Engine (👑 Enterprise - Runs every 12 hours)
   function triggerMaintenanceCron() {
     try {
-      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/maintenance`, (res) => {
+      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/maintenance`, { headers: { 'x-cron-secret': process.env.CRON_SECRET || 'simply-internal-cron' } }, (res) => {
         if (res.statusCode === 200) {
           console.log(`📅 [Recurring Engine] Maintenance schedules checked successfully.`);
         }
@@ -240,7 +240,7 @@ async function initServer() {
   // 7. Automated Directory Sync Engine (LDAP / Active Directory & SSO - Checks every 10 minutes)
   function triggerDirectorySyncCron() {
     try {
-      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/directory-sync`, (res) => {
+      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/directory-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET || 'simply-internal-cron' } }, (res) => {
         let body = '';
         res.on('data', (chunk) => { body += chunk; });
         res.on('end', () => {

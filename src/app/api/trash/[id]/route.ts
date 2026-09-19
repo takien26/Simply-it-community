@@ -13,6 +13,9 @@ export async function DELETE(
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (currentUser.roleName !== 'Admin') {
+      return NextResponse.json({ error: 'Chỉ Quản trị viên mới có quyền xóa vĩnh viễn dữ liệu' }, { status: 403 });
+    }
 
     const { id } = await params;
     const existing = await prisma.trashItem.findUnique({ where: { id } });

@@ -654,7 +654,7 @@ export function Header({
         {canUseAI && onOpenAIModal && (
           <button
             onClick={onOpenAIModal}
-            className="flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium text-xs shadow-2xs transition-all cursor-pointer"
+            className="hidden sm:flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium text-xs shadow-2xs transition-all cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
             <span>{t('header.ai_copilot', 'Nhập nhanh AI')}</span>
@@ -664,7 +664,7 @@ export function Header({
         {canImportExcel && onOpenExcelModal && (
           <button
             onClick={onOpenExcelModal}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs transition-colors border border-slate-200 cursor-pointer h-8"
+            className="hidden md:flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs transition-colors border border-slate-200 cursor-pointer h-8"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
             <span>{t('header.excel_import', 'Import Excel')}</span>
@@ -672,7 +672,7 @@ export function Header({
         )}
 
         {/* KEEPASS DESKTOP STYLE HELP MENU & AUTHOR INFO */}
-        <div className="relative" ref={healthRef}>
+        <div className="relative hidden md:block" ref={healthRef}>
           <button
             type="button"
             onClick={() => setIsSystemHealthOpen(!isSystemHealthOpen)}

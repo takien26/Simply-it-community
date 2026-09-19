@@ -74,10 +74,22 @@ export async function GET(request: NextRequest) {
     }
 
     if (chosenPgDump) {
+      // Parse connection details from DATABASE_URL
+      let dbHost = 'localhost', dbPort = '5432', dbUser = 'postgres', dbPass = '', dbName = 'it_asset_db';
       try {
-        const cmd = `"${chosenPgDump}" -h localhost -p 5432 -U postgres -d it_asset_db --clean --if-exists -f "${tempSqlFile}"`;
+        const dbUrl = new URL(process.env.DATABASE_URL || '');
+        dbHost = dbUrl.hostname || dbHost;
+        dbPort = dbUrl.port || dbPort;
+        dbUser = dbUrl.username || dbUser;
+        dbPass = decodeURIComponent(dbUrl.password || '');
+        dbName = dbUrl.pathname.replace(/^\//, '') || dbName;
+      } catch {
+        // ponytail: fallback to defaults if DATABASE_URL is missing/malformed
+      }
+      try {
+        const cmd = `"${chosenPgDump}" -h ${dbHost} -p ${dbPort} -U ${dbUser} -d ${dbName} --clean --if-exists -f "${tempSqlFile}"`;
         await execAsync(cmd, {
-          env: { ...process.env, PGPASSWORD: 'Admin@123' },
+          env: { ...process.env, PGPASSWORD: dbPass },
           timeout: 60000,
         });
         if (fs.existsSync(tempSqlFile) && fs.statSync(tempSqlFile).size > 0) {

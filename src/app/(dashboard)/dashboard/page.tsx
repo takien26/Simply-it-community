@@ -746,11 +746,11 @@ export default function DashboardPage() {
       {/* 1. COMPACT EXECUTIVE HEADER (CLEAN, NO BULKY PURPLE HERO BANNER) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
               {language === 'en' ? 'IT Executive Dashboard' : 'Bảng Điều Khiển Tổng Quan'}
             </h1>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 text-[10.5px] font-bold border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>{language === 'en' ? 'System Operational' : 'Hệ thống ổn định'}</span>
             </span>
@@ -775,7 +775,7 @@ export default function DashboardPage() {
             className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>{language === 'en' ? '+ New Ticket' : '+ Tạo Ticket'}</span>
+            <span>{language === 'en' ? 'New Ticket' : 'Tạo Ticket'}</span>
           </Link>
 
           <Link

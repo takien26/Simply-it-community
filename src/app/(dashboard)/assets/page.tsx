@@ -702,6 +702,9 @@ export default function AssetsPage() {
         setSelectedQrAsset(null);
         setIsBatchPrintOpen(false);
         setIsCategoryDropdownOpen(false);
+        setIsScriptModalOpen(false);
+        setIsPricingModalOpen(false);
+        setActiveDropdownAssetId(null);
       }
     }
     window.addEventListener('keydown', handleGlobalKeyDownAssets);
@@ -882,26 +885,6 @@ export default function AssetsPage() {
       setQuickAddingUser(false);
     }
   };
-
-  // Global ESC Key Listener to close any open modal
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        if (isTransferModalOpen) setIsTransferModalOpen(false);
-        if (isDetailModalOpen) setIsDetailModalOpen(false);
-        if (isAddModalOpen) setIsAddModalOpen(false);
-        if (isEditModalOpen) setIsEditModalOpen(false);
-        if (isMaintenanceModalOpen) setIsMaintenanceModalOpen(false);
-        if (selectedQrAsset) setSelectedQrAsset(null);
-        if (isBatchPrintOpen) setIsBatchPrintOpen(false);
-        if (isScriptModalOpen) setIsScriptModalOpen(false);
-        if (isPricingModalOpen) setIsPricingModalOpen(false);
-        setActiveDropdownAssetId(null);
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isAddModalOpen, isEditModalOpen, isMaintenanceModalOpen, selectedQrAsset, isBatchPrintOpen, isScriptModalOpen, isPricingModalOpen]);
 
   // Click outside listener for category dropdown and action dropdowns
   useEffect(() => {
@@ -2710,7 +2693,7 @@ export default function AssetsPage() {
               </div>
             )}
 
-            <div className="w-full overflow-x-auto">
+            <div className="hidden md:block w-full overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse min-w-[920px]">
                 <thead className="bg-slate-50/90 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   <tr>
@@ -3047,6 +3030,109 @@ export default function AssetsPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Asset Cards (Only visible on screens < 768px) */}
+            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+              {loading ? (
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <div key={idx} className="p-4 space-y-2.5 animate-pulse">
+                    <div className="flex justify-between items-center">
+                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
+                      <div className="h-5 w-16 bg-slate-200 dark:bg-slate-700 rounded-full" />
+                    </div>
+                    <div className="h-4 w-3/4 bg-slate-200 dark:bg-slate-700 rounded" />
+                    <div className="h-3 w-1/2 bg-slate-200 dark:bg-slate-700 rounded" />
+                  </div>
+                ))
+              ) : paginatedAssets.length === 0 ? (
+                <div className="py-12 px-4 text-center">
+                  <Laptop className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                    {isEn ? 'No devices found' : 'Không tìm thấy thiết bị nào'}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {isEn ? 'Try adjusting your search keywords or filter criteria.' : 'Thử điều chỉnh từ khóa tìm kiếm hoặc bộ lọc.'}
+                  </p>
+                </div>
+              ) : (
+                paginatedAssets.map((asset) => {
+                  const assignedUser = asset.assignments?.find((a: any) => a.returnedAt === null)?.user;
+                  const isAutoScanned = asset.source === 'AUTO_SCAN' || asset.source === 'AGENT_PS1' || asset.isAutoScanned;
+
+                  return (
+                    <div
+                      key={`m-${asset.id}`}
+                      onClick={() => handleOpenDetail(asset)}
+                      className="p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-blue-50/50 transition-colors cursor-pointer space-y-2.5"
+                    >
+                      {/* Card Header: Tag, AutoScan badge & Status */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-black text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded text-xs leading-none">
+                            {asset.assetTag}
+                          </span>
+                          {isAutoScanned && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-extrabold">
+                              🤖 Auto
+                            </span>
+                          )}
+                        </div>
+
+                        <span
+                          className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                            asset.status === 'PENDING'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : asset.status === 'AVAILABLE'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : asset.status === 'IN_USE'
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                              : asset.status === 'MAINTENANCE'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}
+                        >
+                          {asset.status === 'PENDING' && '🟠 Chờ duyệt'}
+                          {asset.status === 'AVAILABLE' && '● Sẵn sàng'}
+                          {asset.status === 'IN_USE' && '● Đang dùng'}
+                          {asset.status === 'MAINTENANCE' && '● Bảo trì'}
+                          {asset.status === 'RETIRED' && '● Đã thanh lý'}
+                        </span>
+                      </div>
+
+                      {/* Device Name & Specs */}
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white text-xs leading-snug line-clamp-2">
+                          {asset.name}
+                        </h3>
+                        {(asset.brand || asset.model) && (
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                            {[asset.brand, asset.model].filter(Boolean).join(' • ')}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Location & Assigned User */}
+                      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 gap-2">
+                        <div className="truncate flex items-center gap-1 text-[11px]">
+                          <Building className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate">{asset.company?.name || asset.company || '—'}</span>
+                        </div>
+
+                        <div className="truncate flex items-center gap-1 text-[11px] shrink-0 font-medium">
+                          {assignedUser ? (
+                            <span className="text-slate-800 dark:text-slate-200 font-bold truncate max-w-[130px]">
+                              👤 {assignedUser.fullName}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic">Trong kho</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             {/* Pagination Controls */}

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
+import { encrypt, encryptOptional } from '@/lib/crypto';
 import * as ExcelJS from 'exceljs';
 import * as kdbxweb from 'kdbxweb';
 import * as argon2 from 'argon2';
@@ -104,6 +106,9 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
 
+    const allowed = await hasPermission(user.userId, 'passwords.view');
+    if (!allowed) return NextResponse.json({ error: 'Bạn không có quyền thao tác kho mật khẩu' }, { status: 403 });
+
     let rows: any[] = [];
     let defaultGroup = 'KeePass Import';
     let companyName: string | null = null;
@@ -179,12 +184,12 @@ export async function POST(req: NextRequest) {
         data: {
           title: r.title,
           username: r.username || null,
-          password: r.password,
+          password: encrypt(r.password),
           url: r.url || null,
           category: r.category || 'GENERAL',
           groupName: finalGroup,
           companyName: companyName || null,
-          totpSecret: r.totpSecret || null,
+          totpSecret: encryptOptional(r.totpSecret || null),
           notes: r.notes ? r.notes : null,
           createdById: user.userId,
         },

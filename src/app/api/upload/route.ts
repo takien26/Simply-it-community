@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
 
     // Whitelist các định dạng file an toàn cho hệ thống tài liệu & tài sản IT
     const ALLOWED_EXTENSIONS = new Set([
-      // Ảnh & Đồ họa
-      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg', '.ico',
+      // Ảnh & Đồ họa (loại trừ .svg để ngăn ngừa Stored XSS)
+      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.ico',
       // Văn bản, Hợp đồng, Hóa đơn & Bảng tính Office
       '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.csv', '.txt', '.rtf',
       // File nén & sao lưu
