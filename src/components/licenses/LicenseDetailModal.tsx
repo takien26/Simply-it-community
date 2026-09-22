@@ -17,7 +17,9 @@ import {
   Link as LinkIcon,
   FolderOpen,
   Users,
+  Search,
   Check,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 import { QuickLink } from '@/components/common/QuickLink';
@@ -38,6 +40,7 @@ export interface LicenseDetailModalProps {
   onDeletePaymentRecord?: (licenseId: string, payId: string) => void;
   onOpenDocPreview?: (license: any) => void;
   onOpenAddPayment?: (license: any) => void;
+  onExportExcel?: (license: any) => void;
 }
 
 export function LicenseDetailModal({
@@ -54,10 +57,16 @@ export function LicenseDetailModal({
   onDeletePaymentRecord,
   onOpenDocPreview,
   onOpenAddPayment,
+  onExportExcel,
 }: LicenseDetailModalProps) {
+  const [assignSearch, setAssignSearch] = React.useState('');
+
   // ESC key listener to close modal
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setAssignSearch('');
+      return;
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
@@ -133,13 +142,26 @@ export function LicenseDetailModal({
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsDetailModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                {onExportExcel && (
+                  <button
+                    type="button"
+                    onClick={() => onExportExcel(selectedDetailLicense)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
+                    title={txt('Xuất báo cáo Excel chi tiết cho phần mềm này', 'Export detailed Excel report for this software', 'このソフトウェアのExcelレポートを出力')}
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="hidden sm:inline">{txt('Xuất Excel', 'Export Excel', 'Excel出力')}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsDetailModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Scrollable Body */}
@@ -151,8 +173,21 @@ export function LicenseDetailModal({
                 const rate = selectedDetailLicense.exchangeRate || exchangeRatesMap[rawCurr] || 1;
                 const convertedPrice = convertCurrency(rawPrice, rawCurr, selectedCurrency, exchangeRatesMap);
                 const isDual = rawPrice > 0 && rawCurr !== selectedCurrency.toUpperCase();
-                const used = selectedDetailLicense.usedSeats || selectedDetailLicense.assignments?.length || 0;
-                const total = selectedDetailLicense.totalSeats || 1;
+                const rawBatches = selectedDetailLicense.batches || [];
+                const childBatches = rawBatches.filter((b: any) => b && b.id !== selectedDetailLicense.id);
+                const hasBatches = childBatches.length > 0;
+                let childSeats = 0;
+                let childUsed = 0;
+                if (hasBatches) {
+                  childBatches.forEach((b: any) => {
+                    childSeats += Number(b.totalSeats) || 1;
+                    childUsed += b.usedSeats !== undefined ? b.usedSeats : (b.assignments?.filter((a: any) => !a.revokedAt)?.length || 0);
+                  });
+                }
+                const dUsed = selectedDetailLicense.usedSeats !== undefined ? selectedDetailLicense.usedSeats : (selectedDetailLicense.assignments?.filter((a: any) => !a.revokedAt)?.length || 0);
+                const dTotal = selectedDetailLicense.totalSeats || 1;
+                const used = hasBatches ? (dUsed + childUsed) : dUsed;
+                const total = selectedDetailLicense.groupTotalSeats || (hasBatches ? (dTotal + childSeats) : dTotal);
                 const percent = Math.min(100, Math.round((used / total) * 100));
 
                 return (
@@ -447,38 +482,117 @@ export function LicenseDetailModal({
 
               {/* DANH SÁCH NHÂN SỰ & THIẾT BỊ ĐƯỢC CẤP PHÁT (Nhìn nhanh phân bổ) */}
               {(() => {
-                const assignments = selectedDetailLicense.assignments?.filter((a: any) => !a.revokedAt) || [];
-                const total = selectedDetailLicense.totalSeats || 1;
-                const isOver = assignments.length > total;
+                const rawBatches = selectedDetailLicense.batches || [];
+                const childBatches = rawBatches.filter((b: any) => b && b.id !== selectedDetailLicense.id);
+                const allBatches = [selectedDetailLicense, ...childBatches];
+                const seenIds = new Set<string>();
+                const allList: any[] = [];
+
+                allBatches.forEach((b: any, idx: number) => {
+                  const bName = b.specs?.batchName || b.specs?.batchLabel || b.name || (allBatches.length > 1 ? `Đợt ${idx + 1}` : b.name);
+                  const bAssignments = b.assignments?.filter((a: any) => !a.revokedAt) || [];
+                  bAssignments.forEach((a: any) => {
+                    if (!seenIds.has(a.id)) {
+                      seenIds.add(a.id);
+                      allList.push({
+                        ...a,
+                        batchLabel: bName,
+                      });
+                    }
+                  });
+                });
+
+                // Also include any allAssignments if passed from group
+                if (Array.isArray(selectedDetailLicense.allAssignments)) {
+                  selectedDetailLicense.allAssignments.forEach((a: any) => {
+                    if (!a.revokedAt && !seenIds.has(a.id)) {
+                      seenIds.add(a.id);
+                      allList.push(a);
+                    }
+                  });
+                }
+
+                const calcTotal = allBatches.reduce((sum: number, b: any) => sum + (Number(b.totalSeats) || 1), 0);
+                const total = selectedDetailLicense.groupTotalSeats || calcTotal;
+                const isOver = allList.length > total;
+
+                const filteredAssignments = allList.filter((asg: any) => {
+                  if (!assignSearch.trim()) return true;
+                  const q = assignSearch.toLowerCase().trim();
+                  const assetHolder = asg.asset?.assignments?.find((a: any) => !a.returnedAt)?.user;
+                  const u = asg.user || assetHolder;
+                  const uName = (u?.fullName || '').toLowerCase();
+                  const uEmail = (u?.email || '').toLowerCase();
+                  const uDept = (u?.department || '').toLowerCase();
+                  const uComp = (u?.companyName || '').toLowerCase();
+                  const aTag = (asg.asset?.assetTag || '').toLowerCase();
+                  const aName = (asg.asset?.name || '').toLowerCase();
+                  const bLabel = (asg.batchLabel || asg.batchName || '').toLowerCase();
+                  return (
+                    uName.includes(q) ||
+                    uEmail.includes(q) ||
+                    uDept.includes(q) ||
+                    uComp.includes(q) ||
+                    aTag.includes(q) ||
+                    aName.includes(q) ||
+                    bLabel.includes(q)
+                  );
+                });
 
                 return (
                   <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
                     <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                           <Users className="w-4 h-4 text-purple-600" />
-                          <span>{txt('Danh sách nhân sự & thiết bị được cấp phát', 'Assigned Personnel & Devices', '割り当て済み人員・機器')} ({assignments.length} / {total} Seats)</span>
+                          <span>
+                            {txt('Danh sách nhân sự & thiết bị được cấp phát', 'Assigned Personnel & Devices', '割り当て済み人員・機器')} ({assignSearch.trim() ? `${filteredAssignments.length}/${allList.length}` : allList.length} / {total} Seats)
+                          </span>
                         </span>
                         {isOver && (
                           <span className="px-2 py-0.5 bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 rounded-full text-[10.5px] font-bold">
-                            ⚠️ {txt('Cấp vượt hạn mức', 'Exceeded limit', '制限超過')} (+{assignments.length - total})
+                            ⚠️ {txt('Cấp vượt hạn mức', 'Exceeded limit', '制限超過')} (+{allList.length - total})
                           </span>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsDetailModalOpen(false);
-                          handleOpenAssign(selectedDetailLicense);
-                        }}
-                        className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
-                      >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        <span>+ {txt('Quản lý cấp phát', 'Manage Seats', '割り当て管理')}</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {/* Ô tìm kiếm nhỏ gọn */}
+                        <div className="relative w-44 sm:w-52">
+                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={assignSearch}
+                            onChange={(e) => setAssignSearch(e.target.value)}
+                            placeholder={txt('Tìm nhân sự, máy...', 'Search staff, device...', '検索...')}
+                            className="w-full pl-8 pr-7 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-1.5 focus:ring-purple-500 text-slate-900 dark:text-white placeholder:text-slate-400 transition-all"
+                          />
+                          {assignSearch && (
+                            <button
+                              type="button"
+                              onClick={() => setAssignSearch('')}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                              title="Xóa tìm kiếm"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsDetailModalOpen(false);
+                            handleOpenAssign(selectedDetailLicense);
+                          }}
+                          className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          <span>+ {txt('Quản lý cấp phát', 'Manage Seats', '割り当て管理')}</span>
+                        </button>
+                      </div>
                     </div>
 
-                    {assignments.length === 0 ? (
+                    {allList.length === 0 ? (
                       <div className="text-center py-6 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 space-y-1">
                         <Users className="w-6 h-6 text-slate-300 mx-auto" />
                         <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
@@ -488,9 +602,19 @@ export function LicenseDetailModal({
                           {txt('Bấm "Cấp Phát / Thu Hồi Seats" để bắt đầu phân bổ license cho nhân viên hoặc máy tính.', 'Click "Assign / Revoke Seats" to allocate licenses to employees or computers.', '「シート割り当て/回収」をクリックしてライセンスを割り当ててください。')}
                         </p>
                       </div>
+                    ) : filteredAssignments.length === 0 ? (
+                      <div className="text-center py-6 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 space-y-1">
+                        <Search className="w-6 h-6 text-slate-300 mx-auto" />
+                        <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                          {txt('Không tìm thấy nhân sự hoặc thiết bị phù hợp', 'No matching personnel or device found', '該当する人員・機器が見つかりません')}
+                        </p>
+                        <p className="text-[10.5px] text-slate-400">
+                          {txt('Không có kết quả nào khớp với từ khóa tìm kiếm', 'No results match your search keyword', '検索キーワードに一致する結果がありません')}
+                        </p>
+                      </div>
                     ) : (
                       <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                        {assignments.map((asg: any, index: number) => {
+                        {filteredAssignments.map((asg: any, index: number) => {
                           const assetHolder = asg.asset?.assignments?.find((a: any) => !a.returnedAt)?.user;
                           const displayUser = asg.user || assetHolder;
 
@@ -516,9 +640,21 @@ export function LicenseDetailModal({
                                     </span>
                                   )}
 
-                                  <span className="px-2 py-0.2 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-md text-[10px] font-bold">
-                                    🟢 {txt('Đang hoạt động', 'Active', '利用中')}
-                                  </span>
+                                  {displayUser?.isActive === false ? (
+                                    <span className="px-2 py-0.5 bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-800 rounded-md text-[10px] font-extrabold flex items-center gap-1">
+                                      ⚠️ {txt('Nghỉ việc / Inactive', 'Resigned / Inactive Staff', '退職・無効')}
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.2 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-md text-[10px] font-bold">
+                                      🟢 {txt('Đang hoạt động', 'Active', '利用中')}
+                                    </span>
+                                  )}
+
+                                  {asg.batchLabel && (
+                                    <span className="px-1.5 py-0.2 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[9.5px] font-bold">
+                                      🏷️ {asg.batchLabel}
+                                    </span>
+                                  )}
                                 </div>
 
                                 <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-3 flex-wrap">
@@ -540,6 +676,20 @@ export function LicenseDetailModal({
                                   <span>📅 {txt('Ngày gán:', 'Assigned Date:', '割当日:')} {formatDateI18n(asg.assignedAt)}</span>
                                 </div>
                               </div>
+
+                              {displayUser?.isActive === false && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onClose();
+                                    if (onOpenAssign) onOpenAssign(selectedDetailLicense);
+                                  }}
+                                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1 shrink-0 cursor-pointer"
+                                  title={txt('Mở cửa sổ cấp phát để thu hồi license này', 'Open assign modal to reclaim this license', 'ライセンス回収画面を開く')}
+                                >
+                                  <span>⚡ {txt('Thu hồi lãng phí', 'Reclaim License', '回収')}</span>
+                                </button>
+                              )}
                             </div>
                           );
                         })}

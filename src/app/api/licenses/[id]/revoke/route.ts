@@ -25,13 +25,16 @@ export async function POST(
     const { assignmentId, userId, assetId } = body;
 
     const whereClause: Record<string, unknown> = {
-      licenseId,
       revokedAt: null,
     };
 
-    if (assignmentId) whereClause.id = assignmentId;
-    if (userId) whereClause.userId = userId;
-    if (assetId) whereClause.assetId = assetId;
+    if (assignmentId) {
+      whereClause.id = assignmentId;
+    } else {
+      whereClause.licenseId = licenseId;
+      if (userId) whereClause.userId = userId;
+      if (assetId) whereClause.assetId = assetId;
+    }
 
     const activeAssignments = await prisma.licenseAssignment.findMany({
       where: whereClause,
@@ -42,6 +45,8 @@ export async function POST(
       return NextResponse.json({ error: 'Không tìm thấy lượt gán active nào' }, { status: 400 });
     }
 
+    const effectiveLicenseId = activeAssignments[0].licenseId || licenseId;
+
     await prisma.licenseAssignment.updateMany({
       where: whereClause,
       data: { revokedAt: new Date() },
@@ -49,11 +54,11 @@ export async function POST(
 
     // Recalculate used seats
     const currentActiveCount = await prisma.licenseAssignment.count({
-      where: { licenseId, revokedAt: null },
+      where: { licenseId: effectiveLicenseId, revokedAt: null },
     });
 
     await prisma.license.update({
-      where: { id: licenseId },
+      where: { id: effectiveLicenseId },
       data: { usedSeats: currentActiveCount },
     });
 

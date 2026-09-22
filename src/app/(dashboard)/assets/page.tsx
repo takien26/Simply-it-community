@@ -67,6 +67,7 @@ import {
   Eye,
   FolderOpen,
   Link as LinkIcon,
+  PackageCheck,
 } from 'lucide-react';
 import { formatCurrency, formatDate, getRemainingTimeText, numberToVietnameseWords, numberToForeignCurrencyWords } from '@/lib/utils';
 import CurrencyInput from '@/components/ui/currency-input';
@@ -74,6 +75,7 @@ import WarrantyInput from '@/components/ui/warranty-input';
 import AssetQrModal from '@/components/assets/asset-qr-modal';
 import BatchQrPrintModal from '@/components/assets/batch-qr-print-modal';
 import AssetHandoverModal from '@/components/assets/asset-handover-modal';
+import BulkAssetHandoverModal from '@/components/assets/bulk-asset-handover-modal';
 import { showTrashUndoToast } from '@/components/common/TrashUndoToast';
 import AssetInventoryAuditModal from '@/components/assets/asset-inventory-audit-modal';
 import { AssetAuditCreateModal } from '@/components/assets/AssetAuditCreateModal';
@@ -559,6 +561,8 @@ export default function AssetsPage() {
   const [selectedHandoverAsset, setSelectedHandoverAsset] = useState<any>(null);
   const [handoverModalMode, setHandoverModalMode] = useState<'HANDOVER' | 'RETURN'>('HANDOVER');
   const [handoverPreviousUser, setHandoverPreviousUser] = useState<any>(null);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
+  const [isBulkHandoverOpen, setIsBulkHandoverOpen] = useState(false);
   const [isInventoryAuditOpen, setIsInventoryAuditOpen] = useState(false);
   const [isAuditCampaignCreateOpen, setIsAuditCampaignCreateOpen] = useState(false);
   const [isScriptModalOpen, setIsScriptModalOpen] = useState(false);
@@ -2228,6 +2232,22 @@ export default function AssetsPage() {
 
   const isQuotaFull = autoScannedAssetsCount >= MAX_FREE_AGENTS;
 
+  const handleToggleSelectAll = () => {
+    const pageIds = paginatedAssets.map((a) => a.id);
+    const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedAssetIds.includes(id));
+    if (allPageSelected) {
+      setSelectedAssetIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+    } else {
+      setSelectedAssetIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const handleToggleSelectAsset = (id: string) => {
+    setSelectedAssetIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
   return (
     <div className="space-y-5 animate-in fade-in">
       {/* ==================== 1. TOP BAR: TITLE, ACTIONS, FREEMIUM QUOTA & CURRENCY ==================== */}
@@ -2274,6 +2294,30 @@ export default function AssetsPage() {
             <QrCode className="w-3.5 h-3.5 text-white" />
             <span>{language === 'en' ? '📱 Scan QR Mobile' : '📱 Quét QR Mobile'}</span>
           </Link>
+
+          {/* BULK HANDOVER ACTION BUTTON */}
+          <button
+            type="button"
+            onClick={() => {
+              if (selectedAssetIds.length === 0) {
+                const availables = assets.filter((a) => a.status === 'AVAILABLE');
+                if (availables.length > 0) {
+                  setSelectedAssetIds(availables.slice(0, 3).map((a) => a.id));
+                }
+              }
+              setIsBulkHandoverOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
+            title="Lập biên bản bàn giao nhiều thiết bị cùng lúc cho nhân sự"
+          >
+            <PackageCheck className="w-3.5 h-3.5" />
+            <span>{language === 'en' ? 'Bulk Handover' : '📋 Bàn Giao Hàng Loạt'}</span>
+            {selectedAssetIds.length > 0 && (
+              <span className="px-1.5 py-0.2 bg-white text-blue-700 rounded-full text-[10px] font-black">
+                {selectedAssetIds.length}
+              </span>
+            )}
+          </button>
 
           {/* BATCH PRINT QR */}
           <button
@@ -2697,8 +2741,19 @@ export default function AssetsPage() {
               <table className="w-full text-left text-xs border-collapse min-w-[920px]">
                 <thead className="bg-slate-50/90 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   <tr>
-                    {/* Sticky Left Column: MÃ TÀI SẢN */}
-                    <th className="py-2 px-2 sticky left-0 z-20 bg-slate-50 dark:bg-slate-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] min-w-[85px]">{isEn ? 'ASSET TAG' : 'MÃ TÀI SẢN'}</th>
+                    {/* Sticky Left Column: CHECKBOX & MÃ TÀI SẢN */}
+                    <th className="py-2 px-2 sticky left-0 z-20 bg-slate-50 dark:bg-slate-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] min-w-[105px]">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          checked={paginatedAssets.length > 0 && paginatedAssets.every((a) => selectedAssetIds.includes(a.id))}
+                          onChange={handleToggleSelectAll}
+                          className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
+                          title={isEn ? 'Select all on this page' : 'Chọn tất cả thiết bị trên trang'}
+                        />
+                        <span>{isEn ? 'ASSET TAG' : 'MÃ TÀI SẢN'}</span>
+                      </div>
+                    </th>
                     <th className="py-2 px-2 min-w-[150px]">{isEn ? 'DEVICE & MODEL' : 'TÊN THIẾT BỊ & MODEL'}</th>
                     <th className="py-2 px-1.5 min-w-[115px]">{isEn ? 'COMPANY & LOCATION' : 'CÔNG TY & VỊ TRÍ'}</th>
                     <th className="py-2 px-1.5 min-w-[95px]">{isEn ? 'CATEGORY' : 'DANH MỤC'}</th>
@@ -2809,18 +2864,27 @@ export default function AssetsPage() {
                           className="hover:bg-blue-50/50 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer"
                           title="Nhấp vào để xem chi tiết • Nhấp chuột phải để mở menu thao tác nhanh"
                         >
-                          {/* STICKY COLUMN: MÃ TÀI SẢN (2 DÒNG GỌN GÀNG) */}
+                          {/* STICKY COLUMN: CHECKBOX & MÃ TÀI SẢN (2 DÒNG GỌN GÀNG) */}
                           <td className="py-2 px-2 sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-blue-50/90 dark:group-hover:bg-slate-800/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors">
-                            <div className="space-y-0.5">
-                              <span className="font-mono font-black text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-1.5 py-0.2 rounded text-[10px] inline-block whitespace-nowrap leading-tight">
-                                {asset.assetTag}
-                              </span>
-                              {isAutoScanned && (
-                                <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[8px] font-extrabold block w-fit leading-none" title="Máy tính được quét tự động qua script PS1">
-                                  <span>🤖</span>
-                                  <span>{Array.isArray(asset.specs?.installedSoftware) ? `${asset.specs.installedSoftware.length} apps` : 'Scan'}</span>
+                            <div className="flex items-start gap-1.5">
+                              <input
+                                type="checkbox"
+                                checked={selectedAssetIds.includes(asset.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={() => handleToggleSelectAsset(asset.id)}
+                                className="w-3.5 h-3.5 mt-0.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
+                              />
+                              <div className="space-y-0.5 min-w-0">
+                                <span className="font-mono font-black text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-1.5 py-0.2 rounded text-[10px] inline-block whitespace-nowrap leading-tight">
+                                  {asset.assetTag}
                                 </span>
-                              )}
+                                {isAutoScanned && (
+                                  <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[8px] font-extrabold block w-fit leading-none" title="Máy tính được quét tự động qua script PS1">
+                                    <span>🤖</span>
+                                    <span>{Array.isArray(asset.specs?.installedSoftware) ? `${asset.specs.installedSoftware.length} apps` : 'Scan'}</span>
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </td>
 
@@ -3306,6 +3370,67 @@ export default function AssetsPage() {
           initialMode={handoverModalMode}
           previousUser={handoverPreviousUser}
         />
+      )}
+
+      {/* Bulk Asset Handover Modal */}
+      {isBulkHandoverOpen && (
+        <BulkAssetHandoverModal
+          isOpen={isBulkHandoverOpen}
+          onClose={() => setIsBulkHandoverOpen(false)}
+          selectedAssets={assets.filter((a) => selectedAssetIds.includes(a.id))}
+          allAvailableAssets={assets.filter((a) => a.status === 'AVAILABLE')}
+          users={users}
+          onComplete={() => {
+            loadData();
+            setSelectedAssetIds([]);
+          }}
+        />
+      )}
+
+      {/* FLOATING BULK ACTIONS BAR */}
+      {selectedAssetIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 dark:bg-slate-800/95 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700/60 backdrop-blur-md flex items-center gap-4 animate-in fade-in slide-in-from-bottom-5">
+          <div className="flex items-center gap-2 pr-3 border-r border-slate-700">
+            <span className="w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center">
+              {selectedAssetIds.length}
+            </span>
+            <span className="text-xs font-bold whitespace-nowrap">
+              {language === 'en' ? `Selected ${selectedAssetIds.length} assets` : `Đã chọn ${selectedAssetIds.length} thiết bị`}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* BULK HANDOVER BUTTON */}
+            <button
+              type="button"
+              onClick={() => setIsBulkHandoverOpen(true)}
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/25 cursor-pointer transition-all"
+            >
+              <PackageCheck className="w-4 h-4" />
+              <span>{language === 'en' ? 'Bulk Handover' : '📋 Bàn Giao Hàng Loạt'}</span>
+            </button>
+
+            {/* BULK PRINT QR */}
+            <button
+              type="button"
+              onClick={() => setIsBatchPrintOpen(true)}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+            >
+              <Printer className="w-3.5 h-3.5 text-blue-400" />
+              <span>{language === 'en' ? 'Batch Print QR' : 'In Tem QR'}</span>
+            </button>
+
+            {/* DESELECT */}
+            <button
+              type="button"
+              onClick={() => setSelectedAssetIds([])}
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
+              title={language === 'en' ? 'Deselect all' : 'Bỏ chọn tất cả'}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Asset Inventory QR Audit Modal */}

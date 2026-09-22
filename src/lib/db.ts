@@ -10,6 +10,6 @@ export const prisma =
     log: process.env.DEBUG_SQL === 'true' ? ['query', 'error', 'warn'] : ['error', 'warn'],
   });
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = prisma;
 
 export default prisma;

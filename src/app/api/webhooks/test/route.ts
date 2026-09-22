@@ -30,8 +30,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Webhook URL không hợp lệ' }, { status: 400 });
     }
 
+    const isTelegram = provider === 'telegram' || webhookUrl.includes('api.telegram.org');
     let payload: any;
-    if (provider === 'teams') {
+    if (isTelegram) {
+      let chatId: string | null = null;
+      try {
+        const urlObj = new URL(webhookUrl);
+        chatId = urlObj.searchParams.get('chat_id');
+      } catch {}
+
+      payload = {
+        text: `🔔 <b>[SIMPLY IT] Kiểm tra kết nối Telegram Bot thành công! 🎉</b>\n⏰ <b>Thời gian:</b> ${new Date().toLocaleString('vi-VN')}\n🤖 <b>Trạng thái:</b> Bot đã sẵn sàng nhận cảnh báo sự cố IT & Đơn duyệt!`,
+        parse_mode: 'HTML',
+        disable_web_page_preview: false,
+      };
+
+      if (chatId) {
+        payload.chat_id = chatId;
+      }
+    } else if (provider === 'teams') {
       payload = {
         '@type': 'MessageCard',
         '@context': 'http://schema.org/extensions',

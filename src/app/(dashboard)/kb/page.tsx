@@ -27,6 +27,9 @@ import {
   CheckCircle2,
   Loader2,
   FileDown,
+  Pencil,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface Article {
@@ -114,6 +117,9 @@ export default function KnowledgeBasePage() {
   const [loading, setLoading] = useState(true);
   const [isITStaff, setIsITStaff] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canCreate, setCanCreate] = useState(false);
+  const [canUpdate, setCanUpdate] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
 
   // Upload / Create Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -126,19 +132,39 @@ export default function KnowledgeBasePage() {
   const [submitting, setSubmitting] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editTeamScope, setEditTeamScope] = useState('PUBLIC');
+  const [editCategory, setEditCategory] = useState('NETWORK');
+  const [editSummary, setEditSummary] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editUploadFile, setEditUploadFile] = useState<File | null>(null);
+  const [editFileUrl, setEditFileUrl] = useState<string | undefined>(undefined);
+  const [editFileName, setEditFileName] = useState<string | undefined>(undefined);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // Delete Confirm Modal State
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deletingArticle, setDeletingArticle] = useState<Article | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ESC key listener to close active modals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (isCreateModalOpen) setIsCreateModalOpen(false);
+        if (isDeleteConfirmOpen) setIsDeleteConfirmOpen(false);
+        else if (isEditModalOpen) setIsEditModalOpen(false);
+        else if (isCreateModalOpen) setIsCreateModalOpen(false);
         else if (selectedArticle) setSelectedArticle(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isCreateModalOpen, selectedArticle]);
+  }, [isDeleteConfirmOpen, isEditModalOpen, isCreateModalOpen, selectedArticle]);
 
   const loadData = async () => {
     setLoading(true);
@@ -155,11 +181,130 @@ export default function KnowledgeBasePage() {
         if (res.teamScopes) setTeamScopes(res.teamScopes);
         setIsITStaff(Boolean(res.isITStaff));
         setIsAdmin(Boolean(res.isAdmin));
+        setCanCreate(Boolean(res.canCreate));
+        setCanUpdate(Boolean(res.canUpdate));
+        setCanDelete(Boolean(res.canDelete));
       }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openEditModal = (article: Article) => {
+    setEditingArticle(article);
+    // Tách bỏ tiền tố [TAG] nếu có
+    const cleanTitle = article.title.replace(/^\[[a-zA-Z0-9_-]+\]\s*/, '');
+    setEditTitle(cleanTitle);
+    setEditTeamScope(article.teamScope || 'PUBLIC');
+    setEditCategory(article.categoryKey || 'NETWORK');
+    setEditSummary(article.summary || '');
+    setEditContent(article.content || '');
+    setEditFileUrl(article.fileUrl);
+    setEditFileName(article.fileName);
+    setEditUploadFile(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateArticle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingArticle || !editTitle.trim()) return;
+
+    setEditSubmitting(true);
+    try {
+      let fileUrl = editFileUrl;
+      let fileName = editFileName;
+
+      if (editUploadFile) {
+        const formData = new FormData();
+        formData.append('file', editUploadFile);
+        const upRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        }).then((r) => r.json());
+
+        if (upRes.url) {
+          fileUrl = upRes.url;
+          fileName = editUploadFile.name;
+        }
+      }
+
+      const res = await fetch(`/api/kb/${editingArticle.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          teamScope: editTeamScope,
+          category: editCategory,
+          categoryKey: editCategory,
+          summary: editSummary.trim(),
+          content: editContent.trim(),
+          fileUrl,
+          fileName,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setToastMsg(isEn ? '🎉 Article updated successfully!' : '🎉 Đã cập nhật bài viết thành công!');
+        setIsEditModalOpen(false);
+        setEditingArticle(null);
+        if (selectedArticle && selectedArticle.id === editingArticle.id) {
+          setSelectedArticle({
+            ...selectedArticle,
+            title: editTitle.trim(),
+            teamScope: editTeamScope,
+            categoryKey: editCategory,
+            summary: editSummary.trim(),
+            content: editContent.trim(),
+            fileUrl,
+            fileName,
+          });
+        }
+        loadData();
+        setTimeout(() => setToastMsg(null), 4000);
+      } else {
+        alert(data.error || (isEn ? 'Error updating article' : 'Lỗi khi cập nhật bài viết'));
+      }
+    } catch (e: any) {
+      alert(e.message || (isEn ? 'Connection error' : 'Lỗi kết nối'));
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const openDeleteConfirm = (article: Article) => {
+    setDeletingArticle(article);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteArticle = async () => {
+    if (!deletingArticle) return;
+
+    setDeleteSubmitting(true);
+    try {
+      const res = await fetch(`/api/kb/${deletingArticle.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setToastMsg(isEn ? '🗑️ Article deleted successfully!' : '🗑️ Đã xóa bài viết thành công!');
+        setIsDeleteConfirmOpen(false);
+        if (selectedArticle && selectedArticle.id === deletingArticle.id) {
+          setSelectedArticle(null);
+        }
+        setDeletingArticle(null);
+        loadData();
+        setTimeout(() => setToastMsg(null), 4000);
+      } else {
+        alert(data.error || (isEn ? 'Error deleting article' : 'Lỗi khi xóa bài viết'));
+      }
+    } catch (e: any) {
+      alert(e.message || (isEn ? 'Connection error' : 'Lỗi kết nối'));
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -256,7 +401,7 @@ export default function KnowledgeBasePage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          {isITStaff && (
+          {canCreate && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
@@ -458,12 +603,38 @@ export default function KnowledgeBasePage() {
                       </div>
                     </div>
 
-                    {/* Category Tag Badge on the right */}
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold border shrink-0 ${style.bg} ${style.text} ${style.border}`}
-                    >
-                      {catLabel}
-                    </span>
+                    {/* Action buttons & Category Tag Badge on the right */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {(canUpdate || canDelete) && (
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          {canUpdate && (
+                            <button
+                              type="button"
+                              onClick={() => openEditModal(item)}
+                              title={isEn ? "Edit article" : "Chỉnh sửa bài viết"}
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => openDeleteConfirm(item)}
+                              title={isEn ? "Delete article" : "Xóa bài viết"}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold border shrink-0 ${style.bg} ${style.text} ${style.border}`}
+                      >
+                        {catLabel}
+                      </span>
+                    </div>
                   </div>
                 );
               })
@@ -490,9 +661,35 @@ export default function KnowledgeBasePage() {
                 )}
                 <span className="text-xs text-slate-400">{isEn ? 'Author:' : 'Tác giả:'} <strong>{selectedArticle.author}</strong></span>
               </div>
-              <button onClick={() => setSelectedArticle(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {canUpdate && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedArticle) openEditModal(selectedArticle);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors cursor-pointer"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>{isEn ? 'Edit' : 'Sửa'}</span>
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedArticle) openDeleteConfirm(selectedArticle);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isEn ? 'Delete' : 'Xóa'}</span>
+                  </button>
+                )}
+                <button onClick={() => setSelectedArticle(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Body */}
@@ -672,6 +869,203 @@ export default function KnowledgeBasePage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT ARTICLE MODAL */}
+      {isEditModalOpen && editingArticle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+              <div className="flex items-center gap-2.5">
+                <Pencil className="w-5 h-5" />
+                <h3 className="font-black text-sm">
+                  {isEn ? 'Edit Knowledge Base Article' : 'Chỉnh Sửa Bài Viết Hướng Dẫn'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingArticle(null);
+                }}
+                className="text-white/80 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateArticle} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {isEn ? 'Article Title' : 'Tiêu đề bài viết'} <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {isEn ? 'Visibility Scope & IT Team Permissions' : 'Phạm vi hiển thị & Phân quyền Team IT'} <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={editTeamScope}
+                    onChange={(e) => setEditTeamScope(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-bold text-slate-800 cursor-pointer"
+                  >
+                    <option value="PUBLIC">{isEn ? '🌍 All Employees (Public)' : '🌍 Tất cả Nhân viên (Public)'}</option>
+                    <option value="IT-NET">{isEn ? '🔒 Team IT Network & Infra' : '🔒 Team IT Network & Hạ Tầng'}</option>
+                    <option value="IT-APP">{isEn ? '🔒 Team IT Applications & ERP' : '🔒 Team IT Ứng Dụng & ERP'}</option>
+                    <option value="IT-HELPDESK">{isEn ? '🔒 Team IT Helpdesk & Hardware' : '🔒 Team IT Helpdesk & Thiết Bị'}</option>
+                    <option value="IT-SEC">{isEn ? '🔒 Team Security & Compliance' : '🔒 Team An Toàn & Bảo Mật'}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {isEn ? 'Category' : 'Danh mục chuyên mục'}
+                  </label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-bold text-slate-800 cursor-pointer"
+                  >
+                    <option value="NETWORK">{isEn ? 'Network & WiFi' : 'Hệ thống mạng & WiFi'}</option>
+                    <option value="EMAIL">{isEn ? 'Email & Outlook' : 'Email & Outlook'}</option>
+                    <option value="SOFTWARE">{isEn ? 'Software & ERP' : 'Phần mềm & ERP'}</option>
+                    <option value="PRINTER">{isEn ? 'Printers & Scanners' : 'Máy in & Scan'}</option>
+                    <option value="HARDWARE">{isEn ? 'Hardware & Devices' : 'Phần cứng & Thiết bị'}</option>
+                    <option value="ACCOUNT">{isEn ? 'Accounts & Passwords' : 'Tài khoản & Mật khẩu'}</option>
+                    <option value="MEETING">{isEn ? 'Meeting Room Tech' : 'Thiết bị Phòng Họp'}</option>
+                    <option value="OTHER">{isEn ? 'Other Guides' : 'Hướng dẫn khác'}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {isEn ? 'Short Summary' : 'Tóm tắt ngắn gọn'}
+                </label>
+                <input
+                  type="text"
+                  value={editSummary}
+                  onChange={(e) => setEditSummary(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {isEn ? 'Detailed Content & Step-by-Step Instructions' : 'Nội dung chi tiết & Các bước thực hiện'}
+                </label>
+                <textarea
+                  rows={7}
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-medium font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {isEn ? 'Replace Attached File (Optional)' : 'Đổi File đính kèm (Tùy chọn)'}
+                </label>
+                {editFileName && !editUploadFile && (
+                  <div className="mb-2 text-[11px] text-slate-500 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    <span>{isEn ? 'Current file:' : 'File hiện tại:'} <strong>{editFileName}</strong></span>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  onChange={(e) => setEditUploadFile(e.target.files?.[0] || null)}
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingArticle(null);
+                  }}
+                  className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl cursor-pointer"
+                >
+                  {isEn ? 'Cancel' : 'Hủy'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting || !editTitle.trim()}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  {editSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  <span>{editSubmitting ? (isEn ? 'Saving...' : 'Đang lưu...') : (isEn ? 'Save Changes' : 'Lưu Thay Đổi')}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRM MODAL */}
+      {isDeleteConfirmOpen && deletingArticle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-100 dark:bg-rose-950/50 text-rose-600 rounded-2xl">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  {isEn ? 'Confirm Deletion' : 'Xác Nhận Xóa Bài Viết'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {isEn ? 'This action will remove the article from KB' : 'Thao tác này sẽ xóa bài viết khỏi cơ sở tri thức'}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-xs text-slate-700 dark:text-slate-300 font-medium">
+              <p className="font-bold text-slate-900 dark:text-white line-clamp-2">
+                {deletingArticle.title}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {isEn
+                  ? 'The article will be moved to Recycle Bin or hidden from suggestions.'
+                  : 'Bài viết sẽ được đưa vào Thùng rác hoặc ẩn khỏi hệ thống hướng dẫn & gợi ý tự động.'}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={deleteSubmitting}
+                onClick={() => {
+                  setIsDeleteConfirmOpen(false);
+                  setDeletingArticle(null);
+                }}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                {isEn ? 'Cancel' : 'Hủy'}
+              </button>
+              <button
+                type="button"
+                disabled={deleteSubmitting}
+                onClick={handleDeleteArticle}
+                className="px-5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {deleteSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                <span>{deleteSubmitting ? (isEn ? 'Deleting...' : 'Đang xóa...') : (isEn ? 'Delete Article' : 'Xóa Bài Viết')}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

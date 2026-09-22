@@ -77,6 +77,8 @@ export default function CreateTicketModal({
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
   const [aiDiagnostic, setAiDiagnostic] = useState<any>(null);
   const [kbSuggestions, setKbSuggestions] = useState<any[]>([]);
+  const [expandedKbId, setExpandedKbId] = useState<string | null>(null);
+  const [deflectedSuccess, setDeflectedSuccess] = useState(false);
 
   // Users and Assets lists
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -91,6 +93,7 @@ export default function CreateTicketModal({
   const assetDropdownRef = useRef<HTMLDivElement>(null);
   const assetInputRef = useRef<HTMLInputElement>(null);
   const aiDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const kbDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastAnalyzedTextRef = useRef<string>('');
   const isPastingRef = useRef<boolean>(false);
 
@@ -111,6 +114,9 @@ export default function CreateTicketModal({
       setIsCustomAsset(false);
       setAttachments([]);
       setAiDiagnostic(null);
+      setKbSuggestions([]);
+      setExpandedKbId(null);
+      setDeflectedSuccess(false);
       lastAnalyzedTextRef.current = '';
 
       if (isITStaffOrAdmin && currentUser?.id) {
@@ -264,6 +270,11 @@ export default function CreateTicketModal({
         if (data.data.category) setCategory(data.data.category);
         if (data.data.priority) setPriority(data.data.priority);
         if (data.data.matchedAssetId && !assetId) setAssetId(data.data.matchedAssetId);
+
+        // Auto-retrigger KB search with AI-detected category
+        if (data.data.category) {
+          triggerKbSearch(tVal, dVal, data.data.category);
+        }
       } else if (!isAuto) {
         alert(data.error || (language === 'en' ? 'AI Analysis failed' : 'Phân tích AI không thành công'));
       }
@@ -274,23 +285,39 @@ export default function CreateTicketModal({
     }
   };
 
+  // Unified 3-Tier Hybrid KB Search Trigger
+  const triggerKbSearch = (searchTitle: string, searchDesc: string, currentCategory?: string) => {
+    if (kbDebounceTimerRef.current) clearTimeout(kbDebounceTimerRef.current);
+    const tVal = searchTitle.trim();
+    const dVal = searchDesc.trim();
+
+    if (tVal.length >= 3 || dVal.length >= 6) {
+      kbDebounceTimerRef.current = setTimeout(() => {
+        const params = new URLSearchParams();
+        if (tVal) params.set('search', tVal);
+        if (dVal) params.set('description', dVal);
+        if (currentCategory && currentCategory !== 'OTHER') params.set('category', currentCategory);
+
+        fetch(`/api/kb?${params.toString()}`)
+          .then((r) => r.json())
+          .then((res) => {
+            if (res.success && Array.isArray(res.data)) {
+              setKbSuggestions(res.data.slice(0, 3));
+            }
+          })
+          .catch(() => {});
+      }, 300);
+    } else {
+      setKbSuggestions([]);
+    }
+  };
+
   const handleTitleChange = (val: string) => {
     setTitle(val);
     if (aiDebounceTimerRef.current) clearTimeout(aiDebounceTimerRef.current);
 
-    // Ticket Deflection: Auto-suggest KB articles
-    if (val.trim().length >= 3) {
-      fetch(`/api/kb?search=${encodeURIComponent(val.trim())}`)
-        .then((r) => r.json())
-        .then((res) => {
-          if (res.success && Array.isArray(res.data)) {
-            setKbSuggestions(res.data.slice(0, 3));
-          }
-        })
-        .catch(() => {});
-    } else {
-      setKbSuggestions([]);
-    }
+    // Trigger Hybrid KB Search
+    triggerKbSearch(val, description, category);
 
     if (val.trim().length >= 6) {
       aiDebounceTimerRef.current = setTimeout(() => {
@@ -302,6 +329,10 @@ export default function CreateTicketModal({
   const handleDescChange = (val: string) => {
     setDescription(val);
     if (aiDebounceTimerRef.current) clearTimeout(aiDebounceTimerRef.current);
+
+    // Trigger Hybrid KB Search if description provides extra context
+    triggerKbSearch(title, val, category);
+
     if (val.trim().length >= 8) {
       aiDebounceTimerRef.current = setTimeout(() => {
         triggerAiAnalysis(title, val, true);
@@ -694,38 +725,108 @@ export default function CreateTicketModal({
             </p>
 
             {/* Ticket Deflection: KB Suggestions Box */}
-            {kbSuggestions.length > 0 && (
-              <div className="mt-2 p-3 bg-amber-50/90 border border-amber-200 rounded-xl space-y-1.5 animate-in fade-in">
+            {deflectedSuccess ? (
+              <div className="mt-2.5 p-4 bg-emerald-50 border border-emerald-300 rounded-2xl text-center space-y-2 animate-in zoom-in-95 shadow-sm">
+                <div className="w-10 h-10 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl">
+                  🎉
+                </div>
+                <h4 className="font-bold text-emerald-900 text-sm">
+                  {language === 'en' ? 'Awesome! Problem resolved by yourself.' : 'Tuyệt vời! Bạn đã tự xử lý sự cố thành công.'}
+                </h4>
+                <p className="text-xs text-emerald-700">
+                  {language === 'en'
+                    ? 'No ticket was created. Closing dialog in a moment...'
+                    : 'Ticket không cần tạo nữa, bạn có thể tiếp tục làm việc. Cửa sổ đang tự động đóng...'}
+                </p>
+              </div>
+            ) : kbSuggestions.length > 0 && (
+              <div className="mt-2.5 p-3.5 bg-gradient-to-br from-amber-50/95 to-orange-50/90 border border-amber-200/90 rounded-2xl space-y-2 animate-in fade-in shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span>{language === 'en' ? 'Suggested Solutions from Knowledge Base:' : '💡 Gợi ý giải pháp tự khắc phục từ Thư viện (KB):'}</span>
+                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0 animate-pulse" />
+                    <span>{language === 'en' ? '💡 Instant Solution Suggestions (Self-Service):' : '💡 Giải pháp tự xử lý nhanh (Không cần đợi IT):'}</span>
                   </span>
-                  <span className="text-[10px] text-amber-700 font-bold px-1.5 py-0.2 bg-amber-100 rounded-md">
-                    {kbSuggestions.length} {language === 'en' ? 'articles' : 'bài viết'}
+                  <span className="text-[10px] text-amber-800 font-extrabold px-2 py-0.5 bg-amber-200/70 rounded-full">
+                    {kbSuggestions.length} {language === 'en' ? 'solutions' : 'hướng dẫn'}
                   </span>
                 </div>
-                <div className="space-y-1">
-                  {kbSuggestions.map((item) => (
-                    <a
-                      key={item.id}
-                      href={`/kb?search=${encodeURIComponent(item.title)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-between p-2 bg-white hover:bg-amber-100/60 rounded-lg border border-amber-100 text-xs font-semibold text-slate-800 transition-colors group"
-                    >
-                      <span className="truncate pr-2">📖 {item.title}</span>
-                      <span className="text-[10px] text-blue-600 group-hover:underline shrink-0 flex items-center gap-0.5">
-                        <span>{language === 'en' ? 'Read Guide' : 'Xem ngay'}</span>
-                        <span>➔</span>
-                      </span>
-                    </a>
-                  ))}
+
+                <div className="space-y-1.5">
+                  {kbSuggestions.map((item) => {
+                    const isExpanded = expandedKbId === item.id;
+                    return (
+                      <div
+                        key={item.id}
+                        className="bg-white rounded-xl border border-amber-200/70 overflow-hidden shadow-2xs transition-all"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setExpandedKbId(isExpanded ? null : item.id)}
+                          className="w-full flex items-center justify-between p-2.5 text-left hover:bg-amber-50/50 transition-colors cursor-pointer"
+                        >
+                          <span className="font-bold text-slate-800 text-xs truncate pr-2 flex items-center gap-1.5 flex-1 min-w-0">
+                            <span className="text-amber-600 font-mono text-[11px] shrink-0">📖</span>
+                            <span className="truncate">{item.title}</span>
+                            {item.matchReason && (
+                              <span className="hidden sm:inline-block text-[9.5px] px-1.5 py-0.5 rounded-md bg-amber-100/90 text-amber-800 font-medium shrink-0 max-w-[200px] truncate">
+                                🎯 {item.matchReason}
+                              </span>
+                            )}
+                          </span>
+                          <span className="flex items-center gap-1 shrink-0 text-[11px] font-semibold text-blue-600">
+                            <span>{isExpanded ? (language === 'en' ? 'Collapse' : 'Thu gọn') : (language === 'en' ? 'View steps' : 'Xem các bước')}</span>
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                          </span>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="px-3 pb-3 pt-1 border-t border-amber-100 bg-amber-50/30 text-xs space-y-2 animate-in fade-in">
+                            {item.summary && (
+                              <p className="text-slate-600 text-[11.5px] italic leading-relaxed">
+                                {item.summary}
+                              </p>
+                            )}
+                            {(item.content || item.steps) && (
+                              <div className="p-2.5 bg-white rounded-lg border border-amber-200 text-slate-800 font-mono text-[11px] whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto">
+                                {item.content || item.steps}
+                              </div>
+                            )}
+
+                            <div className="pt-2 flex items-center justify-between flex-wrap gap-2 border-t border-amber-200/60">
+                              <a
+                                href={`/kb?search=${encodeURIComponent(item.title)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[11px] font-bold text-slate-600 hover:text-blue-600 inline-flex items-center gap-1 transition-colors"
+                              >
+                                <span>{language === 'en' ? 'Open full guide' : 'Mở toàn bộ tài liệu'}</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDeflectedSuccess(true);
+                                  setTimeout(() => {
+                                    onClose();
+                                  }, 1800);
+                                }}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer hover:shadow-sm"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>{language === 'en' ? 'Problem Solved! (Cancel Ticket)' : '✅ Cách này đã xử lý xong! (Hủy Ticket)'}</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <p className="text-[10px] text-amber-700 italic">
+                <p className="text-[10px] text-amber-700/80 italic text-right">
                   {language === 'en'
-                    ? 'If any of these guides resolve your problem, you can skip submitting this ticket.'
-                    : 'Nếu bài viết trên đã giải quyết được sự cố, bạn có thể không cần gửi Ticket nữa để tiết kiệm thời gian.'}
+                    ? '💡 If these steps work for you, clicking the green button skips ticket queue completely.'
+                    : '💡 Tự thực hiện theo hướng dẫn trên giúp bạn giải quyết sự cố ngay mà không cần chờ IT tiếp nhận.'}
                 </p>
               </div>
             )}

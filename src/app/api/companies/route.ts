@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { hasPermission } from '@/lib/permissions';
+import { getOUStructure, saveOUStructure, generateOUId, DEFAULT_CORPORATE_DEPARTMENTS } from '@/lib/ou-structure';
+import { normalizeCompanyName, areCompaniesEqual } from '@/lib/normalize';
 
 const DEFAULT_COMPANIES = [
   'Tổng Công Ty (HQ)',
@@ -46,7 +48,16 @@ async function saveStoredCompanies(companies: string[]) {
 export async function GET() {
   try {
     const list = await getStoredCompanies();
-    return NextResponse.json({ success: true, data: list });
+    const seen = new Set<string>();
+    const normalizedList: string[] = [];
+    for (const c of list) {
+      const norm = normalizeCompanyName(c);
+      if (!seen.has(norm.toLowerCase())) {
+        seen.add(norm.toLowerCase());
+        normalizedList.push(norm);
+      }
+    }
+    return NextResponse.json({ success: true, data: normalizedList });
   } catch (error) {
     console.error('List companies error:', error);
     return NextResponse.json({ error: 'Failed to list companies' }, { status: 500 });
@@ -67,15 +78,38 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const name = (body.name || '').trim();
-    if (!name) {
+    const rawName = (body.name || '').trim();
+    if (!rawName) {
       return NextResponse.json({ error: 'Tên công ty là bắt buộc' }, { status: 400 });
     }
 
+    const name = normalizeCompanyName(rawName);
     const currentList = await getStoredCompanies();
-    if (!currentList.includes(name)) {
+    if (!currentList.some((c) => areCompaniesEqual(c, name))) {
       currentList.push(name);
       await saveStoredCompanies(currentList);
+
+      // Sync OU structure
+      try {
+        const ouTree = await getOUStructure();
+        if (!ouTree.some((c) => areCompaniesEqual(c.name, name))) {
+          ouTree.push({
+            id: generateOUId('comp', name),
+            name,
+            departments: DEFAULT_CORPORATE_DEPARTMENTS.map((d) => ({
+              ...d,
+              id: generateOUId('dept', d.name),
+              children: d.children.map((c) => ({
+                ...c,
+                id: generateOUId('sub', c.name),
+              })),
+            })),
+          });
+          await saveOUStructure(ouTree);
+        }
+      } catch (ouErr) {
+        console.error('Sync OU on company create error:', ouErr);
+      }
     }
 
     return NextResponse.json({ success: true, data: name });
@@ -109,6 +143,18 @@ export async function PUT(request: NextRequest) {
     const currentList = await getStoredCompanies();
     const updatedList = currentList.map((c) => (c === oldName ? newName : c));
     await saveStoredCompanies(updatedList);
+
+    // Sync OU structure
+    try {
+      const ouTree = await getOUStructure();
+      const node = ouTree.find((c) => c.name.toLowerCase() === oldName.toLowerCase());
+      if (node) {
+        node.name = newName;
+        await saveOUStructure(ouTree);
+      }
+    } catch (ouErr) {
+      console.error('Sync OU on company rename error:', ouErr);
+    }
 
     // Update all licenses, assets, users that used oldName
     await Promise.all([
@@ -156,6 +202,15 @@ export async function DELETE(request: NextRequest) {
     const currentList = await getStoredCompanies();
     const updatedList = currentList.filter((c) => c !== name);
     await saveStoredCompanies(updatedList);
+
+    // Sync OU structure
+    try {
+      const ouTree = await getOUStructure();
+      const filteredOU = ouTree.filter((c) => c.name.toLowerCase() !== name.toLowerCase());
+      await saveOUStructure(filteredOU);
+    } catch (ouErr) {
+      console.error('Sync OU on company delete error:', ouErr);
+    }
 
     // Cascade clear companyName from all referenced entities
     await Promise.all([

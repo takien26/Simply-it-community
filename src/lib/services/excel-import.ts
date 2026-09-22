@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { prisma } from '@/lib/db';
 import { ImportType, ImportBatchStatus, ImportRecordStatus, AssetStatus, AssetCondition, LicenseType, LicenseStatus } from '@prisma/client';
 import { createAuditLog } from '@/lib/audit';
+import { normalizeEmail, normalizeCompanyName, normalizeAssetTag } from '@/lib/normalize';
 
 // ==================== INTERFACES ====================
 
@@ -60,29 +61,49 @@ export interface LicenseRowData {
 
 // ==================== TEMPLATE GENERATORS ====================
 
-export async function generateAssetTemplate(): Promise<Buffer> {
+export async function generateAssetTemplate(lang: string = 'vi'): Promise<Buffer> {
+  const isEn = lang === 'en';
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Danh sách Tài sản');
+  const worksheet = workbook.addWorksheet(isEn ? 'Assets List' : 'Danh sách Tài sản');
 
   // Define columns
-  worksheet.columns = [
-    { header: 'Mã tài sản (*)', key: 'assetTag', width: 18 },
-    { header: 'Tên thiết bị (*)', key: 'name', width: 28 },
-    { header: 'Danh mục (*)', key: 'categoryName', width: 20 },
-    { header: 'Thương hiệu', key: 'brand', width: 16 },
-    { header: 'Model', key: 'model', width: 18 },
-    { header: 'Số Serial', key: 'serialNumber', width: 20 },
-    { header: 'Trạng thái', key: 'status', width: 18 },
-    { header: 'Tình trạng', key: 'condition', width: 16 },
-    { header: 'Ngày mua (YYYY-MM-DD)', key: 'purchaseDate', width: 22 },
-    { header: 'Giá mua (VND)', key: 'purchasePrice', width: 18 },
-    { header: 'Hạn bảo hành (YYYY-MM-DD)', key: 'warrantyExpiry', width: 25 },
-    { header: 'Nhà cung cấp', key: 'vendorName', width: 24 },
-    { header: 'Vị trí đặt', key: 'locationName', width: 20 },
-    { header: 'Công Ty Quản Lý', key: 'companyName', width: 28 },
-    { header: 'Người sử dụng (Email)', key: 'userEmail', width: 28 },
-    { header: 'Ghi chú', key: 'notes', width: 30 },
-  ];
+  worksheet.columns = isEn
+    ? [
+        { header: 'Asset Tag (*)', key: 'assetTag', width: 18 },
+        { header: 'Device Name (*)', key: 'name', width: 28 },
+        { header: 'Category (*)', key: 'categoryName', width: 20 },
+        { header: 'Brand', key: 'brand', width: 16 },
+        { header: 'Model', key: 'model', width: 18 },
+        { header: 'Serial Number', key: 'serialNumber', width: 20 },
+        { header: 'Status', key: 'status', width: 18 },
+        { header: 'Condition', key: 'condition', width: 16 },
+        { header: 'Purchase Date (YYYY-MM-DD)', key: 'purchaseDate', width: 25 },
+        { header: 'Purchase Price (VND)', key: 'purchasePrice', width: 20 },
+        { header: 'Warranty Expiry (YYYY-MM-DD)', key: 'warrantyExpiry', width: 26 },
+        { header: 'Vendor', key: 'vendorName', width: 24 },
+        { header: 'Location', key: 'locationName', width: 20 },
+        { header: 'Company', key: 'companyName', width: 28 },
+        { header: 'Assigned User (Email)', key: 'userEmail', width: 28 },
+        { header: 'Notes', key: 'notes', width: 30 },
+      ]
+    : [
+        { header: 'Mã tài sản (*)', key: 'assetTag', width: 18 },
+        { header: 'Tên thiết bị (*)', key: 'name', width: 28 },
+        { header: 'Danh mục (*)', key: 'categoryName', width: 20 },
+        { header: 'Thương hiệu', key: 'brand', width: 16 },
+        { header: 'Model', key: 'model', width: 18 },
+        { header: 'Số Serial', key: 'serialNumber', width: 20 },
+        { header: 'Trạng thái', key: 'status', width: 18 },
+        { header: 'Tình trạng', key: 'condition', width: 16 },
+        { header: 'Ngày mua (YYYY-MM-DD)', key: 'purchaseDate', width: 22 },
+        { header: 'Giá mua (VND)', key: 'purchasePrice', width: 18 },
+        { header: 'Hạn bảo hành (YYYY-MM-DD)', key: 'warrantyExpiry', width: 25 },
+        { header: 'Nhà cung cấp', key: 'vendorName', width: 24 },
+        { header: 'Vị trí đặt', key: 'locationName', width: 20 },
+        { header: 'Công Ty Quản Lý', key: 'companyName', width: 28 },
+        { header: 'Người sử dụng (Email)', key: 'userEmail', width: 28 },
+        { header: 'Ghi chú', key: 'notes', width: 30 },
+      ];
 
   // Header styling
   const headerRow = worksheet.getRow(1);
@@ -99,7 +120,7 @@ export async function generateAssetTemplate(): Promise<Buffer> {
   worksheet.addRow({
     assetTag: 'IT-LAP-001',
     name: 'Dell Latitude 5540',
-    categoryName: 'Laptop',
+    categoryName: isEn ? 'Laptop' : 'Laptop',
     brand: 'Dell',
     model: 'Latitude 5540',
     serialNumber: 'SN-DELL-99881',
@@ -108,17 +129,17 @@ export async function generateAssetTemplate(): Promise<Buffer> {
     purchaseDate: '2024-01-15',
     purchasePrice: 24500000,
     warrantyExpiry: '2027-01-15',
-    vendorName: 'Phong Vũ',
-    locationName: 'Phòng IT',
-    companyName: 'Công ty Cổ phần Tập đoàn GELEX',
+    vendorName: isEn ? 'Dell Official Store' : 'Phong Vũ',
+    locationName: isEn ? 'IT Department' : 'Phòng IT',
+    companyName: isEn ? 'Acme Global Corporation' : 'Công ty Cổ phần Tập đoàn GELEX',
     userEmail: 'an.nguyen@company.com',
-    notes: 'Máy cấp phát cho phòng kỹ thuật',
+    notes: isEn ? 'Assigned to engineering lead' : 'Máy cấp phát cho phòng kỹ thuật',
   });
 
   worksheet.addRow({
     assetTag: 'IT-MON-002',
-    name: 'Màn hình Dell UltraSharp 27"',
-    categoryName: 'Màn hình',
+    name: 'Màn hình Dell UltraSharp 27" 4K',
+    categoryName: isEn ? 'Monitor' : 'Màn hình',
     brand: 'Dell',
     model: 'U2723QE',
     serialNumber: 'SN-MON-11223',
@@ -127,55 +148,83 @@ export async function generateAssetTemplate(): Promise<Buffer> {
     purchaseDate: '2024-02-10',
     purchasePrice: 11000000,
     warrantyExpiry: '2027-02-10',
-    vendorName: 'An Phát',
-    locationName: 'Phòng Thiết kế',
-    companyName: 'Công ty Cổ phần Dây Cáp Điện Việt Nam',
+    vendorName: isEn ? 'Authorized Dealer' : 'An Phát',
+    locationName: isEn ? 'Design Studio' : 'Phòng Thiết kế',
+    companyName: isEn ? 'Acme Global Corporation' : 'Công ty Cổ phần Dây Cáp Điện Việt Nam',
     userEmail: '',
     notes: '',
   });
 
   // Instruction sheet
-  const instructionSheet = workbook.addWorksheet('Hướng dẫn nhập');
+  const instructionSheet = workbook.addWorksheet(isEn ? 'Instructions' : 'Hướng dẫn nhập');
   instructionSheet.columns = [
-    { header: 'Cột', key: 'col', width: 25 },
-    { header: 'Quy tắc & Giá trị cho phép', key: 'rule', width: 65 },
+    { header: isEn ? 'Column' : 'Cột', key: 'col', width: 28 },
+    { header: isEn ? 'Rules & Allowed Values' : 'Quy tắc & Giá trị cho phép', key: 'rule', width: 70 },
   ];
   const instHeader = instructionSheet.getRow(1);
   instHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
   instHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } };
 
-  instructionSheet.addRows([
-    { col: 'Mã tài sản (*)', rule: 'Bắt buộc, không được trùng lặp với hệ thống và trong file.' },
-    { col: 'Tên thiết bị (*)', rule: 'Bắt buộc.' },
-    { col: 'Danh mục (*)', rule: 'Bắt buộc. Tên danh mục (Ví dụ: Laptop, Màn hình, Thiết bị mạng, Phụ kiện...)' },
-    { col: 'Trạng thái', rule: 'AVAILABLE (Sẵn sàng), IN_USE (Đang dùng), MAINTENANCE (Bảo trì), RETIRED (Thanh lý), LOST (Mất). Mặc định: AVAILABLE' },
-    { col: 'Tình trạng', rule: 'NEW (Mới), GOOD (Tốt), FAIR (Trung bình), POOR (Kém), BROKEN (Hỏng). Mặc định: NEW' },
-    { col: 'Công Ty Quản Lý', rule: 'Tùy chọn. Tên công ty/pháp nhân quản lý tài sản trong tập đoàn. Tự động đồng bộ vào danh sách công ty nếu là tên mới.' },
-    { col: 'Người sử dụng (Email)', rule: 'Tùy chọn. Nhập email nhân sự để tự động gán máy. Nếu bỏ trống hoặc email chưa có trên hệ thống, thiết bị vẫn được import bình thường mà không báo lỗi.' },
-    { col: 'Định dạng ngày', rule: 'Định dạng chuẩn: YYYY-MM-DD hoặc DD/MM/YYYY (Ví dụ: 2024-03-15).' },
-  ]);
+  instructionSheet.addRows(
+    isEn
+      ? [
+          { col: 'Asset Tag (*)', rule: 'Required. Unique asset identifier, must not duplicate existing system records or rows in this file.' },
+          { col: 'Device Name (*)', rule: 'Required. Human-readable name and model of the hardware item.' },
+          { col: 'Category (*)', rule: 'Required. Category name (e.g. Laptop, Desktop, Monitor, Network Device, Accessories...).' },
+          { col: 'Status', rule: 'AVAILABLE, IN_USE, MAINTENANCE, RETIRED, LOST. Default: AVAILABLE' },
+          { col: 'Condition', rule: 'NEW, GOOD, FAIR, POOR, BROKEN. Default: NEW' },
+          { col: 'Company', rule: 'Optional. Legal entity / business branch managing the asset.' },
+          { col: 'Assigned User (Email)', rule: 'Optional. Staff email to automatically assign the asset upon import.' },
+          { col: 'Date Format', rule: 'Standard format: YYYY-MM-DD or DD/MM/YYYY (e.g. 2024-03-15).' },
+        ]
+      : [
+          { col: 'Mã tài sản (*)', rule: 'Bắt buộc, không được trùng lặp với hệ thống và trong file.' },
+          { col: 'Tên thiết bị (*)', rule: 'Bắt buộc.' },
+          { col: 'Danh mục (*)', rule: 'Bắt buộc. Tên danh mục (Ví dụ: Laptop, Màn hình, Thiết bị mạng, Phụ kiện...)' },
+          { col: 'Trạng thái', rule: 'AVAILABLE (Sẵn sàng), IN_USE (Đang dùng), MAINTENANCE (Bảo trì), RETIRED (Thanh lý), LOST (Mất). Mặc định: AVAILABLE' },
+          { col: 'Tình trạng', rule: 'NEW (Mới), GOOD (Tốt), FAIR (Trung bình), POOR (Kém), BROKEN (Hỏng). Mặc định: NEW' },
+          { col: 'Công Ty Quản Lý', rule: 'Tùy chọn. Tên công ty/pháp nhân quản lý tài sản trong tập đoàn. Tự động đồng bộ vào danh sách công ty nếu là tên mới.' },
+          { col: 'Người sử dụng (Email)', rule: 'Tùy chọn. Nhập email nhân sự để tự động gán máy. Nếu bỏ trống hoặc email chưa có trên hệ thống, thiết bị vẫn được import bình thường mà không báo lỗi.' },
+          { col: 'Định dạng ngày', rule: 'Định dạng chuẩn: YYYY-MM-DD hoặc DD/MM/YYYY (Ví dụ: 2024-03-15).' },
+        ]
+  );
 
   const uint8Array = await workbook.xlsx.writeBuffer();
   return Buffer.from(uint8Array);
 }
 
-export async function generateLicenseTemplate(): Promise<Buffer> {
+export async function generateLicenseTemplate(lang: string = 'vi'): Promise<Buffer> {
+  const isEn = lang === 'en';
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Danh sách License');
+  const worksheet = workbook.addWorksheet(isEn ? 'Licenses List' : 'Danh sách License');
 
-  worksheet.columns = [
-    { header: 'Tên phần mềm (*)', key: 'name', width: 28 },
-    { header: 'License Key', key: 'licenseKey', width: 30 },
-    { header: 'Loại License', key: 'licenseType', width: 20 },
-    { header: 'Số lượng Seats (*)', key: 'totalSeats', width: 18 },
-    { header: 'Ngày mua (YYYY-MM-DD)', key: 'purchaseDate', width: 22 },
-    { header: 'Ngày hết hạn (YYYY-MM-DD)', key: 'expiryDate', width: 25 },
-    { header: 'Giá mua (VND)', key: 'purchasePrice', width: 18 },
-    { header: 'Nhà cung cấp', key: 'vendorName', width: 24 },
-    { header: 'Công Ty Quản Lý', key: 'companyName', width: 28 },
-    { header: 'Người sử dụng (Email)', key: 'userEmail', width: 28 },
-    { header: 'Ghi chú', key: 'notes', width: 30 },
-  ];
+  worksheet.columns = isEn
+    ? [
+        { header: 'Software Name (*)', key: 'name', width: 28 },
+        { header: 'License Key', key: 'licenseKey', width: 30 },
+        { header: 'License Type', key: 'licenseType', width: 20 },
+        { header: 'Total Seats (*)', key: 'totalSeats', width: 18 },
+        { header: 'Purchase Date (YYYY-MM-DD)', key: 'purchaseDate', width: 24 },
+        { header: 'Expiry Date (YYYY-MM-DD)', key: 'expiryDate', width: 24 },
+        { header: 'Purchase Price (VND)', key: 'purchasePrice', width: 20 },
+        { header: 'Vendor', key: 'vendorName', width: 24 },
+        { header: 'Company', key: 'companyName', width: 28 },
+        { header: 'Assigned User (Email)', key: 'userEmail', width: 28 },
+        { header: 'Notes', key: 'notes', width: 30 },
+      ]
+    : [
+        { header: 'Tên phần mềm (*)', key: 'name', width: 28 },
+        { header: 'License Key', key: 'licenseKey', width: 30 },
+        { header: 'Loại License', key: 'licenseType', width: 20 },
+        { header: 'Số lượng Seats (*)', key: 'totalSeats', width: 18 },
+        { header: 'Ngày mua (YYYY-MM-DD)', key: 'purchaseDate', width: 22 },
+        { header: 'Ngày hết hạn (YYYY-MM-DD)', key: 'expiryDate', width: 25 },
+        { header: 'Giá mua (VND)', key: 'purchasePrice', width: 18 },
+        { header: 'Nhà cung cấp', key: 'vendorName', width: 24 },
+        { header: 'Công Ty Quản Lý', key: 'companyName', width: 28 },
+        { header: 'Người sử dụng (Email)', key: 'userEmail', width: 28 },
+        { header: 'Ghi chú', key: 'notes', width: 30 },
+      ];
 
   const headerRow = worksheet.getRow(1);
   headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -195,10 +244,10 @@ export async function generateLicenseTemplate(): Promise<Buffer> {
     purchaseDate: '2024-01-01',
     expiryDate: '2025-01-01',
     purchasePrice: 65000000,
-    vendorName: 'FPT Smart Cloud',
-    companyName: 'Công ty Cổ phần Tập đoàn GELEX',
+    vendorName: isEn ? 'Microsoft Official Partner' : 'FPT Smart Cloud',
+    companyName: isEn ? 'Acme Global Corporation' : 'Công ty Cổ phần Tập đoàn GELEX',
     userEmail: 'an.nguyen@company.com',
-    notes: 'Gói bản quyền năm cho toàn công ty',
+    notes: isEn ? 'Annual license subscription for corporate staff' : 'Gói bản quyền năm cho toàn công ty',
   });
 
   worksheet.addRow({
@@ -210,22 +259,25 @@ export async function generateLicenseTemplate(): Promise<Buffer> {
     expiryDate: '2025-03-01',
     purchasePrice: 38000000,
     vendorName: 'Adobe Direct',
-    companyName: 'Công ty Cổ phần Dây Cáp Điện Việt Nam',
+    companyName: isEn ? 'Acme Digital Media' : 'Công ty Cổ phần Dây Cáp Điện Việt Nam',
     userEmail: '',
-    notes: 'Cấp phát cho Team Design & Marketing',
+    notes: isEn ? 'Assigned to Design & Marketing team' : 'Cấp phát cho Team Design & Marketing',
   });
 
   const uint8Array = await workbook.xlsx.writeBuffer();
   return Buffer.from(uint8Array);
 }
 
-export async function generateUserTemplate(): Promise<Buffer> {
+export async function generateUserTemplate(lang: string = 'vi'): Promise<Buffer> {
+  const isEn = lang === 'en';
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Danh Sách Nhân Sự');
+  const worksheet = workbook.addWorksheet(isEn ? 'Staff List' : 'Danh Sách Nhân Sự');
 
   worksheet.mergeCells('A1:L1');
   const titleCell = worksheet.getCell('A1');
-  titleCell.value = 'MẪU IMPORT DANH SÁCH NHÂN SỰ & NGƯỜI DÙNG HỆ THỐNG';
+  titleCell.value = isEn
+    ? 'STAFF & SYSTEM USERS IMPORT TEMPLATE'
+    : 'MẪU IMPORT DANH SÁCH NHÂN SỰ & NGƯỜI DÙNG HỆ THỐNG';
   titleCell.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
   titleCell.fill = {
     type: 'pattern',
@@ -237,27 +289,44 @@ export async function generateUserTemplate(): Promise<Buffer> {
 
   worksheet.mergeCells('A2:L2');
   const subCell = worksheet.getCell('A2');
-  subCell.value = 'Lưu ý: Các cột có dấu (*) là bắt buộc. Mật khẩu nếu để trống hệ thống sẽ tự đặt mặc định là Staff@123. Vai trò: Staff / IT Support / Admin.';
+  subCell.value = isEn
+    ? 'Note: Columns marked with (*) are required. Default password is Staff@123 if empty. Roles: Staff / IT / Admin.'
+    : 'Lưu ý: Các cột có dấu (*) là bắt buộc. Mật khẩu nếu để trống hệ thống sẽ tự đặt mặc định là Staff@123. Vai trò: Staff / IT Support / Admin.';
   subCell.font = { name: 'Arial', size: 9.5, italic: true, color: { argb: 'FF475569' } };
   subCell.alignment = { vertical: 'middle', horizontal: 'center' };
   worksheet.getRow(2).height = 20;
 
   worksheet.addRow([]);
 
-  const headers = [
-    'STT',
-    'Họ Và Tên (*)',
-    'Email Đăng Nhập (*)',
-    'Công Ty Quản Lý',
-    'Khối / Phòng Ban',
-    'Chức Danh / Vị Trí',
-    'Số Điện Thoại',
-    'Khu Vực / Cơ Sở Làm Việc',
-    'Email Quản Lý Trực Tiếp',
-    'Vai Trò (Staff/IT/Admin)',
-    'Trạng Thái (Đang làm việc/Nghỉ việc)',
-    'Mật Khẩu Khởi Tạo',
-  ];
+  const headers = isEn
+    ? [
+        'No.',
+        'Full Name (*)',
+        'Login Email (*)',
+        'Company',
+        'Division / Department',
+        'Job Title / Position',
+        'Phone Number',
+        'Workplace / Office Location',
+        'Direct Manager Email',
+        'Role (Staff/IT/Admin)',
+        'Status (Active/Inactive)',
+        'Initial Password',
+      ]
+    : [
+        'STT',
+        'Họ Và Tên (*)',
+        'Email Đăng Nhập (*)',
+        'Công Ty Quản Lý',
+        'Khối / Phòng Ban',
+        'Chức Danh / Vị Trí',
+        'Số Điện Thoại',
+        'Khu Vực / Cơ Sở Làm Việc',
+        'Email Quản Lý Trực Tiếp',
+        'Vai Trò (Staff/IT/Admin)',
+        'Trạng Thái (Đang làm việc/Nghỉ việc)',
+        'Mật Khẩu Khởi Tạo',
+      ];
 
   const headerRow = worksheet.addRow(headers);
   headerRow.height = 26;
@@ -277,12 +346,19 @@ export async function generateUserTemplate(): Promise<Buffer> {
     };
   });
 
-  const sampleRows = [
-    [1, 'Nguyễn Văn An', 'an.nguyen@company.com', 'CÔNG TY CỔ PHẦN HÀ YẾN', 'Ban Công Nghệ Thông Tin (IT)', 'Chuyên viên Quản trị Hệ thống', '0987112233', 'Trụ sở Hà Nội', 'admin@company.com', 'Staff', 'Đang làm việc', 'Staff@123'],
-    [2, 'Trần Thị Bình', 'binh.tran@company.com', 'CÔNG TY CỔ PHẦN HÀ YẾN', 'Khối Nhân Sự & Hành Chính', 'Chuyên viên Tuyển dụng', '0912345678', 'Trụ sở Hà Nội', 'an.nguyen@company.com', 'Staff', 'Đang làm việc', 'Staff@123'],
-    [3, 'Lê Hoàng Cường', 'cuong.le@company.com', 'CÔNG TY TNHH HÀ YẾN IND', 'Khối Kinh Doanh & Thị Trường', 'Trưởng phòng Kinh doanh', '0903456789', 'Văn phòng TP.HCM', '', 'Staff', 'Đang làm việc', 'Staff@123'],
-    [4, 'Phạm Minh Đức', 'duc.pham@company.com', 'CÔNG TY CỔ PHẦN TÂN HÀ PHÁT CÔNG NGHIỆP', 'Khối Vận Hành & Sản Xuất', 'Kỹ sư Vận hành', '0978654321', 'Nhà máy Hưng Yên', '', 'Staff', 'Đang làm việc', 'Staff@123'],
-  ];
+  const sampleRows = isEn
+    ? [
+        [1, 'John Smith', 'john.smith@company.com', 'Acme Global Corporation', 'Information Technology (IT)', 'System Administrator', '+1-555-0199', 'Headquarters', 'admin@company.com', 'IT', 'Active', 'Staff@123'],
+        [2, 'Sarah Connor', 'sarah.connor@company.com', 'Acme Global Corporation', 'Human Resources', 'HR Specialist', '+1-555-0188', 'Headquarters', 'john.smith@company.com', 'Staff', 'Active', 'Staff@123'],
+        [3, 'David Warner', 'david.warner@company.com', 'Acme Global Corporation', 'Sales & Marketing', 'Sales Manager', '+1-555-0177', 'Regional Branch', '', 'Staff', 'Active', 'Staff@123'],
+        [4, 'Emily Watson', 'emily.watson@company.com', 'Acme Global Corporation', 'Operations', 'Operations Engineer', '+1-555-0166', 'Manufacturing Plant', '', 'Staff', 'Active', 'Staff@123'],
+      ]
+    : [
+        [1, 'Nguyễn Văn An', 'an.nguyen@company.com', 'CÔNG TY CỔ PHẦN HÀ YẾN', 'Ban Công Nghệ Thông Tin (IT)', 'Chuyên viên Quản trị Hệ thống', '0987112233', 'Trụ sở Hà Nội', 'admin@company.com', 'Staff', 'Đang làm việc', 'Staff@123'],
+        [2, 'Trần Thị Bình', 'binh.tran@company.com', 'Khối Nhân Sự & Hành Chính', 'Chuyên viên Tuyển dụng', '0912345678', 'Trụ sở Hà Nội', 'an.nguyen@company.com', 'Staff', 'Đang làm việc', 'Staff@123'],
+        [3, 'Lê Hoàng Cường', 'cuong.le@company.com', 'CÔNG TY TNHH HÀ YẾN IND', 'Khối Kinh Doanh & Thị Trường', 'Trưởng phòng Kinh doanh', '0903456789', 'Văn phòng TP.HCM', '', 'Staff', 'Đang làm việc', 'Staff@123'],
+        [4, 'Phạm Minh Đức', 'duc.pham@company.com', 'CÔNG TY CỔ PHẦN TÂN HÀ PHÁT CÔNG NGHIỆP', 'Khối Vận Hành & Sản Xuất', 'Kỹ sư Vận hành', '0978654321', 'Nhà máy Hưng Yên', '', 'Staff', 'Đang làm việc', 'Staff@123'],
+      ];
 
   sampleRows.forEach((row) => {
     const addedRow = worksheet.addRow(row);
@@ -361,12 +437,14 @@ export async function importAssetsFromExcel(
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return; // Skip header
 
-    const assetTag = getCellValue(row.getCell(colMap.assetTag))?.trim();
+    const rawAssetTag = getCellValue(row.getCell(colMap.assetTag))?.trim();
+    const assetTag = rawAssetTag ? normalizeAssetTag(rawAssetTag) : undefined;
     const name = getCellValue(row.getCell(colMap.name))?.trim();
     const categoryName = getCellValue(row.getCell(colMap.categoryName))?.trim();
     const brand = colMap.brand ? getCellValue(row.getCell(colMap.brand))?.trim() : undefined;
     const model = colMap.model ? getCellValue(row.getCell(colMap.model))?.trim() : undefined;
-    const serialNumber = colMap.serialNumber ? getCellValue(row.getCell(colMap.serialNumber))?.trim() : undefined;
+    const rawSerial = colMap.serialNumber ? getCellValue(row.getCell(colMap.serialNumber))?.trim() : undefined;
+    const serialNumber = rawSerial ? rawSerial.toUpperCase() : undefined;
     const status = colMap.status ? getCellValue(row.getCell(colMap.status))?.trim() : undefined;
     const condition = colMap.condition ? getCellValue(row.getCell(colMap.condition))?.trim() : undefined;
     const purchaseDate = colMap.purchaseDate ? parseDateValue(row.getCell(colMap.purchaseDate).value) : undefined;
@@ -374,8 +452,10 @@ export async function importAssetsFromExcel(
     const warrantyExpiry = colMap.warrantyExpiry ? parseDateValue(row.getCell(colMap.warrantyExpiry).value) : undefined;
     const vendorName = colMap.vendorName ? getCellValue(row.getCell(colMap.vendorName))?.trim() : undefined;
     const locationName = colMap.locationName ? getCellValue(row.getCell(colMap.locationName))?.trim() : undefined;
-    const companyName = colMap.companyName ? getCellValue(row.getCell(colMap.companyName))?.trim() : undefined;
-    const userEmail = colMap.userEmail ? getCellValue(row.getCell(colMap.userEmail))?.trim() : undefined;
+    const rawComp = colMap.companyName ? getCellValue(row.getCell(colMap.companyName))?.trim() : undefined;
+    const companyName = rawComp ? normalizeCompanyName(rawComp) : undefined;
+    const rawUserEmail = colMap.userEmail ? getCellValue(row.getCell(colMap.userEmail))?.trim() : undefined;
+    const userEmail = rawUserEmail ? normalizeEmail(rawUserEmail) : undefined;
     const notes = colMap.notes ? getCellValue(row.getCell(colMap.notes))?.trim() : undefined;
 
     // Skip totally empty rows
@@ -735,8 +815,10 @@ export async function importLicensesFromExcel(
     const expiryDate = colMap.expiryDate ? parseDateValue(row.getCell(colMap.expiryDate).value) : undefined;
     const purchasePrice = colMap.purchasePrice ? parseNumberValue(row.getCell(colMap.purchasePrice).value) : undefined;
     const vendorName = colMap.vendorName ? getCellValue(row.getCell(colMap.vendorName))?.trim() : undefined;
-    const companyName = colMap.companyName ? getCellValue(row.getCell(colMap.companyName))?.trim() : undefined;
-    const userEmail = colMap.userEmail ? getCellValue(row.getCell(colMap.userEmail))?.trim() : undefined;
+    const rawComp = colMap.companyName ? getCellValue(row.getCell(colMap.companyName))?.trim() : undefined;
+    const companyName = rawComp ? normalizeCompanyName(rawComp) : undefined;
+    const rawUserEmail = colMap.userEmail ? getCellValue(row.getCell(colMap.userEmail))?.trim() : undefined;
+    const userEmail = rawUserEmail ? normalizeEmail(rawUserEmail) : undefined;
     const notes = colMap.notes ? getCellValue(row.getCell(colMap.notes))?.trim() : undefined;
 
     if (!name) return;
@@ -1158,27 +1240,46 @@ function parseDateValue(val: unknown): string | undefined {
   return undefined;
 }
 
-export async function generateServiceTemplate(): Promise<Buffer> {
+export async function generateServiceTemplate(lang: string = 'vi'): Promise<Buffer> {
+  const isEn = lang === 'en';
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Mau_Import_Dich_Vu');
+  const worksheet = workbook.addWorksheet(isEn ? 'IT_Services_List' : 'Mau_Import_Dich_Vu');
 
-  worksheet.columns = [
-    { header: 'Mã Dịch Vụ (*)', key: 'serviceCode', width: 16 },
-    { header: 'Tên Gói Dịch Vụ (*)', key: 'name', width: 35 },
-    { header: 'Loại Dịch Vụ (*)', key: 'serviceType', width: 22 },
-    { header: 'Giá Cước (VNĐ)', key: 'cost', width: 18 },
-    { header: 'Chu Kỳ (*)', key: 'billingCycle', width: 16 },
-    { header: 'Ngày Bắt Đầu (YYYY-MM-DD)', key: 'startDate', width: 22 },
-    { header: 'Ngày Gia Hạn (YYYY-MM-DD)', key: 'renewalDate', width: 22 },
-    { header: 'Mã Thuê Bao / Khách Hàng', key: 'accountNumber', width: 22 },
-    { header: 'IP Tĩnh / Cấu Hình', key: 'ipStatic', width: 20 },
-    { header: 'Băng Thông / Thông Số', key: 'bandwidth', width: 22 },
-    { header: 'Nhà Cung Cấp / Đối Tác', key: 'vendorName', width: 25 },
-    { header: 'Công Ty Quản Lý', key: 'companyName', width: 25 },
-    { header: 'Vị Trí Lắp Đặt', key: 'locationName', width: 20 },
-    { header: 'Hotline Hỗ Trợ', key: 'contactSupport', width: 25 },
-    { header: 'Ghi Chú', key: 'notes', width: 30 },
-  ];
+  worksheet.columns = isEn
+    ? [
+        { header: 'Service Code (*)', key: 'serviceCode', width: 18 },
+        { header: 'Service Package Name (*)', key: 'name', width: 35 },
+        { header: 'Service Type (*)', key: 'serviceType', width: 20 },
+        { header: 'Cost (VND)', key: 'cost', width: 18 },
+        { header: 'Billing Cycle (*)', key: 'billingCycle', width: 16 },
+        { header: 'Start Date (YYYY-MM-DD)', key: 'startDate', width: 24 },
+        { header: 'Renewal Date (YYYY-MM-DD)', key: 'renewalDate', width: 24 },
+        { header: 'Account / Contract Number', key: 'accountNumber', width: 24 },
+        { header: 'Static IP / Configuration', key: 'ipStatic', width: 22 },
+        { header: 'Bandwidth / Specs', key: 'bandwidth', width: 24 },
+        { header: 'Vendor / Partner', key: 'vendorName', width: 25 },
+        { header: 'Company', key: 'companyName', width: 25 },
+        { header: 'Installation Location', key: 'locationName', width: 22 },
+        { header: 'Support Hotline', key: 'contactSupport', width: 25 },
+        { header: 'Notes', key: 'notes', width: 30 },
+      ]
+    : [
+        { header: 'Mã Dịch Vụ (*)', key: 'serviceCode', width: 16 },
+        { header: 'Tên Gói Dịch Vụ (*)', key: 'name', width: 35 },
+        { header: 'Loại Dịch Vụ (*)', key: 'serviceType', width: 22 },
+        { header: 'Giá Cước (VNĐ)', key: 'cost', width: 18 },
+        { header: 'Chu Kỳ (*)', key: 'billingCycle', width: 16 },
+        { header: 'Ngày Bắt Đầu (YYYY-MM-DD)', key: 'startDate', width: 22 },
+        { header: 'Ngày Gia Hạn (YYYY-MM-DD)', key: 'renewalDate', width: 22 },
+        { header: 'Mã Thuê Bao / Khách Hàng', key: 'accountNumber', width: 22 },
+        { header: 'IP Tĩnh / Cấu Hình', key: 'ipStatic', width: 20 },
+        { header: 'Băng Thông / Thông Số', key: 'bandwidth', width: 22 },
+        { header: 'Nhà Cung Cấp / Đối Tác', key: 'vendorName', width: 25 },
+        { header: 'Công Ty Quản Lý', key: 'companyName', width: 25 },
+        { header: 'Vị Trí Lắp Đặt', key: 'locationName', width: 20 },
+        { header: 'Hotline Hỗ Trợ', key: 'contactSupport', width: 25 },
+        { header: 'Ghi Chú', key: 'notes', width: 30 },
+      ];
 
   worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
   worksheet.getRow(1).fill = {
@@ -1189,7 +1290,9 @@ export async function generateServiceTemplate(): Promise<Buffer> {
 
   worksheet.addRow({
     serviceCode: 'SVC-NET-001',
-    name: 'Đường truyền Internet Cáp quang FTTH Viettel Pro 500Mbps',
+    name: isEn
+      ? 'High-speed Fiber FTTH Enterprise 500Mbps'
+      : 'Đường truyền Internet Cáp quang FTTH Viettel Pro 500Mbps',
     serviceType: 'INTERNET',
     cost: 1500000,
     billingCycle: 'MONTHLY',
@@ -1197,12 +1300,12 @@ export async function generateServiceTemplate(): Promise<Buffer> {
     renewalDate: '2026-01-01',
     accountNumber: 'HNI_FTTH_588291',
     ipStatic: '115.78.22.105 / 29',
-    bandwidth: '500 Mbps Quốc tế 30 Mbps',
+    bandwidth: isEn ? '500 Mbps International 30 Mbps' : '500 Mbps Quốc tế 30 Mbps',
     vendorName: 'Viettel Telecom',
-    companyName: 'Công ty Cổ phần Tập đoàn ABC',
-    locationName: 'Phòng IT',
-    contactSupport: '18008119 - KTV: 0988.123.456',
-    notes: 'Bảo trì định kỳ hàng tháng',
+    companyName: isEn ? 'Acme Global Corporation' : 'Công ty Cổ phần Tập đoàn ABC',
+    locationName: isEn ? 'HQ Server Room' : 'Phòng IT',
+    contactSupport: isEn ? '+84 18008119 - Support: 0988.123.456' : '18008119 - KTV: 0988.123.456',
+    notes: isEn ? 'Monthly routine maintenance' : 'Bảo trì định kỳ hàng tháng',
   });
 
   const buffer = await workbook.xlsx.writeBuffer();

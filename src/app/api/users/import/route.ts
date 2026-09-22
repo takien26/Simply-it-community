@@ -12,146 +12,26 @@ import { createAuditLog } from '@/lib/audit';
 import { getActiveLicense } from '@/lib/license';
 import * as ExcelJS from 'exceljs';
 import bcrypt from 'bcryptjs';
+import { normalizeEmail, normalizeCompanyName } from '@/lib/normalize';
+
+import { generateUserTemplate } from '@/lib/services/excel-import';
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/users/import - Download sample Excel template
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Simply IT Community';
-    workbook.created = new Date();
+    const { searchParams } = new URL(request.url);
+    const lang = (searchParams.get('lang') || 'vi').toLowerCase();
+    const isEn = lang === 'en';
 
-    const sheet = workbook.addWorksheet('Danh Sách Nhân Sự Mẫu', {
-      views: [{ showGridLines: true }],
-    });
+    const buffer = await generateUserTemplate(lang);
+    const fileName = isEn ? 'User_Import_Template.xlsx' : 'Mau_Import_Nhan_Su.xlsx';
 
-    // Title Header
-    sheet.mergeCells('A1:L1');
-    const titleCell = sheet.getCell('A1');
-    titleCell.value = 'MẪU IMPORT DANH SÁCH NHÂN SỰ & NGƯỜI DÙNG HỆ THỐNG';
-    titleCell.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
-    titleCell.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF6366F1' },
-    };
-    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-    sheet.getRow(1).height = 34;
-
-    // Subtitle instruction
-    sheet.mergeCells('A2:L2');
-    const subtitleCell = sheet.getCell('A2');
-    subtitleCell.value = 'Hệ thống tự động đồng bộ: Công ty, Khối/Phòng ban, Chức danh, Cơ sở làm việc (Location) & Quản lý trực tiếp theo Email.';
-    subtitleCell.font = { name: 'Arial', size: 9.5, italic: true, color: { argb: 'FF475569' } };
-    subtitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-    sheet.getRow(2).height = 22;
-
-    sheet.addRow([]); // Blank row 3
-
-    const headers = [
-      'STT',
-      'Họ Và Tên (*)',
-      'Email Đăng Nhập (*)',
-      'Công Ty Quản Lý',
-      'Khối / Phòng Ban',
-      'Chức Danh / Vị Trí',
-      'Số Điện Thoại',
-      'Khu Vực / Cơ Sở Làm Việc',
-      'Email Quản Lý Trực Tiếp',
-      'Vai Trò (Staff/IT/Admin)',
-      'Trạng Thái (Đang làm việc/Nghỉ việc)',
-      'Mật Khẩu Khởi Tạo',
-    ];
-
-    const headerRow = sheet.addRow(headers);
-    headerRow.height = 28;
-    headerRow.eachCell((cell) => {
-      cell.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF4F46E5' },
-      };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-      cell.border = {
-        top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-        bottom: { style: 'medium', color: { argb: 'FF312E81' } },
-        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-        right: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-      };
-    });
-
-    // Sample data rows
-    const sampleRows = [
-      [
-        1,
-        'Nguyễn Văn An',
-        'nguyen.an@company.com',
-        'Tập Đoàn Simply IT Holdings',
-        'Ban Công Nghệ Thông Tin (IT / CNTT) > Quản Trị Hệ Thống & Cloud (System Admin)',
-        'Kỹ Sư Hệ Thống Cao Cấp',
-        '0912345678',
-        'Trụ Sở Chính - Tầng 8',
-        'lead.it@company.com',
-        'IT Support',
-        'Đang làm việc',
-        'Staff@123',
-      ],
-      [
-        2,
-        'Trần Thị Bích',
-        'tran.bich@company.com',
-        'Công Ty Thành Viên Bravo Retail',
-        'Khối Tài Chính & Kế Toán > Kế Toán Tổng Hợp',
-        'Chuyên Viên Kế Toán',
-        '0987654321',
-        'Chi Nhánh Hà Nội',
-        'cfo@company.com',
-        'Staff',
-        'Đang làm việc',
-        'Staff@123',
-      ],
-    ];
-
-    sampleRows.forEach((rowData) => {
-      const row = sheet.addRow(rowData);
-      row.height = 22;
-      row.eachCell((cell, colNumber) => {
-        cell.font = { name: 'Arial', size: 10 };
-        cell.alignment = {
-          vertical: 'middle',
-          horizontal: colNumber === 1 ? 'center' : colNumber === 7 ? 'center' : 'left',
-        };
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-          right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-        };
-      });
-    });
-
-    sheet.columns = [
-      { width: 8 },  // STT
-      { width: 26 }, // Họ Và Tên
-      { width: 30 }, // Email
-      { width: 35 }, // Công Ty
-      { width: 32 }, // Phòng Ban
-      { width: 30 }, // Chức Danh
-      { width: 18 }, // Số Điện Thoại
-      { width: 26 }, // Khu Vực / Cơ Sở
-      { width: 28 }, // Email Quản Lý
-      { width: 24 }, // Vai Trò
-      { width: 26 }, // Trạng Thái
-      { width: 20 }, // Mật Khẩu
-    ];
-
-    const buffer = await workbook.xlsx.writeBuffer();
     return new NextResponse(buffer as any, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': 'attachment; filename="Mau_Import_Nhan_Su.xlsx"',
+        'Content-Disposition': `attachment; filename="${fileName}"`,
       },
     });
   } catch (error) {
@@ -304,9 +184,11 @@ export async function POST(req: NextRequest) {
         return String(cell.value).trim();
       };
 
-      const fullName = getCellString(colMap.fullName);
+      const rawFullName = getCellString(colMap.fullName);
+      const fullName = rawFullName ? rawFullName.trim().replace(/\s+/g, ' ') : '';
       const rawEmail = getCellString(colMap.email);
-      const companyName = getCellString(colMap.companyName) || null;
+      const rawCompanyName = getCellString(colMap.companyName) || null;
+      const companyName = rawCompanyName ? normalizeCompanyName(rawCompanyName) : null;
       const department = getCellString(colMap.department) || null;
       const position = getCellString(colMap.position) || null;
       const phone = getCellString(colMap.phone) || null;
@@ -333,7 +215,7 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      const email = rawEmail.toLowerCase().trim();
+      const email = normalizeEmail(rawEmail);
 
       if (companyName) {
         newCompaniesSet.add(companyName);
@@ -364,7 +246,7 @@ export async function POST(req: NextRequest) {
       // Resolve Manager ID
       let managerId: string | null = null;
       if (managerEmail && managerEmail.includes('@')) {
-        const cleanMgrEmail = managerEmail.toLowerCase().trim();
+        const cleanMgrEmail = normalizeEmail(managerEmail);
         const manager = await prisma.user.findUnique({ where: { email: cleanMgrEmail } });
         if (manager) {
           managerId = manager.id;

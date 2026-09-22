@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { CombinedHandoverModal } from './CombinedHandoverModal';
+import { useLanguage } from '@/lib/i18n/context';
 
 export interface UserOnboardModalProps {
   isOpen: boolean;
@@ -39,6 +40,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
   roles = [],
   onSuccess,
 }) => {
+  const { t } = useLanguage();
   const [submitting, setSubmitting] = useState(false);
   const [completedData, setCompletedData] = useState<any | null>(null);
   const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
@@ -95,7 +97,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.fullName.trim() || !formData.email.trim()) {
-      alert('Vui lòng nhập Họ tên và Email nhân sự.');
+      alert(t('users.onboard.err_required', 'Vui lòng nhập Họ tên và Email nhân sự.'));
       return;
     }
 
@@ -116,7 +118,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
         setCompletedData(json.data);
         onSuccess?.();
       } else {
-        alert(json.error || 'Tiếp nhận nhân sự mới thất bại.');
+        alert(json.error || t('users.onboard.err_fail', 'Tiếp nhận nhân sự mới thất bại.'));
       }
     } catch (err: any) {
       alert(err?.message || 'Lỗi kết nối máy chủ.');
@@ -149,10 +151,10 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
               </div>
               <div>
                 <h3 className="font-bold text-sm text-white">
-                  Tiếp Nhận Nhân Sự & Cấp Phát Thiết Bị Mới (1-Click Onboard)
+                  {t('users.onboard.modal_title', 'Tiếp Nhận Nhân Sự & Cấp Phát Thiết Bị Mới (1-Click Onboard)')}
                 </h3>
                 <p className="text-xs text-indigo-200">
-                  Tạo hồ sơ • Cấp phát gói máy tính & màn hình • Gán bản quyền • Xuất biên bản bàn giao
+                  {t('users.onboard.modal_subtitle', 'Tạo hồ sơ • Cấp phát gói máy tính & màn hình • Gán bản quyền • Xuất biên bản bàn giao')}
                 </p>
               </div>
             </div>
@@ -173,12 +175,13 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                 <div className="p-5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 rounded-2xl space-y-2">
                   <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
                   <h4 className="font-black text-base text-emerald-950 dark:text-emerald-200">
-                    Tiếp Nhận Nhân Sự Thành Công!
+                    {t('users.onboard.success_title', 'Tiếp Nhận Nhân Sự Thành Công!')}
                   </h4>
                   <p className="text-xs text-emerald-800 dark:text-emerald-300 max-w-md mx-auto">
-                    Hồ sơ nhân sự <strong>{completedData.user?.fullName}</strong> đã được khởi tạo.
-                    Đã cấp phát <strong>{completedData.assignedAssets?.length || 0}</strong> thiết bị và{' '}
-                    <strong>{completedData.assignedLicenses?.length || 0}</strong> bản quyền phần mềm.
+                    {t('users.onboard.success_desc', 'Hồ sơ nhân sự {name} đã được khởi tạo. Đã cấp phát {assets} thiết bị và {licenses} bản quyền phần mềm.')
+                      .replace('{name}', completedData.user?.fullName || '')
+                      .replace('{assets}', String(completedData.assignedAssets?.length || 0))
+                      .replace('{licenses}', String(completedData.assignedLicenses?.length || 0))}
                   </p>
                 </div>
 
@@ -189,14 +192,14 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                     className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition-transform hover:scale-102"
                   >
                     <Printer className="w-4 h-4" />
-                    <span>🖨️ Xuất / In Biên Bản Bàn Giao Thiết Bị (A4)</span>
+                    <span>{t('users.onboard.export_handover_btn', '🖨️ Xuất / In Biên Bản Bàn Giao Thiết Bị (A4)')}</span>
                   </button>
                   <button
                     type="button"
                     onClick={onClose}
                     className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold cursor-pointer"
                   >
-                    Đóng
+                    {t('users.onboard.close', 'Đóng')}
                   </button>
                 </div>
               </div>
@@ -206,18 +209,18 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                 {/* Bước 1: Thông tin cơ bản */}
                 <div className="space-y-3">
                   <span className="text-xs font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-400 flex items-center gap-1.5">
-                    <span>1. Thông Tin Nhân Sự Mới</span>
+                    <span>{t('users.onboard.step1_title', '1. Thông Tin Nhân Sự Mới')}</span>
                   </span>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        Họ và tên nhân sự <span className="text-rose-500">*</span>
+                        {t('users.onboard.fullname', 'Họ và tên nhân sự')} <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
                         required
-                        placeholder="VD: Nguyễn Văn An"
+                        placeholder={t('users.onboard.fullname_placeholder', 'VD: Nguyễn Văn An')}
                         value={formData.fullName}
                         onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                         className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
@@ -226,12 +229,12 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
 
                     <div>
                       <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        Email công vụ <span className="text-rose-500">*</span>
+                        {t('users.onboard.email', 'Email công vụ')} <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="email"
                         required
-                        placeholder="VD: an.nguyen@abc.com"
+                        placeholder={t('users.onboard.email_placeholder', 'VD: an.nguyen@abc.com')}
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
@@ -240,7 +243,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
 
                     <div>
                       <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        Công ty thành viên
+                        {t('users.onboard.company', 'Công ty thành viên')}
                       </label>
                       <select
                         value={formData.companyName}
@@ -257,11 +260,11 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
 
                     <div>
                       <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        Phòng ban / Bộ phận
+                        {t('users.onboard.department', 'Phòng ban / Bộ phận')}
                       </label>
                       <input
                         type="text"
-                        placeholder="VD: Khối Kinh Doanh, IT..."
+                        placeholder={t('users.onboard.department_placeholder', 'VD: Khối Kinh Doanh, IT...')}
                         value={formData.department}
                         onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                         className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none"
@@ -270,11 +273,11 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
 
                     <div>
                       <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        Chức vụ / Vị trí
+                        {t('users.onboard.position', 'Chức vụ / Vị trí')}
                       </label>
                       <input
                         type="text"
-                        placeholder="VD: Chuyên viên Kinh doanh"
+                        placeholder={t('users.onboard.position_placeholder', 'VD: Chuyên viên Kinh doanh')}
                         value={formData.position}
                         onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                         className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none"
@@ -283,7 +286,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
 
                     <div>
                       <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        Chi nhánh / Vị trí làm việc
+                        {t('users.onboard.location', 'Chi nhánh / Vị trí làm việc')}
                       </label>
                       <select
                         value={formData.locationId}
@@ -305,7 +308,10 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-400 flex items-center gap-1.5">
                       <Laptop className="w-4 h-4 text-blue-600" />
-                      <span>2. Cấp Phát Combo Thiết Bị Làm Việc ({selectedAssetIds.length} máy đã chọn)</span>
+                      <span>
+                        {t('users.onboard.step2_title', '2. Cấp Phát Combo Thiết Bị Làm Việc ({count} máy đã chọn)')
+                          .replace('{count}', String(selectedAssetIds.length))}
+                      </span>
                     </span>
                   </div>
 
@@ -313,7 +319,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                   {selectedAssetIds.length > 0 && (
                     <div className="space-y-1.5 p-3 bg-blue-50/50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800">
                       <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase block">
-                        Danh sách thiết bị sẽ xuất kho bàn giao:
+                        {t('users.onboard.selected_assets_heading', 'Danh sách thiết bị sẽ xuất kho bàn giao:')}
                       </span>
                       {selectedAssetIds.map((id) => {
                         const item = availableAssets.find((a) => a.id === id);
@@ -338,7 +344,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                               type="button"
                               onClick={() => handleRemoveAsset(id)}
                               className="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 cursor-pointer"
-                              title="Bỏ thiết bị này"
+                              title={t('users.onboard.remove_asset_tip', 'Bỏ thiết bị này')}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -354,7 +360,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                       <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
-                        placeholder="Tìm kiếm máy tính, màn hình có sẵn trong kho theo tên, tag, serial..."
+                        placeholder={t('users.onboard.search_assets_placeholder', 'Tìm kiếm máy tính, màn hình có sẵn trong kho theo tên, tag, serial...')}
                         value={assetSearch}
                         onChange={(e) => setAssetSearch(e.target.value)}
                         className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
@@ -364,7 +370,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                     <div className="max-h-36 overflow-y-auto space-y-1 border border-slate-200 dark:border-slate-800 rounded-xl p-2 bg-slate-50/50 dark:bg-slate-800/30">
                       {filteredAvailableAssets.length === 0 ? (
                         <p className="text-[11px] text-slate-400 italic p-2 text-center">
-                          Không còn thiết bị phù hợp trong kho sẵn sàng.
+                          {t('users.onboard.no_assets_available', 'Không còn thiết bị phù hợp trong kho sẵn sàng.')}
                         </p>
                       ) : (
                         filteredAvailableAssets.slice(0, 10).map((asset) => (
@@ -389,7 +395,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                               className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer"
                             >
                               <Plus className="w-3 h-3" />
-                              <span>Chọn</span>
+                              <span>{t('users.onboard.btn_select', 'Chọn')}</span>
                             </button>
                           </div>
                         ))
@@ -402,7 +408,10 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                 <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <span className="text-xs font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-400 flex items-center gap-1.5">
                     <Key className="w-4 h-4 text-purple-600" />
-                    <span>3. Cấp Phát Bản Quyền Phần Mềm Khởi Tạo ({selectedLicenseIds.length} gói đã chọn)</span>
+                    <span>
+                      {t('users.onboard.step3_title', '3. Cấp Phát Bản Quyền Phần Mềm Khởi Tạo ({count} gói đã chọn)')
+                        .replace('{count}', String(selectedLicenseIds.length))}
+                    </span>
                   </span>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -427,8 +436,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                             <div className="min-w-0">
                               <span className="font-bold text-xs truncate block">{lic.name}</span>
                               <span className="text-[10px] text-slate-400">
-                                {lic.licenseType || 'SUBSCRIPTION'} • Ghế trống:{' '}
-                                {Math.max(0, (lic.totalSeats || 1) - (lic.usedSeats || 0))}
+                                {lic.licenseType || 'SUBSCRIPTION'} • {t('users.onboard.available_seats', 'Ghế trống: {seats}').replace('{seats}', String(Math.max(0, (lic.totalSeats || 1) - (lic.usedSeats || 0))))}
                               </span>
                             </div>
                           </div>
@@ -445,7 +453,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
           {!completedData && (
             <div className="flex items-center justify-between px-6 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 shrink-0">
               <span className="text-[11px] text-slate-400">
-                Sau khi bấm tiếp nhận, bạn có thể in ngay Biên bản bàn giao.
+                {t('users.onboard.footer_tip', 'Sau khi bấm tiếp nhận, bạn có thể in ngay Biên bản bàn giao.')}
               </span>
 
               <div className="flex items-center gap-2">
@@ -455,7 +463,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                   onClick={onClose}
                   className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 cursor-pointer"
                 >
-                  Hủy
+                  {t('users.onboard.cancel', 'Hủy')}
                 </button>
                 <button
                   type="submit"
@@ -464,7 +472,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                   className="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>🚀</span>}
-                  <span>{submitting ? 'Đang Tiếp Nhận...' : 'Tiếp Nhận & Cấp Phát Ngay'}</span>
+                  <span>{submitting ? t('users.onboard.submitting', 'Đang Tiếp Nhận...') : t('users.onboard.submit_btn', 'Tiếp Nhận & Cấp Phát Ngay')}</span>
                 </button>
               </div>
             </div>

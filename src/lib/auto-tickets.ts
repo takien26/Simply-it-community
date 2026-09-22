@@ -1,6 +1,7 @@
 import { prisma } from './db';
 import { TicketCategory, TicketPriority } from '@prisma/client';
 import { sendEmail } from './email';
+import { generateNextTicketNumber } from './ticket-sequence';
 
 let lastSyncTime = 0;
 const SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 phút
@@ -67,8 +68,7 @@ export async function syncExpiryTickets(force = false): Promise<{ createdCount: 
       });
 
       if (!existingTicket) {
-        const totalTickets = await prisma.ticket.count();
-        const ticketNumber = `TK-${currentYear}-${String(totalTickets + 1).padStart(4, '0')}`;
+        const ticketNumber = await generateNextTicketNumber(currentYear);
 
         const priority: TicketPriority = isOverdue || daysLeft <= 7 ? 'URGENT' : 'HIGH';
         const formattedDate = new Date(lic.expiryDate).toLocaleDateString('vi-VN');
@@ -152,8 +152,7 @@ ${lic.notes ? `- Ghi chú: ${lic.notes}` : ''}
       });
 
       if (!existingTicket) {
-        const totalTickets = await prisma.ticket.count();
-        const ticketNumber = `TK-${currentYear}-${String(totalTickets + 1).padStart(4, '0')}`;
+        const ticketNumber = await generateNextTicketNumber(currentYear);
 
         const priority: TicketPriority = isOverdue || daysLeft <= 7 ? 'URGENT' : 'HIGH';
         const formattedDate = new Date(svc.renewalDate).toLocaleDateString('vi-VN');

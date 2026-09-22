@@ -4,6 +4,7 @@ import { hasPermission } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
 import { LicenseType, LicenseStatus } from '@prisma/client';
+import { normalizeCompanyName } from '@/lib/normalize';
 
 // GET /api/licenses
 export async function GET(request: NextRequest) {
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     if (status) where.status = status;
     if (licenseType) where.licenseType = licenseType;
     if (vendorId) where.vendorId = vendorId;
-    if (companyName) where.companyName = companyName;
+    if (companyName) where.companyName = { equals: companyName, mode: 'insensitive' };
 
     const [licenses, total] = await Promise.all([
       prisma.license.findMany({
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
               assignments: {
                 where: { revokedAt: null },
                 include: {
-                  user: { select: { id: true, fullName: true, email: true, department: true, companyName: true } },
+                  user: { select: { id: true, fullName: true, email: true, department: true, companyName: true, isActive: true } },
                   asset: { select: { id: true, assetTag: true, name: true, companyName: true } },
                 },
               },
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
           assignments: {
             where: { revokedAt: null },
             include: {
-              user: { select: { id: true, fullName: true, email: true, department: true, companyName: true } },
+              user: { select: { id: true, fullName: true, email: true, department: true, companyName: true, isActive: true } },
               asset: { select: { id: true, assetTag: true, name: true, companyName: true } },
             },
           },
@@ -203,7 +204,7 @@ export async function POST(request: NextRequest) {
         purchasePrice: purchasePrice ? Number(purchasePrice) : null,
         purchaseCurrency: body.purchaseCurrency || 'VND',
         vendorId: vendorId || null,
-        companyName: companyName || null,
+        companyName: companyName ? normalizeCompanyName(companyName) : null,
         contractNumber: contractNumber || null,
         invoiceNumber: invoiceNumber || null,
         contractUrl: contractUrl || null,

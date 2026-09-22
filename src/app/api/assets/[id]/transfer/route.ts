@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
+import { normalizeCompanyName } from '@/lib/normalize';
 
 // GET /api/assets/[id]/transfer - Get assignment history and current active assignment
 export async function GET(
@@ -149,7 +150,7 @@ export async function POST(
         status: newStatus as any,
         condition: condition || asset.condition,
         locationId: locationId !== undefined ? (locationId || null) : asset.locationId,
-        companyName: companyName !== undefined ? (companyName || null) : asset.companyName,
+        companyName: companyName !== undefined ? (companyName ? normalizeCompanyName(companyName) : null) : asset.companyName,
       },
       include: {
         location: true,

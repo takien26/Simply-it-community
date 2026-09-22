@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { RotateCcw, X, Check, Loader2, Trash2 } from 'lucide-react';
 import { triggerDataRefresh, invalidateClientCache } from '@/lib/client-cache';
+import { useLanguage } from '@/lib/i18n/context';
 
 export interface TrashUndoToastDetail {
   name: string;
@@ -19,6 +20,9 @@ export function showTrashUndoToast(detail: TrashUndoToastDetail) {
 }
 
 export function TrashUndoToast() {
+  const { language } = useLanguage();
+  const isEn = language === 'en';
+
   const [current, setCurrent] = useState<TrashUndoToastDetail | null>(null);
   const [isUndoing, setIsUndoing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -85,11 +89,11 @@ export function TrashUndoToast() {
           setIsSuccess(false);
         }, 1200);
       } else {
-        alert(data.error || 'Khôi phục không thành công');
+        alert(data.error || (isEn ? 'Restore failed' : 'Khôi phục không thành công'));
         setIsUndoing(false);
       }
     } catch {
-      alert('Lỗi kết nối khi hoàn tác');
+      alert(isEn ? 'Connection error during undo' : 'Lỗi kết nối khi hoàn tác');
       setIsUndoing(false);
     }
   };
@@ -125,17 +129,19 @@ export function TrashUndoToast() {
         <div className="min-w-0 flex-1">
           {isSuccess ? (
             <div>
-              <p className="text-xs font-bold text-emerald-400">Khôi phục thành công!</p>
+              <p className="text-xs font-bold text-emerald-400">
+                {isEn ? 'Restored successfully!' : 'Khôi phục thành công!'}
+              </p>
               <p className="text-[11px] text-slate-300 truncate">
-                Đã phục hồi &quot;{current.name}&quot; về hệ thống.
+                {isEn ? `Restored "${current.name}" back to system.` : `Đã phục hồi "${current.name}" về hệ thống.`}
               </p>
             </div>
           ) : (
             <div>
               <p className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
-                <span>Đã chuyển vào Thùng rác</span>
+                <span>{isEn ? 'Moved to Trash' : 'Đã chuyển vào Thùng rác'}</span>
                 <span className="text-[10px] px-1.5 py-0.2 bg-slate-800 text-slate-300 rounded font-semibold">
-                  Lưu {current.retentionDays || 30} ngày
+                  {isEn ? `Kept for ${current.retentionDays || 30} days` : `Lưu ${current.retentionDays || 30} ngày`}
                 </span>
               </p>
               <p className="text-xs font-bold text-white truncate mt-0.5" title={current.name}>
@@ -158,7 +164,7 @@ export function TrashUndoToast() {
             ) : (
               <RotateCcw className="w-3.5 h-3.5" />
             )}
-            <span>{isUndoing ? 'Đang hoàn...' : 'Hoàn tác'}</span>
+            <span>{isUndoing ? (isEn ? 'Restoring...' : 'Đang hoàn...') : (isEn ? 'Undo' : 'Hoàn tác')}</span>
           </button>
         )}
 

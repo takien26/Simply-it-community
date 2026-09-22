@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { formatPrice } from './types';
 import ExcelJS from 'exceljs';
+import { useLanguage } from '@/lib/i18n/context';
 
 interface CrossCompanyMatrixProps {
   licenses: any[];
@@ -32,6 +33,8 @@ export function CrossCompanyMatrix({
   selectedCurrency = 'VND',
   isEn = false,
 }: CrossCompanyMatrixProps) {
+  const { t, language, isEn: ctxIsEn, isJa } = useLanguage();
+  const effectiveIsEn = isEn || ctxIsEn;
   const [selectedSoftwareFilter, setSelectedSoftwareFilter] = useState<string>('ALL');
 
   // 1. Chuẩn hóa danh sách các công ty (bao gồm từ settings và từ dữ liệu license/user)
@@ -116,7 +119,7 @@ export function CrossCompanyMatrix({
     });
 
     filteredLicenses.forEach((lic) => {
-      const comp = lic.companyName?.trim() || 'Chưa phân công ty';
+      const comp = lic.companyName?.trim() || t('licenses.matrix.unassigned_company', 'Chưa phân công ty');
       if (!buyerStats.has(comp)) {
         buyerStats.set(comp, { totalPurchased: 0, totalCost: 0, avgUnitPrice: 0, licenseCount: 0 });
       }
@@ -152,14 +155,14 @@ export function CrossCompanyMatrix({
     });
 
     filteredLicenses.forEach((lic) => {
-      const buyerComp = lic.companyName?.trim() || 'Chưa phân công ty';
+      const buyerComp = lic.companyName?.trim() || t('licenses.matrix.unassigned_company', 'Chưa phân công ty');
       const assignments = Array.isArray(lic.assignments) ? lic.assignments : [];
       const unitPrice = (Number(lic.purchasePrice) || 0) / (Number(lic.totalSeats) || 1);
 
       assignments.forEach((asg: any) => {
         if (asg.revokedAt) return;
         const userObj = asg.userId ? userMap.get(asg.userId) : null;
-        const userComp = userObj?.companyName?.trim() || userObj?.company?.trim() || 'Không rõ đơn vị';
+        const userComp = userObj?.companyName?.trim() || userObj?.company?.trim() || t('licenses.matrix.unknown_company', 'Không rõ đơn vị');
 
         if (!matrix[userComp]) {
           matrix[userComp] = {};
@@ -174,7 +177,7 @@ export function CrossCompanyMatrix({
         matrix[userComp][buyerComp] += 1;
 
         userDetailList.push({
-          userName: userObj?.name || asg.user?.name || 'Nhân sự',
+          userName: userObj?.name || asg.user?.name || t('licenses.matrix.default_user', 'Nhân sự'),
           userEmail: userObj?.email || asg.user?.email || '—',
           userCompany: userComp,
           buyerCompany: buyerComp,
@@ -262,21 +265,21 @@ export function CrossCompanyMatrix({
       wb.creator = 'Simply IT SAM Engine';
 
       // Sheet 1: Bảng Cân Đối Bù Trừ
-      const ws1 = wb.addWorksheet('Quyết Toán Bù Trừ');
+      const ws1 = wb.addWorksheet(t('licenses.matrix.excel_sheet_settlement', 'Quyết Toán Bù Trừ'));
       ws1.columns = [
         { header: 'STT', key: 'stt', width: 6 },
-        { header: 'Công Ty Thành Viên', key: 'company', width: 30 },
-        { header: 'Số Ghế Mua', key: 'purchased', width: 15 },
-        { header: 'Thực Dùng', key: 'used', width: 15 },
-        { header: 'Tự Dùng', key: 'self', width: 15 },
-        { header: 'Đi Mượn', key: 'borrowed', width: 15 },
-        { header: 'Cho Mượn', key: 'lent', width: 15 },
-        { header: 'Cân Đối Ghế', key: 'balance', width: 16 },
-        { header: 'Trạng Thái Hạn Mức', key: 'status', width: 22 },
-        { header: 'Đơn Giá Bình Quân', key: 'avgPrice', width: 20 },
-        { header: 'Tiền Thu Về (Cho Mượn)', key: 'lentRevenue', width: 24 },
-        { header: 'Tiền Phải Trả (Đi Mượn)', key: 'borrowedCost', width: 24 },
-        { header: 'Quyết Toán Bù Trừ Ròng', key: 'net', width: 25 },
+        { header: t('licenses.matrix.col_company', 'Công Ty Thành Viên'), key: 'company', width: 30 },
+        { header: t('licenses.matrix.col_purchased', 'Số Ghế Mua'), key: 'purchased', width: 15 },
+        { header: t('licenses.matrix.col_used', 'Thực Dùng'), key: 'used', width: 15 },
+        { header: t('licenses.matrix.col_self', 'Tự Dùng'), key: 'self', width: 15 },
+        { header: t('licenses.matrix.col_borrowed', 'Đi Mượn'), key: 'borrowed', width: 15 },
+        { header: t('licenses.matrix.col_lent', 'Cho Mượn'), key: 'lent', width: 15 },
+        { header: t('licenses.matrix.col_balance', 'Cân Đối Ghế'), key: 'balance', width: 16 },
+        { header: t('licenses.matrix.col_status', 'Trạng Thái Hạn Mức'), key: 'status', width: 22 },
+        { header: t('licenses.matrix.col_avg_price', 'Đơn Giá Bình Quân'), key: 'avgPrice', width: 20 },
+        { header: t('licenses.matrix.col_lent_revenue', 'Tiền Thu Về (Cho Mượn)'), key: 'lentRevenue', width: 24 },
+        { header: t('licenses.matrix.col_borrowed_cost', 'Tiền Phải Trả (Đi Mượn)'), key: 'borrowedCost', width: 24 },
+        { header: t('licenses.matrix.col_net', 'Quyết Toán Bù Trừ Ròng'), key: 'net', width: 25 },
       ];
       ws1.getRow(1).font = { bold: true };
 
@@ -290,7 +293,7 @@ export function CrossCompanyMatrix({
           borrowed: c.borrowedFromOthers,
           lent: c.lentToOthers,
           balance: c.balanceSeats > 0 ? `+${c.balanceSeats}` : c.balanceSeats,
-          status: c.balanceSeats > 0 ? 'Dư hạn mức' : c.balanceSeats < 0 ? 'Dùng quá quota' : 'Cân bằng',
+          status: c.balanceSeats > 0 ? t('licenses.matrix.status_surplus', 'Dư hạn mức') : c.balanceSeats < 0 ? t('licenses.matrix.status_deficit', 'Dùng quá quota') : t('licenses.matrix.status_balanced', 'Cân bằng'),
           avgPrice: Math.round(c.avgUnitPrice),
           lentRevenue: Math.round(c.lentRevenue),
           borrowedCost: Math.round(c.borrowedCost),
@@ -299,8 +302,8 @@ export function CrossCompanyMatrix({
       });
 
       // Sheet 2: Ma trận 2D Cung - Cầu
-      const ws2 = wb.addWorksheet('Ma Trận 2D Cung Cầu');
-      const headerRow2 = ['Công Ty Dùng \\ Công Ty Mua', ...allCompanyNames, 'Tổng Dùng'];
+      const ws2 = wb.addWorksheet(t('licenses.matrix.excel_sheet_2d', 'Ma Trận 2D Cung Cầu'));
+      const headerRow2 = [t('licenses.matrix.col_user_buyer', 'Công Ty Dùng \\ Công Ty Mua'), ...allCompanyNames, t('licenses.matrix.col_total_used', 'Tổng Dùng')];
       ws2.addRow(headerRow2);
       ws2.getRow(1).font = { bold: true };
 
@@ -317,15 +320,15 @@ export function CrossCompanyMatrix({
       });
 
       // Sheet 3: Danh sách chi tiết nhân sự
-      const ws3 = wb.addWorksheet('Danh Sách Gán Chi Tiết');
+      const ws3 = wb.addWorksheet(t('licenses.matrix.excel_sheet_users', 'Danh Sách Gán Chi Tiết'));
       ws3.columns = [
         { header: 'STT', key: 'stt', width: 6 },
-        { header: 'Họ Và Tên', key: 'name', width: 24 },
+        { header: t('licenses.matrix.col_user_name', 'Họ Và Tên'), key: 'name', width: 24 },
         { header: 'Email', key: 'email', width: 28 },
-        { header: 'Công Ty Nhân Sự', key: 'userComp', width: 28 },
-        { header: 'Công Ty Chi Trả License', key: 'buyerComp', width: 28 },
-        { header: 'Tên Phần Mềm', key: 'licenseName', width: 32 },
-        { header: 'Phân Loại Cấp Phát', key: 'type', width: 25 },
+        { header: t('licenses.matrix.col_user_comp', 'Công Ty Nhân Sự'), key: 'userComp', width: 28 },
+        { header: t('licenses.matrix.col_buyer_comp', 'Công Ty Chi Trả License'), key: 'buyerComp', width: 28 },
+        { header: t('licenses.matrix.col_lic_name', 'Tên Phần Mềm'), key: 'licenseName', width: 32 },
+        { header: t('licenses.matrix.col_assignment_type', 'Phân Loại Cấp Phát'), key: 'type', width: 25 },
       ];
       ws3.getRow(1).font = { bold: true };
 
@@ -337,7 +340,7 @@ export function CrossCompanyMatrix({
           userComp: u.userCompany,
           buyerComp: u.buyerCompany,
           licenseName: u.licenseName,
-          type: u.isCrossAssigned ? 'Cấp phát chéo (Mượn hạn mức)' : 'Nội bộ công ty',
+          type: u.isCrossAssigned ? t('licenses.matrix.legend_cross', 'Cấp phát chéo (Mượn hạn mức)') : t('licenses.matrix.legend_self', 'Nội bộ công ty'),
         });
       });
 
@@ -353,7 +356,7 @@ export function CrossCompanyMatrix({
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Lỗi khi xuất file Excel:', err);
-      alert('Không thể xuất file Excel. Vui lòng thử lại!');
+      alert(t('licenses.matrix.excel_err', 'Không thể xuất file Excel. Vui lòng thử lại!'));
     }
   };
 
@@ -365,15 +368,13 @@ export function CrossCompanyMatrix({
           <div className="space-y-1.5 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold uppercase tracking-wider">
               <ArrowRightLeft className="w-3.5 h-3.5" />
-              <span>{isEn ? 'Cross-Company Chargeback Engine' : 'Động Cơ Quyết Toán Bù Trừ Tập Đoàn'}</span>
+              <span>{t('licenses.matrix.badge', 'Động Cơ Quyết Toán Bù Trừ Tập Đoàn')}</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
-              <span>{isEn ? 'License Allocation & Settlement Matrix' : 'Ma Trận Phân Bổ & Quyết Toán Bù Trừ Bản Quyền'}</span>
+              <span>{t('licenses.matrix.title', 'Ma Trận Phân Bổ & Quyết Toán Bù Trừ Bản Quyền')}</span>
             </h2>
             <p className="text-xs sm:text-sm text-indigo-200/80 leading-relaxed">
-              {isEn
-                ? 'Track inter-company seat borrowing and lending across subsidiaries. Automatically compute cross-charge amounts for accounting reconciliation.'
-                : 'Giám sát việc mượn - cho mượn hạn mức license giữa các công ty con trong tập đoàn. Tự động tính toán số tiền bù trừ nội bộ phục vụ hạch toán kế toán cuối kỳ.'}
+              {t('licenses.matrix.subtitle', 'Giám sát việc mượn - cho mượn hạn mức license giữa các công ty con trong tập đoàn. Tự động tính toán số tiền bù trừ nội bộ phục vụ hạch toán kế toán cuối kỳ.')}
             </p>
           </div>
 
@@ -386,7 +387,7 @@ export function CrossCompanyMatrix({
                 className="appearance-none bg-white/10 hover:bg-white/15 border border-white/20 text-white text-xs font-bold py-2.5 pl-4 pr-9 rounded-2xl outline-none transition-all cursor-pointer backdrop-blur-md"
               >
                 <option value="ALL" className="text-slate-900 font-semibold">
-                  {isEn ? '🌟 All Software Products' : '🌟 Tất Cả Phần Mềm'}
+                  {t('licenses.matrix.all_software', '🌟 Tất Cả Phần Mềm')}
                 </option>
                 {uniqueSoftwareNames.map((name) => (
                   <option key={name} value={name} className="text-slate-900 font-semibold">
@@ -404,7 +405,7 @@ export function CrossCompanyMatrix({
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-950/40 transition-all cursor-pointer hover:scale-102 active:scale-98"
             >
               <FileSpreadsheet className="w-4 h-4" />
-              <span>{isEn ? 'Export Settlement Excel' : 'Xuất Excel Quyết Toán'}</span>
+              <span>{t('licenses.matrix.export_btn', 'Xuất Excel Quyết Toán')}</span>
             </button>
           </div>
         </div>
@@ -418,11 +419,13 @@ export function CrossCompanyMatrix({
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              {isEn ? 'Total Purchased' : 'Tổng Mua Toàn Tập Đoàn'}
+              {t('licenses.matrix.kpi_purchased', 'Tổng Mua Toàn Tập Đoàn')}
             </p>
             <h3 className="text-xl font-black text-slate-900 dark:text-white mt-0.5">
               {matrixData.kpis.totalPurchased.toLocaleString()}{' '}
-              <span className="text-xs font-semibold text-slate-400">ghế</span>
+              <span className="text-xs font-semibold text-slate-400">
+                {t('licenses.matrix.seats_unit', 'ghế')}
+              </span>
             </h3>
           </div>
         </div>
@@ -433,7 +436,7 @@ export function CrossCompanyMatrix({
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              {isEn ? 'Actual In Use' : 'Thực Tế Đang Dùng'}
+              {t('licenses.matrix.kpi_in_use', 'Thực Tế Đang Dùng')}
             </p>
             <h3 className="text-xl font-black text-slate-900 dark:text-white mt-0.5">
               {matrixData.kpis.totalUsed.toLocaleString()}{' '}
@@ -450,11 +453,13 @@ export function CrossCompanyMatrix({
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              {isEn ? 'Cross-Company Seats' : 'Ghế Cấp Phát Chéo'}
+              {t('licenses.matrix.kpi_cross', 'Ghế Cấp Phát Chéo')}
             </p>
             <h3 className="text-xl font-black text-amber-600 mt-0.5">
               {matrixData.kpis.totalCrossAssigned.toLocaleString()}{' '}
-              <span className="text-xs font-semibold text-slate-400">ghế mượn</span>
+              <span className="text-xs font-semibold text-slate-400">
+                {t('licenses.matrix.borrowed_seats_unit', 'ghế mượn')}
+              </span>
             </h3>
           </div>
         </div>
@@ -465,7 +470,7 @@ export function CrossCompanyMatrix({
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              {isEn ? 'Settlement Volume' : 'Quy Mô Tiền Quyết Toán'}
+              {t('licenses.matrix.kpi_settlement', 'Quy Mô Tiền Quyết Toán')}
             </p>
             <h3 className="text-lg font-black text-emerald-600 mt-0.5">
               {formatPrice(matrixData.kpis.totalChargebackVolume, selectedCurrency)}
@@ -480,16 +485,14 @@ export function CrossCompanyMatrix({
           <div>
             <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-emerald-600" />
-              <span>{isEn ? 'Cross-Company Chargeback Settlement Table' : 'Bảng Quyết Toán Bù Trừ Chi Phí Giữa Các Công Ty'}</span>
+              <span>{t('licenses.matrix.table_title', 'Bảng Quyết Toán Bù Trừ Chi Phí Giữa Các Công Ty')}</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              {isEn
-                ? 'Clear financial balance of who owes whom based on unit contract cost.'
-                : 'Đối chiếu số lượng ghế mua vs thực dùng và quy đổi số tiền phải trả hoặc thu về giữa các pháp nhân.'}
+              {t('licenses.matrix.table_desc', 'Đối chiếu số lượng ghế mua vs thực dùng và quy đổi số tiền phải trả hoặc thu về giữa các pháp nhân.')}
             </p>
           </div>
           <span className="text-[11px] px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold self-start sm:self-auto">
-            {matrixData.companyBalances.length} đơn vị thành viên
+            {t('licenses.matrix.entities_count', '{count} đơn vị thành viên').replace('{count}', String(matrixData.companyBalances.length))}
           </span>
         </div>
 
@@ -497,15 +500,15 @@ export function CrossCompanyMatrix({
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 uppercase tracking-wider text-[10px] font-black border-b border-slate-100 dark:border-slate-800">
               <tr>
-                <th className="py-3 px-4">{isEn ? 'Company / Entity' : 'Công Ty Thành Viên'}</th>
-                <th className="py-3 px-3 text-center">{isEn ? 'Purchased' : 'Số Mua'}</th>
-                <th className="py-3 px-3 text-center">{isEn ? 'In Use' : 'Thực Dùng'}</th>
-                <th className="py-3 px-3 text-center">{isEn ? 'Self Use' : 'Tự Dùng'}</th>
-                <th className="py-3 px-3 text-center">{isEn ? 'Borrowed' : 'Đi Mượn'}</th>
-                <th className="py-3 px-3 text-center">{isEn ? 'Lent Out' : 'Cho Mượn'}</th>
-                <th className="py-3 px-3 text-center">{isEn ? 'Net Seats' : 'Cân Đối Ghế'}</th>
-                <th className="py-3 px-4 text-right">{isEn ? 'Net Settlement' : 'Tiền Bù Trừ Ròng'}</th>
-                <th className="py-3 px-4 text-center">{isEn ? 'Status' : 'Trạng Thái'}</th>
+                <th className="py-3 px-4">{t('licenses.matrix.col_company', 'Công Ty Thành Viên')}</th>
+                <th className="py-3 px-3 text-center">{t('licenses.matrix.col_purchased', 'Số Mua')}</th>
+                <th className="py-3 px-3 text-center">{t('licenses.matrix.col_used', 'Thực Dùng')}</th>
+                <th className="py-3 px-3 text-center">{t('licenses.matrix.col_self', 'Tự Dùng')}</th>
+                <th className="py-3 px-3 text-center">{t('licenses.matrix.col_borrowed', 'Đi Mượn')}</th>
+                <th className="py-3 px-3 text-center">{t('licenses.matrix.col_lent', 'Cho Mượn')}</th>
+                <th className="py-3 px-3 text-center">{t('licenses.matrix.col_balance', 'Cân Đối Ghế')}</th>
+                <th className="py-3 px-4 text-right">{t('licenses.matrix.col_net', 'Tiền Bù Trừ Ròng')}</th>
+                <th className="py-3 px-4 text-center">{t('licenses.matrix.col_status', 'Trạng Thái')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -526,7 +529,7 @@ export function CrossCompanyMatrix({
                         <div>
                           <p className="font-bold text-slate-900 dark:text-white">{c.companyName}</p>
                           <p className="text-[10px] text-slate-400">
-                            Đơn giá mua TB: {c.avgUnitPrice > 0 ? formatPrice(c.avgUnitPrice, selectedCurrency) : '—'}
+                            {t('licenses.matrix.avg_price', 'Đơn giá mua TB: {price}').replace('{price}', c.avgUnitPrice > 0 ? formatPrice(c.avgUnitPrice, selectedCurrency) : '—')}
                           </p>
                         </div>
                       </div>
@@ -604,16 +607,16 @@ export function CrossCompanyMatrix({
                       {isSurplus ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-full">
                           <CheckCircle2 className="w-3 h-3" />
-                          <span>{isEn ? 'Surplus / Lent' : 'Dư hạn mức'}</span>
+                          <span>{t('licenses.matrix.status_surplus', 'Dư hạn mức')}</span>
                         </span>
                       ) : isDeficit ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 px-2.5 py-1 rounded-full">
                           <AlertTriangle className="w-3 h-3" />
-                          <span>{isEn ? 'Deficit / Owes' : 'Dùng quá quota'}</span>
+                          <span>{t('licenses.matrix.status_deficit', 'Dùng quá quota')}</span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
-                          <span>{isEn ? 'Balanced' : 'Cân bằng'}</span>
+                          <span>{t('licenses.matrix.status_balanced', 'Cân bằng')}</span>
                         </span>
                       )}
                     </td>
@@ -631,22 +634,20 @@ export function CrossCompanyMatrix({
           <div>
             <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
               <Layers className="w-4 h-4 text-indigo-600" />
-              <span>{isEn ? '2D Cross-Allocation Matrix (Supply vs Demand)' : 'Ma Trận 2 Chiều Cung - Cầu Giữa Các Công Ty'}</span>
+              <span>{t('licenses.matrix.matrix_2d_title', 'Ma Trận 2 Chiều Cung - Cầu Giữa Các Công Ty')}</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              {isEn
-                ? 'Rows = Company of the User in use. Columns = Company that paid for the license.'
-                : 'Hàng ngang = Công ty của nhân viên đang sử dụng. Cột dọc = Công ty đã bỏ tiền mua license.'}
+              {t('licenses.matrix.matrix_2d_desc', 'Hàng ngang = Công ty của nhân viên đang sử dụng. Cột dọc = Công ty đã bỏ tiền mua license.')}
             </p>
           </div>
           <div className="flex items-center gap-3 text-[11px] font-semibold text-slate-500">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
-              <span>Tự dùng</span>
+              <span>{t('licenses.matrix.legend_self', 'Tự dùng')}</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
-              <span>Cấp phát chéo</span>
+              <span>{t('licenses.matrix.legend_cross', 'Cấp phát chéo')}</span>
             </span>
           </div>
         </div>
@@ -656,7 +657,7 @@ export function CrossCompanyMatrix({
             <thead className="bg-slate-100/70 dark:bg-slate-800/80 text-slate-500 uppercase tracking-wider text-[10.5px] font-black border-b border-slate-200 dark:border-slate-700">
               <tr>
                 <th className="py-3.5 px-4 text-left min-w-[200px]">
-                  {isEn ? 'User Company ↓ \\ Buyer Company →' : 'Công Ty Dùng ↓ \\ Công Ty Mua →'}
+                  {t('licenses.matrix.col_user_buyer', 'Công Ty Dùng ↓ \\ Công Ty Mua →')}
                 </th>
                 {allCompanyNames.map((buyerComp) => (
                   <th key={buyerComp} className="py-3.5 px-3 min-w-[120px]">
@@ -666,7 +667,7 @@ export function CrossCompanyMatrix({
                   </th>
                 ))}
                 <th className="py-3.5 px-4 bg-slate-200/50 dark:bg-slate-800 font-black text-slate-900 dark:text-white">
-                  {isEn ? 'Total Used' : 'Tổng Dùng'}
+                  {t('licenses.matrix.col_total_used', 'Tổng Dùng')}
                 </th>
               </tr>
             </thead>
@@ -700,8 +701,11 @@ export function CrossCompanyMatrix({
                               }`}
                               title={
                                 isCross
-                                  ? `${count} nhân sự thuộc ${userComp} đang dùng hạn mức của ${buyerComp}`
-                                  : `${count} ghế nội bộ`
+                                  ? t('licenses.matrix.cross_tooltip', '{count} nhân sự thuộc {userComp} đang dùng hạn mức của {buyerComp}')
+                                      .replace('{count}', String(count))
+                                      .replace('{userComp}', userComp)
+                                      .replace('{buyerComp}', buyerComp)
+                                  : t('licenses.matrix.self_tooltip', '{count} ghế nội bộ').replace('{count}', String(count))
                               }
                             >
                               {count}

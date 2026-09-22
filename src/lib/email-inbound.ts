@@ -14,6 +14,7 @@ import { sendEmail } from './email';
 import { broadcastRealtimeEvent } from './realtime';
 import { TicketCategory, TicketPriority } from '@prisma/client';
 import { getActiveLicense } from './license';
+import { generateNextTicketNumber } from './ticket-sequence';
 
 export interface ImapConfig {
   host: string;
@@ -605,8 +606,7 @@ export async function processInboundEmails(customConfig?: Partial<ImapConfig>): 
           const { category, priority } = inferCategoryAndPriority(subject, cleanBody, config.defaultCategory, config.defaultPriority);
 
           const currentYear = new Date().getFullYear();
-          const count = await prisma.ticket.count();
-          const ticketNumber = `TK-${currentYear}-${String(count + 1).padStart(4, '0')}`;
+          const ticketNumber = await generateNextTicketNumber(currentYear);
 
           // SLA calculation (Urgent 4h, High 8h, Medium 24h, Low 48h)
           const hoursMap: Record<string, number> = { URGENT: 4, HIGH: 8, MEDIUM: 24, LOW: 48 };

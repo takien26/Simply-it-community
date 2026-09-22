@@ -239,7 +239,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'dashboard.view',
     'dashboard.export',
     'portal.view',
-    'kb.view', 'kb.create', 'kb.update', 'kb.internal',
+    'kb.view', 'kb.create', 'kb.update', 'kb.delete', 'kb.internal',
     'tickets.view', 'tickets.create', 'tickets.update', 'tickets.assign', 'tickets.sla', 'tickets.reports',
     'approvals.view', 'approvals.create', 'approvals.approve',
     'assets.view', 'assets.create', 'assets.update', 'assets.delete', 'assets.assign', 'assets.import', 'assets.export', 'assets.audit',

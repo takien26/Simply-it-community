@@ -11,6 +11,8 @@ const publicRoutes = [
   '/api/auto-scan',
   '/api/v1/auto-scan',
   '/api/scripts',
+  '/secret',
+  '/api/passwords/share',
 ];
 
 const CRON_SECRET = process.env.CRON_SECRET || 'simply-internal-cron';
@@ -18,12 +20,12 @@ const CRON_SECRET = process.env.CRON_SECRET || 'simply-internal-cron';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Cron routes: require secret header (set by server.js internal calls)
+  // Cron routes: allow if internal cron secret matches, otherwise require session authentication below
   if (pathname.startsWith('/api/cron')) {
-    if (request.headers.get('x-cron-secret') !== CRON_SECRET) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (request.headers.get('x-cron-secret') === CRON_SECRET) {
+      return NextResponse.next();
     }
-    return NextResponse.next();
+    // Fall through to normal auth check below (requires logged-in user)
   }
 
   // Allow public routes

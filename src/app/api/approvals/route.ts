@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { ApprovalStatus, ApprovalType } from '@prisma/client';
 import { sendEmail } from '@/lib/email';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
+import { dispatchWebhookEvent } from '@/lib/webhooks';
 
 // GET /api/approvals
 export async function GET(request: NextRequest) {
@@ -53,10 +54,10 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         requester: {
-          select: { id: true, fullName: true, email: true, department: true, position: true },
+          select: { id: true, fullName: true, email: true, department: true, position: true, managerId: true },
         },
         manager: {
-          select: { id: true, fullName: true, email: true },
+          select: { id: true, fullName: true, email: true, department: true, position: true },
         },
         itApprover: {
           select: { id: true, fullName: true, email: true },
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
       currency,
       quantity,
       managerId,
+      attachments,
     } = body;
 
     if (!title || !type) {
@@ -103,6 +105,11 @@ export async function POST(request: NextRequest) {
 
     // If requester has a direct manager, status is PENDING_MANAGER, otherwise PENDING_IT
     const initialStatus: ApprovalStatus = safeManagerId ? 'PENDING_MANAGER' : 'PENDING_IT';
+
+    const fullDescription =
+      attachments && Array.isArray(attachments) && attachments.length > 0
+        ? `${description || ''}\n\n<!-- ATTACHMENTS_JSON: ${JSON.stringify(attachments)} -->`.trim()
+        : (description || null);
 
     let approval: any = null;
     let attempts = 0;
@@ -121,7 +128,7 @@ export async function POST(request: NextRequest) {
             type,
             status: initialStatus,
             title,
-            description: description || null,
+            description: fullDescription,
             justification: justification || null,
             estimatedCost: estimatedCost && !isNaN(Number(estimatedCost)) ? Number(estimatedCost) : null,
             currency: currency || 'VND',
@@ -180,6 +187,21 @@ export async function POST(request: NextRequest) {
         data: { approvalId: approval.id, code: approval.code },
       });
     }
+
+    // Dispatch Webhook (Telegram, Teams, Slack, etc.)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+    dispatchWebhookEvent('approval.pending', {
+      approvalId: approval.id,
+      code: approval.code,
+      title: approval.title,
+      type: approval.type,
+      requesterName: approval.requester?.fullName || 'Nhân viên',
+      department: (approval.requester as any)?.department || 'N/A',
+      estimatedCost: approval.estimatedCost,
+      currency: approval.currency,
+      justification: approval.justification,
+      link: `${appUrl}/approvals`,
+    }).catch((err) => console.error('[Webhook Approval Pending Error]:', err));
 
     return NextResponse.json({ success: true, approval }, { status: 201 });
   } catch (error: any) {

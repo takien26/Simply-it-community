@@ -16,6 +16,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import * as kdbxweb from 'kdbxweb';
+import { useLanguage } from '@/lib/i18n/context';
 
 interface KeePassImportModalProps {
   isOpen: boolean;
@@ -37,6 +38,8 @@ export function KeePassImportModal({
   onClose,
   onSuccess,
 }: KeePassImportModalProps) {
+  const { t } = useLanguage();
+
   // ESC key listener to close modal
   useEffect(() => {
     if (!isOpen) return;
@@ -108,7 +111,7 @@ export function KeePassImportModal({
   const handleUploadKeePassFile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!importFile) {
-      setImportErrorMsg('Vui lòng chọn file KeePass (.kdbx, .xml, .csv)');
+      setImportErrorMsg(t('passwords.keepass_err_no_file', 'Vui lòng chọn file KeePass (.kdbx, .xml, .csv)'));
       return;
     }
 
@@ -116,7 +119,7 @@ export function KeePassImportModal({
     const isKdbx = fileName.endsWith('.kdbx') || fileName.endsWith('.kbdx');
 
     if (isKdbx && !importMasterPassword && !importKeyFile) {
-      setImportErrorMsg('Vui lòng nhập Mật khẩu Master Password để mở file .kdbx');
+      setImportErrorMsg(t('passwords.keepass_err_no_pwd', 'Vui lòng nhập Mật khẩu Master Password để mở file .kdbx'));
       return;
     }
 
@@ -146,9 +149,9 @@ export function KeePassImportModal({
         } catch (kdbxErr: any) {
           const msg = (kdbxErr.message || '').toLowerCase();
           if (msg.includes('password') || msg.includes('key') || msg.includes('mac') || msg.includes('invalid') || msg.includes('hash')) {
-            throw new Error('Mật khẩu Master Password không chính xác. Vui lòng kiểm tra lại mật khẩu mở file KeePass.');
+            throw new Error(t('passwords.keepass_err_wrong_pwd', 'Mật khẩu Master Password không chính xác. Vui lòng kiểm tra lại mật khẩu mở file KeePass.'));
           }
-          throw new Error('Không thể giải mã file KDBX: ' + (kdbxErr.message || 'Sai mật khẩu hoặc file bị lỗi'));
+          throw new Error(t('passwords.keepass_err_decrypt', 'Không thể giải mã file KDBX: ') + (kdbxErr.message || ''));
         }
 
         const traverseGroup = (group: kdbxweb.KdbxGroup, parentPath: string[] = []) => {
@@ -287,7 +290,7 @@ export function KeePassImportModal({
       }
 
       if (extractedRows.length === 0) {
-        throw new Error('Không tìm thấy tài khoản hợp lệ nào trong file để nhập');
+        throw new Error(t('passwords.keepass_err_empty', 'Không tìm thấy tài khoản hợp lệ nào trong file để nhập'));
       }
 
       // SEND CLEAN EXTRACTED ARRAY TO SERVER IN CHUNKS
@@ -308,7 +311,7 @@ export function KeePassImportModal({
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Lỗi khi lưu dữ liệu lên server');
+          throw new Error(data.error || t('passwords.keepass_err_server', 'Lỗi khi lưu dữ liệu lên server'));
         }
         totalImported += (data.successCount || chunk.length);
         if (Array.isArray(data.groups)) {
@@ -316,7 +319,10 @@ export function KeePassImportModal({
         }
       }
 
-      const successMsg = `Đã import thành công ${totalImported}/${extractedRows.length} tài khoản từ file KeePass với ${totalGroups.size} thư mục nhóm.`;
+      const successMsg = t('passwords.keepass_result_success', 'Đã import thành công {imported}/{total} tài khoản từ file KeePass với {groups} thư mục nhóm.')
+        .replace('{imported}', String(totalImported))
+        .replace('{total}', String(extractedRows.length))
+        .replace('{groups}', String(totalGroups.size));
       setImportResult({
         success: true,
         message: successMsg,
@@ -325,7 +331,7 @@ export function KeePassImportModal({
       setImportErrorMsg('');
       onSuccess(successMsg);
     } catch (err: any) {
-      setImportErrorMsg(err.message || 'Lỗi nạp file KeePass');
+      setImportErrorMsg(err.message || t('passwords.keepass_importing', 'Lỗi nạp file KeePass'));
     } finally {
       setIsImporting(false);
     }
@@ -340,9 +346,9 @@ export function KeePassImportModal({
               <ShieldCheck className="w-5 h-5 text-amber-300" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-indigo-950">Import Trực Tiếp Từ KeePass</h3>
+              <h3 className="font-bold text-base text-indigo-950">{t('passwords.keepass_modal_title', 'Import Trực Tiếp Từ KeePass')}</h3>
               <p className="text-[11px] text-indigo-700">
-                Hỗ trợ file gốc <strong>.kdbx / .kbdx</strong>, <strong>.xml</strong>, <strong>.csv</strong> & <strong>Excel</strong>
+                {t('passwords.keepass_modal_desc', 'Hỗ trợ file gốc .kdbx / .kbdx, .xml, .csv & Excel')}
               </p>
             </div>
           </div>
@@ -356,19 +362,19 @@ export function KeePassImportModal({
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 text-slate-600 text-[11px]">
             <p className="font-bold text-slate-800 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Các định dạng được hỗ trợ nạp tự động:</span>
+              <span>{t('passwords.keepass_formats_supported', 'Các định dạng được hỗ trợ nạp tự động:')}</span>
             </p>
             <ul className="list-disc list-inside space-y-1 pl-1 text-[11px] text-slate-600">
-              <li><strong className="text-indigo-700 font-mono font-bold">File gốc .kdbx (KDBX 3/4):</strong> Giữ 100% cây thư mục & mật khẩu (nhập Master Password bên dưới).</li>
-              <li><strong className="text-purple-700 font-mono font-bold">File .xml (KeePass 2.x XML):</strong> Giữ nguyên 100% cây thư mục cha/con.</li>
-              <li><strong className="text-emerald-700 font-mono font-bold">File .csv hoặc .xlsx:</strong> Nhập bảng tính tài khoản theo cột Group/Folder.</li>
+              <li><strong className="text-indigo-700 font-mono font-bold">{t('passwords.keepass_format_kdbx_title', 'File gốc .kdbx (KDBX 3/4):')}</strong> {t('passwords.keepass_format_kdbx_desc', 'Giữ 100% cây thư mục & mật khẩu (nhập Master Password bên dưới).')}</li>
+              <li><strong className="text-purple-700 font-mono font-bold">{t('passwords.keepass_format_xml_title', 'File .xml (KeePass 2.x XML):')}</strong> {t('passwords.keepass_format_xml_desc', 'Giữ nguyên 100% cây thư mục cha/con.')}</li>
+              <li><strong className="text-emerald-700 font-mono font-bold">{t('passwords.keepass_format_csv_title', 'File .csv hoặc .xlsx:')}</strong> {t('passwords.keepass_format_csv_desc', 'Nhập bảng tính tài khoản theo cột Group/Folder.')}</li>
             </ul>
           </div>
 
           <form onSubmit={handleUploadKeePassFile} className="space-y-3">
             {/* File Upload Drop Zone */}
             <div>
-              <label className="block font-bold text-slate-700 mb-1.5">Chọn file KeePass (.kdbx, .kbdx, .xml, .csv) (*)</label>
+              <label className="block font-bold text-slate-700 mb-1.5">{t('passwords.keepass_file_label', 'Chọn file KeePass (.kdbx, .kbdx, .xml, .csv) (*)')}</label>
               <div
                 onClick={() => fileInputRef.current?.click()}
                 className="p-5 border-2 border-dashed border-indigo-300 hover:border-indigo-500 bg-slate-50/70 hover:bg-indigo-50/40 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors"
@@ -394,12 +400,12 @@ export function KeePassImportModal({
                       <span>📄 {importFile.name}</span>
                       <span className="text-[10px] text-indigo-600 font-mono">({(importFile.size / 1024).toFixed(1)} KB)</span>
                     </p>
-                    <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">✓ Đã chọn file thành công</p>
+                    <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">{t('passwords.keepass_file_selected', '✓ Đã chọn file thành công')}</p>
                   </div>
                 ) : (
                   <div className="text-center">
-                    <p className="font-bold text-slate-700">Bấm để chọn file hoặc kéo thả file .kdbx / .xml vào đây</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">KeePass Database (.kdbx), KeePass XML (.xml), CSV, Excel (.xlsx)</p>
+                    <p className="font-bold text-slate-700">{t('passwords.keepass_file_drop_hint', 'Bấm để chọn file hoặc kéo thả file .kdbx / .xml vào đây')}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{t('passwords.keepass_file_types_hint', 'KeePass Database (.kdbx), KeePass XML (.xml), CSV, Excel (.xlsx)')}</p>
                   </div>
                 )}
               </div>
@@ -410,7 +416,7 @@ export function KeePassImportModal({
               <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-2 animate-in fade-in slide-in-from-top-2 duration-150">
                 <label className="block font-bold text-amber-950 text-xs flex items-center gap-1.5">
                   <KeyRound className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Mật khẩu Master Password của file KDBX (*)</span>
+                  <span>{t('passwords.keepass_master_pwd_label', 'Mật khẩu Master Password của file KDBX (*)')}</span>
                 </label>
                 <div className="relative">
                   <input
@@ -420,7 +426,7 @@ export function KeePassImportModal({
                       setImportMasterPassword(e.target.value);
                       setImportErrorMsg('');
                     }}
-                    placeholder="Nhập Master Password để giải mã file .kdbx..."
+                    placeholder={t('passwords.keepass_master_pwd_placeholder', 'Nhập Master Password để giải mã file .kdbx...')}
                     className="w-full pl-3 pr-9 py-2 bg-white border border-amber-300 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 font-mono text-xs text-slate-900"
                   />
                   <button
@@ -432,12 +438,12 @@ export function KeePassImportModal({
                   </button>
                 </div>
                 <p className="text-[10px] text-amber-800">
-                  🔒 Mật khẩu chỉ dùng để giải mã một lần trong bộ nhớ máy chủ và không được lưu lại bất kỳ đâu.
+                  {t('passwords.keepass_master_pwd_note', '🔒 Mật khẩu chỉ dùng để giải mã một lần trong bộ nhớ máy chủ và không được lưu lại bất kỳ đâu.')}
                 </p>
 
                 {/* Optional Key File */}
                 <div className="pt-1">
-                  <label className="block font-semibold text-amber-900 text-[11px] mb-1">File Key (.key) nếu cơ sở dữ liệu có dùng:</label>
+                  <label className="block font-semibold text-amber-900 text-[11px] mb-1">{t('passwords.keepass_keyfile_label', 'File Key (.key) nếu cơ sở dữ liệu có dùng:')}</label>
                   <input
                     ref={keyFileInputRef}
                     type="file"
@@ -451,7 +457,7 @@ export function KeePassImportModal({
                       onClick={() => keyFileInputRef.current?.click()}
                       className="px-2.5 py-1 bg-white border border-amber-300 hover:bg-amber-100/50 rounded-lg text-[11px] font-semibold text-amber-900 cursor-pointer"
                     >
-                      {importKeyFile ? '🔑 ' + importKeyFile.name : '+ Chọn file Key (Nếu có)'}
+                      {importKeyFile ? '🔑 ' + importKeyFile.name : t('passwords.keepass_keyfile_select', '+ Chọn file Key (Nếu có)')}
                     </button>
                     {importKeyFile && (
                       <button
@@ -459,7 +465,7 @@ export function KeePassImportModal({
                         onClick={() => setImportKeyFile(null)}
                         className="text-rose-600 hover:underline text-[10px] cursor-pointer"
                       >
-                        Xóa file key
+                        {t('passwords.keepass_keyfile_remove', 'Xóa file key')}
                       </button>
                     )}
                   </div>
@@ -469,12 +475,12 @@ export function KeePassImportModal({
 
             {/* Default Folder Fallback */}
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Thư Mục Mặc Định (Nếu mục không có thư mục)</label>
+              <label className="block font-bold text-slate-700 mb-1">{t('passwords.keepass_default_folder_label', 'Thư Mục Mặc Định (Nếu mục không có thư mục)')}</label>
               <input
                 type="text"
                 value={importGroup}
                 onChange={(e) => setImportGroup(e.target.value)}
-                placeholder="VD: 🏢 Văn Phòng Trụ Sở Chính / KeePass Import"
+                placeholder={t('passwords.keepass_default_folder_placeholder', 'VD: 🏢 Văn Phòng Trụ Sở Chính / KeePass Import')}
                 className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-semibold"
               />
             </div>
@@ -494,7 +500,7 @@ export function KeePassImportModal({
                 </p>
                 {importResult.groupsCount > 0 && (
                   <p className="text-[11px] text-emerald-700 pl-5.5">
-                    📁 Đã nạp và tái hiện <strong>{importResult.groupsCount}</strong> thư mục nhóm trên cây thư mục.
+                    {t('passwords.keepass_result_tree', '📁 Đã nạp và tái hiện {groups} thư mục nhóm trên cây thư mục.').replace('{groups}', String(importResult.groupsCount))}
                   </p>
                 )}
               </div>
@@ -507,7 +513,7 @@ export function KeePassImportModal({
                 className="text-indigo-600 hover:underline font-semibold text-xs flex items-center gap-1 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Tải mẫu Excel</span>
+                <span>{t('passwords.keepass_download_excel', 'Tải mẫu Excel')}</span>
               </button>
 
               <div className="flex items-center gap-2">
@@ -516,7 +522,7 @@ export function KeePassImportModal({
                   onClick={onClose}
                   className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                 >
-                  Đóng (ESC)
+                  {t('passwords.keepass_close', 'Đóng (ESC)')}
                 </button>
                 <button
                   type="submit"
@@ -524,7 +530,7 @@ export function KeePassImportModal({
                   className="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {isImporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                  <span>{isImporting ? 'Đang Giải Mã & Nạp...' : 'Tiến Hành Import'}</span>
+                  <span>{isImporting ? t('passwords.keepass_btn_submitting', 'Đang Giải Mã & Nạp...') : t('passwords.keepass_btn_submit', 'Tiến Hành Import')}</span>
                 </button>
               </div>
             </div>

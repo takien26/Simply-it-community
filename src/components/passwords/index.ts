@@ -4,3 +4,4 @@ export * from './PasswordDetailModal';
 export * from './PasswordGeneratorModal';
 export * from './KeePassImportModal';
 export * from './PasswordFormModal';
+export { default as OneTimeSecretModal } from './OneTimeSecretModal';

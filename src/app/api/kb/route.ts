@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { isAdminOrAbove } from '@/lib/permissions';
+import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
-import { COMPREHENSIVE_IT_KB, KBArticle } from '@/lib/it-knowledge-base';
+import { getActiveDefaultArticles } from '@/lib/kb-storage';
 import { DocumentType } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -18,10 +18,17 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const teamScope = searchParams.get('teamScope');
     const search = searchParams.get('search') || '';
+    const description = searchParams.get('description') || '';
+    const enableAiSemantic = searchParams.get('semantic') !== 'false';
 
     const userRole = currentUser.roleName || 'Staff';
     const isAdmin = isAdminOrAbove(userRole) || (Array.isArray((currentUser as any).permissions) && (currentUser as any).permissions.includes('*'));
     const isITStaff = isAdmin || userRole.toLowerCase().includes('it') || userRole.toLowerCase().includes('manager') || userRole.toLowerCase().includes('kỹ thuật');
+
+    // Kiểm tra phân quyền RBAC chi tiết
+    const canCreate = isAdmin || (await hasPermission(currentUser.userId, 'kb.create'));
+    const canUpdate = isAdmin || (await hasPermission(currentUser.userId, 'kb.update'));
+    const canDelete = isAdmin || (await hasPermission(currentUser.userId, 'kb.delete'));
 
     // 1. Fetch DB documents
     const dbDocs = await prisma.document.findMany({
@@ -29,15 +36,18 @@ export async function GET(request: NextRequest) {
       take: 100,
     }).catch(() => []);
 
-    // 2. Map standard KB articles
-    const defaultArticles = COMPREHENSIVE_IT_KB.map((item, idx) => ({
+    // 2. Map standard active KB articles with keywords (loại trừ bài viết đã bị ẩn/xóa)
+    const activeDefaults = await getActiveDefaultArticles();
+    const defaultArticles = activeDefaults.map((item, idx) => ({
       id: item.id,
       title: item.title,
       slug: item.id,
       category: item.category,
       categoryKey: item.categoryKey,
+      keywords: item.keywords || [],
       summary: item.summary,
       content: item.steps,
+      steps: item.steps,
       views: 850 + idx * 45,
       updatedAt: '2026-05-15T10:00:00.000Z',
       isFeatured: true,
@@ -66,8 +76,10 @@ export async function GET(request: NextRequest) {
         slug: doc.id,
         category: String(doc.type || 'Tài liệu Kỹ thuật'),
         categoryKey: isInternal ? 'NETWORK' : 'OTHER',
+        keywords: [doc.title, doc.fileName || ''].filter(Boolean),
         summary: doc.notes ? doc.notes.split('\n')[0] : doc.title,
         content: doc.notes || doc.title,
+        steps: doc.notes || doc.title,
         views: 120,
         updatedAt: doc.updatedAt.toISOString(),
         isFeatured: isInternal,
@@ -82,7 +94,7 @@ export async function GET(request: NextRequest) {
     const allArticles = [...defaultArticles, ...dbArticles];
 
     // 4. RBAC Filter: Regular users ONLY see PUBLIC articles! Only IT/Admin can see internal team docs!
-    let visibleArticles = allArticles.filter((art) => {
+    let visibleArticles: any[] = allArticles.filter((art) => {
       if (isAdmin) return true;
       if (isITStaff) return true;
       return art.teamScope === 'PUBLIC' || !art.isInternalIT;
@@ -98,14 +110,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (search) {
-      const q = search.toLowerCase();
-      visibleArticles = visibleArticles.filter(
-        (a) =>
-          a.title.toLowerCase().includes(q) ||
-          a.summary.toLowerCase().includes(q) ||
-          a.content.toLowerCase().includes(q)
-      );
+    // 5. 3-Tier Hybrid Search Engine (Token Scoring + Context + AI Semantic Fallback)
+    if (search || description) {
+      const { searchHybridKB } = await import('@/lib/kb-hybrid-search');
+      const hybridResults = await searchHybridKB(search, visibleArticles, {
+        description,
+        category: category || undefined,
+        enableAiSemantic,
+        limit: 50,
+      });
+      visibleArticles = hybridResults.map((r) => ({
+        ...r.article,
+        searchScore: r.score,
+        matchReason: r.matchReason,
+      }));
     }
 
     const categories = [
@@ -135,6 +153,9 @@ export async function GET(request: NextRequest) {
       userRole,
       isITStaff,
       isAdmin,
+      canCreate,
+      canUpdate,
+      canDelete,
     });
   } catch (error) {
     console.error('KB API error:', error);
@@ -151,10 +172,10 @@ export async function POST(request: NextRequest) {
 
     const userRole = currentUser.roleName || 'Staff';
     const isAdmin = isAdminOrAbove(userRole) || (Array.isArray((currentUser as any).permissions) && (currentUser as any).permissions.includes('*'));
-    const isITStaff = isAdmin || userRole.toLowerCase().includes('it') || userRole.toLowerCase().includes('manager') || userRole.toLowerCase().includes('kỹ thuật');
+    const canCreate = isAdmin || (await hasPermission(currentUser.userId, 'kb.create'));
 
-    if (!isITStaff && !isAdmin) {
-      return NextResponse.json({ error: 'Chỉ Kỹ thuật viên IT hoặc Admin mới có quyền tải lên tài liệu hướng dẫn.' }, { status: 403 });
+    if (!canCreate) {
+      return NextResponse.json({ error: 'Chỉ người dùng có quyền thêm tài liệu IT (kb.create) hoặc Quản trị viên mới được phép thực hiện.' }, { status: 403 });
     }
 
     const body = await request.json();

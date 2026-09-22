@@ -1,5 +1,85 @@
 # 📋 NHẬT KÝ CẬP NHẬT PHIÊN BẢN (CHANGELOG)
 
+## [v1.0.4] - 20/09/2026
+
+Bản cập nhật **v1.0.4** mang đến bước tiến lớn về quy trình phê duyệt thông minh (Smart Approval Workflow), trực quan hóa dòng tiền chi tiêu IT 12 tháng (Renewal Runway Calendar), ký nhận bàn giao điện tử (Digital Signature), liên kết chia sẻ mật khẩu tự hủy dùng 1 lần (One-Time Secret Link), tính năng gợi ý tài liệu tự phục vụ thông minh khi tạo ticket (Smart Deflection), cùng hàng loạt sửa lỗi bảo mật và tối ưu trải nghiệm người dùng.
+
+---
+
+### 🌟 1. Tính Năng Mới & Nâng Cấp Nghiệp Vụ
+
+#### A. Luồng Phê Duyệt Cấp Phát Thông Minh (Smart Hybrid Approval Fallback)
+- **Tự động nhận diện Cấp trên trực tiếp (Auto-detect)**:
+  - Tích hợp thông tin `managerId` và đối tượng Quản lý trực tiếp từ hồ sơ người dùng trong API `/api/auth/me`.
+  - Tự động điền sẵn Cấp trên khi mở modal tạo yêu cầu, kèm huy hiệu trực quan `💡 Tự động nhận diện từ hồ sơ`.
+- **Bộ chọn Cấp trên tìm kiếm thông minh (Searchable Combobox)**:
+  - Thay thế dropdown cũ bằng giao diện tìm kiếm tức thì theo họ tên, email, phòng ban, chức vụ.
+  - Tự động phân nhóm ưu tiên nhân sự `🏢 Cùng phòng ban` lên đầu để dễ dàng chọn đúng Trưởng bộ phận.
+  - Hỗ trợ tùy chọn `🚀 Gửi thẳng cho Quản trị viên IT (Xử lý khẩn cấp)` cho các trường hợp phụ kiện nhỏ, chuột, phím, cáp hỏng.
+- **Ràng buộc & cảnh báo thông minh theo loại yêu cầu**:
+  - Với yêu cầu là **"Thiết bị mới" (Laptop/PC)** hoặc **"Bản quyền phần mềm"**: Hiển thị cảnh báo hướng dẫn nhân sự chọn Cấp trên duyệt chi phí trước khi chuyển sang IT.
+- **Tính năng "Chuyển Cấp Trên Duyệt" dành cho IT Admin (Re-route)**:
+  - Bổ sung API `POST /api/approvals/[id]/forward`: Cho phép Quản trị viên IT chuyển tiếp các đơn gửi thẳng IT sang cho Cấp trên của nhân viên duyệt ngân sách kèm lời nhắn và gửi email thông báo tự động.
+
+#### B. Lịch Dự Báo Gia Hạn Chi Phí 12 Tháng (Renewal Runway Calendar)
+- **Trực quan hóa dòng tiền chi tiêu IT**:
+  - Tích hợp tab **Lịch Gia Hạn 12 Tháng** tại `/services?tab=runway` và Widget Runway trên Dashboard tổng quan.
+  - Thống kê chi tiết tổng chi phí dự kiến theo từng tháng trong năm cho Domain, SSL, Hosting, Cloud Server, Đường truyền Internet, Thuê bao phần mềm SaaS và Hợp đồng bảo trì.
+  - Biểu đồ cột trực quan phân bổ ngân sách, cảnh báo tháng cao điểm chi tiêu để Kế toán và Ban Giám đốc chủ động tài chính.
+
+#### C. Ký Nhận Bàn Giao Điện Tử (Digital Signature Canvas)
+- **Khung vẽ chữ ký cảm ứng HTML5 Canvas**:
+  - Hỗ trợ ký nhận bằng chuột hoặc màn hình cảm ứng điện thoại/tablet (`SignaturePadModal.tsx`).
+  - Tích hợp trực tiếp vào quy trình xuất kho và bàn giao thiết bị (`asset-handover-modal.tsx`).
+  - Nhúng ảnh chữ ký số thực tế vào Biên bản bàn giao tài sản định dạng PDF, lưu trữ minh bạch lịch sử nhận máy.
+
+#### D. Link Chia Sẻ Mật Khẩu Tự Hủy Dùng 1 Lần (One-Time Secret Link)
+- **Bảo mật tuyệt đối thông tin đăng nhập**:
+  - Mã hóa chuẩn quân đội AES-256-GCM bảo vệ mật khẩu hoặc ghi chú nhạy cảm (`/api/passwords/share`).
+  - Sinh đường dẫn bí mật tạm thời dạng `/secret/[token]`. Người nhận chỉ mở xem được **đúng 1 lần duy nhất**, sau đó dữ liệu bị xóa vĩnh viễn khỏi bộ nhớ máy chủ.
+  - Tùy chọn thời gian hết hạn linh hoạt: 1 giờ, 24 giờ, 3 ngày hoặc 7 ngày.
+
+#### E. Gợi Ý Tự Phục Vụ Thông Minh Khi Tạo Ticket (Smart Deflection)
+- **Tự động giảm tải cho đội ngũ IT Support**:
+  - Tích hợp phân tích từ khóa theo thời gian thực trong modal tạo ticket (`CreateTicketModal.tsx`).
+  - Gợi ý các bài viết hướng dẫn tương ứng từ Cơ sở tri thức (Knowledge Base) ngay khi người dùng gõ tiêu đề hoặc mô tả sự cố (VD: Cài máy in, cấu hình VPN, đổi mật khẩu Wifi).
+
+#### G. Bàn Giao Hàng Loạt Nhiều Thiết Bị (Bulk Asset Handover & Dual Digital Signature)
+- **Tối ưu hóa quy trình Onboarding & Cấp phát**:
+  - Hỗ trợ chọn đồng thời nhiều thiết bị trên bảng tài sản (`/assets`) bằng checkbox hoặc phím tắt Chọn tất cả.
+  - Thanh công cụ nổi (Floating Action Bar) hiển thị số lượng máy đã chọn và nút kích hoạt bàn giao hàng loạt.
+  - Gộp tất cả thiết bị (Laptop, Màn hình, Bàn phím, Chuột, Phụ kiện) vào **1 Biên bản bàn giao duy nhất**.
+  - Tự động điền đầy đủ thông tin nhân sự nhận (Họ tên, Email, Phòng ban, Chức vụ, SĐT).
+  - Tích hợp **Ký điện tử kép (Dual Digital Signature)**: Cả Quản trị viên IT (Bên A) và Nhân viên tiếp nhận (Bên B) đều có thể ký trực tiếp trên màn hình cảm ứng hoặc chuột.
+  - Xuất bản in PDF chuẩn khổ giấy A4, quốc hiệu tiêu ngữ, nhúng trực tiếp chữ ký số thực tế.
+  - Cập nhật 1-click vào cơ sở dữ liệu: Đóng lượt bàn giao cũ, tạo phân bổ mới, chuyển trạng thái `IN_USE` và ghi vết `AuditLog` cho từng món đồ.
+
+#### H. Tích Hợp Telegram Bot & Webhook Đa Kênh + Sách Hướng Dẫn Tương Tác
+- **Bắn thông báo tức thời cho sự cố khẩn cấp (P1) và đơn duyệt**:
+  - Hỗ trợ native nhà cung cấp `telegram` trong engine Webhook (`/src/lib/webhooks.ts`).
+  - Tự động định dạng tin nhắn HTML trực quan với biểu tượng khẩn cấp, mã ticket, tiêu đề, kỹ thuật viên phụ trách, thời hạn SLA và liên kết xử lý 1-click.
+  - Gửi thông báo ngay lập tức vào Nhóm chat IT Support hoặc kênh riêng khi có: Ticket P1 khẩn cấp (`ticket.urgent`), Ticket mới (`ticket.created`), Đơn phê duyệt mới (`approval.pending`).
+  - Hỗ trợ đầy đủ các nền tảng: Telegram Bot, Microsoft Teams, Slack, Zalo OA / Custom Webhook JSON.
+  - Tích hợp **Sách Hướng Dẫn Cấu Hình Từng Bước (Interactive Step-by-Step Setup Guide)** ngay trong tab Cài đặt Webhook, kèm bộ công cụ tự động tạo URL Telegram từ Bot Token và Chat ID.
+
+---
+
+### 🐛 2. Khắc Phục Lỗi (Bug Fixes)
+- **Fix lỗi chặn người dùng tự phê duyệt (Prevent Self-Approval)**:
+  - Ngăn chặn nhân viên tự chọn chính mình làm Quản lý phê duyệt tại API `POST /api/approvals`.
+  - Chặn người tạo đơn tự duyệt yêu cầu của mình tại API `POST /api/approvals/[id]/approve`.
+- **Fix lỗi xung đột mã yêu cầu AR (Duplicate Approval Code Constraint)**:
+  - Khắc phục lỗi vi phạm ràng buộc duy nhất (`Unique Constraint P2002`) khi nhiều người dùng cùng tạo yêu cầu phê duyệt đồng thời trong cùng một thời điểm.
+- **Fix lỗi thiếu trường dữ liệu trong API Auth**:
+  - Bổ sung trường `managerId`, `position` và quan hệ `manager` vào response của `GET /api/auth/me`.
+  - Bổ sung `managerId` vào câu truy vấn `requester` của `GET /api/approvals`.
+- **Fix lỗi TypeScript Interface**:
+  - Sửa lỗi thiếu thuộc tính `managerId` trong `ApprovalRequest.requester` interface tại trang `/approvals`.
+- **Fix lỗi UX dropdown Cấp trên**:
+  - Thay thế thẻ `<select>` gây tràn màn hình trên thiết bị di động bằng Searchable Combobox có scrollbar và phân nhóm khoa học.
+
+---
+
 ## [v1.0.3] - 16/09/2026
 
 Bản cập nhật **v1.0.3** tập trung khắc phục lỗi quét tự động (Auto-Scan Agent), tăng tốc độ và độ thông minh của AI, bổ sung quản lý đơn vị/nhà cung cấp đa chiều, cùng cơ chế đồng bộ dữ liệu phản ứng nhanh (Reactive Data Sync) cho toàn hệ thống.

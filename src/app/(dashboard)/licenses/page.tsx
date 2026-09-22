@@ -228,6 +228,7 @@ export default function LicensesPage() {
   const [selectedCompany, setSelectedCompany] = useState('');
   const [selectedVendor, setSelectedVendor] = useState('');
   const [selectedExpiryFilter, setSelectedExpiryFilter] = useState<'ALL' | 'VALID' | 'EXPIRING' | 'EXPIRED'>('ALL');
+  const [showWastefulOnly, setShowWastefulOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
 
@@ -422,6 +423,29 @@ export default function LicensesPage() {
   const [modalActiveTab, setModalActiveTab] = useState<'general' | 'finance' | 'settings' | 'assignees'>('general');
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
 
+  // Context Menu State for Right-Click on rows
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    group: LicenseGroup;
+  } | null>(null);
+
+  // Close context menu on window click, escape or scroll
+  useEffect(() => {
+    const handleCloseContextMenu = () => setContextMenu(null);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContextMenu(null);
+    };
+    window.addEventListener('click', handleCloseContextMenu);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleCloseContextMenu, true);
+    return () => {
+      window.removeEventListener('click', handleCloseContextMenu);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleCloseContextMenu, true);
+    };
+  }, []);
+
   // Helper to count unique assigned seats
   const calculateAssignedSeats = (pairs: Array<{ userId?: string; assetId?: string }>): number => {
     if (!Array.isArray(pairs) || pairs.length === 0) return 0;
@@ -591,6 +615,8 @@ export default function LicensesPage() {
     let totalCostVnd = 0;
     let expiringCount = 0;
     let expiredCount = 0;
+    let inactiveSeatsCount = 0;
+    let inactivePotentialSavings = 0;
 
     const now = new Date();
     const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -605,6 +631,33 @@ export default function LicensesPage() {
       const effectiveRate = recordedRate && recordedRate > 0 ? recordedRate : (exchangeRatesMap[cur] || 1);
       const inVnd = rawPrice * effectiveRate;
       totalCostVnd += inVnd;
+
+      const licSeats = lic.totalSeats || 1;
+      const costPerSeatVnd = licSeats > 0 ? inVnd / licSeats : 0;
+
+      // Count inactive in direct assignments
+      (lic.assignments || []).forEach((a: any) => {
+        if (!a.revokedAt && a.user?.isActive === false) {
+          inactiveSeatsCount++;
+          inactivePotentialSavings += costPerSeatVnd;
+        }
+      });
+
+      // Count inactive in child batches
+      (lic.batches || []).forEach((b: any) => {
+        const bSeats = b.totalSeats || 1;
+        const bPrice = Number(b.purchasePrice) || 0;
+        const bCur = b.purchaseCurrency || cur;
+        const bRate = b.exchangeRate || exchangeRatesMap[bCur] || 1;
+        const bCostPerSeat = bSeats > 0 ? (bPrice * bRate) / bSeats : costPerSeatVnd;
+
+        (b.assignments || []).forEach((ba: any) => {
+          if (!ba.revokedAt && ba.user?.isActive === false) {
+            inactiveSeatsCount++;
+            inactivePotentialSavings += bCostPerSeat;
+          }
+        });
+      });
 
       if (lic.expiryDate) {
         const exp = new Date(lic.expiryDate);
@@ -628,6 +681,8 @@ export default function LicensesPage() {
       totalCost: totalCostInSelected,
       expiringCount,
       expiredCount,
+      inactiveSeatsCount,
+      inactivePotentialSavings,
     };
   }, [licenses, selectedCurrency, exchangeRatesMap]);
 
@@ -637,14 +692,60 @@ export default function LicensesPage() {
     const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 1000);
 
     return licenses.filter((lic) => {
-      // Search
+      // Inactive / Zombie Wasteful Filter
+      if (showWastefulOnly) {
+        const hasDirectWaste = (lic.assignments || []).some((a: any) => !a.revokedAt && a.user?.isActive === false);
+        const hasBatchWaste = (lic.batches || []).some((b: any) =>
+          (b.assignments || []).some((ba: any) => !ba.revokedAt && ba.user?.isActive === false)
+        );
+        if (!hasDirectWaste && !hasBatchWaste) return false;
+      }
+
+      // Search (Master + Batches + Assigned Staff/Computers + Contracts/Invoices)
       if (search.trim()) {
-        const q = search.toLowerCase();
-        const matchName = lic.name?.toLowerCase().includes(q);
-        const matchKey = lic.licenseKey?.toLowerCase().includes(q);
-        const matchVendor = lic.vendor?.name?.toLowerCase().includes(q);
-        const matchCompany = lic.companyName?.toLowerCase().includes(q);
-        if (!matchName && !matchKey && !matchVendor && !matchCompany) return false;
+        const q = search.toLowerCase().trim();
+        const matchSelf =
+          lic.name?.toLowerCase().includes(q) ||
+          lic.licenseKey?.toLowerCase().includes(q) ||
+          lic.vendor?.name?.toLowerCase().includes(q) ||
+          lic.companyName?.toLowerCase().includes(q) ||
+          lic.contractNumber?.toLowerCase().includes(q) ||
+          lic.invoiceNumber?.toLowerCase().includes(q) ||
+          lic.notes?.toLowerCase().includes(q);
+
+        if (!matchSelf) {
+          // Check child batches
+          const matchBatch = Array.isArray(lic.batches) && lic.batches.some((b: any) =>
+            b.name?.toLowerCase().includes(q) ||
+            b.specs?.batchName?.toLowerCase().includes(q) ||
+            b.specs?.batchLabel?.toLowerCase().includes(q) ||
+            b.contractNumber?.toLowerCase().includes(q) ||
+            b.invoiceNumber?.toLowerCase().includes(q) ||
+            b.companyName?.toLowerCase().includes(q) ||
+            b.vendor?.name?.toLowerCase().includes(q) ||
+            b.notes?.toLowerCase().includes(q) ||
+            (Array.isArray(b.assignments) && b.assignments.some((a: any) =>
+              a.user?.fullName?.toLowerCase().includes(q) ||
+              a.user?.email?.toLowerCase().includes(q) ||
+              a.user?.department?.toLowerCase().includes(q) ||
+              a.user?.companyName?.toLowerCase().includes(q) ||
+              a.asset?.assetTag?.toLowerCase().includes(q) ||
+              a.asset?.name?.toLowerCase().includes(q)
+            ))
+          );
+
+          // Check direct assignments
+          const matchAssignment = Array.isArray(lic.assignments) && lic.assignments.some((a: any) =>
+            a.user?.fullName?.toLowerCase().includes(q) ||
+            a.user?.email?.toLowerCase().includes(q) ||
+            a.user?.department?.toLowerCase().includes(q) ||
+            a.user?.companyName?.toLowerCase().includes(q) ||
+            a.asset?.assetTag?.toLowerCase().includes(q) ||
+            a.asset?.name?.toLowerCase().includes(q)
+          );
+
+          if (!matchBatch && !matchAssignment) return false;
+        }
       }
 
       // Type Filter
@@ -680,12 +781,12 @@ export default function LicensesPage() {
 
       return true;
     });
-  }, [licenses, search, selectedType, selectedStatus, selectedCompany, selectedVendor, selectedExpiryFilter]);
+  }, [licenses, search, selectedType, selectedStatus, selectedCompany, selectedVendor, selectedExpiryFilter, showWastefulOnly]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedType, selectedStatus, selectedCompany, selectedVendor, selectedExpiryFilter]);
+  }, [search, selectedType, selectedStatus, selectedCompany, selectedVendor, selectedExpiryFilter, showWastefulOnly]);
 
   // Multi-batch Intelligent Grouping
   const groupedLicenses = useMemo(() => {
@@ -1402,6 +1503,46 @@ export default function LicensesPage() {
         />
       ) : (
         <>
+          {/* ==================== INACTIVE / ZOMBIE LICENSES DETECTION ALERT ==================== */}
+          {kpis.inactiveSeatsCount > 0 && (
+            <div className="p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border border-amber-300 dark:border-amber-700/80 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200 flex items-center gap-2">
+                    <span>{language === 'en' ? 'Inactive / Zombie Licenses Detected' : 'Phát Hiện Bản Quyền Lãng Phí (Zombie Licenses)'}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-black">
+                      {kpis.inactiveSeatsCount} {language === 'en' ? 'seats' : 'ghế'}
+                    </span>
+                  </h4>
+                  <p className="text-[11.5px] text-amber-800 dark:text-amber-300 mt-0.5">
+                    {language === 'en'
+                      ? `There are ${kpis.inactiveSeatsCount} software seats currently assigned to deactivated/resigned staff. Potential cost savings: `
+                      : `Đang có ${kpis.inactiveSeatsCount} ghế bản quyền cấp cho nhân sự đã nghỉ việc / vô hiệu hóa. Tiết kiệm tiềm năng: `}
+                    <strong className="text-rose-600 dark:text-rose-400 font-mono font-bold">
+                      {formatPrice(kpis.inactivePotentialSavings / (exchangeRatesMap[selectedCurrency] || 1), selectedCurrency)}
+                    </strong>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowWastefulOnly(!showWastefulOnly)}
+                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                    showWastefulOnly
+                      ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                      : 'bg-white dark:bg-slate-900 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 hover:bg-amber-50'
+                  }`}
+                >
+                  <span>{showWastefulOnly ? (language === 'en' ? 'Show All Licenses' : 'Hiển thị tất cả') : (language === 'en' ? 'Filter Wasteful Only' : '🔍 Lọc bản quyền lãng phí')}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* ==================== 2. TOP KPI BAR ĐA TIỀN TỆ ==================== */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* KPI 1: Tổng số License & Seats */}
@@ -1492,7 +1633,7 @@ export default function LicensesPage() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
             <input
               type="text"
-              placeholder={language === 'en' ? '🔍 Search software, key, vendor, company...' : '🔍 Tìm theo tên phần mềm, key, NCC, công ty...'}
+              placeholder={language === 'en' ? '🔍 Search software, key, staff, device, contract, batch...' : '🔍 Tìm phần mềm, nhân sự, máy tính, đợt mua, HĐ, hóa đơn...'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-7 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-800 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500"
@@ -1614,12 +1755,12 @@ export default function LicensesPage() {
                     <span>{language === 'en' ? 'LICENSE NAME & KEY' : 'TÊN BẢN QUYỀN & KEY'}</span>
                   </div>
                 </th>
-                <th className="py-2 px-2 min-w-[110px]">{language === 'en' ? 'TYPE & COMPANY' : 'LOẠI & CÔNG TY'}</th>
-                <th className="py-2 px-2 min-w-[100px]">{language === 'en' ? 'SEATS ALLOCATION' : 'PHÂN BỐ SEATS'}</th>
+                <th className="py-2 px-2.5 min-w-[140px]">{language === 'en' ? 'TYPE & COMPANY' : 'LOẠI & CÔNG TY'}</th>
+                <th className="py-2 px-2.5 min-w-[210px]">{language === 'en' ? 'SEATS ALLOCATION' : 'PHÂN BỐ SEATS'}</th>
                 <th className="py-2 px-2 min-w-[95px]">{language === 'en' ? 'COST' : 'ĐỊNH GIÁ'} ({selectedCurrency})</th>
                 <th className="py-2 px-2 min-w-[90px]">{language === 'en' ? 'EXPIRY' : 'HẠN DÙNG'}</th>
                 <th className="py-2 px-2 min-w-[120px] max-w-[200px]">{language === 'en' ? 'VENDOR' : 'NHÀ CUNG CẤP'}</th>
-                <th className="py-2 px-1.5 text-right sticky right-0 z-20 bg-slate-50 dark:bg-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.06)] min-w-[110px]">{language === 'en' ? 'ACTIONS' : 'THAO TÁC'}</th>
+                <th className="py-2 px-1 text-center sticky right-0 z-20 bg-slate-50 dark:bg-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.06)] w-[55px]">{language === 'en' ? 'ACTIONS' : 'THAO TÁC'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1648,8 +1789,8 @@ export default function LicensesPage() {
                     <td className="py-2.5 px-2">
                       <div className="h-3.5 w-20 bg-slate-200 dark:bg-slate-800 rounded-md" />
                     </td>
-                    <td className="py-2.5 px-2 text-right">
-                      <div className="h-5 w-16 bg-slate-200 dark:bg-slate-800 rounded-lg ml-auto" />
+                    <td className="py-2.5 px-2 text-center">
+                      <div className="h-6 w-6 bg-slate-200 dark:bg-slate-800 rounded-lg mx-auto" />
                     </td>
                   </tr>
                 ))
@@ -1701,6 +1842,16 @@ export default function LicensesPage() {
                             setIsDetailModalOpen(true);
                           }
                         }}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          const clickX = e.clientX;
+                          const clickY = e.clientY;
+                          const menuWidth = 280;
+                          const menuHeight = 340;
+                          const x = clickX + menuWidth > window.innerWidth ? Math.max(10, window.innerWidth - menuWidth - 15) : clickX;
+                          const y = clickY + menuHeight > window.innerHeight ? Math.max(10, window.innerHeight - menuHeight - 15) : clickY;
+                          setContextMenu({ x, y, group });
+                        }}
                         className={`transition-all group cursor-pointer ${
                           hasBatches
                             ? isExpanded
@@ -1708,7 +1859,7 @@ export default function LicensesPage() {
                               : 'hover:bg-purple-50/40 dark:hover:bg-purple-950/30'
                             : 'hover:bg-purple-50/40 dark:hover:bg-purple-950/30'
                         }`}
-                        title={hasBatches ? (isExpanded ? 'Bấm để thu gọn các đợt mua' : 'Bấm để mở rộng chi tiết các đợt mua') : 'Bấm để xem chi tiết bản quyền'}
+                        title={hasBatches ? (isExpanded ? 'Bấm để thu gọn các đợt mua (Chuột phải để mở menu thao tác)' : 'Bấm để mở rộng chi tiết các đợt mua (Chuột phải để mở menu thao tác)') : 'Bấm để xem chi tiết bản quyền (Chuột phải để mở menu thao tác)'}
                       >
                         {/* Cột 1: Tên & Đợt mua (Sticky Left) */}
                         <td className="py-2.5 px-2.5 sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-purple-50/90 dark:group-hover:bg-slate-800/90 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors min-w-[175px]">
@@ -1802,22 +1953,23 @@ export default function LicensesPage() {
                         </td>
 
                         {/* Cột 2: Loại License & Công ty */}
-                        <td className="py-2.5 px-2 min-w-[110px]">
-                          <span className="px-1.5 py-0.2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[9px] rounded border border-slate-200 dark:border-slate-700 inline-block leading-tight">
+                        <td className="py-2.5 px-2.5 min-w-[140px] max-w-[190px]">
+                          <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[9.5px] rounded border border-slate-200 dark:border-slate-700 inline-block leading-tight">
                             {group.licenseType}
                           </span>
-                          <span className="text-[9.5px] text-slate-500 block mt-0.5 leading-tight line-clamp-2 font-medium" title={group.companyName || 'Toàn tập đoàn'}>
-                            🏢 {group.companyName || 'Toàn tập đoàn'}
-                          </span>
+                          <div className="flex items-center gap-1.5 mt-1 font-extrabold text-purple-700 dark:text-purple-300 text-xs leading-snug" title={group.companyName || 'Toàn tập đoàn'}>
+                            <Building2 className="w-3.5 h-3.5 shrink-0 text-purple-600" />
+                            <span className="truncate">{group.companyName || 'Toàn tập đoàn'}</span>
+                          </div>
                         </td>
 
                         {/* Cột 3: Phân bố Seats (Tổng hợp toàn bộ các đợt) */}
-                        <td className="py-2.5 px-2 min-w-[115px]">
-                          <div className="flex items-center justify-between text-[10px] font-bold mb-0.5">
+                        <td className="py-2.5 px-2.5 min-w-[210px] max-w-[320px]">
+                          <div className="flex items-center justify-between text-[10.5px] font-bold mb-0.5">
                             <span className={used >= total ? 'text-rose-600' : 'text-slate-800 dark:text-slate-200'}>
-                              {used}/{total} <span className="text-[9px] font-normal text-slate-400">seats</span>
+                              {used}/{total} <span className="text-[9.5px] font-normal text-slate-400">seats</span>
                             </span>
-                            <span className="text-[9px] font-mono text-slate-400">{seatPercent}%</span>
+                            <span className="text-[9.5px] font-mono text-slate-400">{seatPercent}%</span>
                           </div>
                           <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
                             <div
@@ -1831,43 +1983,49 @@ export default function LicensesPage() {
                               style={{ width: `${seatPercent}%` }}
                             />
                           </div>
-                          <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium block mt-0.5">
+                          <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-medium block mt-0.5">
                             Còn trống: <b>{remaining}</b> seats
                           </span>
 
-                          {/* Multi-Company Balance Preview Badges */}
+                          {/* Multi-Company Balance Preview Badges (Rộng & Rõ ràng) */}
                           {group.companyStats && group.companyStats.length > 0 && (
-                            <div className="flex items-center gap-1 flex-wrap mt-1">
+                            <div className="flex flex-col gap-1 mt-1.5">
                               {group.companyStats.slice(0, 3).map((cs) => {
                                 const isSurplus = cs.balanceSeats > 0 && cs.purchasedSeats > 0;
                                 const isDeficit = cs.balanceSeats < 0;
                                 const isBorrowed = cs.purchasedSeats === 0 && cs.usedSeats > 0;
                                 return (
-                                  <span
+                                  <div
                                     key={cs.companyName}
-                                    className={`px-1.5 py-0.2 rounded text-[8.5px] font-mono font-bold inline-flex items-center gap-1 border ${
+                                    className={`px-2 py-1 rounded-lg text-[10px] font-medium flex items-center justify-between gap-2 border shadow-2xs transition-colors ${
                                       isDeficit
-                                        ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                        ? 'bg-rose-50/90 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
                                         : isBorrowed
-                                        ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                                        ? 'bg-amber-50/90 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
                                         : isSurplus
-                                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                                        ? 'bg-emerald-50/90 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                        : 'bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                                     }`}
                                     title={`${cs.companyName}: Đã mua ${cs.purchasedSeats}, Dùng ${cs.usedSeats} (${
                                       isDeficit ? `Thiếu ${Math.abs(cs.balanceSeats)} seats` : isBorrowed ? `Mượn ${cs.usedSeats} seats` : isSurplus ? `Dư ${cs.balanceSeats} seats` : 'Vừa đủ'
                                     })`}
                                   >
-                                    <span className="truncate max-w-[65px]">{cs.companyName}:</span>
-                                    <span>{cs.usedSeats}/{cs.purchasedSeats}</span>
-                                    {isDeficit && <span className="text-rose-600">(-{Math.abs(cs.balanceSeats)})</span>}
-                                    {isBorrowed && <span className="text-amber-600">(Mượn {cs.usedSeats})</span>}
-                                    {isSurplus && <span className="text-emerald-600">(+{cs.balanceSeats})</span>}
-                                  </span>
+                                    <span className="truncate max-w-[150px] font-bold" title={cs.companyName}>
+                                      {cs.companyName}
+                                    </span>
+                                    <div className="flex items-center gap-1 shrink-0 font-mono text-[9.5px]">
+                                      <span>{cs.usedSeats}/{cs.purchasedSeats}</span>
+                                      {isDeficit && <span className="font-bold text-rose-600">(-{Math.abs(cs.balanceSeats)})</span>}
+                                      {isBorrowed && <span className="font-bold text-amber-600">(Mượn {cs.usedSeats})</span>}
+                                      {isSurplus && <span className="font-bold text-emerald-600">(+{cs.balanceSeats})</span>}
+                                    </div>
+                                  </div>
                                 );
                               })}
                               {group.companyStats.length > 3 && (
-                                <span className="text-[8px] text-slate-400 font-mono">+{group.companyStats.length - 3} cty</span>
+                                <span className="text-[9px] text-slate-400 font-medium pl-1">
+                                  + {group.companyStats.length - 3} công ty khác
+                                </span>
                               )}
                             </div>
                           )}
@@ -1936,67 +2094,31 @@ export default function LicensesPage() {
                           )}
                         </td>
 
-                        {/* Cột 7: Thao tác Master */}
+                        {/* Cột 7: Thao tác Master (3 Dấu Chấm giống Nhân Sự) */}
                         <td
-                          className="py-2.5 px-1.5 text-right sticky right-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-purple-50/90 dark:group-hover:bg-slate-800/90 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors min-w-[120px]"
+                          className="py-2.5 px-2 text-center sticky right-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-purple-50/90 dark:group-hover:bg-slate-800/90 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors w-[55px]"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="flex items-center justify-end gap-1 shrink-0">
-                            {/* Nút: Mua thêm đợt mới */}
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAddBatch(group)}
-                              title="Mua bổ sung đợt mới cho gói này"
-                              className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100/70 dark:hover:bg-emerald-950 rounded-md transition-colors cursor-pointer"
-                            >
-                              <PackagePlus className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* Cấp phát */}
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAssign({ ...masterLic, batches: group.batches })}
-                              title="Cấp phát & phân bổ seats cho nhân sự"
-                              className="p-1 text-purple-600 dark:text-purple-400 hover:bg-purple-100/70 dark:hover:bg-purple-950 rounded-md transition-colors cursor-pointer"
-                            >
-                              <Users className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* Xem chi tiết */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedDetailLicense({ ...masterLic, batches: group.batches });
-                                setIsDetailModalOpen(true);
-                              }}
-                              title="Xem chi tiết tổng quan gói bản quyền"
-                              className="p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100/70 dark:hover:bg-indigo-950 rounded-md transition-colors cursor-pointer"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* Sửa (chỉ hiện khi 1 đợt) */}
-                            {!hasBatches && (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEdit(masterLic)}
-                                title="Chỉnh sửa bản quyền"
-                                className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100/70 dark:hover:bg-blue-950 rounded-md transition-colors cursor-pointer"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-
-                            {/* Xóa */}
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteLicense(group.id, group.name)}
-                              title="Xóa gói bản quyền này"
-                              className="p-1 text-rose-500 dark:text-rose-400 hover:bg-rose-100/70 dark:hover:bg-rose-950 rounded-md transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const menuWidth = 280;
+                              const menuHeight = 340;
+                              const x = Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 10);
+                              const y = Math.min(rect.bottom + 5, window.innerHeight - menuHeight - 10);
+                              setContextMenu({
+                                x: Math.max(10, x),
+                                y: Math.max(10, y),
+                                group,
+                              });
+                            }}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer inline-flex items-center justify-center"
+                            title="Menu thao tác (hoặc nhấp chuột phải)"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
                         </td>
                       </tr>
 
@@ -2564,6 +2686,14 @@ export default function LicensesPage() {
         onOpenAddPayment={(lic: any) => {
           setSelectedDetailLicense(lic);
           setIsAddPaymentModalOpen(true);
+        }}
+        onExportExcel={(lic: any) => {
+          const foundGroup = groupedLicenses.find((g) => g.id === lic.id || g.name.toLowerCase() === (lic.name || '').toLowerCase());
+          if (foundGroup) {
+            handleExportSingleLicense(foundGroup);
+          } else {
+            handleExportSingleLicense(lic);
+          }
         }}
       />
 
@@ -3175,6 +3305,43 @@ export default function LicensesPage() {
 
           <div className="h-4 w-px bg-white/20" />
 
+          {/* Xuất Excel cho các gói đã chọn */}
+          <button
+            type="button"
+            disabled={isExportingExcel}
+            onClick={async () => {
+              const selectedGroups = groupedLicenses.filter((g) => selectedGroupIds.has(g.id));
+              if (selectedGroups.length === 0) return;
+              if (selectedGroups.length === 1) {
+                await handleExportSingleLicense(selectedGroups[0]);
+              } else {
+                setIsExportingExcel(true);
+                try {
+                  await exportConglomerateExcel({
+                    groupedLicenses: selectedGroups,
+                    selectedCompany,
+                    selectedCurrency,
+                    companiesList: conglomerateCompanies.map(([cName]) => cName),
+                  });
+                } catch (err) {
+                  console.error('Export selected Excel error:', err);
+                  alert(language === 'en' ? 'Excel export failed' : 'Xuất file Excel cho các gói đã chọn thất bại');
+                } finally {
+                  setIsExportingExcel(false);
+                }
+              }
+            }}
+            className="px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white shadow-md disabled:opacity-60"
+            title="Xuất báo cáo Excel cho các gói bản quyền đã chọn"
+          >
+            {isExportingExcel ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+            )}
+            <span>Xuất Excel ({selectedGroupIds.size} gói)</span>
+          </button>
+
           <button
             type="button"
             disabled={selectedGroupIds.size < 2}
@@ -3409,6 +3576,147 @@ export default function LicensesPage() {
                 Đóng
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== CONTEXT MENU (CHUỘT PHẢI TRÊN BẢN QUYỀN) ==================== */}
+      {contextMenu && (
+        <div
+          style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+          className="fixed z-50 min-w-[270px] max-w-[320px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-purple-200/80 dark:border-purple-800/80 py-2 px-1.5 animate-in fade-in zoom-in-95 duration-100 divide-y divide-slate-100 dark:divide-slate-800 text-left"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="px-3 py-2">
+            <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+              <Key className="w-3 h-3" />
+              <span>Thao tác bản quyền</span>
+            </div>
+            <div className="text-xs font-black text-slate-800 dark:text-slate-100 truncate mt-0.5" title={contextMenu.group.name}>
+              {contextMenu.group.name}
+            </div>
+            <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 font-medium">
+              <span>{contextMenu.group.totalSeats} seats</span>
+              <span>•</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold">{contextMenu.group.remainingSeats} còn trống</span>
+              {contextMenu.group.hasMultipleBatches && (
+                <>
+                  <span>•</span>
+                  <span className="text-purple-600 font-bold">{contextMenu.group.batches.length} đợt</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Body actions */}
+          <div className="py-1.5 space-y-0.5">
+            {/* 1. Xuất Excel riêng */}
+            <button
+              type="button"
+              onClick={() => {
+                const grp = contextMenu.group;
+                setContextMenu(null);
+                handleExportSingleLicense(grp);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 rounded-xl transition-colors cursor-pointer text-left"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div>
+                <div className="font-bold">Xuất file Excel riêng phần mềm</div>
+                <div className="text-[10px] text-emerald-600/70 font-normal">Ma trận cân đối & danh sách nhân sự</div>
+              </div>
+            </button>
+
+            {/* 2. Xem chi tiết & đợt mua */}
+            <button
+              type="button"
+              onClick={() => {
+                const grp = contextMenu.group;
+                setContextMenu(null);
+                setSelectedDetailLicense({ ...grp.masterLicense, batches: grp.batches, allAssignments: grp.allAssignments, groupTotalSeats: grp.totalSeats });
+                setIsDetailModalOpen(true);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 rounded-xl transition-colors cursor-pointer text-left"
+            >
+              <Eye className="w-4 h-4 text-indigo-600 shrink-0" />
+              <div>
+                <div className="font-bold">Xem chi tiết & Quản lý đợt mua</div>
+                <div className="text-[10px] text-indigo-600/70 font-normal">Hợp đồng, chứng từ, lịch sử thanh toán</div>
+              </div>
+            </button>
+
+            {/* 3. Cấp phát Seats */}
+            <button
+              type="button"
+              onClick={() => {
+                const grp = contextMenu.group;
+                setContextMenu(null);
+                handleOpenAssign({ ...grp.masterLicense, batches: grp.batches, allAssignments: grp.allAssignments, groupTotalSeats: grp.totalSeats });
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/60 rounded-xl transition-colors cursor-pointer text-left"
+            >
+              <Users className="w-4 h-4 text-purple-600 shrink-0" />
+              <div>
+                <div className="font-bold">Cấp phát & Phân bổ Seats</div>
+                <div className="text-[10px] text-purple-600/70 font-normal">Gán cho Nhân sự hoặc Máy tính</div>
+              </div>
+            </button>
+
+            {/* 4. Mua thêm đợt mới */}
+            <button
+              type="button"
+              onClick={() => {
+                const grp = contextMenu.group;
+                setContextMenu(null);
+                handleOpenAddBatch(grp);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-xl transition-colors cursor-pointer text-left"
+            >
+              <PackagePlus className="w-4 h-4 text-purple-600 shrink-0" />
+              <div>
+                <div className="font-bold">Mua bổ sung đợt mới (Add Batch)</div>
+                <div className="text-[10px] text-slate-400 font-normal">Thêm đợt mua mới cho công ty thành viên</div>
+              </div>
+            </button>
+
+            {/* 5. Chỉnh sửa */}
+            {!contextMenu.group.hasMultipleBatches && (
+              <button
+                type="button"
+                onClick={() => {
+                  const grp = contextMenu.group;
+                  setContextMenu(null);
+                  handleOpenEdit(grp.masterLicense);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/60 rounded-xl transition-colors cursor-pointer text-left"
+              >
+                <Edit2 className="w-4 h-4 text-blue-600 shrink-0" />
+                <div>
+                  <div className="font-bold">Chỉnh sửa thông tin gói</div>
+                  <div className="text-[10px] text-blue-600/70 font-normal">Sửa số seats, hạn dùng, license key</div>
+                </div>
+              </button>
+            )}
+          </div>
+
+          {/* 6. Xóa */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                const grp = contextMenu.group;
+                setContextMenu(null);
+                handleDeleteLicense(grp.id, grp.name);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-xl transition-colors cursor-pointer text-left"
+            >
+              <Trash2 className="w-4 h-4 text-rose-500 shrink-0" />
+              <div>
+                <div className="font-bold">Xóa gói bản quyền</div>
+                <div className="text-[10px] text-rose-500/70 font-normal">Đưa vào Thùng rác (khôi phục trong 30 ngày)</div>
+              </div>
+            </button>
           </div>
         </div>
       )}

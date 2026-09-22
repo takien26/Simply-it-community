@@ -47,6 +47,7 @@ import {
   Laptop,
   Image as ImageIcon,
   Smile,
+  Flame,
 } from 'lucide-react';
 import { SecondaryPasswordModal } from '@/components/common/SecondaryPasswordModal';
 import { useLanguage } from '@/lib/i18n/context';
@@ -61,6 +62,7 @@ import {
   PasswordGeneratorModal,
   KeePassImportModal,
   PasswordFormModal,
+  OneTimeSecretModal,
 } from '@/components/passwords';
 
 const DEFAULT_ROOT_FOLDERS = [
@@ -255,6 +257,13 @@ export default function PasswordsPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isGeneratorModalOpen, setIsGeneratorModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isOneTimeSecretModalOpen, setIsOneTimeSecretModalOpen] = useState(false);
+  const [oneTimeSecretData, setOneTimeSecretData] = useState<{
+    title?: string | null;
+    username?: string | null;
+    password?: string | null;
+    notes?: string | null;
+  } | undefined>(undefined);
   const [selectedPassword, setSelectedPassword] = useState<PasswordItem | null>(null);
 
   // Folder Modal State
@@ -899,6 +908,19 @@ export default function PasswordsPage() {
 
           <button
             type="button"
+            onClick={() => {
+              setOneTimeSecretData(undefined);
+              setIsOneTimeSecretModalOpen(true);
+            }}
+            className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+            title={isEn ? 'Share one-time self-destructing secret link' : 'Tạo liên kết chia sẻ mật khẩu tự hủy dùng 1 lần'}
+          >
+            <Flame className="w-3.5 h-3.5 text-rose-600" />
+            <span>{isEn ? 'Share One-Time' : 'Chia Sẻ Tự Hủy'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setIsImportModalOpen(true)}
             className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
           >
@@ -1418,6 +1440,23 @@ export default function PasswordsPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                setOneTimeSecretData({
+                                  title: item.title,
+                                  username: item.username,
+                                  password: item.password,
+                                  notes: item.notes,
+                                });
+                                setIsOneTimeSecretModalOpen(true);
+                              }}
+                              title={isEn ? 'Share One-Time Secret Link' : 'Chia sẻ link tự hủy 1 lần'}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 cursor-pointer"
+                            >
+                              <Flame className="w-3.5 h-3.5 text-rose-500" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 handleOpenEdit(item);
                               }}
                               title={isEn ? 'Edit' : 'Chỉnh sửa'}
@@ -1589,6 +1628,26 @@ export default function PasswordsPage() {
                 </a>
               )}
 
+              {/* Share One-Time Secret */}
+              <button
+                type="button"
+                onClick={() => {
+                  const item = contextMenu.targetItem!;
+                  setOneTimeSecretData({
+                    title: item.title,
+                    username: item.username,
+                    password: item.password,
+                    notes: item.notes,
+                  });
+                  setIsOneTimeSecretModalOpen(true);
+                  setContextMenu((prev) => ({ ...prev, visible: false }));
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-rose-50 text-rose-700 font-semibold flex items-center gap-2 cursor-pointer transition-colors border-t border-slate-100"
+              >
+                <Flame className="w-3.5 h-3.5 text-rose-600" />
+                <span>{isEn ? 'Share One-Time Secret' : 'Chia sẻ link tự hủy 1 lần'}</span>
+              </button>
+
               {/* Edit */}
               <button
                 type="button"
@@ -1703,6 +1762,13 @@ export default function PasswordsPage() {
         isOpen={isGeneratorModalOpen}
         onClose={() => setIsGeneratorModalOpen(false)}
         onCopyText={handleCopy}
+      />
+
+      {/* ONE-TIME SECRET MODAL */}
+      <OneTimeSecretModal
+        isOpen={isOneTimeSecretModalOpen}
+        onClose={() => setIsOneTimeSecretModalOpen(false)}
+        initialData={oneTimeSecretData}
       />
 
       {/* MODAL: IMPORT KEEPASS FILE */}

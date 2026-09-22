@@ -4,6 +4,7 @@ import {
   ServicePaymentModal,
   ServiceImportModal,
   ServiceFormModal,
+  RenewalRunwayCalendar,
 } from '@/components/services';
 
 
@@ -21,6 +22,7 @@ import {
   Search,
   CheckCircle2,
   Clock,
+  TrendingUp,
   AlertTriangle,
   Flame,
   FileText,
@@ -399,7 +401,8 @@ export default function ServicesPage() {
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [selectedVendor, setSelectedVendor] = useState('ALL');
   const [selectedCompany, setSelectedCompany] = useState('ALL');
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'cards' | 'runway'>('table');
+  const [licenses, setLicenses] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
 
@@ -419,6 +422,11 @@ export default function ServicesPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
+    const viewParam = params.get('view') || params.get('tab');
+    if (viewParam === 'runway' || viewParam === 'calendar') {
+      setViewMode('runway');
+    }
+
     const targetId = params.get('id') || params.get('serviceCode') || params.get('code');
     if (!targetId) return;
 
@@ -710,6 +718,13 @@ export default function ServicesPage() {
             if (md.users) setUsers(md.users);
           }
         }, 60000, forceMaster),
+
+        // 4. Fetch Licenses for 12-Month Runway Projection
+        fetchWithSwr<any>('/api/licenses?pageSize=300', (licRes) => {
+          if (licRes && (licRes.success || licRes.data)) {
+            setLicenses(licRes.data || []);
+          }
+        }, 30000, forceMaster),
       ]);
     } catch (err) {
       console.error('Failed to load services data:', err);
@@ -1509,6 +1524,34 @@ export default function ServicesPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* View Mode Switcher: [ 📋 Danh Sách Bảng ] | [ 📊 Lịch Dự Báo 12 Tháng ] */}
+          <div className="p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-400 shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>{isEn ? 'List Table' : 'Danh Sách Bảng'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('runway')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewMode === 'runway'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>{isEn ? '12-Month Runway' : '📊 Lịch Dự Báo 12 Tháng'}</span>
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => {
@@ -1542,8 +1585,26 @@ export default function ServicesPage() {
         </div>
       </div>
 
-      {/* Summary Statistics Cards with Multi-Currency Selector */}
-      <div className="space-y-3">
+      {viewMode === 'runway' ? (
+        <RenewalRunwayCalendar
+          services={services}
+          licenses={licenses}
+          companies={companies}
+          selectedCurrency={selectedCurrency}
+          exchangeRatesMap={exchangeRatesMap}
+          convertCurrency={convertCurrency}
+          formatPrice={formatPrice}
+          onSelectService={(svc) => {
+            setSelectedService(svc);
+            setIsDetailModalOpen(true);
+          }}
+          onQuickRenew={(svc, months) => handleQuickRenew(svc, months)}
+          isEn={isEn}
+        />
+      ) : (
+        <>
+          {/* Summary Statistics Cards with Multi-Currency Selector */}
+          <div className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
             {language === 'en' ? 'Service Overview & KPIs' : 'Chỉ số tổng quan dịch vụ'}
@@ -1987,6 +2048,8 @@ export default function ServicesPage() {
             </div>
           )}
         </div>
+      )}
+        </>
       )}
 
       {/* DETAIL MODAL (BÓC TÁCH COMPONENT CHUYÊN TRÁCH) */}

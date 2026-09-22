@@ -49,6 +49,7 @@ import {
   MoreVertical,
   Eye,
 } from 'lucide-react';
+import { CompanyOUNode, matchesCompany } from '@/lib/ou-structure';
 
 // ==================== HIERARCHICAL DEPARTMENTS MASTER STRUCTURE ====================
 export interface DepartmentNode {
@@ -180,6 +181,7 @@ export default function UsersPage() {
   const [companies, setCompanies] = useState<string[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [deptTree, setDeptTree] = useState<DepartmentNode[]>(HIERARCHICAL_DEPARTMENTS);
+  const [ouTree, setOuTree] = useState<CompanyOUNode[]>([]);
 
   // Quick Add Location modal state
   const [isAddLocationModalOpen, setIsAddLocationModalOpen] = useState(false);
@@ -310,10 +312,24 @@ export default function UsersPage() {
   }, [contextMenu.isOpen, isAddLocationModalOpen, isAddUserModalOpen, isEditUserModalOpen, isAssignAssetModalOpen, isAssignLicenseModalOpen, isUserDetailModalOpen, offboardTargetUserId, isOnboardModalOpen, syncReport]);
 
   
-  // Auto-open Detail Modal if URL contains ?id=... or ?userId=...
+  // Auto-open Detail Modal or Apply Filter if URL contains params
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
+    
+    // Check company & dept filter from category OU quick link
+    const compParam = params.get('company');
+    if (compParam) setSelectedCompany(compParam);
+    const deptParam = params.get('dept');
+    if (deptParam) {
+      if (deptParam.includes(' / ')) {
+        const parts = deptParam.split(' / ');
+        setSelectedDeptFilter(`CHILD:${parts[parts.length - 1].trim()}`);
+      } else {
+        setSelectedDeptFilter(`PARENT:${deptParam.trim()}`);
+      }
+    }
+
     const targetId = params.get('id') || params.get('userId') || params.get('email');
     if (!targetId) return;
 
@@ -346,13 +362,14 @@ export default function UsersPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [usersRes, rolesRes, assetsRes, licRes, compRes, locRes] = await Promise.all([
+      const [usersRes, rolesRes, assetsRes, licRes, compRes, locRes, ouRes] = await Promise.all([
         fetch(`/api/users?search=${encodeURIComponent(search)}`).then((r) => r.json()),
         fetch('/api/roles').then((r) => r.json()),
         fetch('/api/assets?status=AVAILABLE').then((r) => r.json()),
         fetch('/api/licenses?status=ACTIVE').then((r) => r.json()),
         fetch('/api/companies').then((r) => r.json()).catch(() => ({ data: [] })),
         fetch('/api/locations').then((r) => r.json()).catch(() => ({ data: [] })),
+        fetch('/api/companies/ou').then((r) => r.json()).catch(() => ({ data: [] })),
       ]);
 
       if (usersRes.success || usersRes.data) {
@@ -375,6 +392,9 @@ export default function UsersPage() {
       }
       if (locRes?.data) {
         setLocations(locRes.data);
+      }
+      if (ouRes?.data) {
+        setOuTree(ouRes.data);
       }
     } catch (e) {
       console.error('Failed to load users data', e);
@@ -424,6 +444,18 @@ export default function UsersPage() {
     } catch {}
   };
 
+  // Helper to resolve departments for selected company
+  const getDepartmentsForCompany = (compName?: string | null): DepartmentNode[] => {
+    if (!compName) return HIERARCHICAL_DEPARTMENTS;
+    const node = ouTree.find(
+      (c) => matchesCompany(c.name, compName) || c.name.toLowerCase() === compName.toLowerCase()
+    );
+    if (node && node.departments && node.departments.length > 0) {
+      return node.departments;
+    }
+    return HIERARCHICAL_DEPARTMENTS;
+  };
+
   // Helper to get effective department string from modal inputs
   const getEffectiveDept = () => {
     const parent = isCustomParent ? customParentText.trim() : formParentDept;
@@ -468,8 +500,13 @@ export default function UsersPage() {
   };
 
   const handleOpenAddUser = () => {
-    setFormParentDept('Ban Công Nghệ Thông Tin (IT / CNTT)');
-    setFormChildDept('Hỗ Trợ Kỹ Thuật & Helpdesk L1/L2');
+    const defaultCompany = companies[0] || '';
+    const initialDepts = getDepartmentsForCompany(defaultCompany);
+    const initialParent = initialDepts[0]?.name || 'Ban Công Nghệ Thông Tin (IT / CNTT)';
+    const initialChild = initialDepts[0]?.children?.[0]?.name || '';
+
+    setFormParentDept(initialParent);
+    setFormChildDept(initialChild);
     setIsCustomParent(false);
     setCustomParentText('');
     setIsCustomChild(false);
@@ -479,7 +516,7 @@ export default function UsersPage() {
       fullName: '',
       email: '',
       position: '',
-      companyName: companies[0] || '',
+      companyName: defaultCompany,
       phone: '',
       roleId: roles[0]?.id || '',
       managerId: '',
@@ -507,6 +544,28 @@ export default function UsersPage() {
       const data = await res.json();
       if (res.ok) {
         setIsAddUserModalOpen(false);
+        if (isCustomParent && customParentText.trim() && userFormData.companyName) {
+          fetch('/api/companies/ou', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'ADD_DEPARTMENT',
+              companyName: userFormData.companyName,
+              name: customParentText.trim(),
+            }),
+          }).catch(() => {});
+        } else if (isCustomChild && customChildText.trim() && formParentDept && userFormData.companyName) {
+          fetch('/api/companies/ou', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'ADD_SUB_DEPARTMENT',
+              companyName: userFormData.companyName,
+              parentDeptName: formParentDept,
+              name: customChildText.trim(),
+            }),
+          }).catch(() => {});
+        }
         loadData();
       } else {
         // Error handling
@@ -519,8 +578,11 @@ export default function UsersPage() {
   const handleOpenEditUser = (user: any) => {
     setEditingUserId(user.id);
     const { parent, child } = parseDeptParts(user.department);
+    const userCompDepts = getDepartmentsForCompany(user.companyName);
 
-    const matchedParentNode = deptTree.find(
+    const matchedParentNode = userCompDepts.find(
+      (d) => d.name === parent || d.name.includes(parent) || parent.includes(d.name)
+    ) || deptTree.find(
       (d) => d.name === parent || d.name.includes(parent) || parent.includes(d.name)
     );
 
@@ -607,6 +669,28 @@ export default function UsersPage() {
       if (res.ok) {
         setIsEditUserModalOpen(false);
         setEditingUserId(null);
+        if (isCustomParent && customParentText.trim() && editUserFormData.companyName) {
+          fetch('/api/companies/ou', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'ADD_DEPARTMENT',
+              companyName: editUserFormData.companyName,
+              name: customParentText.trim(),
+            }),
+          }).catch(() => {});
+        } else if (isCustomChild && customChildText.trim() && formParentDept && editUserFormData.companyName) {
+          fetch('/api/companies/ou', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'ADD_SUB_DEPARTMENT',
+              companyName: editUserFormData.companyName,
+              parentDeptName: formParentDept,
+              name: customChildText.trim(),
+            }),
+          }).catch(() => {});
+        }
         loadData();
       } else {
         alert(data.error || 'Cập nhật thất bại');
@@ -859,8 +943,12 @@ export default function UsersPage() {
     return true;
   });
 
-  // Selected parent node in Modal to render its sub-departments
-  const activeModalParentNode = deptTree.find((d) => d.name === formParentDept);
+  // Selected parent node in Modal to render its sub-departments (company-specific OU)
+  const addModalDepartments = getDepartmentsForCompany(userFormData.companyName);
+  const addModalParentNode = addModalDepartments.find((d) => d.name === formParentDept);
+
+  const editModalDepartments = getDepartmentsForCompany(editUserFormData.companyName);
+  const editModalParentNode = editModalDepartments.find((d) => d.name === formParentDept);
 
   return (
     <div className="space-y-4">
@@ -1113,7 +1201,10 @@ export default function UsersPage() {
             {/* Company Select */}
             <select
               value={selectedCompany}
-              onChange={(e) => setSelectedCompany(e.target.value)}
+              onChange={(e) => {
+                setSelectedCompany(e.target.value);
+                setSelectedDeptFilter('');
+              }}
               className="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 font-bold sm:w-48 cursor-pointer"
             >
               <option value="">{language === 'en' ? '🏢 All Companies' : '🏢 Tất cả công ty quản lý'}</option>
@@ -1124,14 +1215,18 @@ export default function UsersPage() {
               ))}
             </select>
 
-            {/* Department Select */}
+            {/* Department Select (Cascading based on selectedCompany) */}
             <select
               value={selectedDeptFilter}
               onChange={(e) => setSelectedDeptFilter(e.target.value)}
               className="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 font-bold sm:w-56 cursor-pointer"
             >
-              <option value="">{language === 'en' ? '📂 All Departments' : '📂 Tất cả Phòng ban & Bộ phận'}</option>
-              {deptTree.map((parent) => (
+              <option value="">
+                {selectedCompany
+                  ? (isEn ? `📂 All Depts of ${selectedCompany}` : `📂 Tất cả phòng ban (${selectedCompany})`)
+                  : (language === 'en' ? '📂 All Departments' : '📂 Tất cả Phòng ban & Bộ phận')}
+              </option>
+              {getDepartmentsForCompany(selectedCompany).map((parent) => (
                 <optgroup key={parent.id} label={`${parent.icon || '📁'} ${parent.name}`}>
                   <option value={`PARENT:${parent.name}`}>
                     {isEn ? `★ All of ${parent.name}` : `★ Toàn bộ ${parent.name}`}
@@ -1827,7 +1922,16 @@ export default function UsersPage() {
                   icon={<Building2 className="w-3.5 h-3.5 text-indigo-600" />}
                   items={companies.map((c) => ({ id: c, name: c }))}
                   selectedValue={editUserFormData.companyName}
-                  onSelect={(name) => setEditUserFormData((prev: any) => ({ ...prev, companyName: name }))}
+                  onSelect={(name) => {
+                    setEditUserFormData((prev: any) => ({ ...prev, companyName: name }));
+                    const compDepts = getDepartmentsForCompany(name);
+                    if (compDepts.length > 0 && !compDepts.some((d) => d.name === formParentDept)) {
+                      setFormParentDept(compDepts[0].name);
+                      setFormChildDept(compDepts[0].children?.[0]?.name || '');
+                      setIsCustomParent(false);
+                      setIsCustomChild(false);
+                    }
+                  }}
                   onAdd={handleAddCompany}
                   onEdit={handleEditCompany}
                   onDelete={(id, name) => handleDeleteCompany(name)}
@@ -1865,14 +1969,14 @@ export default function UsersPage() {
                           setIsCustomParent(false);
                           setFormParentDept(e.target.value);
                           // Reset child to first available or empty
-                          const pNode = deptTree.find((d) => d.name === e.target.value);
+                          const pNode = editModalDepartments.find((d) => d.name === e.target.value);
                           setFormChildDept(pNode?.children?.[0]?.name || '');
                           setIsCustomChild(false);
                         }
                       }}
                       className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-800 outline-none"
                     >
-                      {deptTree.map((d) => (
+                      {editModalDepartments.map((d) => (
                         <option key={d.id} value={d.name}>
                           {d.icon || '📁'} {d.name}
                         </option>
@@ -1897,7 +2001,7 @@ export default function UsersPage() {
                       className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-purple-900 outline-none"
                     >
                       <option value="">{isEn ? '-- Direct under department --' : '-- Trực thuộc chung phòng ban --'}</option>
-                      {activeModalParentNode?.children?.map((c) => (
+                      {editModalParentNode?.children?.map((c) => (
                         <option key={c.id} value={c.name}>
                           📂 {c.name}
                         </option>
@@ -2171,7 +2275,16 @@ export default function UsersPage() {
                   icon={<Building2 className="w-3.5 h-3.5 text-indigo-600" />}
                   items={companies.map((c) => ({ id: c, name: c }))}
                   selectedValue={userFormData.companyName}
-                  onSelect={(name) => setUserFormData((prev) => ({ ...prev, companyName: name }))}
+                  onSelect={(name) => {
+                    setUserFormData((prev) => ({ ...prev, companyName: name }));
+                    const compDepts = getDepartmentsForCompany(name);
+                    if (compDepts.length > 0) {
+                      setFormParentDept(compDepts[0].name);
+                      setFormChildDept(compDepts[0].children?.[0]?.name || '');
+                      setIsCustomParent(false);
+                      setIsCustomChild(false);
+                    }
+                  }}
                   onAdd={handleAddCompany}
                   onEdit={handleEditCompany}
                   onDelete={(id, name) => handleDeleteCompany(name)}
@@ -2208,14 +2321,14 @@ export default function UsersPage() {
                         } else {
                           setIsCustomParent(false);
                           setFormParentDept(e.target.value);
-                          const pNode = deptTree.find((d) => d.name === e.target.value);
+                          const pNode = addModalDepartments.find((d) => d.name === e.target.value);
                           setFormChildDept(pNode?.children?.[0]?.name || '');
                           setIsCustomChild(false);
                         }
                       }}
                       className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-800 outline-none"
                     >
-                      {deptTree.map((d) => (
+                      {addModalDepartments.map((d) => (
                         <option key={d.id} value={d.name}>
                           {d.icon || '📁'} {d.name}
                         </option>
@@ -2240,7 +2353,7 @@ export default function UsersPage() {
                       className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-purple-900 outline-none"
                     >
                       <option value="">{isEn ? '-- Direct under department --' : '-- Trực thuộc chung phòng ban --'}</option>
-                      {activeModalParentNode?.children?.map((c) => (
+                      {addModalParentNode?.children?.map((c) => (
                         <option key={c.id} value={c.name}>
                           📂 {c.name}
                         </option>

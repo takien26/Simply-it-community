@@ -26,6 +26,7 @@ import {
 import { ReconciliationReport, CloudAssignedUser } from '@/lib/license-connectors/types';
 import { formatPrice } from './types';
 import ExcelJS from 'exceljs';
+import { useLanguage } from '@/lib/i18n/context';
 
 export interface LicenseIntegrationModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export function LicenseIntegrationModal({
   onClose,
   isEn = false,
 }: LicenseIntegrationModalProps) {
+  const { t, language, isEn: ctxIsEn, isJa } = useLanguage();
   const [activeProvider, setActiveProvider] = useState<'m365' | 'google' | 'adobe'>('m365');
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
@@ -48,6 +50,8 @@ export function LicenseIntegrationModal({
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [assigningFifo, setAssigningFifo] = useState(false);
   const [autoAssignResult, setAutoAssignResult] = useState<any | null>(null);
+  const [importingSkus, setImportingSkus] = useState(false);
+  const [importSkuResult, setImportSkuResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Form states
   const [m365Config, setM365Config] = useState({
@@ -112,12 +116,12 @@ export function LicenseIntegrationModal({
       });
       const data = await res.json();
       if (res.ok) {
-        setTestResult({ success: true, message: 'Đã lưu cấu hình tích hợp thành công!' });
+        setTestResult({ success: true, message: t('licenses.hub.msg_save_success', 'Đã lưu cấu hình tích hợp thành công!') });
       } else {
-        setTestResult({ success: false, message: data.error || 'Lỗi lưu cấu hình' });
+        setTestResult({ success: false, message: data.error || t('licenses.hub.msg_save_error', 'Lỗi lưu cấu hình') });
       }
     } catch (err: any) {
-      setTestResult({ success: false, message: err?.message || 'Lỗi kết nối' });
+      setTestResult({ success: false, message: err?.message || t('licenses.hub.msg_save_error', 'Lỗi kết nối') });
     } finally {
       setSavingConfig(false);
     }
@@ -136,10 +140,10 @@ export function LicenseIntegrationModal({
       const data = await res.json();
       setTestResult({
         success: Boolean(data.success),
-        message: data.message || (data.success ? 'Kết nối thành công!' : 'Kết nối thất bại'),
+        message: data.message || (data.success ? t('licenses.hub.msg_test_success', 'Kết nối thành công!') : t('licenses.hub.msg_test_error', 'Kết nối thất bại')),
       });
     } catch (err: any) {
-      setTestResult({ success: false, message: err?.message || 'Không thể kiểm tra kết nối' });
+      setTestResult({ success: false, message: err?.message || t('licenses.hub.msg_test_error', 'Không thể kiểm tra kết nối') });
     } finally {
       setTestingConnection(false);
     }
@@ -159,10 +163,10 @@ export function LicenseIntegrationModal({
       if (res.ok) {
         setReport(data);
       } else {
-        setTestResult({ success: false, message: data.error || 'Lỗi khi đồng bộ dữ liệu' });
+        setTestResult({ success: false, message: data.error || t('licenses.hub.msg_sync_error', 'Lỗi khi đồng bộ dữ liệu') });
       }
     } catch (err: any) {
-      setTestResult({ success: false, message: err?.message || 'Không thể đồng bộ' });
+      setTestResult({ success: false, message: err?.message || t('licenses.hub.msg_sync_error', 'Không thể đồng bộ') });
     } finally {
       setSyncing(false);
     }
@@ -184,12 +188,39 @@ export function LicenseIntegrationModal({
         // Tự động chạy lại sync để cập nhật lại số lượng đối soát thời gian thực
         handleSyncAndReconcile();
       } else {
-        alert(data.error || 'Lỗi khi tự động phân bổ.');
+        alert(data.error || t('licenses.hub.msg_auto_assign_error', 'Lỗi khi tự động phân bổ.'));
       }
     } catch (err: any) {
-      alert(err?.message || 'Không thể thực hiện phân bổ.');
+      alert(err?.message || t('licenses.hub.msg_auto_assign_error', 'Không thể thực hiện phân bổ.'));
     } finally {
       setAssigningFifo(false);
+    }
+  };
+
+  // 3b. Tự động nhập toàn bộ các gói SKUs từ Cloud vào danh mục Bản quyền ITAM
+  const handleImportSkusToItam = async (targetSkus?: any[]) => {
+    const toImport = targetSkus || (report?.skus ? report.skus : []);
+    if (toImport.length === 0) return;
+    try {
+      setImportingSkus(true);
+      setImportSkuResult(null);
+      const res = await fetch(`/api/licenses/integrations/${activeProvider}/import-skus`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skus: toImport }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setImportSkuResult({ success: true, message: data.message });
+        // Tự động đồng bộ lại bảng đối soát thời gian thực
+        handleSyncAndReconcile();
+      } else {
+        setImportSkuResult({ success: false, message: data.error || 'Lỗi khi nhập gói bản quyền.' });
+      }
+    } catch (err: any) {
+      setImportSkuResult({ success: false, message: err?.message || 'Không thể kết nối máy chủ.' });
+    } finally {
+      setImportingSkus(false);
     }
   };
 
@@ -201,17 +232,17 @@ export function LicenseIntegrationModal({
       wb.creator = 'Simply IT Cloud Integration Hub';
 
       // Sheet 1: Đối soát SKU
-      const ws1 = wb.addWorksheet('Đối Soát Gói Cloud');
+      const ws1 = wb.addWorksheet(t('licenses.hub.excel_sheet_skus', 'Đối Soát Gói Cloud'));
       ws1.columns = [
         { header: 'STT', key: 'stt', width: 6 },
-        { header: 'Tên Gói Cloud', key: 'name', width: 32 },
+        { header: t('licenses.hub.col_sku_plan', 'Tên Gói Cloud'), key: 'name', width: 32 },
         { header: 'Mã SKU', key: 'sku', width: 26 },
-        { header: 'Tổng Mua Trên Cloud', key: 'total', width: 22 },
-        { header: 'Đã Gán Trên Cloud', key: 'consumed', width: 20 },
-        { header: 'Còn Trống Trên Cloud', key: 'available', width: 22 },
-        { header: 'Ghi Nhận Trong Simply IT', key: 'local', width: 25 },
-        { header: 'Chênh Lệch', key: 'diff', width: 15 },
-        { header: 'Đơn Giá Ước Tính/Tháng', key: 'price', width: 22 },
+        { header: t('licenses.hub.col_sku_total', 'Tổng Mua Trên Cloud'), key: 'total', width: 22 },
+        { header: t('licenses.hub.col_sku_assigned', 'Đã Gán Trên Cloud'), key: 'consumed', width: 20 },
+        { header: t('licenses.hub.col_sku_avail', 'Còn Trống Trên Cloud'), key: 'available', width: 22 },
+        { header: t('licenses.hub.col_sku_local', 'Ghi Nhận Trong Simply IT'), key: 'local', width: 25 },
+        { header: t('licenses.hub.col_sku_match', 'Chênh Lệch'), key: 'diff', width: 15 },
+        { header: t('licenses.hub.metric_savings_desc', 'Đơn Giá Ước Tính/Tháng'), key: 'price', width: 22 },
       ];
       ws1.getRow(1).font = { bold: true };
 
@@ -231,17 +262,17 @@ export function LicenseIntegrationModal({
       });
 
       // Sheet 2: Danh sách tài khoản lãng phí
-      const ws2 = wb.addWorksheet('Tài Khoản Lãng Phí');
+      const ws2 = wb.addWorksheet(t('licenses.hub.excel_sheet_dormant', 'Tài Khoản Lãng Phí'));
       ws2.columns = [
         { header: 'STT', key: 'stt', width: 6 },
-        { header: 'Họ Và Tên', key: 'name', width: 25 },
+        { header: t('licenses.hub.col_user', 'Họ Và Tên'), key: 'name', width: 25 },
         { header: 'Email', key: 'email', width: 28 },
-        { header: 'Phòng Ban', key: 'dept', width: 20 },
-        { header: 'Gói Đang Gán', key: 'sku', width: 32 },
-        { header: 'Trạng Thái Tài Khoản', key: 'status', width: 24 },
-        { header: 'Số Ngày Không Đăng Nhập', key: 'inactive', width: 26 },
-        { header: 'Thời Điểm Online Cuối', key: 'lastSign', width: 24 },
-        { header: 'Đề Xuất Hành Động', key: 'action', width: 30 },
+        { header: t('licenses.hub.col_dept', 'Phòng Ban'), key: 'dept', width: 20 },
+        { header: t('licenses.hub.col_sku', 'Gói Đang Gán'), key: 'sku', width: 32 },
+        { header: t('licenses.hub.col_cloud_status', 'Trạng Thái Tài Khoản'), key: 'status', width: 24 },
+        { header: t('licenses.hub.col_inactive', 'Số Ngày Không Đăng Nhập'), key: 'inactive', width: 26 },
+        { header: t('licenses.hub.col_last_sign', 'Thời Điểm Online Cuối'), key: 'lastSign', width: 24 },
+        { header: t('licenses.hub.col_action', 'Đề Xuất Hành Động'), key: 'action', width: 30 },
       ];
       ws2.getRow(1).font = { bold: true };
 
@@ -252,10 +283,10 @@ export function LicenseIntegrationModal({
           email: u.email,
           dept: u.department || '—',
           sku: u.assignedSkuNames.join(', '),
-          status: u.accountEnabled ? 'Đang bật' : 'ĐÃ BỊ KHÓA (Disabled)',
-          inactive: `${u.daysInactive} ngày`,
-          lastSign: u.lastSignInDate ? new Date(u.lastSignInDate).toLocaleString('vi-VN') : 'Chưa có log',
-          action: !u.accountEnabled ? 'THU HỒI NGAY (Đã nghỉ việc)' : 'Xem xét thu hồi (>45 ngày)',
+          status: u.accountEnabled ? t('licenses.hub.status_active', 'Đang bật') : t('licenses.hub.status_disabled', 'ĐÃ BỊ KHÓA (Disabled)'),
+          inactive: `${u.daysInactive} ${t('licenses.matrix.days_unit', 'ngày')}`,
+          lastSign: u.lastSignInDate ? new Date(u.lastSignInDate).toLocaleString(language === 'vi' ? 'vi-VN' : language === 'ja' ? 'ja-JP' : 'en-US') : t('licenses.hub.no_sign_log', 'Chưa có log'),
+          action: !u.accountEnabled ? t('licenses.hub.action_reclaim_offboarded', 'THU HỒI NGAY (Đã nghỉ việc)') : t('licenses.hub.action_review_inactive', 'Xem xét thu hồi (>45 ngày)'),
         });
       });
 
@@ -271,7 +302,7 @@ export function LicenseIntegrationModal({
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
-      alert('Không thể xuất file Excel đối soát.');
+      alert(t('licenses.hub.excel_err', 'Không thể xuất file Excel đối soát.'));
     }
   };
 
@@ -295,15 +326,13 @@ export function LicenseIntegrationModal({
             </div>
             <div>
               <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <span>{isEn ? 'Cloud License Integration Hub' : 'Cổng Tích Hợp & Đồng Bộ Bản Quyền Đám Mây'}</span>
+                <span>{t('licenses.hub.title', 'Cổng Tích Hợp & Đồng Bộ Bản Quyền Đám Mây')}</span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-extrabold uppercase">
                   v2.0
                 </span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                {isEn
-                  ? 'Connect directly via Cloud APIs to reconcile seats and reclaim dormant licenses'
-                  : 'Kết nối trực tiếp qua API đám mây để đối soát số lượng và thu hồi license lãng phí'}
+                {t('licenses.hub.subtitle', 'Kết nối trực tiếp qua API đám mây để đối soát số lượng và thu hồi license lãng phí')}
               </p>
             </div>
           </div>
@@ -331,7 +360,7 @@ export function LicenseIntegrationModal({
             }`}
           >
             <span className="text-sm">🟦</span>
-            <span>Microsoft 365 (Graph API)</span>
+            <span>{t('licenses.hub.m365_tab', 'Microsoft 365 (Graph API)')}</span>
           </button>
 
           <button
@@ -347,7 +376,7 @@ export function LicenseIntegrationModal({
             }`}
           >
             <span className="text-sm">🟥</span>
-            <span>Google Workspace</span>
+            <span>{t('licenses.hub.google_tab', 'Google Workspace')}</span>
           </button>
 
           <button
@@ -363,7 +392,7 @@ export function LicenseIntegrationModal({
             }`}
           >
             <span className="text-sm">🟪</span>
-            <span>Adobe Creative Cloud</span>
+            <span>{t('licenses.hub.adobe_tab', 'Adobe Creative Cloud')}</span>
           </button>
         </div>
 
@@ -376,10 +405,10 @@ export function LicenseIntegrationModal({
                 <div>
                   <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                     <Plug className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Cấu hình kết nối Microsoft Graph API:</span>
+                    <span>{t('licenses.hub.m365_title', 'Cấu hình kết nối Microsoft Graph API:')}</span>
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    Tạo App Registration trong Microsoft Entra ID (Azure AD) với quyền <code>Directory.Read.All</code> và <code>Organization.Read.All</code>
+                    {t('licenses.hub.m365_desc', 'Tạo App Registration trong Microsoft Entra ID (Azure AD) với quyền Directory.Read.All và Organization.Read.All')}
                   </p>
                 </div>
 
@@ -391,7 +420,7 @@ export function LicenseIntegrationModal({
                     className="w-4 h-4 text-blue-600 rounded cursor-pointer"
                   />
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Chế độ Thử nghiệm (Simulation Mode)
+                    {t('licenses.hub.simulation_mode', 'Chế độ Thử nghiệm (Simulation Mode)')}
                   </span>
                 </label>
               </div>
@@ -399,7 +428,7 @@ export function LicenseIntegrationModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    Tenant ID (Directory ID):
+                    {t('licenses.hub.tenant_id', 'Tenant ID (Directory ID):')}
                   </label>
                   <input
                     type="text"
@@ -412,7 +441,7 @@ export function LicenseIntegrationModal({
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    Client ID (Application ID):
+                    {t('licenses.hub.client_id', 'Client ID (Application ID):')}
                   </label>
                   <input
                     type="text"
@@ -425,7 +454,7 @@ export function LicenseIntegrationModal({
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    Client Secret:
+                    {t('licenses.hub.client_secret', 'Client Secret:')}
                   </label>
                   <input
                     type="password"
@@ -461,7 +490,7 @@ export function LicenseIntegrationModal({
                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    <span>{savingConfig ? 'Đang lưu...' : 'Lưu Cấu Hình'}</span>
+                    <span>{savingConfig ? t('licenses.hub.btn_saving', 'Đang lưu...') : t('licenses.hub.btn_save', 'Lưu Cấu Hình')}</span>
                   </button>
 
                   <button
@@ -471,7 +500,7 @@ export function LicenseIntegrationModal({
                     className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     <Plug className="w-3.5 h-3.5" />
-                    <span>{testingConnection ? 'Đang kiểm tra...' : 'Kiểm Tra Kết Nối'}</span>
+                    <span>{testingConnection ? t('licenses.hub.btn_testing', 'Đang kiểm tra...') : t('licenses.hub.btn_test', 'Kiểm Tra Kết Nối')}</span>
                   </button>
                 </div>
 
@@ -482,7 +511,7 @@ export function LicenseIntegrationModal({
                   className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50 hover:scale-102 active:scale-98 transition-all"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
-                  <span>{syncing ? 'Đang Kéo Dữ Liệu & Đối Soát...' : '⚡ Đồng Bộ & Đối Soát Ngay'}</span>
+                  <span>{syncing ? t('licenses.hub.btn_syncing', 'Đang Kéo Dữ Liệu & Đối Soát...') : t('licenses.hub.btn_sync', '⚡ Đồng Bộ & Đối Soát Ngay')}</span>
                 </button>
               </div>
             </div>
@@ -492,11 +521,13 @@ export function LicenseIntegrationModal({
             <div className="bg-slate-50/70 dark:bg-slate-800/40 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Plug className="w-3.5 h-3.5 text-rose-600" />
-                <span>Cấu hình Google Workspace Admin SDK:</span>
+                <span>{t('licenses.hub.google_title', 'Cấu hình Google Workspace Admin SDK:')}</span>
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Service Account Email:</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    {t('licenses.hub.google_service_account', 'Service Account Email:')}
+                  </label>
                   <input
                     type="text"
                     placeholder="simply-itam@project.iam.gserviceaccount.com"
@@ -506,7 +537,9 @@ export function LicenseIntegrationModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Admin Email (Ủy quyền):</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    {t('licenses.hub.google_admin_email', 'Admin Email (Ủy quyền):')}
+                  </label>
                   <input
                     type="text"
                     placeholder="admin@congty.com"
@@ -522,7 +555,7 @@ export function LicenseIntegrationModal({
                 className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Đồng Bộ Thử Nghiệm Google Workspace</span>
+                <span>{t('licenses.hub.google_sync', 'Đồng Bộ Thử Nghiệm Google Workspace')}</span>
               </button>
             </div>
           )}
@@ -531,11 +564,13 @@ export function LicenseIntegrationModal({
             <div className="bg-slate-50/70 dark:bg-slate-800/40 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Plug className="w-3.5 h-3.5 text-purple-600" />
-                <span>Cấu hình Adobe Admin Console API:</span>
+                <span>{t('licenses.hub.adobe_title', 'Cấu hình Adobe Admin Console API:')}</span>
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Client ID (API Key):</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    {t('licenses.hub.adobe_client_id', 'Client ID (API Key):')}
+                  </label>
                   <input
                     type="text"
                     placeholder="Nhập Adobe Client ID..."
@@ -545,7 +580,9 @@ export function LicenseIntegrationModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Organization ID:</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    {t('licenses.hub.adobe_org_id', 'Organization ID:')}
+                  </label>
                   <input
                     type="text"
                     placeholder="xxxx@AdobeOrg"
@@ -561,7 +598,7 @@ export function LicenseIntegrationModal({
                 className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Đồng Bộ Thử Nghiệm Adobe Creative Cloud</span>
+                <span>{t('licenses.hub.adobe_sync', 'Đồng Bộ Thử Nghiệm Adobe Creative Cloud')}</span>
               </button>
             </div>
           )}
@@ -574,16 +611,16 @@ export function LicenseIntegrationModal({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-black uppercase tracking-wider text-indigo-900 dark:text-indigo-200">
-                      Báo Cáo Đối Soát: {report.providerName}
+                      {t('licenses.hub.report_title', 'Báo Cáo Đối Soát: {provider}').replace('{provider}', report.providerName)}
                     </span>
                     {report.isDemoMode && (
                       <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 font-extrabold">
-                        MÔ PHỎNG (DEMO)
+                        {t('licenses.hub.report_demo', 'MÔ PHỎNG (DEMO)')}
                       </span>
                     )}
                   </div>
                   <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-0.5">
-                    Thời điểm đồng bộ: {new Date(report.syncedAt).toLocaleString('vi-VN')}
+                    {t('licenses.hub.report_synced_at', 'Thời điểm đồng bộ: {date}').replace('{date}', new Date(report.syncedAt).toLocaleString(language === 'vi' ? 'vi-VN' : language === 'ja' ? 'ja-JP' : 'en-US'))}
                   </p>
                 </div>
 
@@ -594,7 +631,18 @@ export function LicenseIntegrationModal({
                     className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5" />
-                    <span>Xuất Excel Báo Cáo</span>
+                    <span>{t('licenses.hub.report_export_excel', 'Xuất Excel Báo Cáo')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleImportSkusToItam()}
+                    disabled={importingSkus}
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-500/20 disabled:opacity-50 transition-all hover:scale-102 active:scale-98"
+                    title={t('licenses.hub.report_import_skus', '➕ Thêm Tất Cả Gói Vào ITAM')}
+                  >
+                    <Layers className={`w-3.5 h-3.5 ${importingSkus ? 'animate-spin' : ''}`} />
+                    <span>{importingSkus ? t('licenses.hub.report_importing_skus', 'Đang Thêm Vào ITAM...') : t('licenses.hub.report_import_skus', '➕ Thêm Tất Cả Gói Vào ITAM')}</span>
                   </button>
 
                   <button
@@ -602,13 +650,36 @@ export function LicenseIntegrationModal({
                     onClick={() => handleAutoAssign(false)}
                     disabled={assigningFifo}
                     className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-purple-500/20 disabled:opacity-50 transition-all hover:scale-102 active:scale-98"
-                    title="Tự động so khớp nhân sự với công ty trong Cài đặt và phân bổ vào các đợt mua theo cơ chế FIFO (Hạn gần nhất lấp trước)"
+                    title={t('licenses.hub.report_auto_assign', '⚡ Khớp Công Ty & Phân Bổ Đợt (FIFO)')}
                   >
                     <Zap className={`w-3.5 h-3.5 ${assigningFifo ? 'animate-spin' : ''}`} />
-                    <span>{assigningFifo ? 'Đang Phân Bổ FIFO...' : '⚡ Khớp Công Ty & Phân Bổ Đợt (FIFO)'}</span>
+                    <span>{assigningFifo ? t('licenses.hub.report_auto_assigning', 'Đang Phân Bổ FIFO...') : t('licenses.hub.report_auto_assign', '⚡ Khớp Công Ty & Phân Bổ Đợt (FIFO)')}</span>
                   </button>
                 </div>
               </div>
+
+              {/* Thông báo kết quả nạp License vào ITAM */}
+              {importSkuResult && (
+                <div className={`p-4 rounded-2xl text-xs space-y-1 animate-in fade-in border ${
+                  importSkuResult.success
+                    ? 'bg-blue-50/90 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-950 dark:text-blue-100'
+                    : 'bg-rose-50/90 dark:bg-rose-950/60 border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold flex items-center gap-1.5">
+                      {importSkuResult.success ? <CheckCircle2 className="w-4 h-4 text-blue-600" /> : <AlertTriangle className="w-4 h-4 text-rose-600" />}
+                      <span>{importSkuResult.message}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setImportSkuResult(null)}
+                      className="text-slate-500 hover:text-slate-700 text-[11px] font-bold cursor-pointer"
+                    >
+                      ✕ {t('licenses.hub.btn_close', 'Đóng')}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Thông báo kết quả tự động phân bổ nếu vừa chạy */}
               {autoAssignResult && (
@@ -623,18 +694,18 @@ export function LicenseIntegrationModal({
                       onClick={() => setAutoAssignResult(null)}
                       className="text-emerald-600 hover:text-emerald-800 text-[11px] font-bold cursor-pointer"
                     >
-                      ✕ Đóng
+                      ✕ {t('licenses.hub.btn_close', 'Đóng')}
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-semibold text-[11px]">
                     <div className="p-2 bg-white/70 dark:bg-slate-900/70 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300">
-                      🏢 Đúng công ty nhân sự: <strong>{autoAssignResult.stats?.selfAssignedCount || 0}</strong> ghế
+                      {t('licenses.hub.auto_assign_self', '🏢 Đúng công ty nhân sự: {count} ghế').replace('{count}', String(autoAssignResult.stats?.selfAssignedCount || 0))}
                     </div>
                     <div className="p-2 bg-white/70 dark:bg-slate-900/70 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
-                      🔄 Mượn chéo (khi cty hết quota): <strong>{autoAssignResult.stats?.crossAssignedCount || 0}</strong> ghế
+                      {t('licenses.hub.auto_assign_cross', '🔄 Mượn chéo (khi cty hết quota): {count} ghế').replace('{count}', String(autoAssignResult.stats?.crossAssignedCount || 0))}
                     </div>
                     <div className="p-2 bg-white/70 dark:bg-slate-900/70 rounded-xl border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300">
-                      ♻️ Giải phóng (nhân sự nghỉ việc): <strong>{autoAssignResult.stats?.reclaimedCount || 0}</strong> ghế
+                      {t('licenses.hub.auto_assign_reclaimed', '♻️ Giải phóng (nhân sự nghỉ việc): {count} ghế').replace('{count}', String(autoAssignResult.stats?.reclaimedCount || 0))}
                     </div>
                   </div>
                 </div>
@@ -643,44 +714,53 @@ export function LicenseIntegrationModal({
               {/* 4 Metric Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tổng Mua Trên Cloud</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    {t('licenses.hub.metric_cloud_total', 'Tổng Mua Trên Cloud')}
+                  </p>
                   <h4 className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
-                    {report.totalCloudSeats} <span className="text-xs font-normal text-slate-400">ghế</span>
+                    {report.totalCloudSeats} <span className="text-xs font-normal text-slate-400">{t('licenses.matrix.seats_unit', 'ghế')}</span>
                   </h4>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Đã gán: {report.totalCloudConsumed} ghế</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    {t('licenses.hub.metric_cloud_consumed', 'Đã gán: {count} ghế').replace('{count}', String(report.totalCloudConsumed))}
+                  </p>
                 </div>
 
                 <div className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sổ Sách Simply IT</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    {t('licenses.hub.metric_local_title', 'Sổ Sách Simply IT')}
+                  </p>
                   <h4 className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
-                    {report.totalLocalConsumed} <span className="text-xs font-normal text-slate-400">ghế gán</span>
+                    {report.totalLocalConsumed} <span className="text-xs font-normal text-slate-400">{t('licenses.matrix.seats_unit', 'ghế')}</span>
                   </h4>
                   <p className="text-[10px] text-slate-500 mt-0.5">
-                    Lệch:{' '}
                     <span className={report.totalCloudConsumed !== report.totalLocalConsumed ? 'text-amber-600 font-bold' : 'text-emerald-600 font-bold'}>
-                      {report.totalCloudConsumed - report.totalLocalConsumed} ghế
+                      {t('licenses.hub.metric_local_diff', 'Lệch: {diff} ghế').replace('{diff}', String(report.totalCloudConsumed - report.totalLocalConsumed))}
                     </span>
                   </p>
                 </div>
 
                 <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-800 shadow-2xs">
                   <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-                    Tài Khoản Lãng Phí (Dormant)
+                    {t('licenses.hub.metric_dormant_title', 'Tài Khoản Lãng Phí (Dormant)')}
                   </p>
                   <h4 className="text-lg font-black text-amber-700 dark:text-amber-300 mt-0.5">
-                    {report.dormantUsers.length} <span className="text-xs font-normal">tài khoản</span>
+                    {report.dormantUsers.length} <span className="text-xs font-normal">{t('licenses.matrix.seats_unit', 'ghế')}</span>
                   </h4>
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">Đã khóa hoặc {'>'}45 ngày không đăng nhập</p>
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                    {t('licenses.hub.metric_dormant_desc', 'Đã khóa hoặc >45 ngày không đăng nhập')}
+                  </p>
                 </div>
 
                 <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs">
                   <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-                    Tiết Kiệm Tiềm Năng
+                    {t('licenses.hub.metric_savings_title', 'Tiết Kiệm Tiềm Năng')}
                   </p>
                   <h4 className="text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">
                     {formatPrice(report.estimatedPotentialSavings, 'VND')}
                   </h4>
-                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">Ước tính / tháng nếu thu hồi</p>
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    {t('licenses.hub.metric_savings_desc', 'Ước tính / tháng nếu thu hồi')}
+                  </p>
                 </div>
               </div>
 
@@ -690,7 +770,7 @@ export function LicenseIntegrationModal({
                   <div className="flex items-center gap-2">
                     <ShieldAlert className="w-4 h-4 text-amber-600" />
                     <h5 className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
-                      Danh Sách Tài Khoản Đề Xuất Thu Hồi Ngay ({report.dormantUsers.length})
+                      {t('licenses.hub.dormant_list_title', 'Danh Sách Tài Khoản Đề Xuất Thu Hồi Ngay ({count})').replace('{count}', String(report.dormantUsers.length))}
                     </h5>
                   </div>
                   {report.dormantUsers.length > 0 && (
@@ -700,25 +780,25 @@ export function LicenseIntegrationModal({
                       className="text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
                     >
                       {copiedEmail ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                      <span>{copiedEmail ? 'Đã copy email!' : 'Copy danh sách email'}</span>
+                      <span>{copiedEmail ? t('licenses.hub.copied_emails', 'Đã copy email!') : t('licenses.hub.copy_emails', 'Copy danh sách email')}</span>
                     </button>
                   )}
                 </div>
 
                 {report.dormantUsers.length === 0 ? (
                   <div className="p-6 text-center text-xs text-slate-400">
-                    🎉 Không phát hiện tài khoản nào bị bỏ phí hoặc ngủ đông!
+                    {t('licenses.hub.dormant_empty', '🎉 Không phát hiện tài khoản nào bị bỏ phí hoặc ngủ đông!')}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 text-[10px] font-black uppercase border-b border-slate-100 dark:border-slate-800">
                         <tr>
-                          <th className="py-2.5 px-4">Nhân Sự</th>
-                          <th className="py-2.5 px-3">Gói Bản Quyền</th>
-                          <th className="py-2.5 px-3 text-center">Trạng Thái Cloud</th>
-                          <th className="py-2.5 px-3 text-center">Không Đăng Nhập</th>
-                          <th className="py-2.5 px-4 text-right">Lý Do Đề Xuất Thu Hồi</th>
+                          <th className="py-2.5 px-4">{t('licenses.hub.col_user', 'Nhân Sự')}</th>
+                          <th className="py-2.5 px-3">{t('licenses.hub.col_sku', 'Gói Bản Quyền')}</th>
+                          <th className="py-2.5 px-3 text-center">{t('licenses.hub.col_cloud_status', 'Trạng Thái Cloud')}</th>
+                          <th className="py-2.5 px-3 text-center">{t('licenses.hub.col_inactive', 'Không Đăng Nhập')}</th>
+                          <th className="py-2.5 px-4 text-right">{t('licenses.hub.col_reclaim_reason', 'Lý Do Đề Xuất Thu Hồi')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -734,25 +814,25 @@ export function LicenseIntegrationModal({
                             <td className="py-2.5 px-3 text-center">
                               {u.accountEnabled ? (
                                 <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 font-bold">
-                                  Bật
+                                  {t('licenses.hub.status_active', 'Bật')}
                                 </span>
                               ) : (
                                 <span className="text-[10px] px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/60 text-rose-700 font-bold">
-                                  ĐÃ BỊ KHÓA
+                                  {t('licenses.hub.status_disabled', 'ĐÃ BỊ KHÓA')}
                                 </span>
                               )}
                             </td>
                             <td className="py-2.5 px-3 text-center text-amber-700 dark:text-amber-400 font-bold">
-                              {u.daysInactive} ngày
+                              {u.daysInactive} {t('licenses.matrix.days_unit', 'ngày')}
                             </td>
                             <td className="py-2.5 px-4 text-right">
                               {!u.accountEnabled ? (
                                 <span className="text-[10.5px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded-lg">
-                                  Nhân viên đã nghỉ việc (Tài khoản bị khóa)
+                                  {t('licenses.hub.reason_offboarded', 'Nhân viên đã nghỉ việc (Tài khoản bị khóa)')}
                                 </span>
                               ) : (
                                 <span className="text-[10.5px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-lg">
-                                  Không sử dụng {'>'}45 ngày
+                                  {t('licenses.hub.reason_inactive', 'Không sử dụng >45 ngày')}
                                 </span>
                               )}
                             </td>
@@ -769,19 +849,19 @@ export function LicenseIntegrationModal({
                 <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                   <h5 className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                     <Layers className="w-4 h-4 text-indigo-600" />
-                    <span>Chi Tiết Đối Soát Hạn Mức Từng Gói (SKUs)</span>
+                    <span>{t('licenses.hub.sku_table_title', 'Chi Tiết Đối Soát Hạn Mức Từng Gói (SKUs)')}</span>
                   </h5>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 text-[10px] font-black uppercase border-b border-slate-100 dark:border-slate-800">
                       <tr>
-                        <th className="py-2.5 px-4">Gói Bản Quyền Cloud</th>
-                        <th className="py-2.5 px-3 text-center">Tổng Mua (Cloud)</th>
-                        <th className="py-2.5 px-3 text-center">Đã Gán (Cloud)</th>
-                        <th className="py-2.5 px-3 text-center">Còn Trống</th>
-                        <th className="py-2.5 px-3 text-center">Ghi Nhận ITAM</th>
-                        <th className="py-2.5 px-4 text-center">Trạng Thái Đối Soát</th>
+                        <th className="py-2.5 px-4">{t('licenses.hub.col_sku_plan', 'Gói Bản Quyền Cloud')}</th>
+                        <th className="py-2.5 px-3 text-center">{t('licenses.hub.col_sku_total', 'Tổng Mua (Cloud)')}</th>
+                        <th className="py-2.5 px-3 text-center">{t('licenses.hub.col_sku_assigned', 'Đã Gán (Cloud)')}</th>
+                        <th className="py-2.5 px-3 text-center">{t('licenses.hub.col_sku_avail', 'Còn Trống')}</th>
+                        <th className="py-2.5 px-3 text-center">{t('licenses.hub.col_sku_local', 'Ghi Nhận ITAM')}</th>
+                        <th className="py-2.5 px-4 text-center">{t('licenses.hub.col_sku_match', 'Trạng Thái Đối Soát')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -811,13 +891,25 @@ export function LicenseIntegrationModal({
                               {isMatch ? (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-full">
                                   <CheckCircle2 className="w-3 h-3" />
-                                  <span>Khớp 100%</span>
+                                  <span>{t('licenses.hub.match_exact', 'Khớp 100%')}</span>
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1 rounded-full">
-                                  <AlertTriangle className="w-3 h-3" />
-                                  <span>Lệch {disc?.diff > 0 ? `+${disc.diff}` : disc?.diff} ghế</span>
-                                </span>
+                                <div className="inline-flex flex-col items-center gap-1">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1 rounded-full">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    <span>{t('licenses.hub.match_diff', 'Lệch {diff} ghế').replace('{diff}', disc?.diff > 0 ? `+${disc.diff}` : String(disc?.diff))}</span>
+                                  </span>
+                                  {(disc?.localConsumed || 0) === 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleImportSkusToItam([s])}
+                                      disabled={importingSkus}
+                                      className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer disabled:opacity-50"
+                                    >
+                                      + {t('licenses.hub.import_single_sku', 'Thêm gói này')}
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </td>
                           </tr>
@@ -834,14 +926,14 @@ export function LicenseIntegrationModal({
         {/* Modal Sticky Footer */}
         <div className="flex items-center justify-between px-6 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 shrink-0">
           <div className="text-[11px] text-slate-400">
-            <span>Hỗ trợ: Microsoft Graph API v1.0 • Chuẩn bảo mật OAuth2 Client Credentials</span>
+            <span>{t('licenses.hub.footer_support', 'Hỗ trợ: Microsoft Graph API v1.0 • Chuẩn bảo mật OAuth2 Client Credentials')}</span>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
           >
-            Đóng
+            {t('licenses.hub.btn_close', 'Đóng')}
           </button>
         </div>
       </div>

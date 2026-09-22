@@ -35,7 +35,9 @@ import {
   TrendingUp,
   Building,
   Barcode,
+  Printer,
 } from 'lucide-react';
+import AssetHandoverModal from './asset-handover-modal';
 import {
   formatCurrency,
   formatDate,
@@ -102,6 +104,8 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const [detailMaintenanceLogs, setDetailMaintenanceLogs] = useState<any[]>([]);
   const [isUpdatingDepreciation, setIsUpdatingDepreciation] = useState(false);
   const [mainTab, setMainTab] = useState<'details' | 'timeline'>('details');
+  const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
+  const [handoverMode, setHandoverMode] = useState<'HANDOVER' | 'RETURN'>('HANDOVER');
 
   const { language: ctxLang } = useLanguage();
   const activeLang = language || ctxLang || 'vi';
@@ -1763,6 +1767,19 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                     <QrCode className="w-3.5 h-3.5 text-indigo-600" />
                     <span>🖨️ In Tem QR</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHandoverMode('HANDOVER');
+                      setIsHandoverModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                    title={txt('In biên bản bàn giao / thu hồi thiết bị chuẩn mực A4', 'Print standard A4 handover/return form', 'A4受渡・返却書印刷')}
+                  >
+                    <Printer className="w-3.5 h-3.5 text-blue-600" />
+                    <span>🖨️ {txt('In Biên Bản A4', 'Print Handover A4', 'In Biên Bản A4')}</span>
+                  </button>
                 </div>
 
                 {/* Right buttons */}
@@ -1818,6 +1835,17 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
             }
           }}
           themeColor="blue"
+        />
+      )}
+
+      {/* ==================== MODAL: IN BIÊN BẢN BÀN GIAO / THU HỒI A4 ==================== */}
+      {selectedDetailAsset && isHandoverModalOpen && (
+        <AssetHandoverModal
+          isOpen={isHandoverModalOpen}
+          onClose={() => setIsHandoverModalOpen(false)}
+          asset={selectedDetailAsset}
+          initialMode={handoverMode}
+          previousUser={selectedDetailAsset.assignments?.find((a: any) => !a.returnedAt)?.user}
         />
       )}
     </>

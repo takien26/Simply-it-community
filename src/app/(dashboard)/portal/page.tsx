@@ -564,6 +564,16 @@ export default function EmployeePortalPage() {
                               {priorityBadge.label}
                             </span>
                           )}
+                          {t.rating ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                              <span>⭐</span>
+                              <span>{t.rating}/5 {isEn ? 'stars' : 'sao'}</span>
+                            </span>
+                          ) : (t.status === 'RESOLVED' || t.status === 'CLOSED') ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                              {isEn ? 'Awaiting CSAT' : 'Chờ bạn đánh giá CSAT'}
+                            </span>
+                          ) : null}
                           <span className="text-[11px] text-slate-400">
                             • {formatDate(t.createdAt)}
                           </span>
@@ -601,6 +611,17 @@ export default function EmployeePortalPage() {
                           <span className="text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
                             {isEn ? 'Awaiting IT' : 'Chờ tiếp nhận'}
                           </span>
+                        )}
+
+                        {(t.status === 'RESOLVED' || t.status === 'CLOSED') && !t.rating && (
+                          <Link
+                            href={`/tickets?id=${t.id}`}
+                            className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all flex items-center gap-1 shadow-xs hover:scale-[1.02]"
+                            title={isEn ? 'Rate satisfaction CSAT' : 'Đánh giá mức độ hài lòng CSAT'}
+                          >
+                            <span>⭐</span>
+                            <span>{isEn ? 'Rate IT' : 'Đánh giá'}</span>
+                          </Link>
                         )}
 
                         <Link
@@ -876,7 +897,7 @@ export default function EmployeePortalPage() {
                   <Mail className="w-3.5 h-3.5 text-blue-600" />
                   <span className="text-slate-600 font-medium">{isEn ? 'Email:' : 'Email hỗ trợ:'}</span>
                 </div>
-                <span className="font-mono font-medium text-slate-800 text-[11px]">it-support@hayen.vn</span>
+                <span className="font-mono font-medium text-slate-800 text-[11px]">it-support@company.internal</span>
               </div>
 
               <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
@@ -980,12 +1001,12 @@ export default function EmployeePortalPage() {
               {activeGuide === 'wifi' && (
                 <>
                   <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1">
-                    <p className="font-bold text-blue-900">Tên mạng Wifi: <span className="font-mono">HAYEN-CORP</span></p>
+                    <p className="font-bold text-blue-900">Tên mạng Wifi: <span className="font-mono">CORP-WIFI</span></p>
                     <p className="text-slate-600">Bảo mật: <strong>WPA2/WPA3 Enterprise (802.1X)</strong></p>
                   </div>
                   <ol className="list-decimal list-inside space-y-1.5 text-slate-600">
-                    <li>Bật Wifi trên máy tính/điện thoại, chọn mạng <strong>HAYEN-CORP</strong>.</li>
-                    <li>Đăng nhập bằng <strong>Tài khoản Email công ty</strong> (hoặc tên miền <code>tamlt01@hayen.vn</code>) và mật khẩu máy tính của bạn.</li>
+                    <li>Bật Wifi trên máy tính/điện thoại, chọn mạng <strong>CORP-WIFI</strong>.</li>
+                    <li>Đăng nhập bằng <strong>Tài khoản Email công ty</strong> (VD: <code>user@company.domain</code>) và mật khẩu máy tính của bạn.</li>
                     <li>Nếu máy hỏi xác nhận chứng chỉ mạng (Certificate Trust), bấm <strong>Connect / Trust</strong> để hoàn tất.</li>
                   </ol>
                 </>
@@ -994,14 +1015,14 @@ export default function EmployeePortalPage() {
               {activeGuide === 'printer' && (
                 <>
                   <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1">
-                    <p className="font-bold text-amber-900">Địa chỉ máy in mạng: <span className="font-mono">\\10.0.1.20\Print-HY</span></p>
-                    <p className="text-slate-600">Vị trí: <strong>Tầng 2 & Tầng 3 (Khu vực văn phòng)</strong></p>
+                    <p className="font-bold text-amber-900">Địa chỉ máy in mạng: <span className="font-mono">\\print-server\Printer-Name</span></p>
+                    <p className="text-slate-600">Vị trí: <strong>Khu vực văn phòng</strong></p>
                   </div>
                   <ol className="list-decimal list-inside space-y-1.5 text-slate-600">
                     <li>Nhấn tổ hợp phím <strong>Windows + R</strong> để mở hộp thoại Run.</li>
-                    <li>Gõ vào <code>\\10.0.1.20\Print-HY</code> rồi nhấn Enter.</li>
+                    <li>Gõ vào <code>\\print-server\Printer-Name</code> rồi nhấn Enter.</li>
                     <li>Máy sẽ tự động tải và cài driver máy in trong 30 giây.</li>
-                    <li>Mở file tài liệu bất kỳ và chọn máy in <strong>Canon / HP LaserJet</strong> vừa cài để in.</li>
+                    <li>Mở file tài liệu bất kỳ và chọn máy in vừa cài để in.</li>
                   </ol>
                 </>
               )}
@@ -1023,12 +1044,12 @@ export default function EmployeePortalPage() {
               {activeGuide === 'vpn' && (
                 <>
                   <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1">
-                    <p className="font-bold text-emerald-900">Máy chủ VPN công ty: <span className="font-mono">vpn.hayen.vn</span></p>
+                    <p className="font-bold text-emerald-900">Máy chủ VPN công ty: <span className="font-mono">vpn.company.domain</span></p>
                     <p className="text-slate-600">Phần mềm khuyên dùng: <strong>OpenVPN Client</strong> hoặc <strong>FortiClient</strong>.</p>
                   </div>
                   <ol className="list-decimal list-inside space-y-1.5 text-slate-600">
                     <li>Cài đặt ứng dụng VPN được IT bàn giao trên máy tính.</li>
-                    <li>Mở ứng dụng, nhập địa chỉ máy chủ <code>vpn.hayen.vn</code>.</li>
+                    <li>Mở ứng dụng, nhập địa chỉ máy chủ <code>vpn.company.domain</code>.</li>
                     <li>Nhập tài khoản đăng nhập và mã xác thực 2 bước (OTP).</li>
                     <li>Sau khi kết nối Connected, bạn có thể truy cập phần mềm nội bộ từ xa.</li>
                   </ol>

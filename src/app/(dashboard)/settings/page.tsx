@@ -313,7 +313,7 @@ export default function SettingsPage() {
   // SSO helpers
   const redirectUri = typeof window !== 'undefined'
     ? `${window.location.origin}/api/auth/sso/ms365/callback`
-    : 'http://localhost:3000/api/auth/sso/ms365/callback';
+    : 'https://localhost:3443/api/auth/sso/ms365/callback';
 
   const copyRedirectUri = () => {
     navigator.clipboard.writeText(redirectUri);

@@ -110,3 +110,75 @@ export async function POST(
     );
   }
 }
+
+// GET /api/tickets/[id]/rate?rating=5&comment=... (1-Click CSAT from email or direct link)
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const rawRating = searchParams.get('rating') || searchParams.get('score');
+    const comment = searchParams.get('comment') || '';
+
+    const numRating = Number(rawRating);
+    if (!numRating || numRating < 1 || numRating > 5) {
+      return NextResponse.redirect(new URL(`/tickets?id=${id}&error=invalid_rating`, request.url));
+    }
+
+    const ticket = await prisma.ticket.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        ticketNumber: true,
+        status: true,
+        createdById: true,
+        assignedToId: true,
+        rating: true,
+      },
+    });
+
+    if (!ticket) {
+      return NextResponse.redirect(new URL(`/tickets?error=not_found`, request.url));
+    }
+
+    // Only allow rating on completed tickets
+    if (ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED') {
+      return NextResponse.redirect(new URL(`/tickets?id=${id}&error=ticket_not_resolved`, request.url));
+    }
+
+    // If already rated, redirect gracefully
+    if (ticket.rating !== null) {
+      return NextResponse.redirect(new URL(`/tickets?id=${id}&already_rated=true&score=${ticket.rating}`, request.url));
+    }
+
+    await prisma.ticket.update({
+      where: { id },
+      data: {
+        rating: numRating,
+        ratingComment: comment ? comment.trim() : null,
+        ratedAt: new Date(),
+      },
+    });
+
+    try {
+      broadcastRealtimeEvent({
+        type: 'TICKET_RATED',
+        title: `Ticket #${ticket.ticketNumber} được đánh giá ${numRating}⭐`,
+        message: `Khách hàng đã đánh giá ${numRating} sao từ khảo sát 1-click`,
+        data: {
+          ticketId: id,
+          ticketNumber: ticket.ticketNumber,
+          rating: numRating,
+          ratedBy: '1-Click Email CSAT',
+        },
+      });
+    } catch (e) {}
+
+    return NextResponse.redirect(new URL(`/tickets?id=${id}&rated=true&score=${numRating}`, request.url));
+  } catch (error: any) {
+    console.error('GET rate ticket error:', error);
+    return NextResponse.redirect(new URL(`/tickets?error=rate_failed`, request.url));
+  }
+}

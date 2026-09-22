@@ -36,6 +36,7 @@ import viSpareParts from './vi/spare_parts.json';
 import viFloorMaps from './vi/floor_maps.json';
 import viIncidents from './vi/incidents.json';
 import viKb from './vi/kb.json';
+import viChatbot from './vi/chatbot.json';
 
 // Import English Modules
 import enCommon from './en/common.json';
@@ -56,6 +57,7 @@ import enSpareParts from './en/spare_parts.json';
 import enFloorMaps from './en/floor_maps.json';
 import enIncidents from './en/incidents.json';
 import enKb from './en/kb.json';
+import enChatbot from './en/chatbot.json';
 
 // Import Japanese Modules
 import jaCommon from './ja/common.json';
@@ -76,6 +78,7 @@ import jaSpareParts from './ja/spare_parts.json';
 import jaFloorMaps from './ja/floor_maps.json';
 import jaIncidents from './ja/incidents.json';
 import jaKb from './ja/kb.json';
+import jaChatbot from './ja/chatbot.json';
 
 function buildDictionary(...modules: Record<string, any>[]): Record<string, string> {
   const merged: Record<string, string> = {};
@@ -114,7 +117,8 @@ export const dictionaries: Record<string, Record<string, string>> = {
     viSpareParts,
     viFloorMaps,
     viIncidents,
-    viKb
+    viKb,
+    viChatbot
   ),
   en: buildDictionary(
     enCommon,
@@ -134,7 +138,8 @@ export const dictionaries: Record<string, Record<string, string>> = {
     enSpareParts,
     enFloorMaps,
     enIncidents,
-    enKb
+    enKb,
+    enChatbot
   ),
   ja: buildDictionary(
     jaCommon,
@@ -154,6 +159,7 @@ export const dictionaries: Record<string, Record<string, string>> = {
     jaSpareParts,
     jaFloorMaps,
     jaIncidents,
-    jaKb
+    jaKb,
+    jaChatbot
   ),
 };

@@ -12,6 +12,7 @@ import {
 } from '@/lib/permissions';
 import bcrypt from 'bcryptjs';
 import { moveToTrash } from '@/lib/trash';
+import { normalizeEmail, normalizeCompanyName } from '@/lib/normalize';
 
 // GET /api/users/[id] - Get user details with asset assignments
 export async function GET(
@@ -135,20 +136,20 @@ export async function PUT(
     }
 
     const data: Record<string, unknown> = {};
-    if (fullName) data.fullName = fullName;
+    if (fullName) data.fullName = fullName.trim().replace(/\s+/g, ' ');
     if (email) {
-      const trimmedEmail = email.trim();
+      const normalizedEmail = normalizeEmail(email);
       const existing = await prisma.user.findFirst({
-        where: { email: trimmedEmail, id: { not: id } },
+        where: { email: normalizedEmail, id: { not: id } },
       });
       if (existing) {
-        return NextResponse.json({ error: `Email '${trimmedEmail}' đã được người dùng khác sử dụng` }, { status: 400 });
+        return NextResponse.json({ error: `Email '${normalizedEmail}' đã được người dùng khác sử dụng` }, { status: 400 });
       }
-      data.email = trimmedEmail;
+      data.email = normalizedEmail;
     }
     if (department !== undefined) data.department = department || null;
     if (position !== undefined) data.position = position || null;
-    if (companyName !== undefined) data.companyName = companyName || null;
+    if (companyName !== undefined) data.companyName = companyName ? normalizeCompanyName(companyName) : null;
     if (phone !== undefined) data.phone = phone || null;
     if (managerId !== undefined) data.managerId = managerId || null;
     if (locationId !== undefined) data.locationId = locationId || null;

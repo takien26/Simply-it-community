@@ -12,22 +12,24 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const type = (searchParams.get('type') || 'ASSET').toUpperCase();
+    const lang = (searchParams.get('lang') || 'vi').toLowerCase();
+    const isEn = lang === 'en';
 
     let buffer: Buffer;
     let fileName: string;
 
     if (type === 'LICENSE') {
-      buffer = await generateLicenseTemplate();
-      fileName = 'Mau_Import_License.xlsx';
+      buffer = await generateLicenseTemplate(lang);
+      fileName = isEn ? 'License_Import_Template.xlsx' : 'Mau_Import_License.xlsx';
     } else if (type === 'SERVICE') {
-      buffer = await generateServiceTemplate();
-      fileName = 'Mau_Import_Dich_Vu_IT.xlsx';
+      buffer = await generateServiceTemplate(lang);
+      fileName = isEn ? 'IT_Service_Import_Template.xlsx' : 'Mau_Import_Dich_Vu_IT.xlsx';
     } else if (type === 'USER') {
-      buffer = await generateUserTemplate();
-      fileName = 'Mau_Import_Nhan_Su.xlsx';
+      buffer = await generateUserTemplate(lang);
+      fileName = isEn ? 'User_Import_Template.xlsx' : 'Mau_Import_Nhan_Su.xlsx';
     } else {
-      buffer = await generateAssetTemplate();
-      fileName = 'Mau_Import_Tai_San.xlsx';
+      buffer = await generateAssetTemplate(lang);
+      fileName = isEn ? 'Asset_Import_Template.xlsx' : 'Mau_Import_Tai_San.xlsx';
     }
 
     const headers = new Headers();

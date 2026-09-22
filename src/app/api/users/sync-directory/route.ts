@@ -5,6 +5,7 @@ import { hasPermission } from '@/lib/permissions';
 import { createAuditLog } from '@/lib/audit';
 import { getLdapConfig, syncUsersFromLdap, type LdapConfig } from '@/lib/ldap';
 import bcrypt from 'bcryptjs';
+import { normalizeEmail, normalizeCompanyName, areCompaniesEqual } from '@/lib/normalize';
 
 export const dynamic = 'force-dynamic';
 
@@ -139,30 +140,50 @@ export async function POST(request: NextRequest) {
               ssoError = `Lỗi xác thực Microsoft Entra ID: ${rawErr}`;
             }
           } else {
-            // Fetch users with full profile attributes from Microsoft Graph
-            let graphUsersRes = await fetch(
-              'https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,userPrincipalName,accountEnabled,department,jobTitle,mobilePhone,businessPhones,officeLocation,companyName,city&$expand=manager($select=id,displayName,mail,userPrincipalName)&$top=999',
-              {
-                headers: { Authorization: `Bearer ${tokenData.access_token}` },
-              }
-            );
+            // Fetch users with full profile attributes from Microsoft Graph (chỉ lấy tài khoản nội bộ Member, phân trang đầy đủ)
+            let nextUrl: string | null =
+              "https://graph.microsoft.com/v1.0/users?$filter=userType eq 'Member'&$select=id,displayName,mail,userPrincipalName,userType,accountEnabled,department,jobTitle,mobilePhone,businessPhones,officeLocation,companyName,city&$top=999";
+            const graphUsers: any[] = [];
+            let pageCount = 0;
 
-            if (!graphUsersRes.ok) {
-              // Fallback if tenant does not support expand=manager
-              graphUsersRes = await fetch(
-                'https://graph.microsoft.com/v1.0/users?$select=id,displayName,mail,userPrincipalName,accountEnabled,department,jobTitle,mobilePhone,businessPhones,officeLocation,companyName,city&$top=999',
-                {
-                  headers: { Authorization: `Bearer ${tokenData.access_token}` },
-                }
-              );
+            while (nextUrl && graphUsers.length < 5000 && pageCount < 10) {
+              pageCount++;
+              const graphUsersRes: Response = await fetch(nextUrl, {
+                headers: { Authorization: `Bearer ${tokenData.access_token}` },
+              });
+
+              if (!graphUsersRes.ok) {
+                const graphErr = await graphUsersRes.json().catch(() => ({}));
+                ssoError = `Lỗi Microsoft Graph API: ${graphErr?.error?.message || 'Quyền hạn không đủ'}. Cần thêm quyền "User.Read.All" (Application permissions) trên Azure Portal.`;
+                break;
+              }
+
+              const graphData: any = await graphUsersRes.json();
+              const batch = Array.isArray(graphData?.value) ? graphData.value : [];
+              graphUsers.push(...batch);
+              nextUrl = graphData['@odata.nextLink'] || null;
             }
 
-            if (!graphUsersRes.ok) {
-              const graphErr = await graphUsersRes.json().catch(() => ({}));
-              ssoError = `Lỗi Microsoft Graph API: ${graphErr?.error?.message || 'Quyền hạn không đủ'}. Cần thêm quyền "User.Read.All" (Application permissions) và nhấn "Grant admin consent" trên Azure App Registration.`;
-            } else {
-              const graphData = await graphUsersRes.json();
-              const graphUsers = graphData.value || [];
+            if (!ssoError) {
+              const detectCompany = (u: any): string => {
+                let rawComp = '';
+                if (u.companyName && u.companyName.trim() && u.companyName !== 'Microsoft 365') {
+                  rawComp = u.companyName.trim();
+                } else {
+                  const em = (u.mail || u.userPrincipalName || '').toLowerCase();
+                  if (em.includes('@gelex.vn')) rawComp = 'GELEX';
+                  else if (em.includes('@gelex-electric.com')) rawComp = 'GELEX ELECTRIC';
+                  else if (em.includes('@gelex-infra.vn')) rawComp = 'GELEX INFRA';
+                  else if (em.includes('@cadivi.vn')) rawComp = 'CADIVI';
+                  else if (em.includes('@thibidi')) rawComp = 'THIBIDI';
+                  else if (em.includes('@emic.com.vn')) rawComp = 'EMIC';
+                  else if (em.includes('@hem.vn')) rawComp = 'HEM';
+                  else if (em.includes('@geic.vn')) rawComp = 'GELEX ELECTRIC';
+                  else rawComp = 'GELEX';
+                }
+                return normalizeCompanyName(rawComp);
+              };
+
               const graphMap = new Map<
                 string,
                 {
@@ -173,16 +194,25 @@ export async function POST(request: NextRequest) {
                   phone?: string;
                   officeLocation?: string;
                   companyName?: string;
-                  managerEmail?: string;
                 }
               >();
 
               for (const gu of graphUsers) {
-                const email = (gu.mail || gu.userPrincipalName || '').toLowerCase().trim();
+                const upn = (gu.userPrincipalName || '').trim();
+                const mail = (gu.mail || '').trim();
+                const email = normalizeEmail(mail || upn);
+                const userType = (gu.userType || 'Member').trim();
+
+                // Chặn tuyệt đối tài khoản khách (Guest) và tài khoản B2B ngoài công ty (#EXT#)
+                if (userType.toLowerCase() === 'guest' || upn.toUpperCase().includes('#EXT#') || mail.toUpperCase().includes('#EXT#')) {
+                  continue;
+                }
+
                 if (email) {
                   const phone = gu.mobilePhone || (Array.isArray(gu.businessPhones) && gu.businessPhones.length > 0 ? gu.businessPhones[0] : undefined);
                   const officeLocation = gu.officeLocation || gu.city || undefined;
-                  const managerEmail = (gu.manager?.mail || gu.manager?.userPrincipalName || '').toLowerCase().trim() || undefined;
+                  const companyName = detectCompany(gu);
+
                   graphMap.set(email, {
                     accountEnabled: gu.accountEnabled !== false,
                     displayName: gu.displayName || email.split('@')[0],
@@ -190,76 +220,85 @@ export async function POST(request: NextRequest) {
                     jobTitle: gu.jobTitle || undefined,
                     phone: phone ? String(phone).trim() : undefined,
                     officeLocation: officeLocation ? String(officeLocation).trim() : undefined,
-                    companyName: gu.companyName ? String(gu.companyName).trim() : undefined,
-                    managerEmail,
+                    companyName,
                   });
                 }
               }
 
-              // A. Inbound Pre-Sync: Import active users from Microsoft 365 into DB
+              // A. Inbound Pre-Sync: Nạp mới hoặc cập nhật chính xác trạng thái người dùng
               if (defaultRole) {
                 for (const [email, gInfo] of graphMap.entries()) {
-                  if (!gInfo.accountEnabled) continue;
-
-                  const existingUser = await prisma.user.findUnique({
+                  let targetUser = await prisma.user.findUnique({
                     where: { email },
                   });
 
                   const locationId = await resolveLocationId(gInfo.officeLocation);
 
-                  if (!existingUser) {
+                  // If email not found directly, check if existing user changed email on M365
+                  if (!targetUser && gInfo.displayName) {
+                    targetUser = await prisma.user.findFirst({
+                      where: {
+                        fullName: { equals: gInfo.displayName, mode: 'insensitive' },
+                        companyName: gInfo.companyName ? { equals: normalizeCompanyName(gInfo.companyName), mode: 'insensitive' } : undefined,
+                      },
+                    });
+                    if (targetUser) {
+                      await prisma.user.update({
+                        where: { id: targetUser.id },
+                        data: { email },
+                      });
+                      targetUser.email = email;
+                    }
+                  }
+
+                  if (!targetUser) {
                     await prisma.user.create({
                       data: {
                         email,
                         fullName: gInfo.displayName,
                         department: gInfo.department || 'Microsoft 365',
                         position: gInfo.jobTitle || null,
-                        companyName: gInfo.companyName || null,
+                        companyName: gInfo.companyName ? normalizeCompanyName(gInfo.companyName) : null,
                         phone: gInfo.phone || null,
                         locationId,
                         roleId: defaultRole.id,
                         passwordHash: 'SSO_MS365_AUTH_NO_PASSWORD',
-                        isActive: true,
+                        isActive: gInfo.accountEnabled,
                       },
                     });
                     ssoImportedCount++;
                     importedUsers.push({ email, fullName: gInfo.displayName, provider: 'Microsoft 365' });
-                  } else if (existingUser.isActive) {
-                    // Update profile fields if missing
+                  } else {
                     const updates: any = {};
-                    if (!existingUser.department && gInfo.department) updates.department = gInfo.department;
-                    if (existingUser.fullName === email.split('@')[0] && gInfo.displayName) updates.fullName = gInfo.displayName;
-                    if (!existingUser.phone && gInfo.phone) updates.phone = gInfo.phone;
-                    if (!existingUser.position && gInfo.jobTitle) updates.position = gInfo.jobTitle;
-                    if (!existingUser.companyName && gInfo.companyName) updates.companyName = gInfo.companyName;
-                    if (!existingUser.locationId && locationId) updates.locationId = locationId;
+                    // Đồng bộ chuẩn xác trạng thái đang làm việc (active) từ M365
+                    if (targetUser.isActive !== gInfo.accountEnabled) {
+                      updates.isActive = gInfo.accountEnabled;
+                    }
+                    if (gInfo.department && targetUser.department !== gInfo.department) {
+                      updates.department = gInfo.department;
+                    }
+                    if (gInfo.companyName && (!targetUser.companyName || !areCompaniesEqual(targetUser.companyName, gInfo.companyName))) {
+                      updates.companyName = normalizeCompanyName(gInfo.companyName);
+                    }
+                    if (gInfo.displayName && targetUser.fullName !== gInfo.displayName) {
+                      updates.fullName = gInfo.displayName;
+                    }
+                    if (gInfo.phone && targetUser.phone !== gInfo.phone) updates.phone = gInfo.phone;
+                    if (gInfo.jobTitle && targetUser.position !== gInfo.jobTitle) updates.position = gInfo.jobTitle;
+                    if (locationId && targetUser.locationId !== locationId) updates.locationId = locationId;
 
                     if (Object.keys(updates).length > 0) {
                       await prisma.user.update({
-                        where: { id: existingUser.id },
+                        where: { id: targetUser.id },
                         data: updates,
                       });
                       updatedCount++;
                     }
                   }
                 }
-
-                // Pass 2: Link direct managers for M365 users
-                for (const [email, gInfo] of graphMap.entries()) {
-                  if (gInfo.managerEmail) {
-                    const u = await prisma.user.findUnique({ where: { email } });
-                    const mgr = await prisma.user.findUnique({ where: { email: gInfo.managerEmail } });
-                    if (u && mgr && u.id !== mgr.id && u.managerId !== mgr.id) {
-                      await prisma.user.update({
-                        where: { id: u.id },
-                        data: { managerId: mgr.id },
-                      });
-                    }
-                  }
-                }
               }
 
-              // B. Offboard Check: Deactivate users who are locked/deleted on M365
+              // B. Offboard Check: Khóa những tài khoản đã bị vô hiệu hóa trên M365
               const dbUsers = await prisma.user.findMany({
                 where: { isActive: true },
                 select: { id: true, email: true, fullName: true, passwordHash: true },
@@ -293,6 +332,7 @@ export async function POST(request: NextRequest) {
                     });
                   }
                 } else if (u.passwordHash === 'SSO_MS365_AUTH_NO_PASSWORD') {
+                  // Chỉ khóa nếu quét thành công toàn bộ danh bạ và tài khoản thực sự không còn tồn tại
                   await prisma.user.update({
                     where: { id: u.id },
                     data: { isActive: false },
@@ -385,7 +425,7 @@ export async function POST(request: NextRequest) {
             const placeholderPasswordHash = await bcrypt.hash(`LdapSync@${Date.now()}`, 10);
 
             for (const lu of ldapUsers) {
-              const uEmail = lu.email.toLowerCase().trim();
+              const uEmail = normalizeEmail(lu.email);
               const existingUser = await prisma.user.findUnique({
                 where: { email: uEmail },
               });
@@ -401,7 +441,7 @@ export async function POST(request: NextRequest) {
                       fullName: lu.fullName,
                       department: lu.department || 'Active Directory / LDAP',
                       position: lu.title || null,
-                      companyName: lu.company || null,
+                      companyName: lu.company ? normalizeCompanyName(lu.company) : null,
                       phone: lu.phone || null,
                       locationId,
                       roleId: targetRoleId,

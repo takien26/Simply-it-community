@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       if (errDesc.includes('AADSTS90002') && tenantId === 'common') {
         return NextResponse.json({
           success: false,
-          message: `Microsoft Entra ID yêu cầu nhập Directory (Tenant) ID cụ thể (mã GUID hoặc tên miền công ty, VD: hayen.vn hoặc contoso.onmicrosoft.com) khi kiểm tra bằng Client Secret. Vui lòng nhập Directory (tenant) ID thay vì "common". (Lưu ý: Nếu App là Multi-tenant, người dùng vẫn có thể đăng nhập bằng tài khoản Microsoft trên trang login bình thường).`,
+          message: `Microsoft Entra ID yêu cầu nhập Directory (Tenant) ID cụ thể (mã GUID hoặc tên miền tổ chức, VD: contoso.onmicrosoft.com) khi kiểm tra bằng Client Secret. Vui lòng nhập Directory (tenant) ID thay vì "common". (Lưu ý: Nếu App là Multi-tenant, người dùng vẫn có thể đăng nhập bằng tài khoản Microsoft trên trang login bình thường).`,
         });
       }
       return NextResponse.json({

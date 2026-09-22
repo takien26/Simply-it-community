@@ -6,6 +6,7 @@ import { routeTicket } from '@/lib/routing-engine';
 import { TicketCategory, TicketPriority, TicketStatus } from '@prisma/client';
 import { sendEmail } from '@/lib/email';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
+import { dispatchWebhookEvent } from '@/lib/webhooks';
 
 export async function GET(request: NextRequest) {
   try {
@@ -341,6 +342,35 @@ export async function POST(request: NextRequest) {
         message: `${fullTicket?.createdBy?.fullName || 'Người dùng'} vừa gửi yêu cầu: "${ticket.title}"`,
         data: { ticketId: ticket.id, ticketNumber: ticket.ticketNumber },
       });
+
+      // Dispatch Webhooks (Telegram, Teams, Slack, etc.)
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+      dispatchWebhookEvent('ticket.created', {
+        ticketId: fullTicket.id,
+        ticketNumber: fullTicket.ticketNumber,
+        title: fullTicket.title,
+        priority: fullTicket.priority,
+        category: fullTicket.category,
+        creator: fullTicket.createdBy?.fullName || 'Người dùng',
+        assignedTo: fullTicket.assignedTo?.fullName || 'Chưa gán',
+        description: fullTicket.description?.slice(0, 200),
+        link: `${appUrl}/tickets`,
+      }).catch((err) => console.error('[Webhook Ticket Created Error]:', err));
+
+      if (fullTicket.priority === 'URGENT') {
+        dispatchWebhookEvent('ticket.urgent', {
+          ticketId: fullTicket.id,
+          ticketNumber: fullTicket.ticketNumber,
+          title: fullTicket.title,
+          priority: 'URGENT (P1 Khẩn Cấp)',
+          category: fullTicket.category,
+          creator: fullTicket.createdBy?.fullName || 'Người dùng',
+          assignedTo: fullTicket.assignedTo?.fullName || 'Chưa gán',
+          slaDeadline: fullTicket.slaDeadline ? new Date(fullTicket.slaDeadline).toLocaleString('vi-VN') : '4 giờ',
+          description: fullTicket.description?.slice(0, 200),
+          link: `${appUrl}/tickets`,
+        }).catch((err) => console.error('[Webhook Ticket Urgent Error]:', err));
+      }
     }
 
     return NextResponse.json(fullTicket || ticket, { status: 201 });

@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Check,
 } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/context';
 
 interface ExcelImportModalProps {
   isOpen: boolean;
@@ -33,6 +34,8 @@ export function ExcelImportModal({
   onSuccess,
   defaultType = 'ASSET',
 }: ExcelImportModalProps) {
+  const { language } = useLanguage();
+  const isEn = language === 'en';
   // ESC key listener to close modal
   useEffect(() => {
     if (!isOpen) return;
@@ -86,14 +89,15 @@ export function ExcelImportModal({
 
   if (!isOpen) return null;
 
-  const handleDownloadTemplate = () => {
-    window.open(`/api/import/template?type=${importType}`, '_blank');
+  const handleDownloadTemplate = (targetLang?: string) => {
+    const chosenLang = targetLang || (isEn ? 'en' : 'vi');
+    window.open(`/api/import/template?type=${importType}&lang=${chosenLang}`, '_blank');
   };
 
   const handleActivateLicense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!licKeyInput.trim()) {
-      setLicError('Vui lòng dán mã License Key để kích hoạt.');
+      setLicError(isEn ? 'Please paste a License Key to activate.' : 'Vui lòng dán mã License Key để kích hoạt.');
       return;
     }
 
@@ -107,13 +111,13 @@ export function ExcelImportModal({
       });
       const data = await res.json();
       if (!res.ok || data.error) {
-        setLicError(data.error || 'Kích hoạt không thành công.');
+        setLicError(data.error || (isEn ? 'Activation failed.' : 'Kích hoạt không thành công.'));
       } else {
         await fetchLicense();
         window.dispatchEvent(new CustomEvent('simply:license-updated'));
       }
     } catch {
-      setLicError('Lỗi kết nối máy chủ khi kích hoạt bản quyền.');
+      setLicError(isEn ? 'Server connection error during license activation.' : 'Lỗi kết nối máy chủ khi kích hoạt bản quyền.');
     } finally {
       setLicActivating(false);
     }
@@ -122,7 +126,7 @@ export function ExcelImportModal({
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
-      setError('Vui lòng chọn file Excel (.xlsx hoặc .xls)');
+      setError(isEn ? 'Please select an Excel file (.xlsx or .xls)' : 'Vui lòng chọn file Excel (.xlsx hoặc .xls)');
       return;
     }
 
@@ -142,7 +146,7 @@ export function ExcelImportModal({
 
         const data = await res.json();
         if (!res.ok) {
-          setError(data.error || 'Import nhân sự thất bại');
+          setError(data.error || (isEn ? 'Staff import failed' : 'Import nhân sự thất bại'));
         } else {
           setResult({
             successRows: (data.importedCount || 0) + (data.updatedCount || 0),
@@ -163,7 +167,7 @@ export function ExcelImportModal({
 
         const data = await res.json();
         if (!res.ok) {
-          setError(data.error || 'Import dịch vụ thất bại');
+          setError(data.error || (isEn ? 'Service import failed' : 'Import dịch vụ thất bại'));
         } else {
           setResult({
             successRows: data.successCount,
@@ -185,14 +189,14 @@ export function ExcelImportModal({
 
         const data = await res.json();
         if (!res.ok) {
-          setError(data.error || 'Import thất bại');
+          setError(data.error || (isEn ? 'Import failed' : 'Import thất bại'));
         } else {
           setResult(data.data);
           if (onSuccess) onSuccess();
         }
       }
     } catch {
-      setError('Lỗi kết nối khi tải file lên server');
+      setError(isEn ? 'Connection error while uploading file to server' : 'Lỗi kết nối khi tải file lên server');
     } finally {
       setLoading(false);
     }
@@ -209,7 +213,9 @@ export function ExcelImportModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-lg leading-tight">Mục Import Chung từ Excel</h3>
+                <h3 className="font-bold text-lg leading-tight">
+                  {isEn ? 'Universal Excel Import' : 'Mục Import Chung từ Excel'}
+                </h3>
                 {licenseInfo?.isEnterprise && (
                   <span className="px-2 py-0.5 bg-amber-400/30 border border-amber-300/40 text-amber-100 text-[10px] font-bold rounded-full uppercase tracking-wider flex items-center gap-1">
                     <Crown className="w-3 h-3 text-amber-300" />
@@ -218,7 +224,9 @@ export function ExcelImportModal({
                 )}
               </div>
               <p className="text-xs text-emerald-100 mt-0.5">
-                Nạp hàng loạt Tài sản IT, License, Nhân sự và Dịch vụ & Thuê bao
+                {isEn
+                  ? 'Bulk import IT Assets, Licenses, Staff, and IT Services & Subscriptions'
+                  : 'Nạp hàng loạt Tài sản IT, License, Nhân sự và Dịch vụ & Thuê bao'}
               </p>
             </div>
           </div>
@@ -234,7 +242,9 @@ export function ExcelImportModal({
         {loadingLicense ? (
           <div className="p-12 flex flex-col items-center justify-center space-y-3 text-slate-400">
             <Loader2 className="w-7 h-7 animate-spin text-emerald-600" />
-            <span className="text-xs">Đang kiểm tra quyền hạn tài khoản...</span>
+            <span className="text-xs">
+              {isEn ? 'Checking account permissions...' : 'Đang kiểm tra quyền hạn tài khoản...'}
+            </span>
           </div>
         ) : !licenseInfo?.isEnterprise ? (
           /* Gating Screen: Only Paid / Enterprise Accounts Have Access */
@@ -245,31 +255,39 @@ export function ExcelImportModal({
                   <Crown className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm">Tính Năng Dành Cho Tài Khoản Trả Phí</h4>
+                  <h4 className="font-bold text-sm">
+                    {isEn ? 'Feature Reserved for Paid Accounts' : 'Tính Năng Dành Cho Tài Khoản Trả Phí'}
+                  </h4>
                   <p className="text-xs text-amber-700 dark:text-amber-300">
-                    Phiên bản hiện tại: <strong>Cộng Đồng (Community Miễn Phí)</strong>
+                    {isEn ? (
+                      <>Current edition: <strong>Community (Free)</strong></>
+                    ) : (
+                      <>Phiên bản hiện tại: <strong>Cộng Đồng (Community Miễn Phí)</strong></>
+                    )}
                   </p>
                 </div>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Mục Import chung bằng Excel (Tài sản IT, Bản quyền, Nhân sự 12 trường thông tin, Gói dịch vụ) là đặc quyền chỉ dành riêng cho các tài khoản trả phí <strong>Enterprise Edition</strong>.
+                {isEn
+                  ? 'Universal Excel Import (IT Assets, Software Licenses, 12-field Staff roster, IT Services) is an exclusive privilege reserved for Enterprise Edition accounts.'
+                  : 'Mục Import chung bằng Excel (Tài sản IT, Bản quyền, Nhân sự 12 trường thông tin, Gói dịch vụ) là đặc quyền chỉ dành riêng cho các tài khoản trả phí Enterprise Edition.'}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px] text-slate-700 dark:text-slate-200">
                 <div className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Import không giới hạn số lượng dòng</span>
+                  <span>{isEn ? 'Unlimited import rows' : 'Import không giới hạn số lượng dòng'}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Tự động liên kết Công ty, Khối, Phòng ban</span>
+                  <span>{isEn ? 'Auto link Companies, Divisions, Departments' : 'Tự động liên kết Công ty, Khối, Phòng ban'}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Đầy đủ 12 trường thông tin nhân sự</span>
+                  <span>{isEn ? 'Full 12 employee data fields' : 'Đầy đủ 12 trường thông tin nhân sự'}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Kiểm tra trùng lặp mã & email tự động</span>
+                  <span>{isEn ? 'Automatic code & email duplication check' : 'Kiểm tra trùng lặp mã & email tự động'}</span>
                 </div>
               </div>
             </div>
@@ -277,12 +295,12 @@ export function ExcelImportModal({
             {/* Quick Activation Box */}
             <form onSubmit={handleActivateLicense} className="space-y-3 pt-1">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Kích hoạt bản quyền Enterprise để mở khóa:
+                {isEn ? 'Activate Enterprise license to unlock:' : 'Kích hoạt bản quyền Enterprise để mở khóa:'}
               </label>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Dán mã License Key (SIMPLY-ENT-...)"
+                  placeholder={isEn ? 'Paste License Key (SIMPLY-ENT-...)' : 'Dán mã License Key (SIMPLY-ENT-...)'}
                   value={licKeyInput}
                   onChange={(e) => setLicKeyInput(e.target.value)}
                   className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-500"
@@ -293,7 +311,7 @@ export function ExcelImportModal({
                   className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shrink-0"
                 >
                   {licActivating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-                  <span>Kích Hoạt Ngay</span>
+                  <span>{isEn ? 'Activate Now' : 'Kích Hoạt Ngay'}</span>
                 </button>
               </div>
 
@@ -311,7 +329,7 @@ export function ExcelImportModal({
                 onClick={onClose}
                 className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
               >
-                Đóng (ESC)
+                {isEn ? 'Close (ESC)' : 'Đóng (ESC)'}
               </button>
             </div>
           </div>
@@ -328,7 +346,7 @@ export function ExcelImportModal({
             {/* Type Switcher - 4 Options: ASSET, LICENSE, USER, SERVICE */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                1. Chọn phân hệ cần import
+                {isEn ? '1. Select module to import' : '1. Chọn phân hệ cần import'}
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl">
                 <button
@@ -344,7 +362,7 @@ export function ExcelImportModal({
                   }`}
                 >
                   <Laptop className="w-3.5 h-3.5" />
-                  <span>Tài sản IT</span>
+                  <span>{isEn ? 'IT Assets' : 'Tài sản IT'}</span>
                 </button>
 
                 <button
@@ -376,7 +394,7 @@ export function ExcelImportModal({
                   }`}
                 >
                   <Users className="w-3.5 h-3.5" />
-                  <span>Nhân sự</span>
+                  <span>{isEn ? 'Staff' : 'Nhân sự'}</span>
                 </button>
 
                 <button
@@ -392,7 +410,7 @@ export function ExcelImportModal({
                   }`}
                 >
                   <Globe className="w-3.5 h-3.5" />
-                  <span>Dịch Vụ IT</span>
+                  <span>{isEn ? 'IT Services' : 'Dịch Vụ IT'}</span>
                 </button>
               </div>
             </div>
@@ -401,33 +419,53 @@ export function ExcelImportModal({
             <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold text-emerald-950 dark:text-emerald-300">
-                  2. Tải file mẫu chuẩn (.xlsx)
+                  {isEn ? '2. Download standard template (.xlsx)' : '2. Tải file mẫu chuẩn (.xlsx)'}
                 </p>
                 <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5 leading-relaxed">
                   {importType === 'USER'
-                    ? 'Mẫu chuẩn 12 cột: Họ tên (*), Email (*), Công ty Quản lý, Khối/Phòng ban, Vị trí, SĐT, Cơ sở/Location, Quản lý trực tiếp, Vai trò, Trạng thái, Mật khẩu...'
+                    ? isEn
+                      ? 'Standard 12-column template: Full name (*), Email (*), Company, Division/Dept, Position, Phone, Location, Direct Manager, Role, Status, Password...'
+                      : 'Mẫu chuẩn 12 cột: Họ tên (*), Email (*), Công ty Quản lý, Khối/Phòng ban, Vị trí, SĐT, Cơ sở/Location, Quản lý trực tiếp, Vai trò, Trạng thái, Mật khẩu...'
                     : importType === 'SERVICE'
-                    ? 'Mẫu chuẩn gồm: Mã gói, Tên dịch vụ, Công ty Quản lý, Phân loại, Giá cước, Chu kỳ, Ngày gia hạn, IP/Mã KH, Hotline...'
+                    ? isEn
+                      ? 'Standard template includes: Service Code, Service Name, Company, Category, Cost, Billing Cycle, Renewal Date, IP/Account, Hotline...'
+                      : 'Mẫu chuẩn gồm: Mã gói, Tên dịch vụ, Công ty Quản lý, Phân loại, Giá cước, Chu kỳ, Ngày gia hạn, IP/Mã KH, Hotline...'
                     : importType === 'LICENSE'
-                    ? 'Mẫu chuẩn gồm: Tên phần mềm, License key, Công ty Quản lý, Loại license, Số seat, Nhà cung cấp, Người sử dụng (Email), Hạn dùng...'
-                    : 'Mẫu chuẩn gồm: Mã tài sản, Tên thiết bị, Danh mục, Công ty Quản lý, Hãng, Serial number, Giá mua, Vị trí, Người sử dụng (Email)...'}
+                    ? isEn
+                      ? 'Standard template includes: Software Name, License Key, Company, License Type, Seats, Vendor, Assigned User (Email), Expiry Date...'
+                      : 'Mẫu chuẩn gồm: Tên phần mềm, License key, Công ty Quản lý, Loại license, Số seat, Nhà cung cấp, Người sử dụng (Email), Hạn dùng...'
+                    : isEn
+                      ? 'Standard template includes: Asset Tag, Device Name, Category, Company, Brand, Serial number, Purchase Price, Location, Assigned User (Email)...'
+                      : 'Mẫu chuẩn gồm: Mã tài sản, Tên thiết bị, Danh mục, Công ty Quản lý, Hãng, Serial number, Giá mua, Vị trí, Người sử dụng (Email)...'}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleDownloadTemplate}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Tải Mẫu</span>
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadTemplate('vi')}
+                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                  title="Tải mẫu Tiếng Việt"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>🇻🇳 VI</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadTemplate('en')}
+                  className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                  title="Download English Template"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>🇬🇧 EN</span>
+                </button>
+              </div>
             </div>
 
             {/* Upload Form */}
             <form onSubmit={handleUpload} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  3. Tải lên file Excel đã điền dữ liệu (*)
+                  {isEn ? '3. Upload filled Excel file (*)' : '3. Tải lên file Excel đã điền dữ liệu (*)'}
                 </label>
                 <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 rounded-2xl p-6 text-center bg-slate-50/60 dark:bg-slate-800/40 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer relative">
                   <input
@@ -449,8 +487,12 @@ export function ExcelImportModal({
                       </div>
                     ) : (
                       <div className="text-xs">
-                        <p className="font-bold text-slate-700 dark:text-slate-200">Kéo thả file vào đây hoặc bấm để duyệt</p>
-                        <p className="text-[11px] text-slate-400">Hỗ trợ định dạng file Microsoft Excel (.xlsx, .xls)</p>
+                        <p className="font-bold text-slate-700 dark:text-slate-200">
+                          {isEn ? 'Drag & drop file here or click to browse' : 'Kéo thả file vào đây hoặc bấm để duyệt'}
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          {isEn ? 'Supports Microsoft Excel (.xlsx, .xls)' : 'Hỗ trợ định dạng file Microsoft Excel (.xlsx, .xls)'}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -462,19 +504,19 @@ export function ExcelImportModal({
                 <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 space-y-2 text-xs">
                   <div className="flex items-center space-x-2 text-emerald-800 dark:text-emerald-300 font-bold">
                     <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{result.message || 'Import hoàn tất thành công!'}</span>
+                    <span>{result.message || (isEn ? 'Import completed successfully!' : 'Import hoàn tất thành công!')}</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center pt-1 font-mono">
                     <div className="p-2 bg-white dark:bg-slate-800 rounded-xl border border-emerald-100 dark:border-slate-700">
-                      <p className="text-[10px] text-slate-500 uppercase">Tổng số dòng</p>
+                      <p className="text-[10px] text-slate-500 uppercase">{isEn ? 'Total rows' : 'Tổng số dòng'}</p>
                       <p className="font-extrabold text-slate-800 dark:text-white text-sm">{result.totalRows || 0}</p>
                     </div>
                     <div className="p-2 bg-white dark:bg-slate-800 rounded-xl border border-emerald-100 dark:border-slate-700">
-                      <p className="text-[10px] text-emerald-600 uppercase">Thành công</p>
+                      <p className="text-[10px] text-emerald-600 uppercase">{isEn ? 'Success' : 'Thành công'}</p>
                       <p className="font-extrabold text-emerald-700 dark:text-emerald-400 text-sm">{result.successRows || 0}</p>
                     </div>
                     <div className="p-2 bg-white dark:bg-slate-800 rounded-xl border border-emerald-100 dark:border-slate-700">
-                      <p className="text-[10px] text-rose-500 uppercase">Thất bại</p>
+                      <p className="text-[10px] text-rose-500 uppercase">{isEn ? 'Failed' : 'Thất bại'}</p>
                       <p className="font-extrabold text-rose-600 text-sm">{result.failedRows || 0}</p>
                     </div>
                   </div>
@@ -488,7 +530,7 @@ export function ExcelImportModal({
                   onClick={onClose}
                   className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
-                  {result ? 'Đóng (ESC)' : 'Hủy (ESC)'}
+                  {result ? (isEn ? 'Close (ESC)' : 'Đóng (ESC)') : (isEn ? 'Cancel (ESC)' : 'Hủy (ESC)')}
                 </button>
                 <button
                   type="submit"
@@ -498,12 +540,12 @@ export function ExcelImportModal({
                   {loading ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Đang nạp dữ liệu...</span>
+                      <span>{isEn ? 'Importing data...' : 'Đang nạp dữ liệu...'}</span>
                     </>
                   ) : (
                     <>
                       <Upload className="w-3.5 h-3.5" />
-                      <span>Tiến Hành Import</span>
+                      <span>{isEn ? 'Proceed to Import' : 'Tiến Hành Import'}</span>
                     </>
                   )}
                 </button>

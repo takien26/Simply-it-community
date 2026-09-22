@@ -202,15 +202,34 @@ export async function POST(req: NextRequest) {
     // Auto-generate serviceCode if blank
     if (!serviceCode || !serviceCode.trim()) {
       const year = new Date().getFullYear();
-      const count = await prisma.iTService.count();
       const prefix = serviceType === 'INTERNET' ? 'NET' : serviceType === 'CLOUD_HOSTING' ? 'CLOUD' : serviceType === 'DOMAIN_SSL' ? 'DOM' : 'SVC';
-      serviceCode = `${prefix}-${year}-${String(count + 1).padStart(4, '0')}`;
-    }
-
-    // Check unique code
-    const existing = await prisma.iTService.findUnique({ where: { serviceCode: serviceCode.trim() } });
-    if (existing) {
-      return NextResponse.json({ error: `Mã dịch vụ "${serviceCode}" đã tồn tại trên hệ thống` }, { status: 400 });
+      const yearPrefix = `${prefix}-${year}-`;
+      const latestService = await prisma.iTService.findFirst({
+        where: { serviceCode: { startsWith: yearPrefix } },
+        orderBy: { serviceCode: 'desc' },
+        select: { serviceCode: true },
+      });
+      let nextSeq = 1;
+      if (latestService?.serviceCode) {
+        const match = latestService.serviceCode.match(/(\d+)$/);
+        if (match && match[1]) {
+          const parsed = parseInt(match[1], 10);
+          if (!isNaN(parsed)) nextSeq = parsed + 1;
+        }
+      }
+      serviceCode = `${yearPrefix}${String(nextSeq).padStart(4, '0')}`;
+      let exists = await prisma.iTService.findUnique({ where: { serviceCode } });
+      while (exists) {
+        nextSeq++;
+        serviceCode = `${yearPrefix}${String(nextSeq).padStart(4, '0')}`;
+        exists = await prisma.iTService.findUnique({ where: { serviceCode } });
+      }
+    } else {
+      // Check unique code
+      const existing = await prisma.iTService.findUnique({ where: { serviceCode: serviceCode.trim() } });
+      if (existing) {
+        return NextResponse.json({ error: `Mã dịch vụ "${serviceCode}" đã tồn tại trên hệ thống` }, { status: 400 });
+      }
     }
 
     const service = await prisma.iTService.create({

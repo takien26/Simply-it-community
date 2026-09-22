@@ -20,6 +20,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/lib/i18n/context';
 
 interface Message {
   id: string;
@@ -30,37 +31,62 @@ interface Message {
   timestamp: string;
 }
 
-const ADMIN_PROMPTS = [
-  { text: '📊 Thống kê tổng quan hệ thống hôm nay', keywords: ['thống kê', 'tổng quan', 'báo cáo', 'hôm nay', 'admin', 'chỉ số'] },
-  { text: '🔑 Kiểm tra license sắp hết hạn', keywords: ['license', 'hết hạn', 'bản quyền', 'gia hạn', 'phần mềm'] },
-  { text: '🎫 Danh sách ticket đang chờ xử lý', keywords: ['ticket', 'xử lý', 'sla', 'khẩn cấp', 'helpdesk', 'sự cố'] },
-  { text: '📦 Cảnh báo tồn kho linh kiện sắp hết', keywords: ['linh kiện', 'kho', 'phụ tùng', 'ram', 'ssd', 'hết hàng', 'tồn kho'] },
-];
-
-const STAFF_PROMPTS = [
-  { text: '💻 Kiểm tra thiết bị của tôi', keywords: ['máy của tôi', 'thiết bị của tôi', 'tài sản của tôi', 'đang dùng máy gì', 'laptop'] },
-  { text: '🌐 Làm sao kết nối VPN từ bên ngoài?', keywords: ['vpn', 'mạng', 'từ xa', 'forticlient', 'remote', 'ngoài'] },
-  { text: '📧 Khắc phục lỗi không vào được Outlook', keywords: ['outlook', 'mail', 'email', 'mật khẩu mail', 'không vào được mail', 'credentials'] },
-  { text: '🖨️ Cách kết nối máy in văn phòng', keywords: ['in', 'máy in', 'may in', 'scan', 'kẹt giấy', 'print', 'driver', 'in ấn'] },
-  { text: '🔑 Quên mật khẩu máy tính / tài khoản Domain', keywords: ['mật khẩu', 'pass', 'password', 'quên pass', 'khóa tài khoản', 'reset', 'đổi mật khẩu'] },
-  { text: '📋 Quy trình xin cấp mới hoặc đổi Laptop', keywords: ['cấp máy', 'laptop', 'máy tính', 'đổi máy', 'phê duyệt', 'xin cấp', 'máy mới'] },
-  { text: '🎫 Tôi muốn tạo Ticket hỗ trợ kỹ thuật', keywords: ['ticket', 'hỗ trợ', 'kỹ thuật', 'báo hỏng', 'it', 'gặp it', 'tao ticket'] },
-];
-
 export function ChatWidget() {
   const router = useRouter();
+  const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>('Staff');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+
+  const adminPrompts = useMemo(
+    () => [
+      { text: t('chatbot.prompt_stats', '📊 Thống kê tổng quan hệ thống hôm nay'), keywords: ['thống kê', 'tổng quan', 'báo cáo', 'hôm nay', 'admin', 'chỉ số', 'stats', 'overview'] },
+      { text: t('chatbot.prompt_licenses', '🔑 Kiểm tra license sắp hết hạn'), keywords: ['license', 'hết hạn', 'bản quyền', 'gia hạn', 'phần mềm', 'expiring'] },
+      { text: t('chatbot.prompt_tickets', '🎫 Danh sách ticket đang chờ xử lý'), keywords: ['ticket', 'xử lý', 'sla', 'khẩn cấp', 'helpdesk', 'sự cố', 'pending'] },
+      { text: t('chatbot.prompt_inventory', '📦 Cảnh báo tồn kho linh kiện sắp hết'), keywords: ['linh kiện', 'kho', 'phụ tùng', 'ram', 'ssd', 'hết hàng', 'tồn kho', 'inventory'] },
+    ],
+    [t]
+  );
+
+  const staffPrompts = useMemo(
+    () => [
+      { text: t('chatbot.prompt_my_assets', '💻 Kiểm tra thiết bị của tôi'), keywords: ['máy của tôi', 'thiết bị của tôi', 'tài sản của tôi', 'đang dùng máy gì', 'laptop', 'my device', 'assets'] },
+      { text: t('chatbot.prompt_vpn', '🌐 Làm sao kết nối VPN từ bên ngoài?'), keywords: ['vpn', 'mạng', 'từ xa', 'forticlient', 'remote', 'ngoài', 'network'] },
+      { text: t('chatbot.prompt_outlook', '📧 Khắc phục lỗi không vào được Outlook'), keywords: ['outlook', 'mail', 'email', 'mật khẩu mail', 'không vào được mail', 'credentials'] },
+      { text: t('chatbot.prompt_printer', '🖨️ Cách kết nối máy in văn phòng'), keywords: ['in', 'máy in', 'may in', 'scan', 'kẹt giấy', 'print', 'driver', 'in ấn', 'printer'] },
+      { text: t('chatbot.prompt_password', '🔑 Quên mật khẩu máy tính / tài khoản Domain'), keywords: ['mật khẩu', 'pass', 'password', 'quên pass', 'khóa tài khoản', 'reset', 'đổi mật khẩu'] },
+      { text: t('chatbot.prompt_laptop_request', '📋 Quy trình xin cấp mới hoặc đổi Laptop'), keywords: ['cấp máy', 'laptop', 'máy tính', 'đổi máy', 'phê duyệt', 'xin cấp', 'máy mới'] },
+      { text: t('chatbot.prompt_new_ticket', '🎫 Tôi muốn tạo Ticket hỗ trợ kỹ thuật'), keywords: ['ticket', 'hỗ trợ', 'kỹ thuật', 'báo hỏng', 'it', 'gặp it', 'tao ticket'] },
+    ],
+    [t]
+  );
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'bot',
-      content:
-        '👋 Xin chào! Mình là **Trợ lý IT ảo SIMPLY IT**. Bạn đang gặp khó khăn gì về máy tính, mạng, Outlook hay cần tra cứu hệ thống?',
-      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      content: t('chatbot.welcome', '👋 Xin chào! Mình là **Trợ lý IT ảo SIMPLY IT**. Bạn đang gặp khó khăn gì về máy tính, mạng, Outlook hay cần tra cứu hệ thống?'),
+      timestamp: new Date().toLocaleTimeString(language === 'en' ? 'en-US' : language === 'ja' ? 'ja-JP' : 'vi-VN', { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
+
+  // Update welcome message on language change if no chat history yet
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].id === 'welcome') {
+        return [
+          {
+            id: 'welcome',
+            role: 'bot',
+            content: t('chatbot.welcome', '👋 Xin chào! Mình là **Trợ lý IT ảo SIMPLY IT**. Bạn đang gặp khó khăn gì về máy tính, mạng, Outlook hay cần tra cứu hệ thống?'),
+            timestamp: new Date().toLocaleTimeString(language === 'en' ? 'en-US' : language === 'ja' ? 'ja-JP' : 'vi-VN', { hour: '2-digit', minute: '2-digit' }),
+          },
+        ];
+      }
+      return prev;
+    });
+  }, [language, t]);
+
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [creatingTicket, setCreatingTicket] = useState(false);
@@ -259,11 +285,11 @@ export function ChatWidget() {
 
   // Reactive Smart Suggestions: Role-based + live filter as user types!
   const reactiveSuggestions = useMemo(() => {
-    const pool = isAdmin ? [...ADMIN_PROMPTS, ...STAFF_PROMPTS] : STAFF_PROMPTS;
+    const pool = isAdmin ? [...adminPrompts, ...staffPrompts] : staffPrompts;
     const query = input.trim().toLowerCase();
 
     if (!query) {
-      return (isAdmin ? ADMIN_PROMPTS : STAFF_PROMPTS).slice(0, 4).map((p) => p.text);
+      return (isAdmin ? adminPrompts : staffPrompts).slice(0, 4).map((p) => p.text);
     }
 
     const matched = pool.filter(
@@ -277,12 +303,12 @@ export function ChatWidget() {
     }
 
     return [
-      `Tìm hướng dẫn về "${input.trim()}"`,
-      isAdmin ? '📊 Thống kê tổng quan hệ thống hôm nay' : '💻 Kiểm tra thiết bị của tôi',
-      '🎫 Tôi muốn tạo Ticket hỗ trợ kỹ thuật',
-      '🌐 Làm sao kết nối VPN từ bên ngoài?',
+      t('chatbot.search_guide_for', { query: input.trim() }, `Tìm hướng dẫn về "${input.trim()}"`),
+      isAdmin ? t('chatbot.prompt_stats', '📊 Thống kê tổng quan hệ thống hôm nay') : t('chatbot.prompt_my_assets', '💻 Kiểm tra thiết bị của tôi'),
+      t('chatbot.prompt_new_ticket', '🎫 Tôi muốn tạo Ticket hỗ trợ kỹ thuật'),
+      t('chatbot.prompt_vpn', '🌐 Làm sao kết nối VPN từ bên ngoài?'),
     ];
-  }, [input, isAdmin]);
+  }, [input, isAdmin, adminPrompts, staffPrompts, t]);
 
   const handleSend = async (textToSend?: string) => {
     const text = textToSend || input;
@@ -462,7 +488,7 @@ export function ChatWidget() {
             onMouseDown={handleStartDrag}
             onTouchStart={handleStartDrag}
             className="p-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white flex items-center justify-between shadow-md shrink-0 cursor-grab active:cursor-grabbing select-none"
-            title="Giữ và kéo để di chuyển khung chat bất kỳ đâu"
+            title={t('chatbot.drag_to_move', '⠿ Kéo để di chuyển')}
           >
             <div className="flex items-center gap-2.5 pointer-events-none">
               <div className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
@@ -470,11 +496,11 @@ export function ChatWidget() {
               </div>
               <div>
                 <h3 className="font-bold text-sm leading-tight flex items-center gap-1.5">
-                  <span>Trợ Lý IT Ảo</span>
+                  <span>{t('chatbot.title', 'Trợ Lý IT Ảo')}</span>
                   {isAdmin ? (
                     <span className="text-[10px] px-2 py-0.2 rounded-full border font-bold flex items-center gap-1 bg-amber-400/30 text-amber-200 border-amber-300/40">
                       <Shield className="w-2.5 h-2.5" />
-                      <span>Admin</span>
+                      <span>{t('chatbot.admin_badge', 'Admin')}</span>
                     </span>
                   ) : userRole && userRole !== 'Staff' && userRole !== 'User' && userRole !== 'Nhân viên' ? (
                     <span className="text-[10px] px-2 py-0.2 rounded-full border font-semibold flex items-center gap-1 bg-blue-400/30 text-blue-200 border-blue-300/40">
@@ -482,14 +508,14 @@ export function ChatWidget() {
                     </span>
                   ) : (
                     <span className="text-[10px] px-1.5 py-0.2 rounded-full border font-medium bg-emerald-400/30 text-emerald-200 border-emerald-300/30">
-                      Online
+                      {t('chatbot.online', 'Online')}
                     </span>
                   )}
                 </h3>
                 <p className="text-[11px] text-blue-100 flex items-center gap-1">
-                  <span className="opacity-90">⠿ Kéo để di chuyển</span>
+                  <span className="opacity-90">{t('chatbot.drag_to_move', '⠿ Kéo để di chuyển')}</span>
                   <span>•</span>
-                  <span>{isAdmin ? 'Tra cứu hệ thống' : 'Hỗ trợ 24/7'}</span>
+                  <span>{isAdmin ? t('chatbot.system_lookup', 'Tra cứu hệ thống') : t('chatbot.support_247', 'Hỗ trợ 24/7')}</span>
                 </p>
               </div>
             </div>
@@ -505,9 +531,9 @@ export function ChatWidget() {
                     handleResetPosition();
                   }}
                   className="px-2 py-0.5 rounded-lg text-white/75 hover:text-white hover:bg-white/10 transition-colors text-[10.5px] cursor-pointer"
-                  title="Đặt lại vị trí góc phải mặc định"
+                  title={t('chatbot.reset_position_title', 'Đặt lại vị trí góc phải mặc định')}
                 >
-                  Gốc
+                  {t('chatbot.reset_position', 'Gốc')}
                 </button>
               )}
               <button
@@ -516,7 +542,7 @@ export function ChatWidget() {
                 onTouchStart={(e) => e.stopPropagation()}
                 onClick={() => setIsOpen(false)}
                 className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                title="Đóng chat"
+                title={t('chatbot.close_title', 'Đóng chat')}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -552,10 +578,10 @@ export function ChatWidget() {
                       <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl space-y-2 animate-in fade-in">
                         <div className="flex items-center gap-1.5 text-indigo-900 font-bold text-[11px]">
                           <Ticket className="w-4 h-4 text-indigo-600" />
-                          <span>Tạo Ticket Cho Kỹ Thuật Viên IT?</span>
+                          <span>{t('chatbot.create_ticket_question', 'Tạo Ticket Cho Kỹ Thuật Viên IT?')}</span>
                         </div>
                         <p className="text-[11px] text-indigo-700">
-                          Hệ thống sẽ chuyển tiếp yêu cầu đến IT Team để xử lý tận nơi cho bạn.
+                          {t('chatbot.create_ticket_desc', 'Hệ thống sẽ chuyển tiếp yêu cầu đến IT Team để xử lý tận nơi cho bạn.')}
                         </p>
                         <button
                           type="button"
@@ -564,7 +590,7 @@ export function ChatWidget() {
                           className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                         >
                           {creatingTicket ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ticket className="w-3.5 h-3.5" />}
-                          <span>Tạo Ticket Ngay</span>
+                          <span>{creatingTicket ? t('chatbot.creating_ticket', 'Đang tạo Ticket...') : t('chatbot.create_ticket_now', 'Tạo Ticket Ngay')}</span>
                         </button>
                       </div>
                     )}
@@ -584,7 +610,7 @@ export function ChatWidget() {
                 </div>
                 <div className="p-3 bg-white text-slate-500 border border-slate-200 rounded-2xl rounded-tl-xs shadow-xs flex items-center gap-2">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
-                  <span>Trợ lý đang xử lý dữ liệu...</span>
+                  <span>{t('chatbot.processing', 'Trợ lý đang xử lý dữ liệu...')}</span>
                 </div>
               </div>
             )}
@@ -613,8 +639,8 @@ export function ChatWidget() {
               type="text"
               placeholder={
                 isAdmin
-                  ? 'Admin: Nhập câu hỏi, thống kê, kiểm tra kho...'
-                  : 'Nhập câu hỏi, sự cố (VD: vpn, máy in, outlook...)'
+                  ? t('chatbot.input_placeholder_admin', 'Admin: Nhập câu hỏi, thống kê, kiểm tra kho...')
+                  : t('chatbot.input_placeholder', 'Nhập câu hỏi, sự cố (VD: vpn, máy in, outlook...)')
               }
               value={input}
               onChange={(e) => setInput(e.target.value)}

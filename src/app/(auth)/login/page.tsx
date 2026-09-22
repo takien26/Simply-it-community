@@ -29,7 +29,13 @@ function LoginForm() {
     // Check error params from SSO callback
     const errParam = searchParams?.get('error');
     if (errParam) {
-      if (errParam === 'sso_disabled') {
+      if (errParam === 'guest_forbidden') {
+        setError(
+          language === 'en'
+            ? 'Access Denied: Only internal member accounts are authorized. External guest accounts are strictly forbidden.'
+            : 'Chỉ tài khoản nội bộ mới có quyền truy cập. Tài khoản khách (Guest / Đối tác ngoài) không có quyền đăng nhập hệ thống.'
+        );
+      } else if (errParam === 'sso_disabled') {
         setError(
           language === 'en'
             ? 'Microsoft 365 login is currently disabled in Settings.'

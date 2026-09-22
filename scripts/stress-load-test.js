@@ -12,7 +12,7 @@ function request(path, options = {}) {
       ...(options.headers || {}),
     };
     if (authToken && !headers['Cookie']) {
-      headers['Cookie'] = `auth_token_3001=${authToken}; auth-token=${authToken}`;
+      headers['Cookie'] = `simply_ce_token=${authToken}; auth-token=${authToken}; auth_token_3001=${authToken}`;
     }
 
     const tStart = Date.now();
@@ -115,7 +115,8 @@ async function main() {
 
   const cookieHeader = loginRes.headers['set-cookie'];
   if (cookieHeader) {
-    const match = cookieHeader.find((c) => c.startsWith('auth_token_3001=') || c.startsWith('auth-token='));
+    const cookies = Array.isArray(cookieHeader) ? cookieHeader : [cookieHeader];
+    const match = cookies.find((c) => c.startsWith('simply_ce_token=') || c.startsWith('auth_token_3001=') || c.startsWith('auth-token='));
     if (match) {
       authToken = match.split(';')[0].split('=')[1];
     }

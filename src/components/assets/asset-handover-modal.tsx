@@ -26,7 +26,9 @@ import {
   Code,
   Eye,
   FileCode,
+  PenTool,
 } from 'lucide-react';
+import SignaturePadModal from './SignaturePadModal';
 import { formatDate, formatCurrency } from '@/lib/utils';
 
 interface AssetHandoverModalProps {
@@ -189,6 +191,11 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
   const [customWordTemplate, setCustomWordTemplate] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Digital Signatures
+  const [receiverSignature, setReceiverSignature] = useState<string | null>(null);
+  const [giverSignature, setGiverSignature] = useState<string | null>(null);
+  const [activeSigner, setActiveSigner] = useState<'RECEIVER' | 'GIVER' | null>(null);
+
   // 1. Load persistent template from server
   useEffect(() => {
     const loadTemplate = async () => {
@@ -280,6 +287,8 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
     setGiverTitle((template.giverRoleDefault || 'Kỹ thuật viên CNTT').normalize('NFC'));
     setGiverDept((template.departmentName || 'Ban Công Nghệ Thông Tin').normalize('NFC'));
     setLocationName((asset.location?.name || 'Văn phòng Công ty').normalize('NFC'));
+    setReceiverSignature(null);
+    setGiverSignature(null);
   }, [asset, isOpen, template, docMode, previousUser]);
 
   // Handle uploading custom word / text template file
@@ -704,12 +713,14 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
           <tr>
             <td style="width: 50%; text-align: center; border: none; vertical-align: top;">
               <p class="font-bold uppercase" style="font-size: 12pt;">ĐẠI DIỆN BÊN GIAO (BÊN A)</p>
-              <p class="font-italic" style="font-size: 10pt; margin-bottom: 45pt;">(Ký và ghi rõ họ tên)</p>
+              <p class="font-italic" style="font-size: 10pt;">(Ký và ghi rõ họ tên)</p>
+              ${giverSignature ? `<div style="height: 55px; margin: 4px 0;"><img src="${giverSignature}" height="50" style="max-height: 50px;" alt="Chữ ký Bên A" /></div>` : '<div style="height: 45pt;"></div>'}
               <p class="font-bold" style="font-size: 12pt;">${giverName}</p>
             </td>
             <td style="width: 50%; text-align: center; border: none; vertical-align: top;">
               <p class="font-bold uppercase" style="font-size: 12pt;">NGƯỜI NHẬN THIẾT BỊ (BÊN B)</p>
-              <p class="font-italic" style="font-size: 10pt; margin-bottom: 45pt;">(Ký và ghi rõ họ tên)</p>
+              <p class="font-italic" style="font-size: 10pt;">(Ký và ghi rõ họ tên)</p>
+              ${receiverSignature ? `<div style="height: 55px; margin: 4px 0;"><img src="${receiverSignature}" height="50" style="max-height: 50px;" alt="Chữ ký Bên B" /></div>` : '<div style="height: 45pt;"></div>'}
               <p class="font-bold" style="font-size: 12pt;">${receiverName || '................................................'}</p>
             </td>
           </tr>
@@ -1351,19 +1362,73 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
 
               {/* SIGNATURE BLOCKS */}
               <div className="pt-6 grid grid-cols-2 gap-8 text-center text-[13.5px] print:pt-4">
-                <div className="space-y-16">
+                {/* Party A (Giver) */}
+                <div className="flex flex-col items-center justify-between min-h-[140px]">
                   <div>
                     <p className="font-bold uppercase text-black">ĐẠI DIỆN BÊN GIAO (BÊN A)</p>
                     <p className="text-[12px] italic text-black">(Ký và ghi rõ họ tên)</p>
                   </div>
+                  
+                  {giverSignature ? (
+                    <div className="my-1 flex flex-col items-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={giverSignature} alt="Chữ ký Bên A" className="h-14 max-w-[170px] object-contain" />
+                      <button
+                        type="button"
+                        onClick={() => setActiveSigner('GIVER')}
+                        className="text-[10px] text-blue-600 hover:underline print:hidden cursor-pointer mt-0.5"
+                      >
+                        {txt('Ký lại', 'Sign again', '再署名')}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="my-3 print:hidden">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSigner('GIVER')}
+                        className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                      >
+                        <PenTool className="w-3 h-3 text-slate-500" />
+                        <span>{txt('✍️ Ký điện tử', '✍️ Sign digitally', '✍️ デジタル署名')}</span>
+                      </button>
+                    </div>
+                  )}
+
                   <p className="font-bold text-black">{giverName}</p>
                 </div>
 
-                <div className="space-y-16">
+                {/* Party B (Receiver) */}
+                <div className="flex flex-col items-center justify-between min-h-[140px]">
                   <div>
                     <p className="font-bold uppercase text-black">NGƯỜI NHẬN THIẾT BỊ (BÊN B)</p>
                     <p className="text-[12px] italic text-black">(Ký và ghi rõ họ tên)</p>
                   </div>
+
+                  {receiverSignature ? (
+                    <div className="my-1 flex flex-col items-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={receiverSignature} alt="Chữ ký Bên B" className="h-14 max-w-[170px] object-contain" />
+                      <button
+                        type="button"
+                        onClick={() => setActiveSigner('RECEIVER')}
+                        className="text-[10px] text-blue-600 hover:underline print:hidden cursor-pointer mt-0.5"
+                      >
+                        {txt('Ký lại', 'Sign again', '再署名')}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="my-3 print:hidden">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSigner('RECEIVER')}
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
+                      >
+                        <PenTool className="w-3.5 h-3.5" />
+                        <span>{txt('✍️ Người nhận ký tên tại đây', '✍️ Receiver sign here', '✍️ 受取人署名')}</span>
+                      </button>
+                    </div>
+                  )}
+
                   <p className="font-bold text-black">{receiverName || '...........................................'}</p>
                 </div>
               </div>
@@ -1375,7 +1440,7 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
         {/* FOOTER ACTIONS (HIDDEN ON PRINT) */}
         <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between print:hidden shrink-0 flex-wrap gap-2">
           <span className="text-xs text-slate-500">
-            💡 <strong>{txt('Mẹo:', 'Tip:', 'ヒント:')}</strong> {txt('Bấm', 'Click', 'クリック:')} <em>{txt('Tùy Chỉnh & Tải Mẫu Word', 'Customize & Upload Word Template', 'カスタマイズ & Wordテンプレート')}</em> {txt('để nạp mẫu Word riêng của công ty hoặc tải về file mẫu gợi ý.', 'to upload your company Word template or download a sample file.', '会社のWordテンプレートをアップロードするか、サンプルファイルをダウンロードします。')}
+            💡 <strong>{txt('Mẹo:', 'Tip:', 'ヒント:')}</strong> {txt('Người nhận có thể ký điện tử trực tiếp trên màn hình cảm ứng hoặc chuột trước khi in/lưu PDF.', 'The receiver can sign digitally directly on screen before printing/saving PDF.', '印刷/PDF保存前に画面上でデジタル署名できます。')}
           </span>
 
           <div className="flex items-center gap-2">
@@ -1405,6 +1470,22 @@ export default function AssetHandoverModal({ isOpen, onClose, asset, initialMode
             </button>
           </div>
         </div>
+
+        {/* Digital Signature Pad Modal */}
+        <SignaturePadModal
+          isOpen={activeSigner !== null}
+          onClose={() => setActiveSigner(null)}
+          signerRole={
+            activeSigner === 'GIVER'
+              ? (docMode === 'RETURN' ? 'Người hoàn trả (Bên A)' : 'Người bàn giao IT (Bên A)')
+              : (docMode === 'RETURN' ? 'Đại diện CNTT tiếp nhận (Bên B)' : 'Người nhận thiết bị (Bên B)')
+          }
+          signerName={activeSigner === 'GIVER' ? giverName : receiverName}
+          onSave={(sig) => {
+            if (activeSigner === 'GIVER') setGiverSignature(sig);
+            else setReceiverSignature(sig);
+          }}
+        />
 
       </div>
     </div>

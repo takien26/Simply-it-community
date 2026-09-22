@@ -4,6 +4,7 @@ import { hasPermission } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
 import { AssetStatus, AssetCondition } from '@prisma/client';
+import { normalizeAssetTag, normalizeCompanyName } from '@/lib/normalize';
 
 // GET /api/assets - List assets with filters & pagination
 export async function GET(request: NextRequest) {
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
     if (status) where.status = status;
     if (condition) where.condition = condition;
     if (locationId) where.locationId = locationId;
-    if (companyName) where.companyName = companyName;
+    if (companyName) where.companyName = { equals: companyName, mode: 'insensitive' };
 
     const [assets, total] = await Promise.all([
       prisma.asset.findMany({
@@ -128,10 +129,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Auto-generate asset tag if not provided
-    let assetTag = customAssetTag?.trim();
+    let assetTag = customAssetTag ? normalizeAssetTag(customAssetTag) : undefined;
     if (!assetTag) {
-      const count = await prisma.asset.count();
-      assetTag = `IT-AST-${String(count + 1).padStart(4, '0')}`;
+      const latestAsset = await prisma.asset.findFirst({
+        where: { assetTag: { startsWith: 'IT-AST-' } },
+        orderBy: { assetTag: 'desc' },
+        select: { assetTag: true },
+      });
+      let nextSeq = 1;
+      if (latestAsset?.assetTag) {
+        const match = latestAsset.assetTag.match(/^IT-AST-(\d+)/);
+        if (match && match[1]) {
+          const parsed = parseInt(match[1], 10);
+          if (!isNaN(parsed)) nextSeq = parsed + 1;
+        }
+      }
+      assetTag = `IT-AST-${String(nextSeq).padStart(4, '0')}`;
+      let exists = await prisma.asset.findUnique({ where: { assetTag } });
+      while (exists) {
+        nextSeq++;
+        assetTag = `IT-AST-${String(nextSeq).padStart(4, '0')}`;
+        exists = await prisma.asset.findUnique({ where: { assetTag } });
+      }
     } else {
       // Check duplicate tag
       const existing = await prisma.asset.findUnique({ where: { assetTag } });
@@ -140,10 +159,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (serialNumber) {
-      const existingSerial = await prisma.asset.findUnique({ where: { serialNumber } });
+    const cleanSerial = serialNumber ? serialNumber.trim().toUpperCase() : null;
+    if (cleanSerial) {
+      const existingSerial = await prisma.asset.findUnique({ where: { serialNumber: cleanSerial } });
       if (existingSerial) {
-        return NextResponse.json({ error: `Số Serial '${serialNumber}' đã tồn tại` }, { status: 400 });
+        return NextResponse.json({ error: `Số Serial '${cleanSerial}' đã tồn tại` }, { status: 400 });
       }
     }
 
@@ -187,14 +207,14 @@ export async function POST(request: NextRequest) {
         categoryId: finalCategoryId,
         brand: brand || null,
         model: model || null,
-        serialNumber: serialNumber || null,
+        serialNumber: cleanSerial,
         status: initialStatus,
         condition: (condition as AssetCondition) || 'NEW',
         purchaseDate: parsedPurchaseDate,
         purchasePrice: parsedPrice,
         purchaseCurrency: body.purchaseCurrency || 'VND',
         warrantyExpiry: parsedWarrantyExpiry,
-        companyName: companyName || null,
+        companyName: companyName ? normalizeCompanyName(companyName) : null,
         vendorId: vendorId || null,
         locationId: locationId || null,
         contractNumber: contractNumber || null,

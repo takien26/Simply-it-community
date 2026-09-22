@@ -29,6 +29,17 @@ export default function Error({
           {error.digest && (
             <p className="text-xs font-mono text-slate-400">Mã lỗi: {error.digest}</p>
           )}
+          {error?.message && (
+            <div className="text-left bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200 dark:border-rose-900 text-xs font-mono text-rose-600 dark:text-rose-400 max-h-48 overflow-auto whitespace-pre-wrap">
+              <strong>Chi tiết lỗi:</strong> {error.message}
+              {error.stack && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-[10px] text-slate-400">Chi tiết Stack trace</summary>
+                  <div className="mt-1 text-[10px] text-slate-500 whitespace-pre-wrap">{error.stack}</div>
+                </details>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button

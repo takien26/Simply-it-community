@@ -917,7 +917,16 @@ export default function DashboardPage() {
 
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
             <span className="text-slate-500">{language === 'en' ? 'Expiring soon:' : 'Sắp hết hạn:'} <strong className="text-amber-600 font-bold">{servicePerformance.expiringSoon}</strong></span>
-            <span className="text-cyan-700 font-bold">{formatVND(servicePerformance.annualCost)}/năm</span>
+            <Link
+              href="/services?view=runway"
+              onClick={(e) => e.stopPropagation()}
+              className="text-cyan-700 dark:text-cyan-400 font-bold hover:underline flex items-center gap-1 group/runway"
+            >
+              <span>{formatVND(servicePerformance.annualCost)}/năm</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 font-bold border border-cyan-200 dark:border-cyan-800 group-hover/runway:bg-cyan-600 group-hover/runway:text-white transition-colors">
+                📊 {language === 'en' ? 'Runway →' : 'Dự toán →'}
+              </span>
+            </Link>
           </div>
         </div>
       </div>

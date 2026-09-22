@@ -4,6 +4,7 @@ import { hasPermission } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
 import { moveToTrash } from '@/lib/trash';
+import { normalizeAssetTag, normalizeCompanyName } from '@/lib/normalize';
 
 // GET /api/assets/[id]
 export async function GET(
@@ -216,12 +217,12 @@ export async function PUT(
     const updated = await prisma.asset.update({
       where: { id },
       data: {
-        assetTag: newAssetTag,
+        assetTag: newAssetTag ? normalizeAssetTag(newAssetTag) : existing.assetTag,
         name: body.name !== undefined ? body.name : existing.name,
         categoryId: body.categoryId ? body.categoryId : existing.categoryId,
         brand: body.brand !== undefined ? (body.brand || null) : existing.brand,
         model: body.model !== undefined ? (body.model || null) : existing.model,
-        serialNumber: body.serialNumber !== undefined ? (body.serialNumber || null) : existing.serialNumber,
+        serialNumber: body.serialNumber !== undefined ? (body.serialNumber ? body.serialNumber.trim().toUpperCase() : null) : existing.serialNumber,
         status: newStatus,
         condition: body.condition ?? existing.condition,
         purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : null,
@@ -239,7 +240,7 @@ export async function PUT(
         })(),
         purchaseCurrency: body.purchaseCurrency !== undefined ? (body.purchaseCurrency || 'VND') : existing.purchaseCurrency,
         warrantyExpiry: body.warrantyExpiry ? new Date(body.warrantyExpiry) : null,
-        companyName: body.companyName !== undefined ? (body.companyName || null) : existing.companyName,
+        companyName: body.companyName !== undefined ? (body.companyName ? normalizeCompanyName(body.companyName) : null) : existing.companyName,
         vendorId: body.vendorId ? body.vendorId : null,
         locationId: body.locationId ? body.locationId : null,
         contractNumber: body.contractNumber !== undefined ? (body.contractNumber || null) : existing.contractNumber,

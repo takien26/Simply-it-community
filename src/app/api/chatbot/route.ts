@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { isAdminOrAbove } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
-import { COMPREHENSIVE_IT_KB, KBArticle } from '@/lib/it-knowledge-base';
+import { KBArticle } from '@/lib/it-knowledge-base';
+import { getActiveDefaultArticles } from '@/lib/kb-storage';
 import { getGenAIClient, generateUnifiedTextAI } from '@/lib/ai-config';
 
 // Smart Weighted Matching Algorithm (Scoring TF-IDF & Exact phrase match)
@@ -122,8 +123,9 @@ export async function POST(request: NextRequest) {
       return !isInternal;
     });
 
+    const activeDefaults = await getActiveDefaultArticles();
     const dynamicKB: KBArticle[] = [
-      ...COMPREHENSIVE_IT_KB,
+      ...activeDefaults,
       ...accessibleDocs.map((d) => {
         const extractedKeywords = [
           ...d.title.toLowerCase().replace(/[[\]]/g, ' ').split(/\s+/).filter(w => w.length > 2),
@@ -490,10 +492,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // ==================== 9. KB EXACT MATCHING ====================
-    const matchedRankings = findBestMatchingKB(message, dynamicKB);
-    const topMatch = matchedRankings.length > 0 ? matchedRankings[0].article : null;
-    const topScore = matchedRankings.length > 0 ? matchedRankings[0].score : 0;
+    // ==================== 9. 3-TIER HYBRID KB MATCHING ====================
+    const { searchHybridKB } = await import('@/lib/kb-hybrid-search');
+    const hybridMappedKB = dynamicKB.map((item) => ({
+      ...item,
+      slug: item.id,
+      content: item.steps,
+    }));
+
+    const hybridRankings = await searchHybridKB(message, hybridMappedKB, {
+      enableAiSemantic: true,
+      limit: 3,
+      minScore: 25,
+    });
+
+    const topMatch = hybridRankings.length > 0 ? hybridRankings[0].article : null;
+    const topScore = hybridRankings.length > 0 ? hybridRankings[0].score : 0;
 
     const wantsTicket =
       userQuery.includes('tạo ticket') ||
@@ -506,20 +520,20 @@ export async function POST(request: NextRequest) {
       userQuery.includes('báo hỏng');
 
     // High confidence KB matching
-    if (topMatch && topScore >= 70 && !wantsTicket) {
-      const instantReply = `### 💡 Hướng dẫn xử lý: **${topMatch.title}**\n\n${topMatch.summary}\n\n**Các bước thực hiện:**\n${topMatch.steps}\n\n*Nếu bạn đã làm theo các bước trên nhưng vẫn chưa được, hãy nhấn nút **"Tạo Ticket Hỗ Trợ"** bên dưới để Kỹ thuật viên IT hỗ trợ trực tiếp nhé!*`;
+    if (topMatch && topScore >= 60 && !wantsTicket) {
+      const instantReply = `### 💡 Hướng dẫn xử lý: **${topMatch.title}**\n\n${topMatch.summary}\n\n**Các bước thực hiện:**\n${topMatch.steps || (topMatch as any).content}\n\n*Nếu bạn đã làm theo các bước trên nhưng vẫn chưa được, hãy nhấn nút **"Tạo Ticket Hỗ Trợ"** bên dưới để Kỹ thuật viên IT hỗ trợ trực tiếp nhé!*`;
       return NextResponse.json({
         success: true,
         reply: instantReply,
         userRole,
-        suggestedAction: topMatch.requiresTicketIfFailed
+        suggestedAction: (topMatch as any).requiresTicketIfFailed
           ? {
               type: 'CREATE_TICKET',
               title: topMatch.title,
               description: `Cần IT hỗ trợ xử lý sự cố: ${topMatch.title}`,
             }
           : null,
-        relatedKB: matchedRankings.slice(0, 2).map((m) => m.article),
+        relatedKB: hybridRankings.slice(0, 2).map((m) => m.article),
       });
     }
 
@@ -554,7 +568,7 @@ Dữ liệu thời gian thực của hệ thống SIMPLY IT:
 - Phân bổ công việc Kỹ thuật viên IT hiện tại: ${JSON.stringify(itWorkloads)}
 
 Cơ sở tri thức IT chuẩn & Bài học đã tự học từ các sự cố trước:
-${JSON.stringify(topMatch ? [topMatch] : dynamicKB.slice(0, 8), null, 2)}
+${JSON.stringify(hybridRankings.length > 0 ? hybridRankings.map((r) => r.article) : dynamicKB.slice(0, 6), null, 2)}
 
 Lịch sử trò chuyện gần nhất:
 ${JSON.stringify(history.slice(-4), null, 2)}
@@ -579,14 +593,14 @@ Quy tắc trả lời:
           success: true,
           reply: aiResponse,
           userRole,
-          suggestedAction: wantsTicket || topMatch?.requiresTicketIfFailed
+          suggestedAction: wantsTicket || (topMatch as any)?.requiresTicketIfFailed
             ? {
                 type: 'CREATE_TICKET',
                 title: message.slice(0, 60),
                 description: `Tự động tạo từ cuộc trò chuyện Chatbot AI: "${message}"`,
               }
             : null,
-          relatedKB: matchedRankings.slice(0, 2).map((m) => m.article),
+          relatedKB: hybridRankings.slice(0, 2).map((m) => m.article),
         });
       }
     } catch (aiErr) {
@@ -596,7 +610,7 @@ Quy tắc trả lời:
     // ==================== 11. LOCAL FALLBACK ====================
     let reply = '';
     if (topMatch) {
-      reply = `### 💡 Hướng dẫn xử lý: **${topMatch.title}**\n\n${topMatch.summary}\n\n**Các bước thực hiện:**\n${topMatch.steps}\n\n*Nếu bạn đã làm theo các bước trên nhưng vẫn chưa được, hãy nhấn nút **"Tạo Ticket Hỗ Trợ"** bên dưới để Kỹ thuật viên IT hỗ trợ trực tiếp nhé!*`;
+      reply = `### 💡 Hướng dẫn xử lý: **${topMatch.title}**\n\n${topMatch.summary}\n\n**Các bước thực hiện:**\n${topMatch.steps || (topMatch as any).content}\n\n*Nếu bạn đã làm theo các bước trên nhưng vẫn chưa được, hãy nhấn nút **"Tạo Ticket Hỗ Trợ"** bên dưới để Kỹ thuật viên IT hỗ trợ trực tiếp nhé!*`;
     } else if (wantsTicket) {
       reply = `Mình đã hiểu sự cố của bạn. Để Kỹ thuật viên IT tiếp nhận và xử lý tận nơi, bạn có thể nhấn nút **"Tạo Ticket Ngay"** bên dưới để mở yêu cầu hỗ trợ nhé!`;
     } else {
@@ -607,14 +621,14 @@ Quy tắc trả lời:
       success: true,
       reply,
       userRole,
-      suggestedAction: wantsTicket || topMatch?.requiresTicketIfFailed
+      suggestedAction: wantsTicket || (topMatch as any)?.requiresTicketIfFailed
         ? {
             type: 'CREATE_TICKET',
             title: message.slice(0, 60),
             description: `Tự động tạo từ Chatbot AI: "${message}"`,
           }
         : null,
-      relatedKB: matchedRankings.slice(0, 2).map((m) => m.article),
+      relatedKB: hybridRankings.slice(0, 2).map((m) => m.article),
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

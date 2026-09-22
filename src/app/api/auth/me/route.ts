@@ -25,8 +25,19 @@ export async function GET() {
         email: true,
         fullName: true,
         department: true,
+        position: true,
         phone: true,
         avatarUrl: true,
+        managerId: true,
+        manager: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            department: true,
+            position: true,
+          },
+        },
         role: {
           select: { id: true, name: true },
         },

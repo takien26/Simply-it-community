@@ -89,3 +89,47 @@ nextjs-portal,
 [data-nextjs-dev-overlay] {
   display: none !important;
 }
+
+/* Standard Enterprise A4 Print Rules */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm 15mm 15mm 15mm;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12pt !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  body:has(#printable-handover-doc) * {
+    visibility: hidden;
+  }
+
+  body:has(#printable-handover-doc) #printable-handover-doc,
+  body:has(#printable-handover-doc) #printable-handover-doc * {
+    visibility: visible;
+  }
+
+  body:has(#printable-handover-doc) #printable-handover-doc {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  tr, .avoid-break, .signature-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}

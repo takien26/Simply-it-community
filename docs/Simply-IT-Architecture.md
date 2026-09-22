@@ -1,9 +1,9 @@
-# Simply IT Community Edition (CE) v1.0.3
+# Simply IT Community Edition (CE) v1.0.4
 ## Tài Liệu Kiến Trúc Hệ Thống & Nền Tảng Công Nghệ
 
-**Phiên bản:** 1.0.3  
+**Phiên bản:** 1.0.4  
 **Giấy phép:** Apache-2.0 (Mã nguồn mở)  
-**Ngày cập nhật:** 16/09/2026
+**Ngày cập nhật:** 20/09/2026
 
 ---
 

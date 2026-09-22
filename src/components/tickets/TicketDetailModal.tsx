@@ -21,6 +21,7 @@ import {
   MessageSquare,
   ChevronDown,
   AlertTriangle,
+  Search,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 import { QuickLink } from '@/components/common/QuickLink';
@@ -360,12 +361,24 @@ export function TicketDetailModal({
   // Canned Responses state
   const [cannedResponses, setCannedResponses] = useState<any[]>([]);
   const [isCannedMenuOpen, setIsCannedMenuOpen] = useState(false);
+  const [cannedSearchTerm, setCannedSearchTerm] = useState('');
   const [loadingCanned, setLoadingCanned] = useState(false);
   const [isCreatingCanned, setIsCreatingCanned] = useState(false);
   const [newCannedTitle, setNewCannedTitle] = useState('');
   const [newCannedShortcut, setNewCannedShortcut] = useState('');
   const [newCannedContent, setNewCannedContent] = useState('');
   const [savingCanned, setSavingCanned] = useState(false);
+
+  const filteredCannedResponses = useMemo(() => {
+    if (!cannedSearchTerm.trim()) return cannedResponses;
+    const q = cannedSearchTerm.trim().toLowerCase();
+    return cannedResponses.filter((cr) => {
+      const titleMatch = cr.title?.toLowerCase().includes(q);
+      const contentMatch = cr.content?.toLowerCase().includes(q);
+      const shortcutMatch = cr.shortcut?.toLowerCase().includes(q);
+      return titleMatch || contentMatch || shortcutMatch;
+    });
+  }, [cannedResponses, cannedSearchTerm]);
 
   // CSAT Rating state
   const [submittingRating, setSubmittingRating] = useState(false);
@@ -1281,104 +1294,161 @@ export function TicketDetailModal({
               </div>
 
               {/* ⭐ ĐÁNH GIÁ CHẤT LƯỢNG CSAT (1-Click CSAT Feedback - 👑 Enterprise - FULL WIDTH) */}
-              {(selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED') && (
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xs font-black shadow-xs">
-                        ⭐
-                      </div>
-                      <div>
-                        <h5 className="font-bold text-slate-900 text-xs">
-                          {(!isVi ? 'Customer Satisfaction Survey (CSAT)' : 'Đánh Giá Chất Lượng Dịch Vụ (CSAT)')}
-                        </h5>
-                        <p className="text-[10px] text-slate-500">
-                          {(!isVi ? 'How satisfied are you with the resolution?' : 'Bạn có hài lòng với kết quả xử lý của IT không?')}
-                        </p>
-                      </div>
-                    </div>
-                    
-                  </div>
+              {(selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED') && (() => {
+                const isRequesterOrAdmin =
+                  currentUser?.userId === selectedTicket.createdById ||
+                  currentUser?.id === selectedTicket.createdById ||
+                  currentUser?.roleName === 'Admin' ||
+                  currentUser?.role?.name === 'Admin' ||
+                  currentUser?.role?.name === 'Super Admin' ||
+                  (Array.isArray(currentUser?.permissions) && currentUser?.permissions.includes('*'));
 
-                  {selectedTicket.rating ? (
-                    <div className="p-3 bg-white/90 rounded-xl border border-amber-200 space-y-1.5 text-xs">
+                return (
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50/70 via-orange-50/40 to-yellow-50/60 border border-amber-200/90 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
-                              className={`w-4 h-4 ${
-                                star <= (selectedTicket.rating || 0)
-                                  ? 'text-amber-500 fill-amber-500'
-                                  : 'text-slate-200'
-                              }`}
-                            />
-                          ))}
+                        <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xs font-black shadow-xs">
+                          ⭐
                         </div>
-                        <span className="font-extrabold text-amber-900">{selectedTicket.rating}/5 sao</span>
-                        {selectedTicket.ratedAt && (
-                          <span className="text-[10px] text-slate-400">
-                            • {new Date(selectedTicket.ratedAt).toLocaleDateString()}
-                          </span>
-                        )}
+                        <div>
+                          <h5 className="font-bold text-slate-900 text-xs">
+                            {(!isVi ? 'Customer Satisfaction Survey (CSAT)' : 'Khảo Sát Mức Độ Hài Lòng (CSAT)')}
+                          </h5>
+                          <p className="text-[10.5px] text-slate-500">
+                            {(!isVi ? 'How satisfied are you with the resolution?' : 'Bạn có hài lòng với kết quả xử lý của kỹ thuật viên IT không?')}
+                          </p>
+                        </div>
                       </div>
-                      {selectedTicket.ratingComment && (
-                        <p className="text-slate-700 italic bg-amber-50/50 p-2 rounded-lg border border-amber-100/70 text-[11px]">
-                          "{selectedTicket.ratingComment}"
-                        </p>
+
+                      {selectedTicket.rating && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                          <span>✅</span>
+                          <span>{(!isVi ? 'Rated' : 'Đã đánh giá')}</span>
+                        </span>
                       )}
                     </div>
-                  ) : (
-                    <div className="p-3 bg-white/90 rounded-xl border border-amber-200 space-y-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-700">{(!isVi ? 'Rating:' : 'Chấm điểm:')}</span>
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              type="button"
-                              onMouseEnter={() => setRatingHover(star)}
-                              onMouseLeave={() => setRatingHover(0)}
-                              onClick={() => setSelectedRating(star)}
-                              className="p-1 hover:scale-125 transition-transform cursor-pointer"
-                            >
+
+                    {selectedTicket.rating ? (
+                      <div className="p-3 bg-white/95 rounded-xl border border-amber-200 space-y-1.5 text-xs shadow-2xs">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
                               <Star
-                                className={`w-5 h-5 ${
-                                  star <= (ratingHover || selectedRating)
+                                key={star}
+                                className={`w-4 h-4 ${
+                                  star <= (selectedTicket.rating || 0)
                                     ? 'text-amber-500 fill-amber-500'
-                                    : 'text-slate-300'
+                                    : 'text-slate-200'
                                 }`}
                               />
-                            </button>
-                          ))}
+                            ))}
+                          </div>
+                          <span className="font-black text-amber-900 text-xs">
+                            {selectedTicket.rating === 5 ? '😍 5/5 Rất hài lòng' : selectedTicket.rating === 4 ? '😊 4/5 Hài lòng' : selectedTicket.rating === 3 ? '😐 3/5 Bình thường' : selectedTicket.rating === 2 ? '🙁 2/5 Chưa hài lòng' : '😡 1/5 Rất thất vọng'}
+                          </span>
+                          {selectedTicket.ratedAt && (
+                            <span className="text-[10px] text-slate-400">
+                              • {new Date(selectedTicket.ratedAt).toLocaleDateString()}
+                            </span>
+                          )}
                         </div>
-                        <span className="font-bold text-xs text-amber-800">
-                          {ratingHover || selectedRating} / 5 {(!isVi ? 'Stars' : 'Sao')}
-                        </span>
+                        {selectedTicket.ratingComment && (
+                          <p className="text-slate-700 italic bg-amber-50/70 p-2 rounded-lg border border-amber-100 text-[11px]">
+                            "{selectedTicket.ratingComment}"
+                          </p>
+                        )}
                       </div>
+                    ) : isRequesterOrAdmin ? (
+                      <div className="p-3 bg-white/95 rounded-xl border border-amber-200 space-y-3 shadow-2xs">
+                        {/* 1-Click Quick Emoji Choices */}
+                        <div className="space-y-1.5">
+                          <span className="text-[11px] font-bold text-slate-700 block">
+                            {(!isVi ? '⚡ 1-Click Fast Rating:' : '⚡ Chấm điểm 1-click nhanh:')}
+                          </span>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {[
+                              { score: 5, emoji: '😍', label: (!isVi ? '5★ Excellent' : '5★ Rất hài lòng'), bg: 'hover:bg-emerald-50 hover:border-emerald-300' },
+                              { score: 4, emoji: '😊', label: (!isVi ? '4★ Satisfied' : '4★ Hài lòng'), bg: 'hover:bg-blue-50 hover:border-blue-300' },
+                              { score: 3, emoji: '😐', label: (!isVi ? '3★ Neutral' : '3★ Bình thường'), bg: 'hover:bg-amber-50 hover:border-amber-300' },
+                              { score: 1, emoji: '🙁', label: (!isVi ? '1★ Poor' : '1★ Chưa hài lòng'), bg: 'hover:bg-rose-50 hover:border-rose-300' },
+                            ].map((opt) => (
+                              <button
+                                key={opt.score}
+                                type="button"
+                                disabled={submittingRating}
+                                onClick={() => {
+                                  setSelectedRating(opt.score);
+                                  handleRateTicket(selectedTicket.id, opt.score, ratingFeedback);
+                                }}
+                                className={`p-2 rounded-xl border border-slate-200 bg-white flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-2xs cursor-pointer hover:scale-[1.02] ${opt.bg} ${selectedRating === opt.score ? 'ring-2 ring-amber-400 bg-amber-50/50 font-black' : ''}`}
+                              >
+                                <span className="text-base">{opt.emoji}</span>
+                                <span>{opt.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
 
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={ratingFeedback}
-                          onChange={(e) => setRatingFeedback(e.target.value)}
-                          placeholder={(!isVi ? 'Optional feedback for technician...' : 'Nhận xét thêm về sự hỗ trợ (tùy chọn)...')}
-                          className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:bg-white focus:ring-1 focus:ring-amber-500 font-medium"
-                        />
-                        <button
-                          type="button"
-                          disabled={submittingRating}
-                          onClick={() => handleRateTicket(selectedTicket.id, selectedRating, ratingFeedback)}
-                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 flex items-center gap-1"
-                        >
-                          {submittingRating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Star className="w-3.5 h-3.5 fill-white" />}
-                          <span>{(!isVi ? 'Submit' : 'Gửi')}</span>
-                        </button>
+                        {/* Or customize rating with stars & comment */}
+                        <div className="pt-2 border-t border-slate-100 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-600">{(!isVi ? 'Or click stars:' : 'Hoặc chọn số sao:')}</span>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  onMouseEnter={() => setRatingHover(star)}
+                                  onMouseLeave={() => setRatingHover(0)}
+                                  onClick={() => setSelectedRating(star)}
+                                  className="p-0.5 hover:scale-125 transition-transform cursor-pointer"
+                                >
+                                  <Star
+                                    className={`w-5 h-5 ${
+                                      star <= (ratingHover || selectedRating)
+                                        ? 'text-amber-500 fill-amber-500'
+                                        : 'text-slate-300'
+                                    }`}
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                            <span className="font-bold text-xs text-amber-800">
+                              {ratingHover || selectedRating} / 5 {(!isVi ? 'Stars' : 'Sao')}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={ratingFeedback}
+                              onChange={(e) => setRatingFeedback(e.target.value)}
+                              placeholder={(!isVi ? 'Optional feedback for technician...' : 'Góp ý hoặc lời cảm ơn gửi kỹ thuật viên (tùy chọn)...')}
+                              className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:bg-white focus:ring-1 focus:ring-amber-500 font-medium"
+                            />
+                            <button
+                              type="button"
+                              disabled={submittingRating}
+                              onClick={() => handleRateTicket(selectedTicket.id, selectedRating, ratingFeedback)}
+                              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 flex items-center gap-1"
+                            >
+                              {submittingRating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Star className="w-3.5 h-3.5 fill-white" />}
+                              <span>{(!isVi ? 'Submit CSAT' : 'Gửi Đánh Giá')}</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    ) : (
+                      <div className="p-3 bg-white/80 rounded-xl border border-dashed border-slate-300 text-center text-xs text-slate-500">
+                        <span>⏳ {(!isVi ? 'Awaiting customer satisfaction feedback from requester' : 'Đang chờ người tạo phiếu gửi đánh giá mức độ hài lòng (CSAT).')}</span>
+                        {selectedTicket.createdBy?.fullName && (
+                          <span className="font-semibold text-slate-700 ml-1">({selectedTicket.createdBy.fullName})</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* 💬 KHU VỰC TRAO ĐỔI & BÌNH LUẬN FULL-WIDTH (SPACIOUS & EXPANSIVE) */}
               <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-slate-200/90 shadow-2xs space-y-3.5">
@@ -1606,7 +1676,11 @@ export function TicketDetailModal({
                             <button
                               type="button"
                               onClick={() => {
-                                setIsCannedMenuOpen(!isCannedMenuOpen);
+                                const nextState = !isCannedMenuOpen;
+                                setIsCannedMenuOpen(nextState);
+                                if (nextState) {
+                                  setCannedSearchTerm('');
+                                }
                                 fetchCannedResponses();
                               }}
                               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition-colors cursor-pointer"
@@ -1639,6 +1713,7 @@ export function TicketDetailModal({
                                       onClick={() => {
                                         setIsCannedMenuOpen(false);
                                         setIsCreatingCanned(false);
+                                        setCannedSearchTerm('');
                                       }}
                                       className="text-slate-400 hover:text-slate-600 font-bold p-1 text-sm leading-none cursor-pointer"
                                     >
@@ -1646,6 +1721,30 @@ export function TicketDetailModal({
                                     </button>
                                   </div>
                                 </div>
+
+                                {/* Ô tìm kiếm mẫu câu nhỏ */}
+                                {!isCreatingCanned && (
+                                  <div className="relative">
+                                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    <input
+                                      type="text"
+                                      value={cannedSearchTerm}
+                                      onChange={(e) => setCannedSearchTerm(e.target.value)}
+                                      placeholder={!isVi ? 'Search templates or shortcuts (/pass)...' : '🔍 Tìm mẫu câu, phím tắt (/pass, /visit)...'}
+                                      className="w-full pl-8 pr-7 py-1.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-200/50 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all"
+                                      autoFocus
+                                    />
+                                    {cannedSearchTerm && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setCannedSearchTerm('')}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full cursor-pointer"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
 
                                 {/* Form tạo thêm mẫu mới */}
                                 {isCreatingCanned ? (
@@ -1706,18 +1805,35 @@ export function TicketDetailModal({
                                 {/* Danh sách mẫu câu */}
                                 <div className="space-y-1.5 max-h-56 overflow-y-auto pr-0.5">
                                   {loadingCanned ? (
-                                    <div className="p-4 text-center text-slate-400 text-xs">Đang tải danh sách mẫu câu...</div>
+                                    <div className="p-4 text-center text-slate-400 text-xs">{!isVi ? 'Loading templates...' : 'Đang tải danh sách mẫu câu...'}</div>
                                   ) : cannedResponses.length === 0 ? (
-                                    <div className="p-4 text-center text-slate-400 text-xs">Chưa có mẫu câu nào. Hãy bấm "+ Thêm mẫu" để tạo.</div>
+                                    <div className="p-4 text-center text-slate-400 text-xs">{!isVi ? 'No templates yet. Click "+ New" to create one.' : 'Chưa có mẫu câu nào. Hãy bấm "+ Thêm mẫu" để tạo.'}</div>
+                                  ) : filteredCannedResponses.length === 0 ? (
+                                    <div className="p-4 text-center text-slate-400 text-xs space-y-1.5">
+                                      <p>{!isVi ? 'No templates matched' : 'Không tìm thấy mẫu câu phù hợp'} &ldquo;<span className="text-slate-600 font-semibold">{cannedSearchTerm}</span>&rdquo;</p>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setNewCannedTitle(cannedSearchTerm);
+                                          setIsCreatingCanned(true);
+                                        }}
+                                        className="text-amber-600 hover:text-amber-700 font-bold hover:underline text-[11px] cursor-pointer"
+                                      >
+                                        + {!isVi ? 'Create new template with this title' : 'Tạo mẫu mới với từ khóa này'}
+                                      </button>
+                                    </div>
                                   ) : (
-                                    cannedResponses.map((cr) => (
+                                    filteredCannedResponses.map((cr) => (
                                       <div
                                         key={cr.id}
                                         className="group relative flex items-start justify-between gap-1 p-2 rounded-xl hover:bg-amber-50/70 border border-slate-100 hover:border-amber-200 transition-colors"
                                       >
                                         <button
                                           type="button"
-                                          onClick={() => handleSelectCannedResponse(cr)}
+                                          onClick={() => {
+                                            handleSelectCannedResponse(cr);
+                                            setCannedSearchTerm('');
+                                          }}
                                           className="flex-1 text-left cursor-pointer min-w-0"
                                         >
                                           <div className="font-bold text-slate-800 group-hover:text-amber-900 flex items-center justify-between gap-1">

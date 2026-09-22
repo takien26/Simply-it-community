@@ -254,7 +254,7 @@ export function SsoSettingsTab({
             </label>
             <input
               type="text"
-              placeholder={`VD: https://it.hayen.vn/api/auth/sso/ms365/callback (Mặc định: ${redirectUri})`}
+              placeholder={`Mặc định: ${redirectUri || '/api/auth/sso/ms365/callback'}`}
               value={getSettingValue('sso.ms365_redirect_uri')}
               onChange={(e) => handleChange('sso.ms365_redirect_uri', e.target.value)}
               className="w-full px-2.5 py-1.5 bg-white/90 border border-indigo-200 rounded-lg text-[11px] font-mono outline-none focus:ring-1 focus:ring-indigo-500"
@@ -325,9 +325,9 @@ export function SsoSettingsTab({
             ) : (
               <p className="text-[11px] text-slate-500 mt-1">
                 {isEn ? (
-                  <>36-character GUID from Azure Portal (Overview &gt; Directory (tenant) ID), company domain (e.g. <code>hayen.vn</code>), or <code>common</code>.</>
+                  <>36-character GUID from Azure Portal (Overview &gt; Directory (tenant) ID), primary domain, or <code>common</code>.</>
                 ) : (
-                  <>Mã GUID 36 ký tự từ Azure Portal (Overview &gt; Directory (tenant) ID), hoặc tên miền công ty (VD: <code>hayen.vn</code>), hoặc điền <code>common</code> nếu là app đa tổ chức.</>
+                  <>Mã GUID 36 ký tự từ Azure Portal (Overview &gt; Directory (tenant) ID), hoặc tên miền chính (VD: <code>contoso.onmicrosoft.com</code>), hoặc điền <code>common</code> nếu là app đa tổ chức.</>
                 )}
               </p>
             )}

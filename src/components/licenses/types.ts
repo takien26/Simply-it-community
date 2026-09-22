@@ -1,3 +1,5 @@
+import { normalizeCompanyName } from '@/lib/normalize';
+
 export interface CurrencyConfig {
   code: string;
   name: string;
@@ -281,7 +283,7 @@ export function groupLicenses(
       totalCostInSelectedCurrency: number;
     }>();
 
-    const getCompKey = (comp?: string | null) => (comp && comp.trim()) ? comp.trim() : 'Toàn tập đoàn / Chung';
+    const getCompKey = (comp?: string | null) => normalizeCompanyName(comp);
 
     // A. Count purchased seats & costs by company
     allBatchItems.forEach((b, idx) => {

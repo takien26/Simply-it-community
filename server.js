@@ -100,6 +100,27 @@ async function initServer() {
     }
   }
 
+  // Persistent CRON_SECRET engine
+  const cronSecretFile = path.join(certDir, '.cron_secret');
+  const currentCronSecret = process.env.CRON_SECRET ? process.env.CRON_SECRET.trim() : '';
+  if (!currentCronSecret || currentCronSecret === 'simply-internal-cron') {
+    if (fs.existsSync(cronSecretFile)) {
+      const saved = fs.readFileSync(cronSecretFile, 'utf8').trim();
+      if (saved && saved.length >= 32) {
+        process.env.CRON_SECRET = saved;
+      }
+    }
+    if (!process.env.CRON_SECRET || process.env.CRON_SECRET === 'simply-internal-cron') {
+      const crypto = require('crypto');
+      const freshCronSecret = crypto.randomBytes(32).toString('hex');
+      try {
+        fs.writeFileSync(cronSecretFile, freshCronSecret, { encoding: 'utf8', mode: 0o600 });
+      } catch {}
+      process.env.CRON_SECRET = freshCronSecret;
+      console.log('🔒 [Security Engine] Generated unique persistent CRON_SECRET in .certificates/.cron_secret');
+    }
+  }
+
   const keyPath = path.join(certDir, 'localhost.key');
   const certPath = path.join(certDir, 'localhost.crt');
 
@@ -180,6 +201,15 @@ async function initServer() {
   const httpServer = http.createServer((req, res) => {
     if (serveUploadsDirect(req, res)) return;
     setupNoCache(req, res);
+    if (!req.headers['x-forwarded-proto']) {
+      req.headers['x-forwarded-proto'] = 'http';
+    }
+    if (!req.headers['x-forwarded-port']) {
+      req.headers['x-forwarded-port'] = HTTP_PORT.toString();
+    }
+    if (!req.headers['x-forwarded-host'] && req.headers.host) {
+      req.headers['x-forwarded-host'] = req.headers.host;
+    }
     handle(req, res);
   });
 
@@ -192,6 +222,15 @@ async function initServer() {
   const httpsServer = https.createServer(httpsOptions, (req, res) => {
     if (serveUploadsDirect(req, res)) return;
     setupNoCache(req, res);
+    if (!req.headers['x-forwarded-proto']) {
+      req.headers['x-forwarded-proto'] = 'https';
+    }
+    if (!req.headers['x-forwarded-port']) {
+      req.headers['x-forwarded-port'] = HTTPS_PORT.toString();
+    }
+    if (!req.headers['x-forwarded-host'] && req.headers.host) {
+      req.headers['x-forwarded-host'] = req.headers.host;
+    }
     handle(req, res);
   });
 

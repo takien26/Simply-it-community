@@ -15,6 +15,7 @@ import {
   Laptop,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import { useLanguage } from '@/lib/i18n/context';
 
 export interface CombinedHandoverModalProps {
   isOpen: boolean;
@@ -58,6 +59,7 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
   licenses = [],
   notes,
 }) => {
+  const { t } = useLanguage();
   const printRef = useRef<HTMLDivElement>(null);
 
   if (!isOpen) return null;
@@ -81,8 +83,8 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
             <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             <h3 className="font-bold text-sm text-slate-800 dark:text-white">
               {isOffboarding
-                ? 'Biên Bản Thu Hồi & Bàn Giao Tài Sản (Nghỉ Việc)'
-                : 'Biên Bản Bàn Giao Thiết Bị & Tài Nguyên IT (Tiếp Nhận)'}
+                ? t('users.handover.title_offboard', 'Biên Bản Thu Hồi & Bàn Giao Tài Sản (Nghỉ Việc)')
+                : t('users.handover.title_onboard', 'Biên Bản Bàn Giao Thiết Bị & Tài Nguyên IT (Tiếp Nhận)')}
             </h3>
           </div>
 
@@ -93,7 +95,7 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
               className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>In Biên Bản (Ctrl + P)</span>
+              <span>{t('users.handover.print_btn', 'In Biên Bản (Ctrl + P)')}</span>
             </button>
             <button
               type="button"
@@ -114,14 +116,17 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
           <div className="grid grid-cols-2 gap-4 pb-4 border-b-2 border-slate-900">
             <div>
               <p className="font-bold uppercase tracking-wider text-xs">{companyName}</p>
-              <p className="font-extrabold uppercase text-xs text-indigo-900">BAN CÔNG NGHỆ THÔNG TIN</p>
+              <p className="font-extrabold uppercase text-xs text-indigo-900">{t('users.handover.it_dept', 'BAN CÔNG NGHỆ THÔNG TIN')}</p>
               <p className="text-xs text-slate-500 font-mono mt-1">Số: {docNumber}</p>
             </div>
             <div className="text-center">
-              <p className="font-bold text-xs uppercase">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p>
-              <p className="font-semibold text-xs text-slate-700">Độc lập - Tự do - Hạnh phúc</p>
+              <p className="font-bold text-xs uppercase">{t('users.handover.country_line1', 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM')}</p>
+              <p className="font-semibold text-xs text-slate-700">{t('users.handover.country_line2', 'Độc lập - Tự do - Hạnh phúc')}</p>
               <p className="text-xs text-slate-500 italic mt-1">
-                Ngày {today.getDate()} tháng {today.getMonth() + 1} năm {today.getFullYear()}
+                {t('users.handover.date_format', 'Ngày {day} tháng {month} năm {year}')
+                  .replace('{day}', String(today.getDate()))
+                  .replace('{month}', String(today.getMonth() + 1))
+                  .replace('{year}', String(today.getFullYear()))}
               </p>
             </div>
           </div>
@@ -130,13 +135,13 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
           <div className="text-center py-2 space-y-1">
             <h1 className="font-black text-xl tracking-wide uppercase text-slate-900">
               {isOffboarding
-                ? 'BIÊN BẢN THU HỒI & HOÀN TRẢ TRANG THIẾT BỊ CNTT'
-                : 'BIÊN BẢN BÀN GIAO TRANG THIẾT BỊ & BẢN QUYỀN CNTT'}
+                ? t('users.handover.doc_title_offboard', 'BIÊN BẢN THU HỒI & HOÀN TRẢ TRANG THIẾT BỊ CNTT')
+                : t('users.handover.doc_title_onboard', 'BIÊN BẢN BÀN GIAO TRANG THIẾT BỊ & BẢN QUYỀN CNTT')}
             </h1>
             <p className="text-xs text-slate-500 italic">
               {isOffboarding
-                ? '(V/v: Chấm dứt hợp đồng lao động / Bàn giao tài sản trước khi nghỉ việc)'
-                : '(V/v: Cấp phát trang thiết bị & công cụ làm việc cho nhân sự mới)'}
+                ? t('users.handover.doc_reason_offboard', '(V/v: Chấm dứt hợp đồng lao động / Bàn giao tài sản trước khi nghỉ việc)')
+                : t('users.handover.doc_reason_onboard', '(V/v: Cấp phát trang thiết bị & công cụ làm việc cho nhân sự mới)')}
             </p>
           </div>
 
@@ -144,27 +149,27 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-2xl border border-slate-200">
             <div className="space-y-1">
               <h4 className="font-bold text-xs uppercase tracking-wider text-indigo-900 pb-1 border-b border-slate-200">
-                {isOffboarding ? 'BÊN TIẾP NHẬN THU HỒI (BÊN A):' : 'BÊN BÀN GIAO (BÊN A):'}
+                {isOffboarding ? t('users.handover.party_a_offboard', 'BÊN TIẾP NHẬN THU HỒI (BÊN A):') : t('users.handover.party_a_onboard', 'BÊN BÀN GIAO (BÊN A):')}
               </h4>
               <p className="text-xs">
-                Đại diện: <strong>{executor?.fullName || 'Đại diện Bộ phận IT'}</strong>
+                {t('users.handover.representative', 'Đại diện:')} <strong>{executor?.fullName || 'Đại diện Bộ phận IT'}</strong>
               </p>
-              <p className="text-xs">Bộ phận: <strong>Ban Công Nghệ Thông Tin</strong></p>
-              <p className="text-xs">Đơn vị: <strong>{companyName}</strong></p>
+              <p className="text-xs">{t('users.handover.department', 'Bộ phận:')} <strong>{t('users.handover.it_dept', 'Ban Công Nghệ Thông Tin')}</strong></p>
+              <p className="text-xs">{t('users.handover.company', 'Đơn vị:')} <strong>{companyName}</strong></p>
             </div>
 
             <div className="space-y-1">
               <h4 className="font-bold text-xs uppercase tracking-wider text-indigo-900 pb-1 border-b border-slate-200">
-                {isOffboarding ? 'BÊN BÀN GIAO HOÀN TRẢ (BÊN B):' : 'BÊN TIẾP NHẬN SỬ DỤNG (BÊN B):'}
+                {isOffboarding ? t('users.handover.party_b_offboard', 'BÊN BÀN GIAO HOÀN TRẢ (BÊN B):') : t('users.handover.party_b_onboard', 'BÊN TIẾP NHẬN SỬ DỤNG (BÊN B):')}
               </h4>
               <p className="text-xs">
-                Họ và tên: <strong>{user.fullName}</strong>
+                {t('users.handover.fullname', 'Họ và tên:')} <strong>{user.fullName}</strong>
               </p>
               <p className="text-xs">
-                Phòng ban: <strong>{user.department || '—'}</strong> • Chức vụ: <strong>{user.position || 'Nhân viên'}</strong>
+                {t('users.handover.department', 'Bộ phận:')} <strong>{user.department || '—'}</strong> • {t('users.handover.position', 'Chức vụ:')} <strong>{user.position || 'Nhân viên'}</strong>
               </p>
               <p className="text-xs">
-                Email công vụ: <strong>{user.email}</strong>
+                {t('users.handover.email', 'Email công vụ:')} <strong>{user.email}</strong>
               </p>
             </div>
           </div>
@@ -172,23 +177,23 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
           {/* Danh mục 1: Trang thiết bị phần cứng */}
           <div className="space-y-2">
             <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-              <span>1. Danh mục trang thiết bị phần cứng ({assets.length} thiết bị):</span>
+              <span>{t('users.handover.hardware_heading', '1. Danh mục trang thiết bị phần cứng ({count} thiết bị):').replace('{count}', String(assets.length))}</span>
             </h3>
 
             {assets.length === 0 ? (
               <p className="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-xl border border-slate-200">
-                Không phát sinh bàn giao thiết bị phần cứng.
+                {t('users.handover.no_hardware', 'Không phát sinh bàn giao thiết bị phần cứng.')}
               </p>
             ) : (
               <table className="w-full text-left text-xs border-collapse border border-slate-300">
                 <thead>
                   <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300">
-                    <th className="p-2 border-r border-slate-300 w-10 text-center">STT</th>
-                    <th className="p-2 border-r border-slate-300">Mã Tài Sản</th>
-                    <th className="p-2 border-r border-slate-300">Tên Thiết Bị / Model</th>
-                    <th className="p-2 border-r border-slate-300">Số Serial (S/N)</th>
-                    <th className="p-2 border-r border-slate-300 text-center">Tình Trạng</th>
-                    <th className="p-2">Phụ Kiện Đi Kèm</th>
+                    <th className="p-2 border-r border-slate-300 w-10 text-center">{t('users.handover.col_stt', 'STT')}</th>
+                    <th className="p-2 border-r border-slate-300">{t('users.handover.col_tag', 'Mã Tài Sản')}</th>
+                    <th className="p-2 border-r border-slate-300">{t('users.handover.col_name', 'Tên Thiết Bị / Model')}</th>
+                    <th className="p-2 border-r border-slate-300">{t('users.handover.col_serial', 'Số Serial (S/N)')}</th>
+                    <th className="p-2 border-r border-slate-300 text-center">{t('users.handover.col_condition', 'Tình Trạng')}</th>
+                    <th className="p-2">{t('users.handover.col_accessories', 'Phụ Kiện Đi Kèm')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -205,10 +210,10 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
                         {item.serialNumber || '—'}
                       </td>
                       <td className="p-2 border-r border-slate-200 text-center font-medium">
-                        {item.condition === 'NEW' ? 'Mới 100%' : item.condition === 'GOOD' ? 'Tốt (Ổn định)' : 'Bình thường'}
+                        {item.condition === 'NEW' ? t('users.handover.condition_new', 'Mới 100%') : item.condition === 'GOOD' ? t('users.handover.condition_good', 'Tốt (Ổn định)') : t('users.handover.condition_normal', 'Bình thường')}
                       </td>
                       <td className="p-2 text-slate-600">
-                        Sạc/Adapter, Chuột, Túi
+                        {t('users.handover.accessories_default', 'Sạc/Adapter, Chuột, Túi')}
                       </td>
                     </tr>
                   ))}
@@ -221,16 +226,16 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
           {licenses.length > 0 && (
             <div className="space-y-2">
               <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                <span>2. Danh mục tài khoản & bản quyền phần mềm ({licenses.length} bản quyền):</span>
+                <span>{t('users.handover.licenses_heading', '2. Danh mục tài khoản & bản quyền phần mềm ({count} bản quyền):').replace('{count}', String(licenses.length))}</span>
               </h3>
 
               <table className="w-full text-left text-xs border-collapse border border-slate-300">
                 <thead>
                   <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300">
-                    <th className="p-2 border-r border-slate-300 w-10 text-center">STT</th>
-                    <th className="p-2 border-r border-slate-300">Tên Gói Phần Mềm / Bản Quyền</th>
-                    <th className="p-2 border-r border-slate-300">Phân Loại</th>
-                    <th className="p-2">Ghi Chú Trạng Thái</th>
+                    <th className="p-2 border-r border-slate-300 w-10 text-center">{t('users.handover.col_stt', 'STT')}</th>
+                    <th className="p-2 border-r border-slate-300">{t('users.handover.col_license_name', 'Tên Gói Phần Mềm / Bản Quyền')}</th>
+                    <th className="p-2 border-r border-slate-300">{t('users.handover.col_license_type', 'Phân Loại')}</th>
+                    <th className="p-2">{t('users.handover.col_license_status', 'Ghi Chú Trạng Thái')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -244,7 +249,7 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
                         {lic.licenseType || 'SUBSCRIPTION'}
                       </td>
                       <td className="p-2 text-slate-600">
-                        {isOffboarding ? 'Đã giải phóng ghế bản quyền về kho' : 'Đã kích hoạt cấp phát cho nhân sự'}
+                        {isOffboarding ? t('users.handover.license_status_offboard', 'Đã giải phóng ghế bản quyền về kho') : t('users.handover.license_status_onboard', 'Đã kích hoạt cấp phát cho nhân sự')}
                       </td>
                     </tr>
                   ))}
@@ -255,7 +260,7 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
 
           {/* Điều khoản & Cam kết */}
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5 text-xs text-slate-700">
-            <h4 className="font-bold uppercase tracking-wider text-slate-900">3. Điều khoản & Cam kết trách nhiệm:</h4>
+            <h4 className="font-bold uppercase tracking-wider text-slate-900">{t('users.handover.terms_heading', '3. Điều khoản & Cam kết trách nhiệm:')}</h4>
             {isOffboarding ? (
               <ul className="list-disc list-inside space-y-1 text-slate-600">
                 <li>Bên hoàn trả (Bên B) đã bàn giao đầy đủ toàn bộ thiết bị, phụ kiện và dữ liệu công việc liên quan.</li>
@@ -275,7 +280,7 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
 
           {notes && (
             <p className="text-xs text-slate-600 italic">
-              <strong>Ghi chú bổ sung:</strong> {notes}
+              <strong>{t('users.handover.additional_notes', 'Ghi chú bổ sung:')}</strong> {notes}
             </p>
           )}
 
@@ -284,9 +289,9 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
             <div className="space-y-16">
               <div>
                 <p className="font-bold uppercase tracking-wider text-slate-800">
-                  {isOffboarding ? 'NGƯỜI HOÀN TRẢ' : 'ĐẠI DIỆN BÀN GIAO (IT)'}
+                  {isOffboarding ? t('users.handover.sign_returner', 'NGƯỜI HOÀN TRẢ') : t('users.handover.sign_handover_it', 'ĐẠI DIỆN BÀN GIAO (IT)')}
                 </p>
-                <p className="text-[11px] text-slate-400 italic">(Ký và ghi rõ họ tên)</p>
+                <p className="text-[11px] text-slate-400 italic">{t('users.handover.sign_hint', '(Ký và ghi rõ họ tên)')}</p>
               </div>
               <p className="font-bold text-slate-800">
                 {isOffboarding ? user.fullName : (executor?.fullName || 'IT Admin')}
@@ -296,9 +301,9 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
             <div className="space-y-16">
               <div>
                 <p className="font-bold uppercase tracking-wider text-slate-800">
-                  {isOffboarding ? 'ĐẠI DIỆN TIẾP NHẬN (IT)' : 'NGƯỜI TIẾP NHẬN'}
+                  {isOffboarding ? t('users.handover.sign_receiver_it', 'ĐẠI DIỆN TIẾP NHẬN (IT)') : t('users.handover.sign_receiver_user', 'NGƯỜI TIẾP NHẬN')}
                 </p>
-                <p className="text-[11px] text-slate-400 italic">(Ký và ghi rõ họ tên)</p>
+                <p className="text-[11px] text-slate-400 italic">{t('users.handover.sign_hint', '(Ký và ghi rõ họ tên)')}</p>
               </div>
               <p className="font-bold text-slate-800">
                 {isOffboarding ? (executor?.fullName || 'IT Admin') : user.fullName}
@@ -307,8 +312,8 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
 
             <div className="space-y-16">
               <div>
-                <p className="font-bold uppercase tracking-wider text-slate-800">LÃNH ĐẠO PHÊ DUYỆT</p>
-                <p className="text-[11px] text-slate-400 italic">(Ký và ghi rõ họ tên)</p>
+                <p className="font-bold uppercase tracking-wider text-slate-800">{t('users.handover.sign_approval', 'LÃNH ĐẠO PHÊ DUYỆT')}</p>
+                <p className="text-[11px] text-slate-400 italic">{t('users.handover.sign_hint', '(Ký và ghi rõ họ tên)')}</p>
               </div>
               <p className="font-bold text-slate-400 italic">....................................</p>
             </div>

@@ -4,6 +4,7 @@ import { hasPermission } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
 import { moveToTrash } from '@/lib/trash';
+import { normalizeCompanyName } from '@/lib/normalize';
 
 // GET /api/licenses/[id]
 export async function GET(
@@ -28,7 +29,7 @@ export async function GET(
             assignments: {
               where: { revokedAt: null },
               include: {
-                user: { select: { id: true, fullName: true, email: true, department: true, companyName: true } },
+                user: { select: { id: true, fullName: true, email: true, department: true, companyName: true, isActive: true } },
                 asset: { select: { id: true, assetTag: true, name: true, companyName: true } },
               },
             },
@@ -51,7 +52,7 @@ export async function GET(
         },
         assignments: {
           include: {
-            user: { select: { id: true, fullName: true, email: true, department: true, companyName: true } },
+            user: { select: { id: true, fullName: true, email: true, department: true, companyName: true, isActive: true } },
             asset: { select: { id: true, assetTag: true, name: true, companyName: true } },
             assignedBy: { select: { fullName: true } },
           },
@@ -150,7 +151,7 @@ export async function PUT(
         purchasePrice: body.purchasePrice !== undefined && body.purchasePrice !== '' && !isNaN(Number(body.purchasePrice)) ? Number(body.purchasePrice) : null,
         purchaseCurrency: body.purchaseCurrency !== undefined ? (body.purchaseCurrency || 'VND') : existing.purchaseCurrency,
         vendorId: body.vendorId !== undefined ? (body.vendorId || null) : existing.vendorId,
-        companyName: body.companyName !== undefined ? (body.companyName || null) : (existing as any).companyName,
+        companyName: body.companyName !== undefined ? (body.companyName ? normalizeCompanyName(body.companyName) : null) : (existing as any).companyName,
         contractNumber: body.contractNumber !== undefined ? (body.contractNumber || null) : existing.contractNumber,
         invoiceNumber: body.invoiceNumber !== undefined ? (body.invoiceNumber || null) : existing.invoiceNumber,
         contractUrl: body.contractUrl !== undefined ? (body.contractUrl || null) : existing.contractUrl,

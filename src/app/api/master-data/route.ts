@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { normalizeCompanyName } from '@/lib/normalize';
 
 let masterDataCache: { timestamp: number; data: any } | null = null;
 const CACHE_TTL_MS = 60 * 1000; // 60s cache
@@ -128,6 +129,16 @@ export async function GET() {
       );
     }
 
+    const seenComp = new Set<string>();
+    const finalCompanies: string[] = [];
+    for (const c of allCompanies) {
+      const norm = normalizeCompanyName(c);
+      if (!seenComp.has(norm.toLowerCase())) {
+        seenComp.add(norm.toLowerCase());
+        finalCompanies.push(norm);
+      }
+    }
+
     const defaultDepts = [
       'IT / Kỹ thuật',
       'Ban Giám Đốc',
@@ -144,6 +155,16 @@ export async function GET() {
       ...distinctDepts.map((d) => d.department!).filter(Boolean),
     ]);
 
+    const ouSetting = await prisma.systemSetting.findUnique({
+      where: { key: 'corporate.ou_structure' },
+    });
+    let ouTree: any[] = [];
+    if (ouSetting?.value) {
+      try {
+        ouTree = JSON.parse(ouSetting.value);
+      } catch {}
+    }
+
     const payload = {
       success: true,
       data: {
@@ -154,8 +175,9 @@ export async function GET() {
         services,
         supportTeams,
         supportQueues,
-        companies: allCompanies,
+        companies: finalCompanies,
         departments: Array.from(allDeptsSet),
+        ouTree,
       },
     };
 

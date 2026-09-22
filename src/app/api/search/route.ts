@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { COMPREHENSIVE_IT_KB } from '@/lib/it-knowledge-base';
+import { getActiveDefaultArticles } from '@/lib/kb-storage';
 
 // GET /api/search?q=keyword&limit=15
 export async function GET(request: NextRequest) {
@@ -176,7 +176,8 @@ export async function GET(request: NextRequest) {
 
     // 8. Filter Static KB Articles
     const qLower = q.toLowerCase();
-    const matchedStaticKB = COMPREHENSIVE_IT_KB.filter(
+    const activeDefaults = await getActiveDefaultArticles();
+    const matchedStaticKB = activeDefaults.filter(
       (k) =>
         k.title.toLowerCase().includes(qLower) ||
         k.keywords.some((w) => w.toLowerCase().includes(qLower)) ||

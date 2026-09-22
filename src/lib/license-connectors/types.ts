@@ -16,11 +16,14 @@ export interface CloudAssignedUser {
   displayName: string;
   accountEnabled: boolean;
   assignedSkuNames: string[];
+  assignedSkuIds?: string[];
   lastSignInDate?: string;
   daysInactive?: number;
   isDormant?: boolean; // > 45 ngày không đăng nhập
   department?: string;
   jobTitle?: string;
+  userPrincipalName?: string;
+  mail?: string;
 }
 
 export interface ReconciliationReport {
@@ -46,8 +49,22 @@ export interface ReconciliationReport {
   }[];
   dormantUsers: CloudAssignedUser[]; // Tài khoản lãng phí: disabled hoặc > 45 ngày không đăng nhập
   unmatchedUsers: CloudAssignedUser[]; // Có trên Cloud nhưng chưa được ghi nhận trong Simply IT
+  cloudUsers?: CloudAssignedUser[]; // Toàn bộ người dùng trên Cloud có gán license
   estimatedPotentialSavings: number; // Ước tính số tiền tiết kiệm được nếu thu hồi các tài khoản lãng phí
   currency: string;
+  subscriptions?: M365SubscriptionBatch[];
+}
+
+export interface M365SubscriptionBatch {
+  id: string;
+  commerceSubscriptionId: string;
+  skuId: string;
+  skuPartNumber: string;
+  status: string;
+  totalLicenses: number;
+  createdDateTime: string;
+  nextLifecycleDateTime: string | null;
+  isTrial: boolean;
 }
 
 export interface M365Config {

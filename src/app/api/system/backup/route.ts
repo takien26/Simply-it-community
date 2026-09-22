@@ -23,11 +23,11 @@ export async function GET() {
     const { backupData, totalRecords } = await generateDatabaseBackupData(currentUser.email);
 
     await createAuditLog({
-      action: 'EXPORT' as any,
+      action: 'CREATE',
       entityType: 'System',
       entityId: 'backup',
       userId: currentUser.userId,
-      changes: { totalEntities: totalRecords, counts: backupData.meta.totalCounts },
+      changes: { event: 'SYSTEM_BACKUP_EXPORT', totalEntities: totalRecords, counts: backupData.meta.totalCounts },
     });
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);

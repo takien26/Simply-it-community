@@ -8,6 +8,7 @@ import {
 } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import { normalizeEmail, normalizeCompanyName } from '@/lib/normalize';
 
 // GET /api/users - List users/staff with their assigned assets & licenses
 export async function GET(request: NextRequest) {
@@ -36,7 +37,11 @@ export async function GET(request: NextRequest) {
       ];
     }
     if (department && department !== 'ALL') {
-      where.department = department;
+      where.department = { equals: department, mode: 'insensitive' };
+    }
+    const companyName = searchParams.get('companyName');
+    if (companyName && companyName !== 'ALL') {
+      where.companyName = { equals: companyName, mode: 'insensitive' };
     }
 
     const users = await prisma.user.findMany({
@@ -102,7 +107,7 @@ export async function GET(request: NextRequest) {
       orderBy: { fullName: 'asc' },
     });
 
-    return NextResponse.json({ success: true, data: users });
+    return NextResponse.json({ success: true, data: users, users });
   } catch (error) {
     console.error('List users error:', error);
     return NextResponse.json({ error: 'Failed to list users' }, { status: 500 });
@@ -162,12 +167,12 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.create({
       data: {
-        fullName,
-        email,
+        fullName: fullName ? fullName.trim().replace(/\s+/g, ' ') : '',
+        email: normalizeEmail(email),
         passwordHash: hashedPassword,
         department: department || null,
         position: position || null,
-        companyName: companyName || null,
+        companyName: companyName ? normalizeCompanyName(companyName) : null,
         phone: phone || null,
         managerId: managerId || null,
         locationId: locationId || null,

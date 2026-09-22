@@ -1,6 +1,7 @@
 import { prisma } from './db';
 import { MaintenanceFrequency, TicketPriority, TicketCategory } from '@prisma/client';
 import { sendEmail } from './email';
+import { generateNextTicketNumber } from './ticket-sequence';
 
 export interface ScheduleConfig {
   repeatMode?: 'EVERY_DAY' | 'WEEKDAYS' | 'SELECTED_DAYS' | 'MONTHLY_DAY';
@@ -167,8 +168,7 @@ export async function runMaintenanceSchedulesCron(): Promise<{
       processedCount++;
       try {
         if (schedule.autoCreateTicket && adminUser) {
-          const totalTickets = await prisma.ticket.count();
-          const ticketNumber = `TK-${currentYear}-${String(totalTickets + 1).padStart(4, '0')}`;
+          const ticketNumber = await generateNextTicketNumber(currentYear);
 
           const targetName = schedule.asset
             ? `[${schedule.asset.assetTag}] ${schedule.asset.name}`
@@ -220,8 +220,12 @@ ${schedule.description ? 'Mô tả công việc:\n' + schedule.description : ''}
             }).catch(() => {});
           }
         }
+      } catch (err: any) {
+        errors.push(`Schedule ${schedule.name} ticket creation error: ${err.message}`);
+      }
 
-        // Advance nextRunAt using smart Veeam-style schedule config if present
+      // Advance nextRunAt regardless of ticket creation error so schedule doesn't get stuck in an infinite retry loop
+      try {
         const { config } = parseScheduleConfig(schedule.description);
         const nextDate = calculateNextRunDate(schedule.nextRunAt, schedule.frequency, config);
         await prisma.maintenanceSchedule.update({
@@ -231,8 +235,8 @@ ${schedule.description ? 'Mô tả công việc:\n' + schedule.description : ''}
             nextRunAt: nextDate,
           },
         });
-      } catch (err: any) {
-        errors.push(`Schedule ${schedule.name} error: ${err.message}`);
+      } catch (updateErr: any) {
+        errors.push(`Schedule ${schedule.name} update error: ${updateErr.message}`);
       }
     }
 

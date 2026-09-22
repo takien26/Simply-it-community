@@ -116,6 +116,27 @@ export async function sendEmail({
       }
     }
 
+    // Built-in fallback template for ticket.resolved with 1-click CSAT buttons
+    if (templateCode === 'ticket.resolved' && (!finalSubject || !finalHtml)) {
+      finalSubject = `[Hoàn thành] Ticket #${data.ticketNumber}: ${data.title}`;
+      finalHtml = `
+        <p>Xin chào <strong>${data.creatorName || 'bạn'}</strong>,</p>
+        <p>Yêu cầu hỗ trợ của bạn với mã số <strong>#${data.ticketNumber}</strong> đã được kỹ thuật viên <strong>${data.assigneeName || 'IT Support'}</strong> xử lý hoàn tất.</p>
+        <div class="highlight-box">
+          <p style="margin: 0 0 6px 0;"><strong>Tiêu đề sự cố:</strong> ${data.title}</p>
+          <p style="margin: 0;"><strong>Trạng thái:</strong> <span style="color: #16a34a; font-weight: bold;">ĐÃ GIẢI QUYẾT HOÀN TẤT</span></p>
+        </div>
+        <p><strong>Khảo sát 1-click:</strong> Hãy dành 5 giây đánh giá mức độ hài lòng của bạn về chất lượng hỗ trợ của IT:</p>
+        <div style="margin: 16px 0; text-align: center;">
+          <a href="${data.rate5Url || `${data.link}&rate=5`}" style="display: inline-block; margin: 4px; padding: 10px 14px; background: #ecfdf5; border: 1px solid #10b981; border-radius: 10px; color: #047857; text-decoration: none; font-weight: bold; font-size: 13px;">😍 Rất hài lòng (5★)</a>
+          <a href="${data.rate4Url || `${data.link}&rate=4`}" style="display: inline-block; margin: 4px; padding: 10px 14px; background: #eff6ff; border: 1px solid #3b82f6; border-radius: 10px; color: #1d4ed8; text-decoration: none; font-weight: bold; font-size: 13px;">😊 Hài lòng (4★)</a>
+          <a href="${data.rate3Url || `${data.link}&rate=3`}" style="display: inline-block; margin: 4px; padding: 10px 14px; background: #fefce8; border: 1px solid #eab308; border-radius: 10px; color: #a16207; text-decoration: none; font-weight: bold; font-size: 13px;">😐 Bình thường (3★)</a>
+          <a href="${data.rate1Url || `${data.link}&rate=1`}" style="display: inline-block; margin: 4px; padding: 10px 14px; background: #fef2f2; border: 1px solid #ef4444; border-radius: 10px; color: #b91c1c; text-decoration: none; font-weight: bold; font-size: 13px;">😞 Chưa hài lòng (1★)</a>
+        </div>
+        <p><a href="${data.link}" class="btn" style="color: #ffffff !important;">Xem chi tiết Ticket trên hệ thống</a></p>
+      `;
+    }
+
     if (!finalSubject || !finalHtml) {
       return { success: false, error: 'Missing subject or body template' };
     }
