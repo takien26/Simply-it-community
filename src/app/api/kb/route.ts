@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
-import { getActiveDefaultArticles } from '@/lib/kb-storage';
+import { getActiveDefaultArticles, getAllKBFeedbackStats } from '@/lib/kb-storage';
 import { DocumentType } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -93,12 +93,37 @@ export async function GET(request: NextRequest) {
 
     const allArticles = [...defaultArticles, ...dbArticles];
 
-    // 4. RBAC Filter: Regular users ONLY see PUBLIC articles! Only IT/Admin can see internal team docs!
-    let visibleArticles: any[] = allArticles.filter((art) => {
+    // 4. Attach persistent feedback statistics (Helpful vs Unhelpful / Deflection Ratio)
+    const feedbackStore = await getAllKBFeedbackStats();
+    const articlesWithFeedback = allArticles.map((art) => {
+      const fb = feedbackStore[art.id] || { helpful: 0, unhelpful: 0 };
+      const totalFb = (fb.helpful || 0) + (fb.unhelpful || 0);
+      const feedbackRatio = totalFb > 0 ? Math.round(((fb.helpful || 0) / totalFb) * 100) : null;
+      const needsImprovement = totalFb >= 2 && feedbackRatio !== null && feedbackRatio < 70;
+
+      return {
+        ...art,
+        helpfulCount: fb.helpful || 0,
+        unhelpfulCount: fb.unhelpful || 0,
+        feedbackRatio,
+        needsImprovement,
+      };
+    });
+
+    // 5. RBAC Filter: Regular users ONLY see PUBLIC articles! Only IT/Admin can see internal team docs!
+    let visibleArticles: any[] = articlesWithFeedback.filter((art) => {
       if (isAdmin) return true;
       if (isITStaff) return true;
       return art.teamScope === 'PUBLIC' || !art.isInternalIT;
     });
+
+    // Special filter for articles that need review / updates (Low rating)
+    const needsImprovementFilter = searchParams.get('needsImprovement') === 'true';
+    if (needsImprovementFilter) {
+      visibleArticles = visibleArticles.filter(
+        (a) => a.needsImprovement || (a.unhelpfulCount || 0) > 0
+      );
+    }
 
     if (teamScope && teamScope !== 'ALL') {
       visibleArticles = visibleArticles.filter((a) => a.teamScope === teamScope);
@@ -110,7 +135,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 5. 3-Tier Hybrid Search Engine (Token Scoring + Context + AI Semantic Fallback)
+    // 6. 3-Tier Hybrid Search Engine (Token Scoring + Context + AI Semantic Fallback)
     if (search || description) {
       const { searchHybridKB } = await import('@/lib/kb-hybrid-search');
       const hybridResults = await searchHybridKB(search, visibleArticles, {
@@ -125,6 +150,10 @@ export async function GET(request: NextRequest) {
         matchReason: r.matchReason,
       }));
     }
+
+    const needsImprovementCount = articlesWithFeedback.filter(
+      (a) => a.needsImprovement || (a.unhelpfulCount || 0) > 0
+    ).length;
 
     const categories = [
       { key: 'ALL', name: 'Tất cả bài viết', count: visibleArticles.length },
@@ -150,6 +179,7 @@ export async function GET(request: NextRequest) {
       data: visibleArticles,
       categories,
       teamScopes,
+      needsImprovementCount,
       userRole,
       isITStaff,
       isAdmin,

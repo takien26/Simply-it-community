@@ -5,7 +5,7 @@ import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 import { createAuditLog } from '@/lib/audit';
 import { moveToTrash } from '@/lib/trash';
 import { COMPREHENSIVE_IT_KB } from '@/lib/it-knowledge-base';
-import { hideDefaultArticle } from '@/lib/kb-storage';
+import { hideDefaultArticle, getAllKBFeedbackStats } from '@/lib/kb-storage';
 import { DocumentType } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +22,12 @@ export async function GET(
     }
 
     const { id } = await params;
+
+    const feedbackStore = await getAllKBFeedbackStats();
+    const fb = feedbackStore[id] || { helpful: 0, unhelpful: 0 };
+    const totalFb = (fb.helpful || 0) + (fb.unhelpful || 0);
+    const feedbackRatio = totalFb > 0 ? Math.round(((fb.helpful || 0) / totalFb) * 100) : null;
+    const needsImprovement = totalFb >= 2 && feedbackRatio !== null && feedbackRatio < 70;
 
     // 1. Kiểm tra trong DB Document
     const doc = await prisma.document.findUnique({
@@ -60,6 +66,10 @@ export async function GET(
           fileUrl: doc.fileUrl,
           fileName: doc.fileName,
           isDefault: false,
+          helpfulCount: fb.helpful || 0,
+          unhelpfulCount: fb.unhelpful || 0,
+          feedbackRatio,
+          needsImprovement,
         },
       });
     }
@@ -85,6 +95,10 @@ export async function GET(
           teamScope: 'PUBLIC',
           isInternalIT: false,
           isDefault: true,
+          helpfulCount: fb.helpful || 0,
+          unhelpfulCount: fb.unhelpful || 0,
+          feedbackRatio,
+          needsImprovement,
         },
       });
     }

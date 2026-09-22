@@ -54,6 +54,10 @@ interface Article {
   isInternalIT?: boolean;
   fileUrl?: string;
   fileName?: string;
+  helpfulCount?: number;
+  unhelpfulCount?: number;
+  feedbackRatio?: number;
+  needsImprovement?: boolean;
 }
 
 interface CategoryItem {
@@ -128,6 +132,9 @@ export default function KnowledgeBasePage() {
   const [canDelete, setCanDelete] = useState(false);
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [filterNeedsImprovement, setFilterNeedsImprovement] = useState<boolean>(false);
+  const [needsImprovementCount, setNeedsImprovementCount] = useState<number>(0);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState<boolean>(false);
 
   // Unified Editor Modal State (Create & Edit)
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
@@ -166,12 +173,16 @@ export default function KnowledgeBasePage() {
       if (selectedCategory !== 'ALL') q.set('category', selectedCategory);
       if (selectedTeamScope !== 'ALL') q.set('teamScope', selectedTeamScope);
       if (search) q.set('search', search);
+      if (filterNeedsImprovement) q.set('needsImprovement', 'true');
 
       const res = await fetch(`/api/kb?${q.toString()}`).then((r) => r.json());
       if (res.success) {
         setArticles(res.data);
         setCategories(res.categories);
         if (res.teamScopes) setTeamScopes(res.teamScopes);
+        if (typeof res.needsImprovementCount === 'number') {
+          setNeedsImprovementCount(res.needsImprovementCount);
+        }
         setIsITStaff(Boolean(res.isITStaff));
         setIsAdmin(Boolean(res.isAdmin));
         setCanCreate(Boolean(res.canCreate));
@@ -182,6 +193,50 @@ export default function KnowledgeBasePage() {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFeedback = async (isHelpful: boolean) => {
+    if (!selectedArticle || feedbackSubmitting) return;
+    setFeedbackSubmitting(true);
+    setFeedbackGiven(isHelpful ? 'yes' : 'no');
+
+    // Optimistic UI update
+    const prevHelpful = selectedArticle.helpfulCount || 0;
+    const prevUnhelpful = selectedArticle.unhelpfulCount || 0;
+    const newHelpful = prevHelpful + (isHelpful ? 1 : 0);
+    const newUnhelpful = prevUnhelpful + (isHelpful ? 0 : 1);
+    const total = newHelpful + newUnhelpful;
+    const newRatio = total > 0 ? Math.round((newHelpful / total) * 100) : 100;
+    const newNeedsImprovement = total >= 2 && newRatio < 70;
+
+    const updatedArticle: Article = {
+      ...selectedArticle,
+      helpfulCount: newHelpful,
+      unhelpfulCount: newUnhelpful,
+      feedbackRatio: newRatio,
+      needsImprovement: newNeedsImprovement,
+    };
+    setSelectedArticle(updatedArticle);
+    setArticles((prev) =>
+      prev.map((a) => (a.id === selectedArticle.id ? { ...a, ...updatedArticle } : a))
+    );
+
+    try {
+      await fetch(`/api/kb/${selectedArticle.id}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isHelpful }),
+      });
+      // Refresh count in background
+      const refreshRes = await fetch('/api/kb').then((r) => r.json());
+      if (refreshRes.success && typeof refreshRes.needsImprovementCount === 'number') {
+        setNeedsImprovementCount(refreshRes.needsImprovementCount);
+      }
+    } catch (e) {
+      console.error('Error submitting feedback', e);
+    } finally {
+      setFeedbackSubmitting(false);
     }
   };
 
@@ -247,7 +302,7 @@ export default function KnowledgeBasePage() {
 
   useEffect(() => {
     loadData();
-  }, [selectedCategory, selectedTeamScope, search]);
+  }, [selectedCategory, selectedTeamScope, search, filterNeedsImprovement]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-16">
@@ -295,6 +350,7 @@ export default function KnowledgeBasePage() {
             onClick={() => {
               setSelectedCategory('ALL');
               setSelectedTeamScope('ALL');
+              setFilterNeedsImprovement(false);
             }}
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-2xs cursor-pointer"
           >
@@ -350,6 +406,53 @@ export default function KnowledgeBasePage() {
               </div>
             </div>
           )}
+
+          {/* Quality & Needs Improvement Filter Card (Deflection Rate Monitoring) */}
+          <div className={`rounded-2xl border p-4 shadow-xs space-y-2 transition-all ${
+            filterNeedsImprovement
+              ? 'bg-amber-500/10 border-amber-500/40 text-amber-900 dark:text-amber-200'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+          }`}>
+            <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+              <span className="flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span>{isEn ? 'Quality Review' : 'Cần Cập Nhật / Bổ Sung'}</span>
+              </span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                needsImprovementCount > 0
+                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+              }`}>
+                {needsImprovementCount} {isEn ? 'articles' : 'bài'}
+              </span>
+            </div>
+            <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              {isEn
+                ? 'Articles with self-service resolution rate < 70% or where users needed more support.'
+                : 'Bài viết có tỷ lệ người dùng tự sửa được < 70% hoặc có lượt phản hồi cần IT hỗ trợ thêm.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setFilterNeedsImprovement(!filterNeedsImprovement)}
+              className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                filterNeedsImprovement
+                  ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-md'
+                  : 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/80'
+              }`}
+            >
+              {filterNeedsImprovement ? (
+                <>
+                  <X className="w-3.5 h-3.5" />
+                  <span>{isEn ? 'Clear Filter (Show All)' : 'Bỏ Lọc (Hiện tất cả)'}</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>{isEn ? `Filter Needs Work (${needsImprovementCount})` : `Lọc Bài Cần Cải Thiện (${needsImprovementCount})`}</span>
+                </>
+              )}
+            </button>
+          </div>
 
           {/* General Categories */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs space-y-1">
@@ -465,7 +568,7 @@ export default function KnowledgeBasePage() {
                         {item.summary}
                       </p>
 
-                      <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-0.5">
+                      <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-0.5 flex-wrap">
                         <span className="flex items-center gap-1 font-medium">
                           <User className="w-3 h-3 text-slate-400" />
                           <span>{item.author}</span>
@@ -480,6 +583,22 @@ export default function KnowledgeBasePage() {
                           <Eye className="w-3 h-3" />
                           <span>{item.views.toLocaleString()} {isEn ? 'views' : 'lượt xem'}</span>
                         </span>
+                        {typeof item.feedbackRatio === 'number' && (
+                          <>
+                            <span>•</span>
+                            {item.needsImprovement ? (
+                              <span className="inline-flex items-center gap-1 text-[10.5px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
+                                <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                <span>{item.feedbackRatio}% {isEn ? 'resolved' : 'tự sửa được'} • {isEn ? 'Needs review' : 'Cần bổ sung'}</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                                <ThumbsUp className="w-3 h-3 text-emerald-500" />
+                                <span>{item.feedbackRatio}% {isEn ? 'helpful' : 'hữu ích'} ({item.helpfulCount || 0})</span>
+                              </span>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -546,6 +665,23 @@ export default function KnowledgeBasePage() {
                 <span className="text-xs text-slate-400">
                   {isEn ? 'Updated:' : 'Cập nhật:'} {new Date(selectedArticle.updatedAt).toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}
                 </span>
+                {typeof selectedArticle.feedbackRatio === 'number' && (
+                  <>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                      selectedArticle.needsImprovement
+                        ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                    }`}>
+                      {selectedArticle.needsImprovement ? (
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                      ) : (
+                        <ThumbsUp className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                      <span>{selectedArticle.feedbackRatio}% {isEn ? 'helpful' : 'tự sửa được'} ({selectedArticle.helpfulCount || 0}👍 / {selectedArticle.unhelpfulCount || 0}👎)</span>
+                    </span>
+                  </>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 {canUpdate && (
@@ -590,6 +726,23 @@ export default function KnowledgeBasePage() {
                 {selectedArticle.summary && (
                   <div className="mt-3 p-4 bg-blue-50/70 dark:bg-blue-950/30 rounded-2xl border border-blue-100 dark:border-blue-900/50 text-xs text-blue-900 dark:text-blue-200 font-semibold leading-relaxed">
                     {selectedArticle.summary}
+                  </div>
+                )}
+                {selectedArticle.needsImprovement && (
+                  <div className="mt-3 p-3.5 bg-amber-50 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 font-medium flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>{isEn ? 'Quality Alert: This article currently has a lower resolution rate (<70%). It may need clearer steps or updated screenshots.' : 'Cảnh báo chất lượng: Bài viết này đang có tỷ lệ tự khắc phục thấp (<70%). Nội dung cần được IT kiểm tra bổ sung bước thực hiện hoặc hình ảnh minh họa mới.'}</span>
+                    </div>
+                    {canUpdate && (
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(selectedArticle)}
+                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-xs"
+                      >
+                        {isEn ? 'Update Guide' : 'Cập nhật ngay'}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -645,16 +798,18 @@ export default function KnowledgeBasePage() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => setFeedbackGiven('yes')}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors shadow-2xs cursor-pointer"
+                          disabled={feedbackSubmitting}
+                          onClick={() => handleFeedback(true)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
                         >
                           <ThumbsUp className="w-3.5 h-3.5" />
                           <span>{isEn ? 'Yes, resolved!' : 'Có, tự sửa được!'}</span>
                         </button>
                         <button
                           type="button"
-                          onClick={() => setFeedbackGiven('no')}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs cursor-pointer"
+                          disabled={feedbackSubmitting}
+                          onClick={() => handleFeedback(false)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
                         >
                           <ThumbsDown className="w-3.5 h-3.5" />
                           <span>{isEn ? 'Still need help' : 'Vẫn cần hỗ trợ'}</span>

@@ -60,3 +60,90 @@ export async function getActiveDefaultArticles(): Promise<KBArticle[]> {
     return COMPREHENSIVE_IT_KB;
   }
 }
+
+const KB_FEEDBACK_KEY = 'kb.feedback_stats';
+
+export interface KBFeedbackStats {
+  helpful: number;
+  unhelpful: number;
+  lastUpdated?: string;
+}
+
+export type KBFeedbackStore = Record<string, KBFeedbackStats>;
+
+// Dữ liệu mẫu ban đầu trực quan để IT theo dõi các bài viết tốt và bài viết cần cập nhật
+const DEFAULT_FEEDBACK_BASELINE: KBFeedbackStore = {
+  'kb-net-01': { helpful: 42, unhelpful: 2 }, // 95%
+  'kb-net-02': { helpful: 35, unhelpful: 1 }, // 97%
+  'kb-email-01': { helpful: 56, unhelpful: 3 }, // 95%
+  'kb-soft-01': { helpful: 18, unhelpful: 12 }, // 60% -> Cần bổ sung nội dung!
+  'kb-print-01': { helpful: 29, unhelpful: 2 }, // 94%
+  'kb-hard-01': { helpful: 14, unhelpful: 8 }, // 63% -> Cần bổ sung nội dung!
+};
+
+/**
+ * Lấy toàn bộ thống kê đánh giá bài viết KB
+ */
+export async function getAllKBFeedbackStats(): Promise<KBFeedbackStore> {
+  try {
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: KB_FEEDBACK_KEY },
+    });
+    if (setting?.value) {
+      const parsed = JSON.parse(setting.value);
+      if (typeof parsed === 'object' && parsed !== null) {
+        return { ...DEFAULT_FEEDBACK_BASELINE, ...parsed };
+      }
+    }
+  } catch (error) {
+    console.error('Failed to get KB feedback stats:', error);
+  }
+  return { ...DEFAULT_FEEDBACK_BASELINE };
+}
+
+/**
+ * Ghi nhận đánh giá phản hồi (Hữu ích / Cần hỗ trợ) cho bài viết KB
+ */
+export async function recordArticleFeedback(
+  articleId: string,
+  isHelpful: boolean,
+  userId?: string
+): Promise<{ helpful: number; unhelpful: number; ratio: number }> {
+  try {
+    const store = await getAllKBFeedbackStats();
+    const current = store[articleId] || { helpful: 0, unhelpful: 0 };
+
+    if (isHelpful) {
+      current.helpful = (current.helpful || 0) + 1;
+    } else {
+      current.unhelpful = (current.unhelpful || 0) + 1;
+    }
+    current.lastUpdated = new Date().toISOString();
+
+    store[articleId] = current;
+
+    await prisma.systemSetting.upsert({
+      where: { key: KB_FEEDBACK_KEY },
+      update: { value: JSON.stringify(store) },
+      create: {
+        key: KB_FEEDBACK_KEY,
+        value: JSON.stringify(store),
+        label: 'Thống kê đánh giá hữu ích / cần hỗ trợ bài viết KB',
+        group: 'kb',
+        type: 'JSON',
+      },
+    });
+
+    const total = current.helpful + current.unhelpful;
+    const ratio = total > 0 ? Math.round((current.helpful / total) * 100) : 100;
+
+    return {
+      helpful: current.helpful,
+      unhelpful: current.unhelpful,
+      ratio,
+    };
+  } catch (error) {
+    console.error('Failed to record article feedback:', error);
+    return { helpful: isHelpful ? 1 : 0, unhelpful: isHelpful ? 0 : 1, ratio: isHelpful ? 100 : 0 };
+  }
+}
