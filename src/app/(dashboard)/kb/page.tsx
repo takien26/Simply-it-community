@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/context';
 import {
   BookOpen,
@@ -30,7 +31,12 @@ import {
   Pencil,
   Trash2,
   AlertTriangle,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquarePlus,
 } from 'lucide-react';
+import { KBArticleContent } from '@/components/kb/KBArticleContent';
+import { KBEditorModal } from '@/components/kb/KBEditorModal';
 
 interface Article {
   id: string;
@@ -121,50 +127,37 @@ export default function KnowledgeBasePage() {
   const [canUpdate, setCanUpdate] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
 
-  // Upload / Create Modal State
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [formTitle, setFormTitle] = useState('');
-  const [formTeamScope, setFormTeamScope] = useState('PUBLIC');
-  const [formCategory, setFormCategory] = useState('NETWORK');
-  const [formSummary, setFormSummary] = useState('');
-  const [formContent, setFormContent] = useState('');
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Edit Modal State
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  // Unified Editor Modal State (Create & Edit)
+  const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editTeamScope, setEditTeamScope] = useState('PUBLIC');
-  const [editCategory, setEditCategory] = useState('NETWORK');
-  const [editSummary, setEditSummary] = useState('');
-  const [editContent, setEditContent] = useState('');
-  const [editUploadFile, setEditUploadFile] = useState<File | null>(null);
-  const [editFileUrl, setEditFileUrl] = useState<string | undefined>(undefined);
-  const [editFileName, setEditFileName] = useState<string | undefined>(undefined);
-  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // Article Reader Feedback State
+  const [feedbackGiven, setFeedbackGiven] = useState<'yes' | 'no' | null>(null);
 
   // Delete Confirm Modal State
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deletingArticle, setDeletingArticle] = useState<Article | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Reset feedback state when selectedArticle changes
+  useEffect(() => {
+    setFeedbackGiven(null);
+  }, [selectedArticle]);
 
   // ESC key listener to close active modals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (isDeleteConfirmOpen) setIsDeleteConfirmOpen(false);
-        else if (isEditModalOpen) setIsEditModalOpen(false);
-        else if (isCreateModalOpen) setIsCreateModalOpen(false);
+        else if (isEditorModalOpen) setIsEditorModalOpen(false);
         else if (selectedArticle) setSelectedArticle(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isDeleteConfirmOpen, isEditModalOpen, isCreateModalOpen, selectedArticle]);
+  }, [isDeleteConfirmOpen, isEditorModalOpen, selectedArticle]);
 
   const loadData = async () => {
     setLoading(true);
@@ -192,86 +185,30 @@ export default function KnowledgeBasePage() {
     }
   };
 
-  const openEditModal = (article: Article) => {
-    setEditingArticle(article);
-    // Tách bỏ tiền tố [TAG] nếu có
-    const cleanTitle = article.title.replace(/^\[[a-zA-Z0-9_-]+\]\s*/, '');
-    setEditTitle(cleanTitle);
-    setEditTeamScope(article.teamScope || 'PUBLIC');
-    setEditCategory(article.categoryKey || 'NETWORK');
-    setEditSummary(article.summary || '');
-    setEditContent(article.content || '');
-    setEditFileUrl(article.fileUrl);
-    setEditFileName(article.fileName);
-    setEditUploadFile(null);
-    setIsEditModalOpen(true);
+  const openCreateModal = () => {
+    setEditingArticle(null);
+    setIsEditorModalOpen(true);
   };
 
-  const handleUpdateArticle = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingArticle || !editTitle.trim()) return;
+  const openEditModal = (article: Article) => {
+    setEditingArticle(article);
+    setIsEditorModalOpen(true);
+  };
 
-    setEditSubmitting(true);
-    try {
-      let fileUrl = editFileUrl;
-      let fileName = editFileName;
-
-      if (editUploadFile) {
-        const formData = new FormData();
-        formData.append('file', editUploadFile);
-        const upRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        }).then((r) => r.json());
-
-        if (upRes.url) {
-          fileUrl = upRes.url;
-          fileName = editUploadFile.name;
-        }
-      }
-
-      const res = await fetch(`/api/kb/${editingArticle.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: editTitle.trim(),
-          teamScope: editTeamScope,
-          category: editCategory,
-          categoryKey: editCategory,
-          summary: editSummary.trim(),
-          content: editContent.trim(),
-          fileUrl,
-          fileName,
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setToastMsg(isEn ? '🎉 Article updated successfully!' : '🎉 Đã cập nhật bài viết thành công!');
-        setIsEditModalOpen(false);
-        setEditingArticle(null);
-        if (selectedArticle && selectedArticle.id === editingArticle.id) {
-          setSelectedArticle({
-            ...selectedArticle,
-            title: editTitle.trim(),
-            teamScope: editTeamScope,
-            categoryKey: editCategory,
-            summary: editSummary.trim(),
-            content: editContent.trim(),
-            fileUrl,
-            fileName,
-          });
-        }
-        loadData();
-        setTimeout(() => setToastMsg(null), 4000);
-      } else {
-        alert(data.error || (isEn ? 'Error updating article' : 'Lỗi khi cập nhật bài viết'));
-      }
-    } catch (e: any) {
-      alert(e.message || (isEn ? 'Connection error' : 'Lỗi kết nối'));
-    } finally {
-      setEditSubmitting(false);
+  const handleEditorSaveSuccess = async (savedArticle?: any) => {
+    const isEditMode = Boolean(editingArticle?.id);
+    setToastMsg(
+      isEditMode
+        ? (isEn ? '🎉 Article updated successfully!' : '🎉 Đã cập nhật bài viết thành công!')
+        : (isEn ? '🎉 Guide article uploaded successfully!' : '🎉 Đã tải lên tài liệu hướng dẫn thành công!')
+    );
+    setIsEditorModalOpen(false);
+    setEditingArticle(null);
+    await loadData();
+    if (selectedArticle && savedArticle && (selectedArticle.id === savedArticle.id || selectedArticle.id === editingArticle?.id)) {
+      setSelectedArticle((prev) => (prev ? { ...prev, ...savedArticle } : null));
     }
+    setTimeout(() => setToastMsg(null), 4000);
   };
 
   const openDeleteConfirm = (article: Article) => {
@@ -312,63 +249,6 @@ export default function KnowledgeBasePage() {
     loadData();
   }, [selectedCategory, selectedTeamScope, search]);
 
-  const handleCreateArticle = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formTitle.trim()) return;
-
-    setSubmitting(true);
-    try {
-      let fileUrl = '';
-      let fileName = '';
-
-      if (uploadFile) {
-        const formData = new FormData();
-        formData.append('file', uploadFile);
-        const upRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        }).then((r) => r.json());
-
-        if (upRes.url) {
-          fileUrl = upRes.url;
-          fileName = uploadFile.name;
-        }
-      }
-
-      const res = await fetch('/api/kb', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: formTitle.trim(),
-          teamScope: formTeamScope,
-          category: formCategory,
-          summary: formSummary.trim(),
-          content: formContent.trim(),
-          fileUrl,
-          fileName,
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setToastMsg(isEn ? '🎉 Guide article uploaded successfully!' : '🎉 Đã tải lên tài liệu hướng dẫn thành công!');
-        setIsCreateModalOpen(false);
-        setFormTitle('');
-        setFormSummary('');
-        setFormContent('');
-        setUploadFile(null);
-        loadData();
-        setTimeout(() => setToastMsg(null), 4000);
-      } else {
-        alert(data.error || (isEn ? 'Error creating article' : 'Lỗi khi tạo bài viết'));
-      }
-    } catch (e: any) {
-      alert(e.message || (isEn ? 'Connection error' : 'Lỗi kết nối'));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-16">
       {/* Toast Notification */}
@@ -403,7 +283,7 @@ export default function KnowledgeBasePage() {
         <div className="flex items-center gap-2.5">
           {canCreate && (
             <button
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={openCreateModal}
               className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer hover:scale-105 active:scale-95"
             >
               <Plus className="w-4 h-4" />
@@ -645,21 +525,27 @@ export default function KnowledgeBasePage() {
 
       {/* Article Detail Modal / Reader */}
       {selectedArticle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-5 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-5xl w-full max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800">
                   {getCategoryDisplayName(selectedArticle.category, selectedArticle.categoryKey, isEn)}
                 </span>
                 {selectedArticle.isInternalIT && (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800 flex items-center gap-1">
                     <Lock className="w-3 h-3" />
                     <span>{isEn ? `Internal ${selectedArticle.teamScope}` : `Nội Bộ ${selectedArticle.teamScope}`}</span>
                   </span>
                 )}
-                <span className="text-xs text-slate-400">{isEn ? 'Author:' : 'Tác giả:'} <strong>{selectedArticle.author}</strong></span>
+                <span className="text-xs text-slate-400">
+                  {isEn ? 'Author:' : 'Tác giả:'} <strong className="text-slate-600 dark:text-slate-300">{selectedArticle.author}</strong>
+                </span>
+                <span className="text-slate-300 dark:text-slate-700">•</span>
+                <span className="text-xs text-slate-400">
+                  {isEn ? 'Updated:' : 'Cập nhật:'} {new Date(selectedArticle.updatedAt).toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 {canUpdate && (
@@ -686,35 +572,47 @@ export default function KnowledgeBasePage() {
                     <span>{isEn ? 'Delete' : 'Xóa'}</span>
                   </button>
                 )}
-                <button onClick={() => setSelectedArticle(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                <button
+                  onClick={() => setSelectedArticle(null)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
             {/* Body */}
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              <h2 className="text-xl font-black text-slate-900 dark:text-white leading-tight">
-                {selectedArticle.title}
-              </h2>
-
-              <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/30 rounded-2xl border border-blue-100 dark:border-blue-900/50 text-xs text-blue-900 dark:text-blue-200 font-semibold leading-relaxed">
-                {selectedArticle.summary}
+            <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                  {selectedArticle.title}
+                </h2>
+                {selectedArticle.summary && (
+                  <div className="mt-3 p-4 bg-blue-50/70 dark:bg-blue-950/30 rounded-2xl border border-blue-100 dark:border-blue-900/50 text-xs text-blue-900 dark:text-blue-200 font-semibold leading-relaxed">
+                    {selectedArticle.summary}
+                  </div>
+                )}
               </div>
 
-              <div className="prose dark:prose-invert max-w-none text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed space-y-2">
-                {selectedArticle.content}
+              {/* Rich Content Render with Lightbox Zoom */}
+              <div className="pt-2">
+                <KBArticleContent content={selectedArticle.content} />
               </div>
 
+              {/* Attached File */}
               {selectedArticle.fileUrl && (
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4 mt-4">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4 mt-6">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center font-bold text-xs">
                       PDF
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">{selectedArticle.fileName || (isEn ? 'Attached Document' : 'Tài liệu đính kèm')}</h4>
-                      <p className="text-[11px] text-slate-400">{isEn ? 'Full operational procedure document' : 'File tài liệu quy trình đầy đủ'}</p>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                        {selectedArticle.fileName || (isEn ? 'Attached Document' : 'Tài liệu đính kèm')}
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        {isEn ? 'Full operational procedure document' : 'File tài liệu quy trình đầy đủ'}
+                      </p>
                     </div>
                   </div>
                   <a
@@ -728,292 +626,99 @@ export default function KnowledgeBasePage() {
                   </a>
                 </div>
               )}
+
+              {/* Self-service Feedback Widget (Like ServiceNow / Zendesk) */}
+              <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+                <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  {feedbackGiven === null && (
+                    <>
+                      <div className="space-y-0.5 text-center sm:text-left">
+                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 justify-center sm:justify-start">
+                          <HelpCircle className="w-4 h-4 text-blue-600" />
+                          <span>{isEn ? 'Did this article help you resolve the problem?' : 'Bài viết này có giúp bạn giải quyết được vấn đề không?'}</span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {isEn ? 'Your feedback helps us continuously improve the Knowledge Base' : 'Ý kiến của bạn giúp chúng tôi hoàn thiện tài liệu hướng dẫn tốt hơn'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFeedbackGiven('yes')}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <ThumbsUp className="w-3.5 h-3.5" />
+                          <span>{isEn ? 'Yes, resolved!' : 'Có, tự sửa được!'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFeedbackGiven('no')}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <ThumbsDown className="w-3.5 h-3.5" />
+                          <span>{isEn ? 'Still need help' : 'Vẫn cần hỗ trợ'}</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {feedbackGiven === 'yes' && (
+                    <div className="w-full flex items-center gap-3 text-emerald-700 dark:text-emerald-400 text-xs font-bold animate-in fade-in">
+                      <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+                      <span>{isEn ? '🎉 Awesome! Thank you for letting us know. Have a productive day!' : '🎉 Tuyệt vời! Cảm ơn phản hồi của bạn. Chúc bạn một ngày làm việc hiệu quả!'}</span>
+                    </div>
+                  )}
+
+                  {feedbackGiven === 'no' && (
+                    <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
+                      <div className="text-xs text-slate-600 dark:text-slate-300 font-medium text-center sm:text-left">
+                        <span className="font-bold text-amber-600 dark:text-amber-400 block sm:inline">
+                          {isEn ? '⚠️ Still unresolved? ' : '⚠️ Vẫn chưa khắc phục được? '}
+                        </span>
+                        <span>{isEn ? 'Contact the IT Helpdesk team for direct support.' : 'Hãy gửi yêu cầu đến Đội ngũ IT để được kỹ thuật viên hỗ trợ.'}</span>
+                      </div>
+                      <Link
+                        href={`/tickets?create=true&title=${encodeURIComponent((isEn ? 'Support request: ' : 'Yêu cầu hỗ trợ: ') + selectedArticle.title)}`}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-colors cursor-pointer shrink-0"
+                      >
+                        <MessageSquarePlus className="w-4 h-4" />
+                        <span>{isEn ? 'Create IT Ticket' : 'Tạo Ticket IT Hỗ Trợ'}</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/50">
-              <span>{selectedArticle.views.toLocaleString()} {isEn ? 'views' : 'lượt xem'}</span>
+            <div className="px-6 py-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/50">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Eye className="w-3.5 h-3.5 text-slate-400" />
+                <span>{selectedArticle.views.toLocaleString()} {isEn ? 'views' : 'lượt xem'}</span>
+              </span>
               <button
                 onClick={() => setSelectedArticle(null)}
                 className="px-5 py-2 bg-blue-600 text-white rounded-xl font-bold cursor-pointer hover:bg-blue-700 transition-colors shadow-xs"
               >
-                {isEn ? 'Understood & Close' : 'Đã hiểu & Đóng'}
+                {isEn ? 'Close' : 'Đóng'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* CREATE / UPLOAD MODAL */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-              <div className="flex items-center gap-2.5">
-                <Upload className="w-5 h-5" />
-                <h3 className="font-black text-sm">
-                  {isEn ? 'Add Guide / Upload IT Documentation' : 'Thêm Hướng Dẫn / Upload Tài Liệu Kỹ Thuật IT'}
-                </h3>
-              </div>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-white/80 hover:text-white cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateArticle} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {isEn ? 'Article Title / Document Name' : 'Tiêu đề bài viết / Tên tài liệu'} <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={isEn ? "e.g. Cisco Switch Configuration Guide, VLAN Network Map, MISA ERP Setup..." : "VD: Hướng dẫn cấu hình Switch Cisco, Sơ đồ VLAN, Cài phần mềm MISA..."}
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    {isEn ? 'Visibility Scope & IT Team Permissions' : 'Phạm vi hiển thị & Phân quyền Team IT'} <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={formTeamScope}
-                    onChange={(e) => setFormTeamScope(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-bold text-slate-800 cursor-pointer"
-                  >
-                    <option value="PUBLIC">{isEn ? '🌍 All Employees (Public)' : '🌍 Tất cả Nhân viên (Public)'}</option>
-                    <option value="IT-NET">{isEn ? '🔒 Team IT Network & Infra' : '🔒 Team IT Network & Hạ Tầng'}</option>
-                    <option value="IT-APP">{isEn ? '🔒 Team IT Applications & ERP' : '🔒 Team IT Ứng Dụng & ERP'}</option>
-                    <option value="IT-HELPDESK">{isEn ? '🔒 Team IT Helpdesk & Hardware' : '🔒 Team IT Helpdesk & Thiết Bị'}</option>
-                    <option value="IT-SEC">{isEn ? '🔒 Team Security & Compliance' : '🔒 Team An Toàn & Bảo Mật'}</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    {isEn ? 'Category' : 'Danh mục chuyên mục'}
-                  </label>
-                  <select
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-bold text-slate-800 cursor-pointer"
-                  >
-                    <option value="NETWORK">{isEn ? 'Network & WiFi' : 'Hệ thống mạng & WiFi'}</option>
-                    <option value="EMAIL">{isEn ? 'Email & Outlook' : 'Email & Outlook'}</option>
-                    <option value="SOFTWARE">{isEn ? 'Software & ERP' : 'Phần mềm & ERP'}</option>
-                    <option value="PRINTER">{isEn ? 'Printers & Scanners' : 'Máy in & Scan'}</option>
-                    <option value="HARDWARE">{isEn ? 'Hardware & Devices' : 'Phần cứng & Thiết bị'}</option>
-                    <option value="ACCOUNT">{isEn ? 'Accounts & Passwords' : 'Tài khoản & Mật khẩu'}</option>
-                    <option value="MEETING">{isEn ? 'Meeting Room Tech' : 'Thiết bị Phòng Họp'}</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {isEn ? 'Short Summary' : 'Tóm tắt ngắn gọn'}
-                </label>
-                <input
-                  type="text"
-                  placeholder={isEn ? "Describe purpose and scope of application..." : "Mô tả mục đích và phạm vi áp dụng..."}
-                  value={formSummary}
-                  onChange={(e) => setFormSummary(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {isEn ? 'Detailed Content & Step-by-Step Instructions' : 'Nội dung chi tiết & Các bước thực hiện'}
-                </label>
-                <textarea
-                  rows={6}
-                  placeholder={isEn ? "Enter step 1, 2, 3 instructions, IP configurations, ports, terminal commands..." : "Nhập hướng dẫn từng bước 1, 2, 3, các thông số kỹ thuật IP, Port, lệnh cấu hình..."}
-                  value={formContent}
-                  onChange={(e) => setFormContent(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-medium font-mono text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {isEn ? 'Attach Document File (PDF, Word, Diagrams)' : 'Đính kèm File tài liệu (PDF, Word, Ảnh sơ đồ)'}
-                </label>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl cursor-pointer"
-                >
-                  {isEn ? 'Cancel' : 'Hủy'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting || !formTitle.trim()}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  <span>{submitting ? (isEn ? 'Uploading...' : 'Đang tải lên...') : (isEn ? 'Save & Publish' : 'Lưu & Xuất Bản')}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT ARTICLE MODAL */}
-      {isEditModalOpen && editingArticle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-              <div className="flex items-center gap-2.5">
-                <Pencil className="w-5 h-5" />
-                <h3 className="font-black text-sm">
-                  {isEn ? 'Edit Knowledge Base Article' : 'Chỉnh Sửa Bài Viết Hướng Dẫn'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditModalOpen(false);
-                  setEditingArticle(null);
-                }}
-                className="text-white/80 hover:text-white cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateArticle} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {isEn ? 'Article Title' : 'Tiêu đề bài viết'} <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    {isEn ? 'Visibility Scope & IT Team Permissions' : 'Phạm vi hiển thị & Phân quyền Team IT'} <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={editTeamScope}
-                    onChange={(e) => setEditTeamScope(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-bold text-slate-800 cursor-pointer"
-                  >
-                    <option value="PUBLIC">{isEn ? '🌍 All Employees (Public)' : '🌍 Tất cả Nhân viên (Public)'}</option>
-                    <option value="IT-NET">{isEn ? '🔒 Team IT Network & Infra' : '🔒 Team IT Network & Hạ Tầng'}</option>
-                    <option value="IT-APP">{isEn ? '🔒 Team IT Applications & ERP' : '🔒 Team IT Ứng Dụng & ERP'}</option>
-                    <option value="IT-HELPDESK">{isEn ? '🔒 Team IT Helpdesk & Hardware' : '🔒 Team IT Helpdesk & Thiết Bị'}</option>
-                    <option value="IT-SEC">{isEn ? '🔒 Team Security & Compliance' : '🔒 Team An Toàn & Bảo Mật'}</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    {isEn ? 'Category' : 'Danh mục chuyên mục'}
-                  </label>
-                  <select
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-bold text-slate-800 cursor-pointer"
-                  >
-                    <option value="NETWORK">{isEn ? 'Network & WiFi' : 'Hệ thống mạng & WiFi'}</option>
-                    <option value="EMAIL">{isEn ? 'Email & Outlook' : 'Email & Outlook'}</option>
-                    <option value="SOFTWARE">{isEn ? 'Software & ERP' : 'Phần mềm & ERP'}</option>
-                    <option value="PRINTER">{isEn ? 'Printers & Scanners' : 'Máy in & Scan'}</option>
-                    <option value="HARDWARE">{isEn ? 'Hardware & Devices' : 'Phần cứng & Thiết bị'}</option>
-                    <option value="ACCOUNT">{isEn ? 'Accounts & Passwords' : 'Tài khoản & Mật khẩu'}</option>
-                    <option value="MEETING">{isEn ? 'Meeting Room Tech' : 'Thiết bị Phòng Họp'}</option>
-                    <option value="OTHER">{isEn ? 'Other Guides' : 'Hướng dẫn khác'}</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {isEn ? 'Short Summary' : 'Tóm tắt ngắn gọn'}
-                </label>
-                <input
-                  type="text"
-                  value={editSummary}
-                  onChange={(e) => setEditSummary(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {isEn ? 'Detailed Content & Step-by-Step Instructions' : 'Nội dung chi tiết & Các bước thực hiện'}
-                </label>
-                <textarea
-                  rows={7}
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 font-medium font-mono text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {isEn ? 'Replace Attached File (Optional)' : 'Đổi File đính kèm (Tùy chọn)'}
-                </label>
-                {editFileName && !editUploadFile && (
-                  <div className="mb-2 text-[11px] text-slate-500 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-blue-600" />
-                    <span>{isEn ? 'Current file:' : 'File hiện tại:'} <strong>{editFileName}</strong></span>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  onChange={(e) => setEditUploadFile(e.target.files?.[0] || null)}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditModalOpen(false);
-                    setEditingArticle(null);
-                  }}
-                  className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl cursor-pointer"
-                >
-                  {isEn ? 'Cancel' : 'Hủy'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={editSubmitting || !editTitle.trim()}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  {editSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  <span>{editSubmitting ? (isEn ? 'Saving...' : 'Đang lưu...') : (isEn ? 'Save Changes' : 'Lưu Thay Đổi')}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* CMS EDITOR MODAL (Supports Full Toolbar, Ctrl+V Paste Image, Drag-and-Drop, Live Preview) */}
+      <KBEditorModal
+        isOpen={isEditorModalOpen}
+        onClose={() => {
+          setIsEditorModalOpen(false);
+          setEditingArticle(null);
+        }}
+        initialData={editingArticle}
+        onSaveSuccess={handleEditorSaveSuccess}
+        isEn={isEn}
+      />
 
       {/* DELETE CONFIRM MODAL */}
       {isDeleteConfirmOpen && deletingArticle && (
