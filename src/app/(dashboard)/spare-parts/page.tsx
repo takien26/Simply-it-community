@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/context';
 import { fetchWithSwr, invalidateClientCache, useAutoRefresh, triggerDataRefresh } from '@/lib/client-cache';
 import {
@@ -8,6 +9,7 @@ import {
   Plus,
   Search,
   AlertTriangle,
+  ShoppingCart,
   ArrowDownRight,
   ArrowUpRight,
   History,
@@ -723,6 +725,18 @@ export default function SparePartsPage() {
                             <ArrowUpRight className="w-3.5 h-3.5" />
                             <span>{isEn ? 'Stock Out' : 'Xuất'}</span>
                           </button>
+
+                          {/* 1-Click Procurement Restock Ticket when Low Stock */}
+                          {isLow && (
+                            <Link
+                              href={`/tickets?create=true&title=${encodeURIComponent(`[ĐỀ XUẤT NHẬP KHO] Mua bổ sung linh kiện: ${p.name} (SKU: ${p.sku || 'N/A'})`)}`}
+                              className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-all border border-rose-200 shadow-2xs"
+                              title={isEn ? "Create Restock Procurement Ticket" : "Tạo phiếu đề xuất mua bổ sung linh kiện"}
+                            >
+                              <ShoppingCart className="w-3.5 h-3.5" />
+                              <span>{isEn ? 'Restock' : 'Mua thêm'}</span>
+                            </Link>
+                          )}
 
                           {/* Quick Edit */}
                           <button

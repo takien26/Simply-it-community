@@ -1097,15 +1097,23 @@ export function TicketDetailModal({
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Left Column (7/12 cols): Issue Description & Attachments & Routing */}
                 <div className="lg:col-span-7 space-y-4">
-                  {/* Description Card */}
-                  <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
-                    <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-blue-600" />
-                      <span>{(!isVi ? 'Incident Description & Requirements:' : 'Mô tả chi tiết sự cố & Yêu cầu:')}</span>
-                    </h4>
-                    <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100 text-slate-800 leading-relaxed whitespace-pre-wrap font-medium text-[11.5px]">
-                      {selectedTicket.description}
-                    </div>
+                    {/* Description Card */}
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-blue-600" />
+                          <span>{(!isVi ? 'Incident Description & Requirements:' : 'Mô tả chi tiết sự cố & Yêu cầu:')}</span>
+                        </h4>
+                        {selectedTicket.description?.includes('[NGỮ CẢNH CẨM NANG IT') && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                            <Sparkles className="w-3 h-3 text-blue-600" />
+                            <span>{(!isVi ? 'Transferred from KB' : 'Chuyển tiếp từ Cẩm nang')}</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100 text-slate-800 leading-relaxed whitespace-pre-wrap font-medium text-[11.5px]">
+                        {selectedTicket.description}
+                      </div>
 
                     {/* Initial Attachments */}
                     {Array.isArray(selectedTicket.attachmentUrls) && (selectedTicket.attachmentUrls as any[]).length > 0 && (

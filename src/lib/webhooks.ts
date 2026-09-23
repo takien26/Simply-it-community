@@ -64,6 +64,15 @@ export async function dispatchWebhookEvent(event: string, data: any): Promise<vo
                 `🏢 <b>Phòng ban:</b> ${data?.department || 'N/A'}\n` +
                 `💰 <b>Chi phí:</b> ${data?.estimatedCost ? Number(data.estimatedCost).toLocaleString('vi-VN') + ' ' + (data?.currency || 'VND') : 'Không có'}\n\n` +
                 `🔗 <a href="${data?.link || '#'}">👉 Bấm vào đây để Xem & Phê Duyệt</a>`;
+            } else if (event === 'spare_part.low_stock') {
+              tgText =
+                `⚠️ <b>[SIMPLY IT] CẢNH BÁO TỒN KHO LINH KIỆN NGUY CẤP!</b>\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n` +
+                `📦 <b>Linh kiện:</b> ${data?.name || 'N/A'}\n` +
+                `🏷️ <b>Mã SKU:</b> <code>${data?.sku || 'N/A'}</code>\n` +
+                `📉 <b>Số lượng còn lại:</b> <b>${data?.remaining} ${data?.unit || 'cái'}</b> (Mức tối thiểu: ${data?.minStock})\n` +
+                `👤 <b>Người xuất kho:</b> ${data?.performedBy || 'KTV IT'}\n\n` +
+                `👉 <a href="${data?.link || '/spare-parts?lowStock=true'}">Bấm vào đây để kiểm tra & Đề xuất nhập kho</a>`;
             } else {
               const details = Object.entries(data || {})
                 .filter(([_, v]) => typeof v === 'string' || typeof v === 'number')

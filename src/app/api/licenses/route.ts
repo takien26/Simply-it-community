@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
                 where: { revokedAt: null },
                 include: {
                   user: { select: { id: true, fullName: true, email: true, department: true, companyName: true, isActive: true } },
-                  asset: { select: { id: true, assetTag: true, name: true, companyName: true } },
+                  asset: { select: { id: true, assetTag: true, name: true, companyName: true, status: true } },
                 },
               },
               documents: {
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
             where: { revokedAt: null },
             include: {
               user: { select: { id: true, fullName: true, email: true, department: true, companyName: true, isActive: true } },
-              asset: { select: { id: true, assetTag: true, name: true, companyName: true } },
+              asset: { select: { id: true, assetTag: true, name: true, companyName: true, status: true } },
             },
           },
           documents: {

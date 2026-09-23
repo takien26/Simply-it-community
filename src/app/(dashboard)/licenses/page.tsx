@@ -512,6 +512,49 @@ export default function LicensesPage() {
   const [assignNotes, setAssignNotes] = useState('');
   const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
   const [revokingAssignmentId, setRevokingAssignmentId] = useState<string | null>(null);
+  const [isReclaimingAllWaste, setIsReclaimingAllWaste] = useState(false);
+
+  // Helper kiểm tra ghế lãng phí: Nhân viên nghỉ việc hoặc Thiết bị hỏng/bảo trì/thanh lý
+  const isAssignmentWasteful = useCallback((a: any) => {
+    if (!a || a.revokedAt) return false;
+    if (a.user && a.user.isActive === false) return true;
+    if (a.asset && ['MAINTENANCE', 'RETIRED', 'LOST'].includes(a.asset.status)) return true;
+    return false;
+  }, []);
+
+  // Thu hồi nhanh toàn bộ ghế lãng phí
+  const handleReclaimAllWaste = async () => {
+    const confirmMsg = language === 'en'
+      ? `Are you sure you want to reclaim all wasted seats from resigned employees or decommissioned/maintenance devices?`
+      : `Bạn có chắc chắn muốn thu hồi toàn bộ ghế bản quyền cấp cho nhân viên đã nghỉ việc hoặc thiết bị ngừng sử dụng/đang sửa chữa không?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    setIsReclaimingAllWaste(true);
+    try {
+      const res = await fetch('/api/licenses/reclaim-waste', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(
+          language === 'en'
+            ? `✅ Successfully reclaimed ${data.reclaimedCount} license seats!`
+            : `✅ Đã thu hồi thành công ${data.reclaimedCount} ghế bản quyền!`
+        );
+        invalidateClientCache('/api/licenses');
+        triggerDataRefresh('licenses');
+        await loadData(true);
+      } else {
+        alert(data.error || 'Thu hồi thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi thu hồi');
+    } finally {
+      setIsReclaimingAllWaste(false);
+    }
+  };
 
   // Upgrade Form State
   const [upgradeForm, setUpgradeForm] = useState({
@@ -637,7 +680,7 @@ export default function LicensesPage() {
 
       // Count inactive in direct assignments
       (lic.assignments || []).forEach((a: any) => {
-        if (!a.revokedAt && a.user?.isActive === false) {
+        if (isAssignmentWasteful(a)) {
           inactiveSeatsCount++;
           inactivePotentialSavings += costPerSeatVnd;
         }
@@ -652,7 +695,7 @@ export default function LicensesPage() {
         const bCostPerSeat = bSeats > 0 ? (bPrice * bRate) / bSeats : costPerSeatVnd;
 
         (b.assignments || []).forEach((ba: any) => {
-          if (!ba.revokedAt && ba.user?.isActive === false) {
+          if (isAssignmentWasteful(ba)) {
             inactiveSeatsCount++;
             inactivePotentialSavings += bCostPerSeat;
           }
@@ -684,7 +727,7 @@ export default function LicensesPage() {
       inactiveSeatsCount,
       inactivePotentialSavings,
     };
-  }, [licenses, selectedCurrency, exchangeRatesMap]);
+  }, [licenses, selectedCurrency, exchangeRatesMap, isAssignmentWasteful]);
 
   // ==================== FILTERED LICENSES ====================
   const filteredLicenses = useMemo(() => {
@@ -694,9 +737,9 @@ export default function LicensesPage() {
     return licenses.filter((lic) => {
       // Inactive / Zombie Wasteful Filter
       if (showWastefulOnly) {
-        const hasDirectWaste = (lic.assignments || []).some((a: any) => !a.revokedAt && a.user?.isActive === false);
+        const hasDirectWaste = (lic.assignments || []).some((a: any) => isAssignmentWasteful(a));
         const hasBatchWaste = (lic.batches || []).some((b: any) =>
-          (b.assignments || []).some((ba: any) => !ba.revokedAt && ba.user?.isActive === false)
+          (b.assignments || []).some((ba: any) => isAssignmentWasteful(ba))
         );
         if (!hasDirectWaste && !hasBatchWaste) return false;
       }
@@ -1519,21 +1562,32 @@ export default function LicensesPage() {
                   </h4>
                   <p className="text-[11.5px] text-amber-800 dark:text-amber-300 mt-0.5">
                     {language === 'en'
-                      ? `There are ${kpis.inactiveSeatsCount} software seats currently assigned to deactivated/resigned staff. Potential cost savings: `
-                      : `Đang có ${kpis.inactiveSeatsCount} ghế bản quyền cấp cho nhân sự đã nghỉ việc / vô hiệu hóa. Tiết kiệm tiềm năng: `}
+                      ? `There are ${kpis.inactiveSeatsCount} software seats currently assigned to deactivated staff or decommissioned/maintenance devices. Potential cost savings: `
+                      : `Đang có ${kpis.inactiveSeatsCount} ghế bản quyền cấp cho nhân sự thôi việc hoặc thiết bị ngừng sử dụng/đang sửa chữa. Tiết kiệm tiềm năng: `}
                     <strong className="text-rose-600 dark:text-rose-400 font-mono font-bold">
                       {formatPrice(kpis.inactivePotentialSavings / (exchangeRatesMap[selectedCurrency] || 1), selectedCurrency)}
                     </strong>
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                <button
+                  type="button"
+                  disabled={isReclaimingAllWaste}
+                  onClick={handleReclaimAllWaste}
+                  className="px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-60"
+                  title={language === 'en' ? 'Reclaim all wasted seats at once' : 'Thu hồi toàn bộ ghế lãng phí trong 1 chạm'}
+                >
+                  {isReclaimingAllWaste ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                  <span>{language === 'en' ? `Reclaim All (${kpis.inactiveSeatsCount})` : `⚡ Thu hồi tất cả (${kpis.inactiveSeatsCount} ghế)`}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setShowWastefulOnly(!showWastefulOnly)}
                   className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
                     showWastefulOnly
-                      ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                      ? 'bg-slate-900 hover:bg-slate-800 text-white'
                       : 'bg-white dark:bg-slate-900 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 hover:bg-amber-50'
                   }`}
                 >

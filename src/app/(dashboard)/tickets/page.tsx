@@ -598,10 +598,33 @@ export default function TicketsPage() {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [initialTicketTitle, setInitialTicketTitle] = useState('');
+  const [initialKbContext, setInitialKbContext] = useState<{ id?: string; title?: string; reason?: string; comment?: string } | null>(null);
 
-  
+  // Read URL params (e.g. from KB deflection or portal)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('create') === 'true') {
+        const titleParam = params.get('title') || '';
+        const kbId = params.get('kbArticleId') || '';
+        const kbTitle = params.get('kbArticleTitle') || '';
+        const kbReason = params.get('kbFeedbackReason') || '';
+        const kbComment = params.get('kbFeedbackComment') || '';
 
-  // New Ticket Form
+        if (titleParam) setInitialTicketTitle(titleParam);
+        if (kbId || kbTitle) {
+          setInitialKbContext({
+            id: kbId,
+            title: kbTitle,
+            reason: kbReason,
+            comment: kbComment,
+          });
+        }
+        setIsCreateModalOpen(true);
+      }
+    }
+  }, []);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newRequesterId, setNewRequesterId] = useState('');
@@ -669,6 +692,11 @@ export default function TicketsPage() {
   const [incidentsList, setIncidentsList] = useState<any[]>([]);
   const [isIncidentMenuOpen, setIsIncidentMenuOpen] = useState(false);
   const [linkingIncident, setLinkingIncident] = useState(false);
+
+  // ⚡ Ticket Spike Detection State (👑 Enterprise Smart Logic)
+  const [ticketSpikes, setTicketSpikes] = useState<any[]>([]);
+  const [mergingSpikeKey, setMergingSpikeKey] = useState<string | null>(null);
+  const [dismissedSpikeKeys, setDismissedSpikeKeys] = useState<string[]>([]);
 
   // 📋 Bulk Actions State (👑 Enterprise)
   const [selectedTicketIds, setSelectedTicketIds] = useState<string[]>([]);
@@ -785,11 +813,21 @@ export default function TicketsPage() {
         // 4. Current user & incidents & settings
         (async () => {
           try {
-            const [meRes, settingsRes, incidentsRes] = await Promise.all([
+            const [meRes, settingsRes, incidentsRes, spikeRes] = await Promise.all([
               fetch('/api/auth/me'),
               fetch('/api/settings'),
               fetch('/api/incidents').catch(() => ({ ok: false, json: async () => [] } as any)),
+              fetch('/api/tickets/spike').catch(() => ({ ok: false, json: async () => [] } as any)),
             ]);
+
+            if (spikeRes && spikeRes.ok) {
+              try {
+                const sData = await spikeRes.json();
+                if (sData.success && Array.isArray(sData.spikes)) {
+                  setTicketSpikes(sData.spikes);
+                }
+              } catch {}
+            }
 
             if (incidentsRes && incidentsRes.ok) {
               try {
@@ -1313,6 +1351,40 @@ export default function TicketsPage() {
     }
   };
 
+  // ⚡ Tự động gộp cụm bão ticket thành Sự Cố Diện Rộng (Major Incident)
+  const handleMergeSpikeToIncident = async (cluster: any) => {
+    const confirmMsg = isEn
+      ? `Create a Major Incident and group all ${cluster.count} tickets under "${cluster.categoryLabel}"?`
+      : `Bạn có chắc muốn tự động tạo Sự Cố Diện Rộng (Major Incident) và gom ${cluster.count} ticket nhóm "${cluster.categoryLabel}" này không?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    setMergingSpikeKey(cluster.key);
+    try {
+      const res = await fetch('/api/tickets/spike', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cluster }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(
+          isEn
+            ? `✅ Created Major Incident ${data.incident?.incidentNumber} and grouped ${cluster.count} tickets!`
+            : `✅ Đã tạo Sự cố diện rộng ${data.incident?.incidentNumber} và gom ${cluster.count} ticket thành công!`
+        );
+        setDismissedSpikeKeys((prev) => [...prev, cluster.key]);
+        await loadData(true);
+      } else {
+        alert(data.error || 'Có lỗi xảy ra khi tạo sự cố diện rộng');
+      }
+    } catch {
+      alert('Lỗi kết nối khi gộp sự cố diện rộng');
+    } finally {
+      setMergingSpikeKey(null);
+    }
+  };
+
   return (
     <div className="space-y-3 pb-8">
       {/* Header Banner */}
@@ -1397,6 +1469,71 @@ export default function TicketsPage() {
           </button>
         </div>
       </div>
+
+      {/* ⚡ Ticket Spike Detection Alert Banner */}
+      {ticketSpikes
+        .filter((cluster) => !dismissedSpikeKeys.includes(cluster.key))
+        .map((cluster) => (
+          <div
+            key={cluster.key}
+            className="p-3.5 sm:p-4 bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-orange-500/10 border-2 border-rose-400 dark:border-rose-600 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md animate-in fade-in"
+          >
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse">
+                <Flame className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2 py-0.5 bg-rose-600 text-white font-extrabold text-[10px] rounded-md uppercase tracking-wider">
+                    {isEn ? '⚡ Ticket Spike Alert' : '⚡ Cảnh Báo Bão Ticket'}
+                  </span>
+                  <h4 className="text-xs sm:text-sm font-black text-rose-950 dark:text-rose-200">
+                    {isEn
+                      ? `Abnormal volume: ${cluster.count} tickets related to "${cluster.categoryLabel}" in the last 30m!`
+                      : `Bất thường: Có ${cluster.count} ticket phát sinh về "${cluster.categoryLabel}" trong 30 phút qua!`}
+                  </h4>
+                </div>
+                <p className="text-[11.5px] text-rose-900 dark:text-rose-300 line-clamp-1">
+                  {isEn ? 'Impacted tickets: ' : 'Các ticket liên quan: '}
+                  <span className="font-mono font-bold">
+                    {cluster.ticketNumbers.slice(0, 5).join(', ')}
+                    {cluster.ticketNumbers.length > 5 ? ` (+${cluster.ticketNumbers.length - 5} nữa)` : ''}
+                  </span>
+                  {' — '}{cluster.sampleTitles[0]}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
+              <button
+                type="button"
+                disabled={mergingSpikeKey === cluster.key}
+                onClick={() => handleMergeSpikeToIncident(cluster)}
+                className="px-3.5 py-2 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white rounded-xl text-xs font-black shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              >
+                {mergingSpikeKey === cluster.key ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {isEn
+                    ? `Create Major Incident & Merge ${cluster.count} Tickets`
+                    : `🚨 Tạo Sự Cố Diện Rộng & Gộp ${cluster.count} Ticket`}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDismissedSpikeKeys((prev) => [...prev, cluster.key])}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-white/50 dark:hover:bg-slate-800 transition-colors"
+                title={isEn ? 'Dismiss alert' : 'Bỏ qua cảnh báo'}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
 
       {/* KPI Quick Filter Chips Bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-0.5 text-xs">
@@ -1961,9 +2098,18 @@ export default function TicketsPage() {
       {/* MODAL 2: TẠO TICKET MỚI (FOR ALL USERS) */}
       <CreateTicketModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setInitialTicketTitle('');
+          setInitialKbContext(null);
+        }}
         currentUser={currentUser}
         userAssets={myAssets}
+        initialTitle={initialTicketTitle}
+        kbArticleId={initialKbContext?.id}
+        kbArticleTitle={initialKbContext?.title}
+        kbFeedbackReason={initialKbContext?.reason}
+        kbFeedbackComment={initialKbContext?.comment}
         onSuccess={() => {
           invalidateClientCache('/api/tickets');
           triggerDataRefresh('tickets');

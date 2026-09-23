@@ -99,6 +99,7 @@ export default function EmployeePortalPage() {
   const [activeGuide, setActiveGuide] = useState<GuideType>(null);
   const [kbSearchQuery, setKbSearchQuery] = useState('');
   const [deflectionSuccess, setDeflectionSuccess] = useState<string | null>(null);
+  const [ticketKbContext, setTicketKbContext] = useState<{ id?: string; title?: string; reason?: string; comment?: string } | null>(null);
 
   const handleSelfResolved = async (guideKey: 'wifi' | 'printer' | 'password' | 'vpn') => {
     const item = GUIDE_ARTICLE_MAP[guideKey];
@@ -1289,6 +1290,11 @@ export default function EmployeePortalPage() {
                         setActiveGuide(null);
                         setSelectedAssetForTicket('');
                         setInitialTicketTitle(`[${guideKey.toUpperCase()}] ${guideInfo.ticketTitle}`);
+                        setTicketKbContext({
+                          id: guideInfo.id,
+                          title: guideInfo.ticketTitle,
+                          reason: isEn ? 'Self-service troubleshooting unresolved' : 'Nhân viên đã đọc cẩm nang tự phục vụ nhưng chưa khắc phục được',
+                        });
                         setIsTicketModalOpen(true);
                       }}
                       className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
@@ -1318,11 +1324,16 @@ export default function EmployeePortalPage() {
           setIsTicketModalOpen(false);
           setSelectedAssetForTicket('');
           setInitialTicketTitle('');
+          setTicketKbContext(null);
         }}
         currentUser={user}
         userAssets={assets.map((a) => a.asset)}
         initialAssetId={selectedAssetForTicket}
         initialTitle={initialTicketTitle}
+        kbArticleId={ticketKbContext?.id}
+        kbArticleTitle={ticketKbContext?.title}
+        kbFeedbackReason={ticketKbContext?.reason}
+        kbFeedbackComment={ticketKbContext?.comment}
         onSuccess={() => {
           loadData();
         }}

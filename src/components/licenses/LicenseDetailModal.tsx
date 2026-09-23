@@ -650,6 +650,12 @@ export function LicenseDetailModal({
                                     </span>
                                   )}
 
+                                  {asg.asset && ['MAINTENANCE', 'RETIRED', 'LOST'].includes(asg.asset.status) && (
+                                    <span className="px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-md text-[10px] font-extrabold flex items-center gap-1">
+                                      ⚠️ {txt(`Máy ${asg.asset.status}`, `Device ${asg.asset.status}`, `機器状態: ${asg.asset.status}`)}
+                                    </span>
+                                  )}
+
                                   {asg.batchLabel && (
                                     <span className="px-1.5 py-0.2 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[9.5px] font-bold">
                                       🏷️ {asg.batchLabel}
@@ -677,7 +683,7 @@ export function LicenseDetailModal({
                                 </div>
                               </div>
 
-                              {displayUser?.isActive === false && (
+                              {(displayUser?.isActive === false || (asg.asset && ['MAINTENANCE', 'RETIRED', 'LOST'].includes(asg.asset.status))) && (
                                 <button
                                   type="button"
                                   onClick={() => {

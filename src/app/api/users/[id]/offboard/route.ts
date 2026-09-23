@@ -88,9 +88,26 @@ export async function POST(
       await prisma.asset.update({
         where: { id: asg.assetId },
         data: {
-          status: 'AVAILABLE',
+          status: 'MAINTENANCE',
         },
       });
+
+      // Tạo bản ghi bảo trì tự động: Yêu cầu kiểm tra & xóa sạch dữ liệu trước khi tái cấp
+      try {
+        await prisma.assetMaintenanceLog.create({
+          data: {
+            assetId: asg.assetId,
+            type: 'INSPECTION',
+            title: `Thu hồi sau thôi việc: Kiểm tra & Cài đặt lại OS (${targetUser.fullName})`,
+            description: `Tài sản thu hồi từ nhân sự nghỉ việc (${targetUser.fullName} - ${targetUser.email}). Yêu cầu KTV kiểm tra phần cứng, sao lưu dữ liệu cần thiết, xóa sạch ổ cứng (sanitize) và cài lại hệ điều hành trước khi hoàn tất nhập kho sẵn sàng cấp phát.`,
+            performedAt: now,
+            performedById: currentUser.userId,
+            notes: notes || undefined,
+          },
+        });
+      } catch (logErr) {
+        console.error('Failed to create AssetMaintenanceLog on offboard:', logErr);
+      }
 
       revokedAssetsDetails.push({
         id: asg.asset.id,

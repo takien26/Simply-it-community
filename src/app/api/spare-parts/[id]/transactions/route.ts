@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
+import { dispatchWebhookEvent } from '@/lib/webhooks';
 
 // GET /api/spare-parts/[id]/transactions
 export async function GET(
@@ -156,6 +157,19 @@ export async function POST(
         data: { quantity: newQuantity },
       }),
     ]);
+
+    // Nếu số lượng sau khi xuất kho chạm hoặc dưới ngưỡng an toàn, kích hoạt webhook cảnh báo khẩn cấp
+    if (type === 'OUT' && newQuantity <= part.minStock) {
+      dispatchWebhookEvent('spare_part.low_stock', {
+        name: part.name,
+        sku: part.sku || 'N/A',
+        remaining: newQuantity,
+        minStock: part.minStock,
+        unit: part.unit,
+        performedBy: user.fullName || user.email,
+        link: '/spare-parts?lowStock=true',
+      }).catch((err) => console.error('Failed to dispatch spare_part.low_stock webhook:', err));
+    }
 
     return NextResponse.json({ success: true, transaction, sparePart: updatedPart }, { status: 201 });
   } catch (error: any) {

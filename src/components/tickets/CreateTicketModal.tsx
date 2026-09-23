@@ -28,6 +28,10 @@ export interface CreateTicketModalProps {
   initialPriority?: string;
   initialDescription?: string;
   userAssets?: any[];
+  kbArticleId?: string;
+  kbArticleTitle?: string;
+  kbFeedbackReason?: string;
+  kbFeedbackComment?: string;
 }
 
 export default function CreateTicketModal({
@@ -41,6 +45,10 @@ export default function CreateTicketModal({
   initialPriority = 'MEDIUM',
   initialDescription = '',
   userAssets,
+  kbArticleId,
+  kbArticleTitle,
+  kbFeedbackReason,
+  kbFeedbackComment,
 }: CreateTicketModalProps) {
   const { language, t } = useLanguage();
 
@@ -79,6 +87,7 @@ export default function CreateTicketModal({
   const [kbSuggestions, setKbSuggestions] = useState<any[]>([]);
   const [expandedKbId, setExpandedKbId] = useState<string | null>(null);
   const [deflectedSuccess, setDeflectedSuccess] = useState(false);
+  const [kbHandover, setKbHandover] = useState<{ id?: string; title?: string; reason?: string; comment?: string } | null>(null);
 
   // Users and Assets lists
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -119,13 +128,24 @@ export default function CreateTicketModal({
       setDeflectedSuccess(false);
       lastAnalyzedTextRef.current = '';
 
+      if (kbArticleId || kbArticleTitle) {
+        setKbHandover({
+          id: kbArticleId,
+          title: kbArticleTitle,
+          reason: kbFeedbackReason,
+          comment: kbFeedbackComment,
+        });
+      } else {
+        setKbHandover(null);
+      }
+
       if (isITStaffOrAdmin && currentUser?.id) {
         setAssignedToId(currentUser.id);
       } else {
         setAssignedToId('');
       }
     }
-  }, [isOpen, initialAssetId, initialTitle, initialCategory, initialPriority, initialDescription, currentUser, isITStaffOrAdmin]);
+  }, [isOpen, initialAssetId, initialTitle, initialCategory, initialPriority, initialDescription, currentUser, isITStaffOrAdmin, kbArticleId, kbArticleTitle, kbFeedbackReason, kbFeedbackComment]);
 
   // ESC key listener to close dropdowns or modal
   useEffect(() => {
@@ -427,12 +447,19 @@ export default function CreateTicketModal({
 
     try {
       setSubmitting(true);
+      let finalDescription = description.trim();
+      if (kbHandover?.title || kbHandover?.id) {
+        const reasonText = kbHandover.reason ? `\n- Điểm vướng mắc: ${kbHandover.reason}` : '';
+        const commentText = kbHandover.comment ? `\n- Ghi chú từ người dùng: "${kbHandover.comment}"` : '';
+        finalDescription = `${finalDescription}\n\n---\n📌 [NGỮ CẢNH CẨM NANG IT / TỰ XỬ LÝ CHƯA THÀNH CÔNG]\n- Bài viết đã đọc: ${kbHandover.title || kbHandover.id}${reasonText}${commentText}\n👉 Đề nghị KTV kiểm tra chuyên sâu, tránh yêu cầu người dùng lặp lại các thao tác cơ bản trong cẩm nang.`;
+      }
+
       const res = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(),
-          description: description.trim(),
+          description: finalDescription,
           category,
           priority,
           status: status || 'OPEN',
@@ -542,6 +569,30 @@ export default function CreateTicketModal({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* KB Handover Context Banner */}
+        {kbHandover && (
+          <div className="p-3 bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-2xl flex items-start gap-2.5 text-xs text-blue-900 dark:text-blue-200 animate-in fade-in">
+            <Sparkles className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <div className="font-bold">
+                {language === 'en' ? 'Transferred from IT Knowledge Base:' : 'Chuyển tiếp từ Cẩm nang Tự Phục Vụ:'}{' '}
+                <span className="text-blue-700 dark:text-blue-300 underline font-semibold">{kbHandover.title || kbHandover.id}</span>
+              </div>
+              {(kbHandover.reason || kbHandover.comment) && (
+                <div className="text-[11px] text-blue-700/80 dark:text-blue-300/80 mt-0.5">
+                  {kbHandover.reason && <span>Điểm vướng mắc: <strong>{kbHandover.reason}</strong></span>}
+                  {kbHandover.comment && <span className="italic"> — "{kbHandover.comment}"</span>}
+                </div>
+              )}
+              <p className="text-[10px] text-blue-600/70 dark:text-blue-400 mt-0.5">
+                {language === 'en'
+                  ? 'This context will be attached to the ticket so technicians can troubleshoot directly without asking basic steps.'
+                  : 'Ngữ cảnh này được tự động đính kèm vào phiếu để KTV nắm rõ thông tin, hỗ trợ chuyên sâu và không hỏi lại các bước cơ bản.'}
+              </p>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {/* 1. Requester Section (IT can create on behalf) */}

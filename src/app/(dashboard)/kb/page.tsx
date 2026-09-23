@@ -38,6 +38,14 @@ import {
 import { KBArticleContent } from '@/components/kb/KBArticleContent';
 import { KBEditorModal } from '@/components/kb/KBEditorModal';
 
+const FEEDBACK_REASON_MAP: Record<string, { vi: string; en: string }> = {
+  OUTDATED: { vi: 'Thông tin đã cũ / không giống thực tế', en: 'Information is outdated / not matching' },
+  MISSING_STEPS: { vi: 'Thiếu bước thực hiện', en: 'Missing steps / incomplete guide' },
+  BROKEN_LINK: { vi: 'Không tải được phần mềm / link hỏng', en: 'Broken download link or files' },
+  HARD_TO_UNDERSTAND: { vi: 'Khó hiểu / Không làm theo được', en: 'Hard to understand / follow' },
+  OTHER: { vi: 'Khác', en: 'Other' },
+};
+
 interface Article {
   id: string;
   title: string;
@@ -1042,7 +1050,7 @@ export default function KnowledgeBasePage() {
                         </p>
                       </div>
                       <Link
-                        href={`/tickets?create=true&title=${encodeURIComponent((isEn ? 'Support request: ' : 'Yêu cầu hỗ trợ: ') + selectedArticle.title)}`}
+                        href={`/tickets?create=true&title=${encodeURIComponent((isEn ? 'Support request: ' : 'Yêu cầu hỗ trợ: ') + selectedArticle.title)}&kbArticleId=${encodeURIComponent(selectedArticle.id)}&kbArticleTitle=${encodeURIComponent(selectedArticle.title)}&kbFeedbackReason=${encodeURIComponent(selectedReason ? (FEEDBACK_REASON_MAP[selectedReason]?.[isEn ? 'en' : 'vi'] || selectedReason) : '')}&kbFeedbackComment=${encodeURIComponent(feedbackComment || '')}`}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-colors cursor-pointer shrink-0"
                       >
                         <MessageSquarePlus className="w-4 h-4" />
