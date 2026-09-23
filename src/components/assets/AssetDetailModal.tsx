@@ -36,8 +36,10 @@ import {
   Building,
   Barcode,
   Printer,
+  Activity,
 } from 'lucide-react';
 import AssetHandoverModal from './asset-handover-modal';
+import { calculateAssetHealth } from '@/lib/asset-health';
 import {
   formatCurrency,
   formatDate,
@@ -248,6 +250,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
 const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.returnedAt);
         const specs = selectedDetailAsset.specs || {};
         const warrantyInfo = selectedDetailAsset.warrantyExpiry ? getRemainingTimeText(selectedDetailAsset.warrantyExpiry) : null;
+        const health = selectedDetailAsset.health || calculateAssetHealth(selectedDetailAsset);
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-3 sm:p-4">
@@ -332,8 +335,117 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                   />
                 ) : (
                   <>
-                {/* 5 Overview KPI Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    {/* 💡 Cảnh Báo Khuyến Nghị Thay Thế / Mua Mới */}
+                    {health.recommendReplacement && (
+                      <div className="p-4 bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-orange-500/10 border-2 border-rose-300 dark:border-rose-700 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center font-black shrink-0 shadow-xs">
+                            💡
+                          </div>
+                          <div className="space-y-0.5">
+                            <h4 className="text-xs font-black uppercase tracking-wider text-rose-950 dark:text-rose-200">
+                              {txt('Khuyến Nghị Thay Thế / Mua Mới Thiết Bị', 'Device Replacement Recommended', '機器更新・買い替え推奨')}
+                            </h4>
+                            <p className="text-[11.5px] text-rose-900 dark:text-rose-300 leading-relaxed">
+                              {health.recommendationReason?.[isVi ? 'vi' : 'en'] || health.recommendationReason?.vi}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Link
+                          href={`/tickets?create=true&title=${encodeURIComponent(`[ĐỀ XUẤT THAY THẾ] Mua máy mới thay thế ${selectedDetailAsset.assetTag} (${selectedDetailAsset.name})`)}`}
+                          className="px-3.5 py-2 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white rounded-xl text-xs font-black shadow-xs transition-all flex items-center gap-1.5 shrink-0 self-end sm:self-auto cursor-pointer"
+                        >
+                          <span>🛒 {txt('Tạo Đề Xuất Mua Mới', 'Request Replacement', '買い替え申請')}</span>
+                        </Link>
+                      </div>
+                    )}
+
+                    {/* 🩺 CHỈ SỐ SỨC KHỎE THIẾT BỊ (ASSET HEALTH SCORE - ITAM) */}
+                    <div className="p-4 bg-gradient-to-r from-slate-50 via-indigo-50/30 to-blue-50/40 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                            <Activity className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                                {txt('Chỉ Số Sức Khỏe Thiết Bị (Health Score)', 'Asset Health Score & Reliability', '機器健全度スコア')}
+                              </h4>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${health.badgeClass}`}>
+                                {health.ratingLabel[isVi ? 'vi' : 'en']}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500">
+                              {txt('Đánh giá thông minh dựa trên Tuổi thọ, Tình trạng, Tần suất sự cố và Tỷ lệ chi phí sửa chữa', 'Evaluated from Lifecycle, Condition, Breakdown frequency and Repair cost ratio', '耐用年数・状態・故障頻度・修理費比率に基づくスマート評価')}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Điểm tổng hợp 0-100 */}
+                        <div className="flex items-baseline gap-1 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                          <span className={`text-xl sm:text-2xl font-black font-mono ${health.color}`}>
+                            {health.healthScore}
+                          </span>
+                          <span className="text-xs font-bold text-slate-400">/ 100</span>
+                        </div>
+                      </div>
+
+                      {/* 4 Tiêu chí phân rã */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                        <div className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs space-y-0.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                            📅 {txt('Tuổi Thọ', 'Lifecycle Age', '使用月数')}
+                          </span>
+                          <span className="text-xs font-black text-slate-800">
+                            {health.metrics.ageMonths} {txt('tháng', 'months', 'ヶ月')}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-semibold block">
+                            ({health.breakdown.ageScore}/30 {txt('điểm', 'pts', '点')})
+                          </span>
+                        </div>
+
+                        <div className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs space-y-0.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                            🛠️ {txt('Tình Trạng', 'Condition', '機器状態')}
+                          </span>
+                          <span className="text-xs font-black text-slate-800">
+                            {selectedDetailAsset.condition || 'GOOD'}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-semibold block">
+                            ({health.breakdown.conditionScore}/25 {txt('điểm', 'pts', '点')})
+                          </span>
+                        </div>
+
+                        <div className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs space-y-0.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                            ⚡ {txt('Sự Cố Đã Gặp', 'Breakdowns', '故障回数')}
+                          </span>
+                          <span className="text-xs font-black text-slate-800">
+                            {health.metrics.breakdownCount} {txt('lần', 'times', '回')}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-semibold block">
+                            ({health.breakdown.breakdownScore}/25 {txt('điểm', 'pts', '点')})
+                          </span>
+                        </div>
+
+                        <div className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs space-y-0.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                            💰 {txt('Tỷ Lệ Sửa/Mua', 'Repair/Cost Ratio', '修理費比率')}
+                          </span>
+                          <span className="text-xs font-black text-slate-800 font-mono">
+                            {Math.round(health.metrics.costToPurchaseRatio * 100)}%
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-semibold block">
+                            ({health.breakdown.costRatioScore}/20 {txt('điểm', 'pts', '点')})
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 5 Overview KPI Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                   {/* Trạng thái */}
                   <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{txt('Trạng thái', 'Status', 'ステータス')}</span>

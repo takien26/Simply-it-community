@@ -73,6 +73,16 @@ export async function dispatchWebhookEvent(event: string, data: any): Promise<vo
                 `📉 <b>Số lượng còn lại:</b> <b>${data?.remaining} ${data?.unit || 'cái'}</b> (Mức tối thiểu: ${data?.minStock})\n` +
                 `👤 <b>Người xuất kho:</b> ${data?.performedBy || 'KTV IT'}\n\n` +
                 `👉 <a href="${data?.link || '/spare-parts?lowStock=true'}">Bấm vào đây để kiểm tra & Đề xuất nhập kho</a>`;
+            } else if (event === 'ticket.sla_escalation') {
+              tgText =
+                `🚨 <b>[SIMPLY IT] CẢNH BÁO LEO THANG — NGUY CƠ VỠ SLA!</b>\n` +
+                `━━━━━━━━━━━━━━━━━━━━\n` +
+                `🎫 <b>Mã ticket:</b> <code>${data?.ticketNumber || 'N/A'}</code>\n` +
+                `📌 <b>Tiêu đề:</b> ${data?.title || 'Sự cố'}\n` +
+                `⏱️ <b>Thời gian đã trôi:</b> <b>${data?.elapsedRatio}%</b> (Còn lại: ~${data?.remainingMinutes} phút)\n` +
+                `👨‍💻 <b>Kỹ thuật viên:</b> ${data?.assignedTo || 'Chưa gán'}\n` +
+                `⚡ <b>Hành động tự động:</b> ${data?.actionTaken || 'Điều phối tự động'}\n\n` +
+                `🔗 <a href="/tickets?id=${data?.ticketId}">👉 Bấm vào đây để can thiệp & Xử lý gấp</a>`;
             } else {
               const details = Object.entries(data || {})
                 .filter(([_, v]) => typeof v === 'string' || typeof v === 'number')

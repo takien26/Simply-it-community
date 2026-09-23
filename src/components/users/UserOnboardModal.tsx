@@ -15,9 +15,12 @@ import {
   Plus,
   Trash2,
   Sparkles,
+  AlertTriangle,
+  Check,
 } from 'lucide-react';
 import { CombinedHandoverModal } from './CombinedHandoverModal';
 import { useLanguage } from '@/lib/i18n/context';
+import { ONBOARDING_PRESET_KITS, matchKitToInventory, OnboardingPresetKit } from '@/lib/onboarding-kits';
 
 export interface UserOnboardModalProps {
   isOpen: boolean;
@@ -66,13 +69,31 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
   // Selected Licenses
   const [selectedLicenseIds, setSelectedLicenseIds] = useState<string[]>([]);
 
+  // Smart Onboarding Kit State
+  const [activeKitId, setActiveKitId] = useState<string | null>(null);
+  const [kitMatchStatus, setKitMatchStatus] = useState<{ isFullyAvailable: boolean; missingItems: string[]; kitName: string } | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       setCompletedData(null);
       setSelectedAssetIds([]);
       setSelectedLicenseIds([]);
+      setActiveKitId(null);
+      setKitMatchStatus(null);
     }
   }, [isOpen]);
+
+  const handleSelectKit = (kit: OnboardingPresetKit) => {
+    setActiveKitId(kit.id);
+    const match = matchKitToInventory(kit, availableAssets, availableLicenses);
+    setSelectedAssetIds(match.matchedAssetIds);
+    setSelectedLicenseIds(match.matchedLicenseIds);
+    setKitMatchStatus({
+      isFullyAvailable: match.isFullyAvailable,
+      missingItems: match.missingItems,
+      kitName: kit.name.vi,
+    });
+  };
 
   if (!isOpen) return null;
 
@@ -301,6 +322,77 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                       </select>
                     </div>
                   </div>
+                </div>
+
+                {/* 🌟 SMART ONBOARDING KITS (Bộ Trang Bị Mẫu Tự Động So Khớp Kho) */}
+                <div className="p-3.5 bg-gradient-to-r from-indigo-50/70 via-blue-50/50 to-purple-50/60 dark:from-indigo-950/40 dark:to-slate-900 rounded-2xl border border-indigo-200/80 dark:border-indigo-800 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-indigo-600" />
+                      <span>Gói Cấp Phát Mẫu (Smart Onboarding Kits) — 1-Click Tự Động Chọn Kho</span>
+                    </span>
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hidden sm:inline">
+                      Tự khớp máy tính & license phù hợp
+                    </span>
+                  </div>
+
+                  {/* Danh sách 5 Kit Chips */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {ONBOARDING_PRESET_KITS.map((kit) => {
+                      const isSelected = activeKitId === kit.id;
+                      return (
+                        <button
+                          key={kit.id}
+                          type="button"
+                          onClick={() => handleSelectKit(kit)}
+                          className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs font-bold'
+                              : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">{kit.icon}</span>
+                            {isSelected && <Check className="w-3.5 h-3.5" />}
+                          </div>
+                          <p className="text-[11px] font-bold mt-1 line-clamp-1">{kit.name.vi}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Trạng thái so khớp tồn kho thông minh */}
+                  {kitMatchStatus && (
+                    <div className={`p-3 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in ${
+                      kitMatchStatus.isFullyAvailable
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                        : 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        {kitMatchStatus.isFullyAvailable ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                        )}
+                        <span>
+                          {kitMatchStatus.isFullyAvailable
+                            ? `🟢 Kho hiện CÓ ĐỦ toàn bộ thiết bị & license theo tiêu chuẩn "${kitMatchStatus.kitName}". Đã tự động tích chọn sẵn sàng xuất kho!`
+                            : `⚠️ Kho hiện THIẾU theo tiêu chuẩn "${kitMatchStatus.kitName}": ${kitMatchStatus.missingItems.join(', ')}.`}
+                        </span>
+                      </div>
+
+                      {!kitMatchStatus.isFullyAvailable && (
+                        <a
+                          href={`/tickets?create=true&title=${encodeURIComponent(`[ĐỀ XUẤT MUA SẮM ONBOARDING] Tiếp nhận ${formData.fullName || 'nhân sự mới'} - Thiếu ${kitMatchStatus.missingItems.join(', ')}`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 shrink-0 whitespace-nowrap shadow-xs"
+                        >
+                          <span>🛒 Đề xuất mua bổ sung</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Bước 2: Chọn Combo Thiết Bị Cấp Phát từ Kho */}

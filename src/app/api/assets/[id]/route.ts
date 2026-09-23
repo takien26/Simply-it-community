@@ -58,6 +58,9 @@ export async function GET(
             contractNumber: true,
           },
         },
+        tickets: {
+          select: { id: true, status: true, priority: true, createdAt: true },
+        },
       },
     });
 
@@ -65,7 +68,10 @@ export async function GET(
       return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: asset });
+    const { calculateAssetHealth } = await import('@/lib/asset-health');
+    const health = calculateAssetHealth(asset);
+
+    return NextResponse.json({ success: true, data: { ...asset, health } });
   } catch (error) {
     console.error('Get asset error:', error);
     return NextResponse.json({ error: 'Failed to fetch asset' }, { status: 500 });

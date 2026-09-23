@@ -35,12 +35,28 @@ export function ConvertToKbModal({ isOpen, onClose, ticket }: ConvertToKbModalPr
   useEffect(() => {
     if (isOpen && ticket) {
       setTitle(`[Hướng dẫn xử lý] ${ticket.title}`);
+      const symptoms = ticket.description || 'Chưa có mô tả chi tiết.';
       const solution =
         ticket.resolutionNotes ||
-        (ticket.comments?.length > 0
-          ? ticket.comments.map((c: any) => c.content).join('\n\n')
+        (ticket.comments && ticket.comments.length > 0
+          ? ticket.comments
+              .map((c: any) => c.content)
+              .filter(Boolean)
+              .join('\n\n')
           : 'Sự cố đã được kiểm tra và xử lý thành công theo quy trình kỹ thuật.');
-      setContent(`## 1. Hiện tượng & Vấn đề sự cố\n${ticket.description}\n\n## 2. Các bước xử lý / Khắc phục\n${solution}`);
+      setContent(
+`## 1. Mô tả hiện tượng & Ngữ cảnh sự cố
+${symptoms}
+
+## 2. Nguyên nhân gốc rễ (Root Cause)
+- Phân tích nguyên nhân phát sinh lỗi tại đây...
+
+## 3. Các bước khắc phục & Hướng dẫn xử lý chi tiết
+${solution}
+
+## 4. Khuyến nghị phòng ngừa tái diễn
+- Các bước hoặc lưu ý để ngăn sự cố phát sinh lại...`
+      );
       setTeamScope('PUBLIC');
 
       fetch('/api/support-teams')

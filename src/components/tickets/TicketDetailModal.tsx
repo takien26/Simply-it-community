@@ -249,6 +249,15 @@ export function getTicketSLA(
       badgeClass = 'bg-rose-100 text-rose-800 border-rose-300 animate-pulse font-bold';
       icon = '🚨';
       isOverdue = true;
+    } else if (diffMins <= 60 || (deadline.getTime() - createdAt.getTime() > 0 && (now.getTime() - createdAt.getTime()) / (deadline.getTime() - createdAt.getTime()) >= 0.75)) {
+      statusText = txt(
+        `⚡ Nguy cơ vỡ SLA (còn ${diffMins > 60 ? `${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `${diffMins} phút`})`,
+        `⚡ SLA Breach Risk (${diffMins > 60 ? `${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `${diffMins} min`} left)`,
+        `⚡ SLA超過リスク (残り ${diffMins > 60 ? `${Math.floor(diffMins / 60)}時間 ${diffMins % 60}分` : `${diffMins}分`})`
+      );
+      badgeClass = 'bg-rose-100 text-rose-900 border-rose-400 animate-pulse font-black shadow-2xs';
+      icon = '⚡';
+      isWarning = true;
     } else if (diffHours <= 4) {
       statusText = txt(
         `Sắp quá hạn (còn ${diffMins > 60 ? `${Math.floor(diffMins / 60)}h ${diffMins % 60}m` : `${diffMins} phút`})`,
@@ -1300,6 +1309,36 @@ export function TicketDetailModal({
                   )}
                 </div>
               </div>
+
+              {/* 🔄 TICKET-TO-KB LEARNING LOOP (Gợi ý lưu giải pháp vào Cẩm nang tri thức) */}
+              {(selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED') && isITStaffOrAdmin && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-50/80 via-blue-50/50 to-purple-50/70 border border-indigo-200 dark:border-indigo-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xs font-black shadow-xs shrink-0">
+                      <BookOpen className="w-4 h-4" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <h5 className="font-bold text-indigo-950 dark:text-indigo-200 text-xs">
+                        {(!isVi ? '🔄 Knowledge Base Learning Loop' : '🔄 Vòng Lặp Tri Thức — Chuyển Ticket Thành Cẩm Nang (KB)')}
+                      </h5>
+                      <p className="text-[11px] text-indigo-800 dark:text-indigo-300">
+                        {(!isVi
+                          ? 'This ticket is resolved. Save this solution as a standard KB article so users can self-serve in the future.'
+                          : 'Sự cố đã được giải quyết. Hãy lưu giải pháp này thành bài viết Cẩm nang chuẩn để đồng nghiệp & người dùng tự xử lý sau này.')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsConvertToKbOpen(true)}
+                    className="px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-black shadow-xs transition-all flex items-center gap-1.5 shrink-0 self-end sm:self-auto cursor-pointer"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>{(!isVi ? 'Create KB Draft' : '⚡ Tạo Bản Nháp KB')}</span>
+                  </button>
+                </div>
+              )}
 
               {/* ⭐ ĐÁNH GIÁ CHẤT LƯỢNG CSAT (1-Click CSAT Feedback - 👑 Enterprise - FULL WIDTH) */}
               {(selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED') && (() => {
