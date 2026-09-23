@@ -1010,38 +1010,97 @@ export default function CreateTicketModal({
             />
           </div>
 
-          {/* 6. AI Diagnostic Output Card if triggered */}
+          {/* 6. AI Diagnostic & Severity Predictor Output Card */}
           {aiDiagnostic && (
-            <div className="p-3 bg-purple-50/80 border border-purple-200 rounded-2xl space-y-1.5 text-xs animate-in fade-in">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-purple-900 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                  <span>{language === 'en' ? 'AI Diagnostic Summary:' : 'AI Đã Tự Động Phân Loại:'}</span>
+            <div className="p-3.5 bg-gradient-to-br from-purple-50/90 via-indigo-50/70 to-slate-50 border border-purple-200/90 rounded-2xl space-y-2 text-xs animate-in fade-in shadow-xs">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="font-bold text-purple-950 flex items-center gap-1.5 text-xs">
+                  <Sparkles className="w-4 h-4 text-purple-600 animate-pulse" />
+                  <span>{language === 'en' ? 'AI Auto-Triage & Severity Prediction:' : 'Trợ lý Gemini AI Phân Loại & Đề Xuất Mức Độ:'}</span>
                 </span>
-                <span className="text-[10px] px-2 py-0.5 bg-purple-200 text-purple-900 rounded-full font-bold">
-                  {aiDiagnostic.serviceName || 'IT Service'}
-                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {/* Priority Level Pill (P1 - P4) */}
+                  <span className={`px-2 py-0.5 rounded-full font-black text-[10px] tracking-wide flex items-center gap-1 ${
+                    aiDiagnostic.priority === 'URGENT'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : aiDiagnostic.priority === 'HIGH'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : aiDiagnostic.priority === 'MEDIUM'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-emerald-600 text-white shadow-xs'
+                  }`}>
+                    <span>
+                      {aiDiagnostic.priority === 'URGENT' ? '🔥 P1 - Khẩn cấp' :
+                       aiDiagnostic.priority === 'HIGH' ? '🔴 P2 - Mức cao' :
+                       aiDiagnostic.priority === 'MEDIUM' ? '🟡 P3 - Trung bình' : '🟢 P4 - Thấp'}
+                    </span>
+                  </span>
+                  {/* Service Name Pill */}
+                  <span className="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-900 border border-purple-200 rounded-full font-bold">
+                    {aiDiagnostic.serviceName || 'Dịch vụ IT'}
+                  </span>
+                </div>
               </div>
-              <p className="text-purple-950 font-medium text-[11px] leading-relaxed">
+
+              {/* Diagnostic Summary */}
+              <p className="text-purple-950 font-medium text-[11.5px] leading-relaxed">
                 {aiDiagnostic.diagnosticSummary}
               </p>
+
+              {/* Priority Reasoning */}
+              {aiDiagnostic.priorityReason && (
+                <div className="p-2 bg-white/90 rounded-xl border border-purple-200/80 text-[11px] text-purple-900 flex items-start gap-1.5">
+                  <span className="shrink-0 text-purple-600 font-bold">⚖️ {language === 'en' ? 'Triage Basis:' : 'Căn cứ xếp độ ưu tiên:'}</span>
+                  <span className="text-slate-700 italic">{aiDiagnostic.priorityReason}</span>
+                </div>
+              )}
+
+              {/* Suggested Preliminary Steps */}
+              {aiDiagnostic.suggestedSteps && aiDiagnostic.suggestedSteps.length > 0 && (
+                <div className="space-y-1 pt-0.5">
+                  <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider block">
+                    {language === 'en' ? 'Quick troubleshooting checklist:' : 'Gợi ý kiểm tra nhanh sơ bộ:'}
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {aiDiagnostic.suggestedSteps.slice(0, 3).map((step: string, idx: number) => (
+                      <div key={idx} className="bg-white/80 border border-purple-100 rounded-lg p-1.5 text-[10.5px] text-slate-700 flex items-start gap-1.5">
+                        <span className="text-purple-600 font-bold shrink-0">{idx + 1}.</span>
+                        <span className="line-clamp-2">{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Matched Device */}
               {aiDiagnostic.matchedAssetName && (
-                <div className="text-[11px] text-blue-800 font-bold bg-white/80 p-1.5 rounded-lg border border-purple-200 flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1 truncate">
-                    <span>💻</span>
+                <div className="text-[11px] text-blue-900 font-bold bg-white/90 p-2 rounded-xl border border-blue-200 flex items-center justify-between gap-1 shadow-2xs">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="text-blue-600 text-sm">💻</span>
                     <span className="truncate">{txt('Thiết bị nhận diện liên quan:', 'Detected Device:', '検出されたデバイス:')} <strong>{aiDiagnostic.matchedAssetName}</strong></span>
                   </div>
                   {(!assetId || assetId !== aiDiagnostic.matchedAssetId) && aiDiagnostic.matchedAssetId && (
                     <button
                       type="button"
                       onClick={() => setAssetId(aiDiagnostic.matchedAssetId)}
-                      className="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] font-bold cursor-pointer transition-colors shrink-0"
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-colors shrink-0 shadow-xs"
                     >
-                      {txt('Chọn máy này', 'Select this device', 'この機器を選択')}
+                      {txt('Tự động chọn máy này', 'Select this device', 'この機器を選択')}
                     </button>
                   )}
                 </div>
               )}
+
+              {/* Engine Footer */}
+              <div className="flex items-center justify-between text-[10px] text-purple-700/80 pt-1 border-t border-purple-200/50">
+                <span className="flex items-center gap-1">
+                  <span>⚡</span>
+                  <span>{aiDiagnostic.aiEngine || 'Google Gemini AI'}</span>
+                </span>
+                <span>
+                  {language === 'en' ? 'Estimated SLA Resolution:' : 'Thời hạn cam kết SLA:'} <strong>~{aiDiagnostic.estimatedResolutionHours || 24}h</strong>
+                </span>
+              </div>
             </div>
           )}
 
