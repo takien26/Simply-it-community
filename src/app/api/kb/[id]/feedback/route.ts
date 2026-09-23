@@ -13,13 +13,16 @@ export async function POST(
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
     const isHelpful = Boolean(body.isHelpful);
+    const isDeflection = Boolean(body.isDeflection);
 
-    const stats = await recordArticleFeedback(id, isHelpful, currentUser?.userId);
+    const stats = await recordArticleFeedback(id, isHelpful, currentUser?.userId, isDeflection);
 
     return NextResponse.json({
       success: true,
       data: stats,
-      message: isHelpful
+      message: isDeflection
+        ? '🎉 Tuyệt vời! Đã ghi nhận bài viết giúp giải quyết sự cố và giảm tải 1 ticket cho IT.'
+        : isHelpful
         ? 'Cảm ơn phản hồi! Đã ghi nhận bạn tự xử lý thành công.'
         : 'Đã ghi nhận phản hồi! Hệ thống đã gợi ý tạo yêu cầu hỗ trợ IT.',
     });

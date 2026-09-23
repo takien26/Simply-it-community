@@ -56,6 +56,7 @@ interface Article {
   fileName?: string;
   helpfulCount?: number;
   unhelpfulCount?: number;
+  deflectedTickets?: number;
   feedbackRatio?: number;
   needsImprovement?: boolean;
 }
@@ -134,6 +135,7 @@ export default function KnowledgeBasePage() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [filterNeedsImprovement, setFilterNeedsImprovement] = useState<boolean>(false);
   const [needsImprovementCount, setNeedsImprovementCount] = useState<number>(0);
+  const [totalDeflectedTickets, setTotalDeflectedTickets] = useState<number>(0);
   const [feedbackSubmitting, setFeedbackSubmitting] = useState<boolean>(false);
 
   // Unified Editor Modal State (Create & Edit)
@@ -182,6 +184,9 @@ export default function KnowledgeBasePage() {
         if (res.teamScopes) setTeamScopes(res.teamScopes);
         if (typeof res.needsImprovementCount === 'number') {
           setNeedsImprovementCount(res.needsImprovementCount);
+        }
+        if (typeof res.totalDeflectedTickets === 'number') {
+          setTotalDeflectedTickets(res.totalDeflectedTickets);
         }
         setIsITStaff(Boolean(res.isITStaff));
         setIsAdmin(Boolean(res.isAdmin));
@@ -426,6 +431,21 @@ export default function KnowledgeBasePage() {
                 {needsImprovementCount} {isEn ? 'articles' : 'bài'}
               </span>
             </div>
+            {/* Deflection Impact Counter */}
+            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🛡️</span>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-800 dark:text-emerald-300">
+                    {isEn ? 'Ticket Deflection' : 'Giảm Tải Ticket IT'}
+                  </p>
+                  <p className="text-xs font-black text-emerald-900 dark:text-emerald-100">
+                    {totalDeflectedTickets} {isEn ? 'tickets deflected' : 'ticket đã tự xử lý'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-relaxed">
               {isEn
                 ? 'Articles with self-service resolution rate < 70% or where users needed more support.'
@@ -599,6 +619,15 @@ export default function KnowledgeBasePage() {
                             )}
                           </>
                         )}
+                        {typeof item.deflectedTickets === 'number' && item.deflectedTickets > 0 && (
+                          <>
+                            <span>•</span>
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+                              <span>🛡️</span>
+                              <span>{item.deflectedTickets} {isEn ? 'deflected' : 'ticket đã tự xử lý'}</span>
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -679,6 +708,15 @@ export default function KnowledgeBasePage() {
                         <ThumbsUp className="w-3.5 h-3.5 text-emerald-600" />
                       )}
                       <span>{selectedArticle.feedbackRatio}% {isEn ? 'helpful' : 'tự sửa được'} ({selectedArticle.helpfulCount || 0}👍 / {selectedArticle.unhelpfulCount || 0}👎)</span>
+                    </span>
+                  </>
+                )}
+                {typeof selectedArticle.deflectedTickets === 'number' && selectedArticle.deflectedTickets > 0 && (
+                  <>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800">
+                      <span>🛡️</span>
+                      <span>{selectedArticle.deflectedTickets} {isEn ? 'tickets deflected' : 'ticket đã tự giải quyết'}</span>
                     </span>
                   </>
                 )}

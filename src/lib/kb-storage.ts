@@ -66,6 +66,7 @@ const KB_FEEDBACK_KEY = 'kb.feedback_stats';
 export interface KBFeedbackStats {
   helpful: number;
   unhelpful: number;
+  deflectedTickets?: number;
   lastUpdated?: string;
 }
 
@@ -73,12 +74,12 @@ export type KBFeedbackStore = Record<string, KBFeedbackStats>;
 
 // Dữ liệu mẫu ban đầu trực quan để IT theo dõi các bài viết tốt và bài viết cần cập nhật
 const DEFAULT_FEEDBACK_BASELINE: KBFeedbackStore = {
-  'kb-net-01': { helpful: 42, unhelpful: 2 }, // 95%
-  'kb-net-02': { helpful: 35, unhelpful: 1 }, // 97%
-  'kb-email-01': { helpful: 56, unhelpful: 3 }, // 95%
-  'kb-soft-01': { helpful: 18, unhelpful: 12 }, // 60% -> Cần bổ sung nội dung!
-  'kb-print-01': { helpful: 29, unhelpful: 2 }, // 94%
-  'kb-hard-01': { helpful: 14, unhelpful: 8 }, // 63% -> Cần bổ sung nội dung!
+  'kb-net-01': { helpful: 42, unhelpful: 2, deflectedTickets: 18 }, // 95%
+  'kb-net-02': { helpful: 35, unhelpful: 1, deflectedTickets: 14 }, // 97%
+  'kb-email-01': { helpful: 56, unhelpful: 3, deflectedTickets: 29 }, // 95%
+  'kb-soft-01': { helpful: 18, unhelpful: 12, deflectedTickets: 5 }, // 60% -> Cần bổ sung nội dung!
+  'kb-print-01': { helpful: 29, unhelpful: 2, deflectedTickets: 12 }, // 94%
+  'kb-hard-01': { helpful: 14, unhelpful: 8, deflectedTickets: 4 }, // 63% -> Cần bổ sung nội dung!
 };
 
 /**
@@ -103,21 +104,28 @@ export async function getAllKBFeedbackStats(): Promise<KBFeedbackStore> {
 
 /**
  * Ghi nhận đánh giá phản hồi (Hữu ích / Cần hỗ trợ) cho bài viết KB
+ * @param isDeflection Nếu true: ghi nhận bài viết đã giúp người dùng tự sửa thành công và hủy tạo ticket
  */
 export async function recordArticleFeedback(
   articleId: string,
   isHelpful: boolean,
-  userId?: string
-): Promise<{ helpful: number; unhelpful: number; ratio: number }> {
+  userId?: string,
+  isDeflection: boolean = false
+): Promise<{ helpful: number; unhelpful: number; deflectedTickets: number; ratio: number }> {
   try {
     const store = await getAllKBFeedbackStats();
-    const current = store[articleId] || { helpful: 0, unhelpful: 0 };
+    const current = store[articleId] || { helpful: 0, unhelpful: 0, deflectedTickets: 0 };
 
     if (isHelpful) {
       current.helpful = (current.helpful || 0) + 1;
     } else {
       current.unhelpful = (current.unhelpful || 0) + 1;
     }
+
+    if (isDeflection) {
+      current.deflectedTickets = (current.deflectedTickets || 0) + 1;
+    }
+
     current.lastUpdated = new Date().toISOString();
 
     store[articleId] = current;
@@ -140,10 +148,16 @@ export async function recordArticleFeedback(
     return {
       helpful: current.helpful,
       unhelpful: current.unhelpful,
+      deflectedTickets: current.deflectedTickets || 0,
       ratio,
     };
   } catch (error) {
     console.error('Failed to record article feedback:', error);
-    return { helpful: isHelpful ? 1 : 0, unhelpful: isHelpful ? 0 : 1, ratio: isHelpful ? 100 : 0 };
+    return {
+      helpful: isHelpful ? 1 : 0,
+      unhelpful: isHelpful ? 0 : 1,
+      deflectedTickets: isDeflection ? 1 : 0,
+      ratio: isHelpful ? 100 : 0,
+    };
   }
 }

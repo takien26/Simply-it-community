@@ -735,8 +735,8 @@ export default function CreateTicketModal({
                 </h4>
                 <p className="text-xs text-emerald-700">
                   {language === 'en'
-                    ? 'No ticket was created. Closing dialog in a moment...'
-                    : 'Ticket không cần tạo nữa, bạn có thể tiếp tục làm việc. Cửa sổ đang tự động đóng...'}
+                    ? '🛡️ Deflected! 1 ticket saved for IT. Closing dialog in a moment...'
+                    : '🛡️ Đã ghi nhận bài viết giải quyết sự cố và giảm tải 1 ticket cho IT. Cửa sổ đang đóng...'}
                 </p>
               </div>
             ) : kbSuggestions.length > 0 && (
@@ -807,9 +807,16 @@ export default function CreateTicketModal({
                                 type="button"
                                 onClick={() => {
                                   setDeflectedSuccess(true);
+                                  // Send deflection feedback to KB API
+                                  fetch(`/api/kb/${item.id}/feedback`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ isHelpful: true, isDeflection: true }),
+                                  }).catch((err) => console.error('Error logging deflection feedback:', err));
+
                                   setTimeout(() => {
                                     onClose();
-                                  }, 1800);
+                                  }, 2200);
                                 }}
                                 className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer hover:shadow-sm"
                               >

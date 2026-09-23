@@ -105,6 +105,7 @@ export async function GET(request: NextRequest) {
         ...art,
         helpfulCount: fb.helpful || 0,
         unhelpfulCount: fb.unhelpful || 0,
+        deflectedTickets: fb.deflectedTickets || 0,
         feedbackRatio,
         needsImprovement,
       };
@@ -155,6 +156,11 @@ export async function GET(request: NextRequest) {
       (a) => a.needsImprovement || (a.unhelpfulCount || 0) > 0
     ).length;
 
+    const totalDeflectedTickets = articlesWithFeedback.reduce(
+      (acc, a) => acc + (a.deflectedTickets || 0),
+      0
+    );
+
     const categories = [
       { key: 'ALL', name: 'Tất cả bài viết', count: visibleArticles.length },
       { key: 'NETWORK', name: 'Hệ thống mạng & WiFi', count: visibleArticles.filter((a) => a.categoryKey === 'NETWORK').length },
@@ -180,6 +186,7 @@ export async function GET(request: NextRequest) {
       categories,
       teamScopes,
       needsImprovementCount,
+      totalDeflectedTickets,
       userRole,
       isITStaff,
       isAdmin,
