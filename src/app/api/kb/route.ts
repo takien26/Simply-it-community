@@ -108,6 +108,8 @@ export async function GET(request: NextRequest) {
         deflectedTickets: fb.deflectedTickets || 0,
         feedbackRatio,
         needsImprovement,
+        reasons: fb.reasons || [],
+        reasonCounts: fb.reasonCounts || {},
       };
     });
 

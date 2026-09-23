@@ -33,7 +33,17 @@ export interface KBEditorData {
   content?: string;
   fileUrl?: string;
   fileName?: string;
+  reasons?: Array<{ reason: string; comment?: string; createdAt: string; isDeflection?: boolean }>;
+  reasonCounts?: Record<string, number>;
+  feedbackStats?: { helpful: number; total: number; percentage: number; deflections?: number };
 }
+
+const REASON_LABELS: Record<string, { vi: string; en: string }> = {
+  OUTDATED: { vi: 'Thông tin đã cũ / không giống thực tế', en: 'Outdated / does not match' },
+  MISSING_STEPS: { vi: 'Thiếu bước thực hiện', en: 'Missing steps / incomplete' },
+  BROKEN_LINK: { vi: 'Không tải được phần mềm / link hỏng', en: 'Broken download link' },
+  HARD_TO_UNDERSTAND: { vi: 'Khó hiểu / Không làm theo được', en: 'Hard to understand / confusing' },
+};
 
 interface KBEditorModalProps {
   isOpen: boolean;
@@ -443,6 +453,70 @@ export function KBEditorModal({
         {/* FORM BODY */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {/* Feedback / Improvement Alerts for IT Editor */}
+            {initialData?.reasons && initialData.reasons.length > 0 && (
+              <div className="p-4 bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-2xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      {isEn
+                        ? `User Feedback (${initialData.reasons.length} reports need attention):`
+                        : `Góp ý từ người dùng (${initialData.reasons.length} phản hồi cần cải thiện):`}
+                    </span>
+                  </div>
+                  {initialData.feedbackStats && (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
+                      {isEn ? 'Satisfaction:' : 'Độ hài lòng:'} {initialData.feedbackStats.percentage}%
+                    </span>
+                  )}
+                </div>
+
+                {/* Reason count badges */}
+                {initialData.reasonCounts && Object.keys(initialData.reasonCounts).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {Object.entries(initialData.reasonCounts).map(([code, count]) => {
+                      const label = REASON_LABELS[code]?.[isEn ? 'en' : 'vi'] || code;
+                      return (
+                        <span
+                          key={code}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/95 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 border border-amber-200/80 dark:border-amber-700/50 shadow-2xs"
+                        >
+                          <span>{label}</span>
+                          <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
+                            {count}
+                          </span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Specific comments */}
+                {initialData.reasons.some((r) => r.comment && r.comment.trim().length > 0) && (
+                  <div className="pt-2 border-t border-amber-200/60 dark:border-amber-800/40 space-y-1.5">
+                    <p className="text-[10px] font-bold text-amber-900/70 dark:text-amber-400 uppercase tracking-wider">
+                      {isEn ? 'Latest comments from staff:' : 'Ghi chú chi tiết từ nhân viên:'}
+                    </p>
+                    <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
+                      {initialData.reasons
+                        .filter((r) => r.comment && r.comment.trim().length > 0)
+                        .slice(0, 5)
+                        .map((r, idx) => (
+                          <div
+                            key={idx}
+                            className="text-[11px] text-slate-700 dark:text-slate-300 bg-white/80 dark:bg-slate-800/90 p-2 rounded-lg border border-amber-100 dark:border-amber-900/30 flex items-start gap-1.5"
+                          >
+                            <span className="text-amber-500 font-bold shrink-0">•</span>
+                            <span className="italic font-medium">"{r.comment}"</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Row 1: Title */}
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1.5">

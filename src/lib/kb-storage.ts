@@ -63,10 +63,29 @@ export async function getActiveDefaultArticles(): Promise<KBArticle[]> {
 
 const KB_FEEDBACK_KEY = 'kb.feedback_stats';
 
+export interface KBFeedbackReasonItem {
+  id: string;
+  reason: string;
+  reasonLabel: string;
+  comment?: string;
+  createdAt: string;
+  userId?: string;
+}
+
+export const FEEDBACK_REASON_MAP: Record<string, { vi: string; en: string }> = {
+  OUTDATED: { vi: 'Thông tin đã cũ / không giống thực tế', en: 'Information is outdated / inaccurate' },
+  MISSING_STEPS: { vi: 'Thiếu bước thực hiện', en: 'Missing actionable steps' },
+  BROKEN_LINK: { vi: 'Không tải được phần mềm / link hỏng', en: 'Broken download link / files' },
+  HARD_TO_UNDERSTAND: { vi: 'Khó hiểu / Không làm theo được', en: 'Hard to understand / follow' },
+  OTHER: { vi: 'Lý do khác', en: 'Other reason' },
+};
+
 export interface KBFeedbackStats {
   helpful: number;
   unhelpful: number;
   deflectedTickets?: number;
+  reasons?: KBFeedbackReasonItem[];
+  reasonCounts?: Record<string, number>;
   lastUpdated?: string;
 }
 
@@ -77,9 +96,51 @@ const DEFAULT_FEEDBACK_BASELINE: KBFeedbackStore = {
   'kb-net-01': { helpful: 42, unhelpful: 2, deflectedTickets: 18 }, // 95%
   'kb-net-02': { helpful: 35, unhelpful: 1, deflectedTickets: 14 }, // 97%
   'kb-email-01': { helpful: 56, unhelpful: 3, deflectedTickets: 29 }, // 95%
-  'kb-soft-01': { helpful: 18, unhelpful: 12, deflectedTickets: 5 }, // 60% -> Cần bổ sung nội dung!
+  'kb-soft-01': {
+    helpful: 18,
+    unhelpful: 12,
+    deflectedTickets: 5,
+    reasonCounts: {
+      OUTDATED: 4,
+      MISSING_STEPS: 5,
+      BROKEN_LINK: 3,
+    },
+    reasons: [
+      {
+        id: 'rs-1',
+        reason: 'MISSING_STEPS',
+        reasonLabel: 'Thiếu bước thực hiện',
+        comment: 'Phần cài đặt MISA thiếu bước cấp quyền Run as Administrator khi chạy file setup.',
+        createdAt: '2026-09-20T10:15:00.000Z',
+      },
+      {
+        id: 'rs-2',
+        reason: 'OUTDATED',
+        reasonLabel: 'Thông tin đã cũ / không giống thực tế',
+        comment: 'Giao diện phiên bản mới 2026 không có nút Cấu hình máy chủ như trong hình.',
+        createdAt: '2026-09-21T14:30:00.000Z',
+      },
+    ],
+  },
   'kb-print-01': { helpful: 29, unhelpful: 2, deflectedTickets: 12 }, // 94%
-  'kb-hard-01': { helpful: 14, unhelpful: 8, deflectedTickets: 4 }, // 63% -> Cần bổ sung nội dung!
+  'kb-hard-01': {
+    helpful: 14,
+    unhelpful: 8,
+    deflectedTickets: 4,
+    reasonCounts: {
+      MISSING_STEPS: 4,
+      HARD_TO_UNDERSTAND: 4,
+    },
+    reasons: [
+      {
+        id: 'rs-3',
+        reason: 'MISSING_STEPS',
+        reasonLabel: 'Thiếu bước thực hiện',
+        comment: 'Chưa hướng dẫn cách chọn đúng cổng COM trong Device Manager.',
+        createdAt: '2026-09-22T08:00:00.000Z',
+      },
+    ],
+  },
 };
 
 /**
@@ -105,13 +166,24 @@ export async function getAllKBFeedbackStats(): Promise<KBFeedbackStore> {
 /**
  * Ghi nhận đánh giá phản hồi (Hữu ích / Cần hỗ trợ) cho bài viết KB
  * @param isDeflection Nếu true: ghi nhận bài viết đã giúp người dùng tự sửa thành công và hủy tạo ticket
+ * @param reason Mã lý do khi không hữu ích ('OUTDATED' | 'MISSING_STEPS' | 'BROKEN_LINK' | 'HARD_TO_UNDERSTAND' | 'OTHER')
+ * @param comment Ghi chú cụ thể của người dùng
  */
 export async function recordArticleFeedback(
   articleId: string,
   isHelpful: boolean,
   userId?: string,
-  isDeflection: boolean = false
-): Promise<{ helpful: number; unhelpful: number; deflectedTickets: number; ratio: number }> {
+  isDeflection: boolean = false,
+  reason?: string,
+  comment?: string
+): Promise<{
+  helpful: number;
+  unhelpful: number;
+  deflectedTickets: number;
+  ratio: number;
+  reasons?: KBFeedbackReasonItem[];
+  reasonCounts?: Record<string, number>;
+}> {
   try {
     const store = await getAllKBFeedbackStats();
     const current = store[articleId] || { helpful: 0, unhelpful: 0, deflectedTickets: 0 };
@@ -120,6 +192,26 @@ export async function recordArticleFeedback(
       current.helpful = (current.helpful || 0) + 1;
     } else {
       current.unhelpful = (current.unhelpful || 0) + 1;
+
+      // Lưu lý do nếu người dùng chọn
+      if (reason) {
+        if (!current.reasonCounts) current.reasonCounts = {};
+        current.reasonCounts[reason] = (current.reasonCounts[reason] || 0) + 1;
+
+        if (!current.reasons) current.reasons = [];
+        const labelObj = FEEDBACK_REASON_MAP[reason];
+        const reasonLabel = labelObj ? labelObj.vi : reason;
+        const newReasonItem: KBFeedbackReasonItem = {
+          id: `rs-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          reason,
+          reasonLabel,
+          comment: comment?.trim() || undefined,
+          createdAt: new Date().toISOString(),
+          userId,
+        };
+        // Giữ tối đa 30 góp ý mới nhất
+        current.reasons = [newReasonItem, ...current.reasons.slice(0, 29)];
+      }
     }
 
     if (isDeflection) {
@@ -150,6 +242,8 @@ export async function recordArticleFeedback(
       unhelpful: current.unhelpful,
       deflectedTickets: current.deflectedTickets || 0,
       ratio,
+      reasons: current.reasons || [],
+      reasonCounts: current.reasonCounts || {},
     };
   } catch (error) {
     console.error('Failed to record article feedback:', error);
@@ -158,6 +252,8 @@ export async function recordArticleFeedback(
       unhelpful: isHelpful ? 0 : 1,
       deflectedTickets: isDeflection ? 1 : 0,
       ratio: isHelpful ? 100 : 0,
+      reasons: [],
+      reasonCounts: {},
     };
   }
 }

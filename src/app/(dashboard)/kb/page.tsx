@@ -59,6 +59,14 @@ interface Article {
   deflectedTickets?: number;
   feedbackRatio?: number;
   needsImprovement?: boolean;
+  reasons?: Array<{
+    id: string;
+    reason: string;
+    reasonLabel: string;
+    comment?: string;
+    createdAt: string;
+  }>;
+  reasonCounts?: Record<string, number>;
 }
 
 interface CategoryItem {
@@ -143,7 +151,9 @@ export default function KnowledgeBasePage() {
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
 
   // Article Reader Feedback State
-  const [feedbackGiven, setFeedbackGiven] = useState<'yes' | 'no' | null>(null);
+  const [feedbackGiven, setFeedbackGiven] = useState<'yes' | 'need_reason' | 'submitted_reason' | null>(null);
+  const [selectedReason, setSelectedReason] = useState<string>('');
+  const [feedbackComment, setFeedbackComment] = useState<string>('');
 
   // Delete Confirm Modal State
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -153,6 +163,8 @@ export default function KnowledgeBasePage() {
   // Reset feedback state when selectedArticle changes
   useEffect(() => {
     setFeedbackGiven(null);
+    setSelectedReason('');
+    setFeedbackComment('');
   }, [selectedArticle]);
 
   // ESC key listener to close active modals
@@ -201,10 +213,10 @@ export default function KnowledgeBasePage() {
     }
   };
 
-  const handleFeedback = async (isHelpful: boolean) => {
+  const handleFeedback = async (isHelpful: boolean, reason?: string, comment?: string) => {
     if (!selectedArticle || feedbackSubmitting) return;
     setFeedbackSubmitting(true);
-    setFeedbackGiven(isHelpful ? 'yes' : 'no');
+    setFeedbackGiven(isHelpful ? 'yes' : 'submitted_reason');
 
     // Optimistic UI update
     const prevHelpful = selectedArticle.helpfulCount || 0;
@@ -215,12 +227,44 @@ export default function KnowledgeBasePage() {
     const newRatio = total > 0 ? Math.round((newHelpful / total) * 100) : 100;
     const newNeedsImprovement = total >= 2 && newRatio < 70;
 
+    const existingReasons = selectedArticle.reasons || [];
+    const reasonLabel =
+      reason === 'OUTDATED'
+        ? (isEn ? 'Information is outdated / not matching' : 'Thông tin đã cũ / không giống thực tế')
+        : reason === 'MISSING_STEPS'
+        ? (isEn ? 'Missing steps / incomplete guide' : 'Thiếu bước thực hiện')
+        : reason === 'BROKEN_LINK'
+        ? (isEn ? 'Broken download link or files' : 'Không tải được phần mềm / link hỏng')
+        : reason === 'HARD_TO_UNDERSTAND'
+        ? (isEn ? 'Hard to understand / follow' : 'Khó hiểu / Không làm theo được')
+        : (isEn ? 'Other' : 'Lý do khác');
+
+    const newReasons = reason
+      ? [
+          {
+            id: `temp-${Date.now()}`,
+            reason,
+            reasonLabel,
+            comment,
+            createdAt: new Date().toISOString(),
+          },
+          ...existingReasons,
+        ]
+      : existingReasons;
+
+    const existingCounts = selectedArticle.reasonCounts || {};
+    const newCounts = reason
+      ? { ...existingCounts, [reason]: (existingCounts[reason] || 0) + 1 }
+      : existingCounts;
+
     const updatedArticle: Article = {
       ...selectedArticle,
       helpfulCount: newHelpful,
       unhelpfulCount: newUnhelpful,
       feedbackRatio: newRatio,
       needsImprovement: newNeedsImprovement,
+      reasons: newReasons,
+      reasonCounts: newCounts,
     };
     setSelectedArticle(updatedArticle);
     setArticles((prev) =>
@@ -231,7 +275,7 @@ export default function KnowledgeBasePage() {
       await fetch(`/api/kb/${selectedArticle.id}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isHelpful }),
+        body: JSON.stringify({ isHelpful, reason, comment }),
       });
       // Refresh count in background
       const refreshRes = await fetch('/api/kb').then((r) => r.json());
@@ -783,6 +827,64 @@ export default function KnowledgeBasePage() {
                     )}
                   </div>
                 )}
+
+                {/* User Feedback Reasons & Comments (Visible to IT / Admins) */}
+                {isITStaff && selectedArticle.reasons && selectedArticle.reasons.length > 0 && (
+                  <div className="mt-3 p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <span>💬</span>
+                        <span>{isEn ? `User Feedback & Issues (${selectedArticle.reasons.length} reports):` : `Lý do người dùng chưa tự sửa được (${selectedArticle.reasons.length} phản hồi):`}</span>
+                      </h4>
+                      <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
+                        {isEn ? 'IT Actionable Points' : 'Điểm cần bổ sung'}
+                      </span>
+                    </div>
+
+                    {/* Reason Counts Pills */}
+                    {selectedArticle.reasonCounts && Object.keys(selectedArticle.reasonCounts).length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {Object.entries(selectedArticle.reasonCounts).map(([code, count]) => {
+                          const label =
+                            code === 'OUTDATED'
+                              ? (isEn ? 'Outdated' : 'Thông tin cũ/sai')
+                              : code === 'MISSING_STEPS'
+                              ? (isEn ? 'Missing steps' : 'Thiếu bước')
+                              : code === 'BROKEN_LINK'
+                              ? (isEn ? 'Broken link' : 'Link hỏng')
+                              : code === 'HARD_TO_UNDERSTAND'
+                              ? (isEn ? 'Hard to follow' : 'Khó hiểu')
+                              : (isEn ? 'Other' : 'Khác');
+                          return (
+                            <span
+                              key={code}
+                              className="text-[10.5px] font-bold px-2 py-0.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                            >
+                              📌 {label}: <strong className="text-rose-600 dark:text-rose-400">{count}</strong>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Specific User Comments */}
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                      {selectedArticle.reasons.map((r) => (
+                        <div key={r.id} className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/80 text-[11px]">
+                          <div className="flex items-center justify-between text-slate-400 text-[10px]">
+                            <span className="font-bold text-amber-700 dark:text-amber-400">[{r.reasonLabel}]</span>
+                            <span>{new Date(r.createdAt).toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}</span>
+                          </div>
+                          {r.comment && (
+                            <p className="text-slate-700 dark:text-slate-200 mt-1 italic leading-relaxed">
+                              "{r.comment}"
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Rich Content Render with Lightbox Zoom */}
@@ -846,7 +948,7 @@ export default function KnowledgeBasePage() {
                         <button
                           type="button"
                           disabled={feedbackSubmitting}
-                          onClick={() => handleFeedback(false)}
+                          onClick={() => setFeedbackGiven('need_reason')}
                           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
                         >
                           <ThumbsDown className="w-3.5 h-3.5" />
@@ -856,6 +958,72 @@ export default function KnowledgeBasePage() {
                     </>
                   )}
 
+                  {feedbackGiven === 'need_reason' && (
+                    <div className="w-full space-y-3 animate-in fade-in">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <HelpCircle className="w-4 h-4 text-amber-600" />
+                          <span>{isEn ? 'Please let IT know what needs improvement:' : 'Bạn có thể cho IT biết vấn đề bạn gặp phải không?'}</span>
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleFeedback(false);
+                            setFeedbackGiven('submitted_reason');
+                          }}
+                          className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                        >
+                          {isEn ? 'Skip reason' : 'Bỏ qua lý do'}
+                        </button>
+                      </div>
+
+                      {/* 4 reason option chips */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {[
+                          { key: 'OUTDATED', label: isEn ? 'Information is outdated / not matching' : 'Thông tin đã cũ / không giống thực tế' },
+                          { key: 'MISSING_STEPS', label: isEn ? 'Missing steps / incomplete guide' : 'Thiếu bước thực hiện' },
+                          { key: 'BROKEN_LINK', label: isEn ? 'Broken download link or files' : 'Không tải được phần mềm / link hỏng' },
+                          { key: 'HARD_TO_UNDERSTAND', label: isEn ? 'Hard to understand / follow' : 'Khó hiểu / Không làm theo được' },
+                        ].map((item) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => setSelectedReason(item.key)}
+                            className={`p-2.5 rounded-xl text-xs font-semibold text-left transition-all border cursor-pointer ${
+                              selectedReason === item.key
+                                ? 'bg-amber-100 dark:bg-amber-950/70 border-amber-400 text-amber-900 dark:text-amber-200 shadow-2xs font-bold'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span className="mr-1">{selectedReason === item.key ? '✅' : '⚪'}</span>
+                            <span>{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Optional comment input & Submit */}
+                      <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={feedbackComment}
+                          onChange={(e) => setFeedbackComment(e.target.value)}
+                          placeholder={isEn ? 'Describe specific detail (optional)...' : 'Mô tả chi tiết thêm nếu có (tùy chọn)...'}
+                          className="w-full sm:flex-1 px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100 font-medium"
+                        />
+                        <button
+                          type="button"
+                          disabled={feedbackSubmitting}
+                          onClick={() => {
+                            handleFeedback(false, selectedReason || 'OTHER', feedbackComment);
+                          }}
+                          className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs whitespace-nowrap disabled:opacity-50"
+                        >
+                          {feedbackSubmitting ? (isEn ? 'Sending...' : 'Đang gửi...') : (isEn ? 'Submit Feedback' : 'Gửi Góp Ý Cho IT')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {feedbackGiven === 'yes' && (
                     <div className="w-full flex items-center gap-3 text-emerald-700 dark:text-emerald-400 text-xs font-bold animate-in fade-in">
                       <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
@@ -863,13 +1031,15 @@ export default function KnowledgeBasePage() {
                     </div>
                   )}
 
-                  {feedbackGiven === 'no' && (
+                  {feedbackGiven === 'submitted_reason' && (
                     <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
-                      <div className="text-xs text-slate-600 dark:text-slate-300 font-medium text-center sm:text-left">
-                        <span className="font-bold text-amber-600 dark:text-amber-400 block sm:inline">
-                          {isEn ? '⚠️ Still unresolved? ' : '⚠️ Vẫn chưa khắc phục được? '}
-                        </span>
-                        <span>{isEn ? 'Contact the IT Helpdesk team for direct support.' : 'Hãy gửi yêu cầu đến Đội ngũ IT để được kỹ thuật viên hỗ trợ.'}</span>
+                      <div className="text-xs text-slate-600 dark:text-slate-300 font-medium text-center sm:text-left space-y-0.5">
+                        <p className="font-bold text-amber-600 dark:text-amber-400">
+                          {isEn ? '✅ Thank you! Your feedback has been sent to the IT team to improve this guide.' : '✅ Cảm ơn bạn! Đóng góp ý kiến đã được chuyển đến Đội ngũ IT để cải tiến bài viết.'}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {isEn ? 'Still need urgent technical help? Create a support ticket right away.' : 'Nếu bạn vẫn cần xử lý gấp, hãy tạo ticket để kỹ thuật viên hỗ trợ bạn ngay.'}
+                        </p>
                       </div>
                       <Link
                         href={`/tickets?create=true&title=${encodeURIComponent((isEn ? 'Support request: ' : 'Yêu cầu hỗ trợ: ') + selectedArticle.title)}`}

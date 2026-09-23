@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Laptop,
   Key,
@@ -35,6 +36,7 @@ import {
   MapPin,
   Calendar,
   UserCheck,
+  BookOpen,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import AssetHandoverModal from '@/components/assets/asset-handover-modal';
@@ -45,6 +47,13 @@ import { PWAInstallPrompt } from '@/components/common/PWAInstallPrompt';
 type TicketFilter = 'ALL' | 'OPEN' | 'RESOLVED';
 type RightTab = 'ASSETS' | 'LICENSES';
 type GuideType = 'wifi' | 'printer' | 'password' | 'vpn' | null;
+
+const GUIDE_ARTICLE_MAP: Record<'wifi' | 'printer' | 'password' | 'vpn', { id: string; ticketTitle: string }> = {
+  wifi: { id: 'kb-wifi-info', ticketTitle: 'Hỗ trợ sự cố kết nối mạng WiFi công ty' },
+  printer: { id: 'kb-printer-list', ticketTitle: 'Hỗ trợ kết nối máy in văn phòng' },
+  password: { id: 'kb-pwd-change', ticketTitle: 'Yêu cầu mở khóa / Đặt lại mật khẩu tài khoản' },
+  vpn: { id: 'kb-vpn-forticlient', ticketTitle: 'Hỗ trợ cấu hình VPN FortiClient làm việc từ xa' },
+};
 
 export default function EmployeePortalPage() {
   const { t: tr, language } = useLanguage();
@@ -84,8 +93,30 @@ export default function EmployeePortalPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [rightTab, setRightTab] = useState<RightTab>('ASSETS');
 
-  // Quick guide modal state
+  const router = useRouter();
+
+  // Quick guide modal state & deflection
   const [activeGuide, setActiveGuide] = useState<GuideType>(null);
+  const [kbSearchQuery, setKbSearchQuery] = useState('');
+  const [deflectionSuccess, setDeflectionSuccess] = useState<string | null>(null);
+
+  const handleSelfResolved = async (guideKey: 'wifi' | 'printer' | 'password' | 'vpn') => {
+    const item = GUIDE_ARTICLE_MAP[guideKey];
+    try {
+      await fetch(`/api/kb/${item.id}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isHelpful: true, isDeflection: true }),
+      });
+    } catch (err) {
+      console.error('Failed to record deflection:', err);
+    }
+    setDeflectionSuccess(guideKey);
+    setTimeout(() => {
+      setActiveGuide(null);
+      setDeflectionSuccess(null);
+    }, 2200);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -395,7 +426,173 @@ export default function EmployeePortalPage() {
         </button>
       </div>
 
-      {/* 3. Main Dashboard Body - Two-Column Balanced Layout */}
+      {/* 3. Self-Service Knowledge Base & Quick Problem Solver */}
+      <div className="bg-gradient-to-br from-blue-50/80 via-indigo-50/30 to-slate-50 border border-blue-100 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm sm:text-base font-black text-slate-900">
+                  {isEn ? 'Self-Service IT Knowledge Base' : 'Cẩm Nang & Tự Xử Lý Sự Cố IT Nhanh'}
+                </h2>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
+                  <Sparkles className="w-3 h-3 text-blue-600" />
+                  {isEn ? 'Instant self-help' : 'Giải quyết tức thì'}
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+                {isEn
+                  ? 'Search technical guides or pick a quick solution to resolve issues without waiting for IT'
+                  : 'Tra cứu cẩm nang kỹ thuật hoặc chọn giải pháp phổ biến để tự khắc phục ngay không cần chờ IT'}
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/kb"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-white hover:bg-slate-50 px-3.5 py-1.5 rounded-xl border border-blue-200/80 shadow-2xs transition-all w-fit"
+          >
+            <span>{isEn ? 'View all KB guides' : 'Xem toàn bộ cẩm nang (KB)'}</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {/* Quick KB Search Bar */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (kbSearchQuery.trim()) {
+              router.push(`/kb?search=${encodeURIComponent(kbSearchQuery.trim())}`);
+            } else {
+              router.push('/kb');
+            }
+          }}
+          className="relative flex items-center"
+        >
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+          <input
+            type="text"
+            value={kbSearchQuery}
+            onChange={(e) => setKbSearchQuery(e.target.value)}
+            placeholder={
+              isEn
+                ? 'Search issues (e.g. Printer setup, Password reset, WiFi connection, VPN, Outlook error)...'
+                : 'Nhập sự cố bạn gặp (VD: Cài máy in tầng, Quên mật khẩu, Rớt mạng WiFi, Cài VPN, Lỗi Outlook)...'
+            }
+            className="w-full pl-10 pr-24 py-2.5 bg-white border border-slate-200/90 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs transition-all"
+          />
+          <button
+            type="submit"
+            className="absolute right-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs"
+          >
+            {isEn ? 'Search' : 'Tìm kiếm'}
+          </button>
+        </form>
+
+        {/* 4 Most Common Quick Solution Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 pt-0.5">
+          {/* 1. WiFi */}
+          <button
+            type="button"
+            onClick={() => setActiveGuide('wifi')}
+            className="p-3 sm:p-3.5 rounded-2xl bg-white hover:bg-blue-50/50 border border-slate-200/90 hover:border-blue-300 text-left transition-all cursor-pointer group shadow-2xs hover:shadow-xs flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Wifi className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </div>
+              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                CORP-WIFI
+              </span>
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+                {isEn ? 'Corporate Wi-Fi' : 'WiFi Công Ty & Khách'}
+              </h4>
+              <p className="text-[10px] sm:text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                {isEn ? 'SSID & login credentials' : 'Tên mạng, tài khoản đăng nhập'}
+              </p>
+            </div>
+          </button>
+
+          {/* 2. Printer */}
+          <button
+            type="button"
+            onClick={() => setActiveGuide('printer')}
+            className="p-3 sm:p-3.5 rounded-2xl bg-white hover:bg-amber-50/50 border border-slate-200/90 hover:border-amber-300 text-left transition-all cursor-pointer group shadow-2xs hover:shadow-xs flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </div>
+              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                \\print-server
+              </span>
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
+                {isEn ? 'Network Printer' : 'Cài Đặt Máy In Mạng'}
+              </h4>
+              <p className="text-[10px] sm:text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                {isEn ? 'Connect floor printer & drivers' : 'Kết nối máy in tầng trong 10s'}
+              </p>
+            </div>
+          </button>
+
+          {/* 3. Password */}
+          <button
+            type="button"
+            onClick={() => setActiveGuide('password')}
+            className="p-3 sm:p-3.5 rounded-2xl bg-white hover:bg-purple-50/50 border border-slate-200/90 hover:border-purple-300 text-left transition-all cursor-pointer group shadow-2xs hover:shadow-xs flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </div>
+              <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
+                Ctrl+Alt+Del
+              </span>
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-purple-700 transition-colors">
+                {isEn ? 'Password Reset' : 'Đổi & Lấy Lại Mật Khẩu'}
+              </h4>
+              <p className="text-[10px] sm:text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                {isEn ? 'Windows AD & M365 account' : 'Tài khoản máy tính & M365'}
+              </p>
+            </div>
+          </button>
+
+          {/* 4. VPN */}
+          <button
+            type="button"
+            onClick={() => setActiveGuide('vpn')}
+            className="p-3 sm:p-3.5 rounded-2xl bg-white hover:bg-emerald-50/50 border border-slate-200/90 hover:border-emerald-300 text-left transition-all cursor-pointer group shadow-2xs hover:shadow-xs flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </div>
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                FortiClient
+              </span>
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                {isEn ? 'Remote VPN Access' : 'Cài Đặt VPN Làm Từ Xa'}
+              </h4>
+              <p className="text-[10px] sm:text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                {isEn ? 'Secure work from home' : 'Truy cập mạng nội bộ an toàn'}
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* 4. Main Dashboard Body - Two-Column Balanced Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
         {/* ================= LEFT COLUMN: My Support Tickets (Primary Area) ================= */}
         <div className="lg:col-span-7 xl:col-span-8 space-y-4">
@@ -1057,15 +1254,59 @@ export default function EmployeePortalPage() {
               )}
             </div>
 
-            <div className="pt-2 border-t border-slate-100 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setActiveGuide(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-              >
-                {isEn ? 'Close' : 'Đã hiểu & Đóng'}
-              </button>
-            </div>
+            {deflectionSuccess === activeGuide ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-1.5 animate-in zoom-in-95">
+                <div className="w-9 h-9 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <p className="font-bold text-xs sm:text-sm text-emerald-800">
+                  {isEn ? 'Awesome! Problem solved!' : 'Tuyệt vời! Bạn đã tự xử lý sự cố thành công!'}
+                </p>
+                <p className="text-[11px] text-emerald-600">
+                  {isEn
+                    ? 'Thank you for resolving without an IT ticket 🎉'
+                    : 'Hệ thống đã ghi nhận bài viết hữu ích. Cảm ơn bạn đã tự khắc phục mà không cần mở ticket IT 🎉'}
+                </p>
+              </div>
+            ) : (
+              <div className="pt-3 border-t border-slate-100 space-y-2">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+                  <Link
+                    href={`/kb?search=${encodeURIComponent(activeGuide)}`}
+                    onClick={() => setActiveGuide(null)}
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 self-start sm:self-center"
+                  >
+                    <span>{isEn ? 'View full KB article' : 'Xem bài viết đầy đủ trong KB'}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </Link>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const guideKey = activeGuide;
+                        const guideInfo = GUIDE_ARTICLE_MAP[guideKey];
+                        setActiveGuide(null);
+                        setSelectedAssetForTicket('');
+                        setInitialTicketTitle(`[${guideKey.toUpperCase()}] ${guideInfo.ticketTitle}`);
+                        setIsTicketModalOpen(true);
+                      }}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                    >
+                      {isEn ? 'Still need help? Create Ticket' : 'Chưa được? Gửi Ticket'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelfResolved(activeGuide)}
+                      className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs inline-flex items-center gap-1.5"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{isEn ? 'Resolved by this!' : 'Đã tự xử lý xong!'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

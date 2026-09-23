@@ -71,6 +71,8 @@ export async function GET(
           deflectedTickets: fb.deflectedTickets || 0,
           feedbackRatio,
           needsImprovement,
+          reasons: fb.reasons || [],
+          reasonCounts: fb.reasonCounts || {},
         },
       });
     }
@@ -101,6 +103,8 @@ export async function GET(
           deflectedTickets: fb.deflectedTickets || 0,
           feedbackRatio,
           needsImprovement,
+          reasons: fb.reasons || [],
+          reasonCounts: fb.reasonCounts || {},
         },
       });
     }
