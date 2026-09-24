@@ -93,10 +93,56 @@ export function MaintenanceSchedulesTab() {
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
 
+  // Predictive Maintenance state
+  const [predictiveCandidates, setPredictiveCandidates] = useState<any[]>([]);
+  const [loadingPredictive, setLoadingPredictive] = useState(false);
+  const [creatingPredictive, setCreatingPredictive] = useState(false);
+  const [showPredictiveList, setShowPredictiveList] = useState(false);
+
   useEffect(() => {
     loadSchedules();
     loadDropdowns();
+    loadPredictiveCandidates();
   }, []);
+
+  const loadPredictiveCandidates = async () => {
+    try {
+      setLoadingPredictive(true);
+      const res = await fetch('/api/maintenance-schedules/predictive');
+      const data = await res.json();
+      if (data.success) {
+        setPredictiveCandidates(data.candidates || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingPredictive(false);
+    }
+  };
+
+  const handleBatchCreatePredictive = async (targetAssetIds?: string[]) => {
+    try {
+      setCreatingPredictive(true);
+      const ids = targetAssetIds || predictiveCandidates.map((c) => c.assetId);
+      const res = await fetch('/api/maintenance-schedules/predictive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assetIds: ids }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setToast({ type: 'success', message: data.message });
+        loadSchedules();
+        loadPredictiveCandidates();
+      } else {
+        setToast({ type: 'error', message: data.error || 'Lỗi tạo lịch bảo trì dự đoán' });
+      }
+    } catch (e: any) {
+      setToast({ type: 'error', message: e.message });
+    } finally {
+      setCreatingPredictive(false);
+    }
+  };
 
   const loadSchedules = async () => {
     setLoading(true);
@@ -479,6 +525,115 @@ export function MaintenanceSchedulesTab() {
           </button>
         </div>
       </div>
+
+      {/* Predictive Maintenance Intelligence Recommendations */}
+      {predictiveCandidates.length > 0 && (
+        <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-5 shadow-md space-y-4 animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-300 shrink-0">
+                <Sparkles className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-sm text-white flex items-center gap-1.5">
+                    <span>{isEn ? 'Predictive Maintenance Recommendations' : 'Đề Xuất Bảo Trì Dự Đoán (Predictive Engine)'}</span>
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-extrabold animate-pulse">
+                    {predictiveCandidates.length} {isEn ? 'devices at risk' : 'máy cần bảo dưỡng'}
+                  </span>
+                </div>
+                <p className="text-xs text-purple-200 mt-0.5">
+                  {isEn
+                    ? 'AI detected assets overdue for routine servicing (>6 months) or exhibiting high incident failure frequencies.'
+                    : 'Hệ thống phát hiện thiết bị chưa bảo dưỡng định kỳ > 6 tháng hoặc có tần suất hỏng hóc cao cần lập lịch kiểm tra phòng ngừa.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowPredictiveList(!showPredictiveList)}
+                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all cursor-pointer border border-white/10"
+              >
+                {showPredictiveList
+                  ? (isEn ? 'Hide List' : 'Thu gọn danh sách')
+                  : (isEn ? `Review ${predictiveCandidates.length} Assets` : `Xem ${predictiveCandidates.length} thiết bị`)}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBatchCreatePredictive()}
+                disabled={creatingPredictive}
+                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {creatingPredictive ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Zap className="w-3.5 h-3.5 fill-white" />
+                )}
+                <span>{isEn ? 'Auto-Schedule All' : '⚡ Lập Lịch Bảo Trì Tất Cả (1-Click)'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Collapsible List of Candidate Assets */}
+          {showPredictiveList && (
+            <div className="pt-2 border-t border-white/10 overflow-x-auto">
+              <table className="w-full text-left text-xs text-white">
+                <thead className="text-[10px] uppercase text-purple-300 font-bold bg-white/5 border-b border-white/10">
+                  <tr>
+                    <th className="py-2 px-3">{isEn ? 'ASSET TAG & NAME' : 'MÃ & TÊN THIẾT BỊ'}</th>
+                    <th className="py-2 px-3">{isEn ? 'ASSIGNED TO' : 'NGƯỜI ĐANG DÙNG'}</th>
+                    <th className="py-2 px-3">{isEn ? 'HEALTH & URGENCY' : 'SỨC KHỎE & MỨC ĐỘ'}</th>
+                    <th className="py-2 px-3">{isEn ? 'PREDICTION REASON' : 'NGUYÊN NHÂN DỰ ĐOÁN'}</th>
+                    <th className="py-2 px-3 text-right">{isEn ? 'ACTION' : 'THAO TÁC'}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {predictiveCandidates.map((c) => (
+                    <tr key={c.assetId} className="hover:bg-white/5 transition-colors">
+                      <td className="py-2.5 px-3">
+                        <span className="font-bold text-white block">[{c.assetTag}] {c.name}</span>
+                        <span className="text-[10px] text-purple-200">{c.categoryName || 'Thiết bị'}</span>
+                      </td>
+                      <td className="py-2.5 px-3 text-purple-200">
+                        {c.assignedTo ? `${c.assignedTo} (${c.department || 'N/A'})` : <span className="text-purple-400 italic">Trong kho</span>}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            c.urgency === 'CRITICAL' ? 'bg-rose-500 text-white' :
+                            c.urgency === 'HIGH' ? 'bg-amber-500 text-slate-900' : 'bg-blue-500 text-white'
+                          }`}>
+                            {c.urgency}
+                          </span>
+                          <span className="text-[10.5px] font-semibold text-purple-200">
+                            🩺 {c.healthScore}/100
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-purple-200 text-[11px]">
+                        {c.reasons.join(' • ')}
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        <button
+                          type="button"
+                          disabled={creatingPredictive}
+                          onClick={() => handleBatchCreatePredictive([c.assetId])}
+                          className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
+                        >
+                          + Lên lịch
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Schedules List */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">

@@ -335,6 +335,98 @@ export async function GET(req: NextRequest) {
       }
     });
 
+    // 6. Proactive Alerts: SLA Breach Risks, Spare Parts Low Stock, Zombie Licenses
+    let proactiveCount = 0;
+
+    if (isManagementRole || isAdmin) {
+      // A. SLA Breach Risks
+      try {
+        const { detectSlaBreachRisks } = await import('@/lib/sla-escalation');
+        const slaRisks = await detectSlaBreachRisks();
+        slaRisks.slice(0, 5).forEach((risk) => {
+          notifications.push({
+            id: `sla-risk-${risk.id}`,
+            ticketId: risk.id,
+            ticketNumber: risk.ticketNumber,
+            type: 'PROACTIVE',
+            subType: 'SLA_RISK',
+            severity: 'CRITICAL',
+            title: isEn ? `⚡ SLA Breach Risk: Ticket #${risk.ticketNumber}` : `⚡ Nguy cơ vỡ SLA: Ticket #${risk.ticketNumber}`,
+            message: isEn
+              ? `"${risk.title}" has only ~${risk.remainingMinutes}m remaining (${Math.round(risk.elapsedRatio * 100)}% elapsed)!`
+              : `"${risk.title}" chỉ còn ~${risk.remainingMinutes} phút (${Math.round(risk.elapsedRatio * 100)}% thời hạn)!`,
+            detail: risk.assignedTo ? `KTV: ${risk.assignedTo.fullName}` : (isEn ? 'Unassigned IT' : 'Chưa phân công KTV'),
+            link: `/tickets?search=${encodeURIComponent(risk.ticketNumber)}&id=${risk.id}`,
+            createdAt: new Date().toISOString(),
+          });
+          proactiveCount++;
+        });
+      } catch (err) {
+        console.warn('Failed to scan SLA risks for notifications:', err);
+      }
+
+      // B. Spare Parts Low Stock
+      try {
+        const allParts = await prisma.sparePart.findMany({
+          select: { id: true, name: true, sku: true, quantity: true, minStock: true, unit: true },
+          take: 50,
+        });
+        const lowStockParts = allParts.filter((p) => p.quantity <= p.minStock);
+        lowStockParts.slice(0, 5).forEach((part) => {
+          notifications.push({
+            id: `spare-part-${part.id}`,
+            type: 'PROACTIVE',
+            subType: 'SPARE_PART',
+            severity: 'WARNING',
+            title: isEn ? `⚠️ Low Spare Part Stock: ${part.name}` : `⚠️ Kho linh kiện sắp hết: ${part.name}`,
+            message: isEn
+              ? `Only ${part.quantity} ${part.unit} left (Minimum threshold: ${part.minStock}).`
+              : `Hiện chỉ còn ${part.quantity} ${part.unit} (Mức tối thiểu: ${part.minStock}).`,
+            detail: part.sku ? `Mã SKU: ${part.sku}` : undefined,
+            link: `/spare-parts`,
+            createdAt: new Date().toISOString(),
+          });
+          proactiveCount++;
+        });
+      } catch (err) {
+        console.warn('Failed to scan spare parts for notifications:', err);
+      }
+
+      // C. Zombie Licenses
+      try {
+        const zombieAssignments = await prisma.licenseAssignment.findMany({
+          where: {
+            revokedAt: null,
+            OR: [
+              { user: { isActive: false } },
+              { asset: { status: { in: ['MAINTENANCE', 'RETIRED', 'LOST'] } } },
+            ],
+          },
+          select: { id: true },
+          take: 50,
+        });
+
+        if (zombieAssignments.length > 0) {
+          notifications.push({
+            id: `zombie-licenses-waste`,
+            type: 'PROACTIVE',
+            subType: 'LICENSE_WASTE',
+            severity: 'INFO',
+            title: isEn ? `💡 Zombie Licenses Detected (${zombieAssignments.length} seats)` : `💡 Bản quyền nhàn rỗi (${zombieAssignments.length} ghế)`,
+            message: isEn
+              ? `Found ${zombieAssignments.length} assigned seat(s) on inactive users or retired assets ready to be reclaimed.`
+              : `Có ${zombieAssignments.length} ghế bản quyền gán cho nhân sự thôi việc hoặc máy ngừng dùng có thể thu hồi.`,
+            detail: isEn ? 'Click to open license management' : 'Bấm để vào trang quản lý bản quyền thu hồi',
+            link: `/licenses`,
+            createdAt: new Date().toISOString(),
+          });
+          proactiveCount++;
+        }
+      } catch (err) {
+        console.warn('Failed to scan zombie licenses for notifications:', err);
+      }
+    }
+
     // Sort descending by date
     notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -347,6 +439,7 @@ export async function GET(req: NextRequest) {
 
     const responsePayload = {
       success: true,
+      proactive: proactiveCount,
       counts: {
         total: notifications.length,
         licenses: licensesCount,
@@ -355,6 +448,7 @@ export async function GET(req: NextRequest) {
         tickets: ticketsCount,
         unassignedTickets: unassignedCount,
         myTickets: myTicketsCount,
+        proactive: proactiveCount,
       },
       summary: {
         total: notifications.length,
@@ -364,6 +458,7 @@ export async function GET(req: NextRequest) {
         warrantiesExpiring: warrantiesCount,
         unassignedTickets: unassignedCount,
         myTickets: myTicketsCount,
+        proactiveRisks: proactiveCount,
       },
       notifications,
     };

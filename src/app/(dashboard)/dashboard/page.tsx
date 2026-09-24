@@ -81,6 +81,8 @@ export default function DashboardPage() {
   const [openDrawer, setOpenDrawer] = useState<Module | null>(null);
   const [chartTab, setChartTab] = useState<'TICKETS' | 'ASSETS' | 'LICENSES' | 'SERVICES'>('TICKETS');
   const [loading, setLoading] = useState(true);
+  const [forecastData, setForecastData] = useState<any>(null);
+  const [forecastViewMode, setForecastViewMode] = useState<'CASHFLOW' | 'REPLACEMENTS'>('CASHFLOW');
 
   // ESC key listener to close drawer
   useEffect(() => {
@@ -107,12 +109,14 @@ export default function DashboardPage() {
       fetch(`/api/licenses?_t=${ts}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ success: false })),
       fetch(`/api/services?_t=${ts}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ success: false })),
       fetch(`/api/tickets?_t=${ts}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ tickets: [] })),
-    ]).then(([dashboard, assetData, licenseData, serviceData, ticketData]) => {
+      fetch(`/api/reports/it-budget-forecast?_t=${ts}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ success: false })),
+    ]).then(([dashboard, assetData, licenseData, serviceData, ticketData, budgetData]) => {
       if (dashboard?.success) setStats(dashboard.data);
       if (assetData?.success) setAssets(assetData.data || []);
       if (licenseData?.success) setLicenses(licenseData.data || []);
       if (serviceData?.success) setServices(serviceData.data || []);
       if (ticketData?.tickets) setTicketsList(ticketData.tickets || []);
+      if (budgetData?.success) setForecastData(budgetData.data);
       setLoading(false);
     });
   };
@@ -1262,6 +1266,176 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* 4.5. IT BUDGET & TCO FORECASTING COCKPIT (12-MONTH PROJECTIONS) */}
+      {forecastData && (
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-emerald-600" />
+                <span>{isEn ? '12-Month IT Budget & TCO Forecast' : 'Dự Báo Ngân Sách CNTT & TCO (12 Tháng Tới)'}</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 text-[10px] font-bold">
+                  AI & Rule Engine
+                </span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                {isEn
+                  ? 'Projected cashflow across subscriptions, software licenses, aging hardware replacement funds (CapEx), and inventory restock'
+                  : 'Dự báo dòng tiền chi trả dịch vụ Cloud/ISP, bản quyền phần mềm, quỹ thay thế máy tính suy hao (CapEx) và bổ sung linh kiện'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setForecastViewMode('CASHFLOW')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  forecastViewMode === 'CASHFLOW'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                📊 {isEn ? 'Cashflow Distribution' : 'Dòng Tiền Chi Trả'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setForecastViewMode('REPLACEMENTS')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  forecastViewMode === 'REPLACEMENTS'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <span>💻 {isEn ? 'Replacement Fund' : 'Thay Thế Thiết Bị'}</span>
+                {forecastData.summary?.replacementCandidateCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9.5px]">
+                    {forecastData.summary.replacementCandidateCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* 4 Key Budget Stat Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="p-3.5 rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 text-white space-y-1 shadow-xs">
+              <span className="text-[10.5px] font-bold text-slate-300 uppercase tracking-wider block">
+                {isEn ? 'Total 12M Budget' : 'Tổng Dự Toán 12 Tháng'}
+              </span>
+              <strong className="text-xl font-black text-emerald-400 block truncate">
+                {formatVND(forecastData.summary?.totalProjected12M || 0)}
+              </strong>
+              <span className="text-[10px] text-slate-400 block">
+                {isEn ? 'CapEx + OpEx projected' : 'Bao gồm chi phí vận hành & đầu tư'}
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-cyan-50/70 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-900 space-y-1">
+              <span className="text-[10.5px] font-bold text-cyan-800 dark:text-cyan-300 uppercase tracking-wider block">
+                {isEn ? 'Services & Telecom' : 'Dịch Vụ & Thuê Bao'}
+              </span>
+              <strong className="text-lg font-black text-cyan-900 dark:text-cyan-100 block truncate">
+                {formatVND(forecastData.summary?.serviceAnnualTotal || 0)}
+              </strong>
+              <span className="text-[10px] text-cyan-700 dark:text-cyan-400 block">
+                {forecastData.summary?.upcomingRenewalCount || 0} {isEn ? 'renewals upcoming' : 'hợp đồng sắp gia hạn'}
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900 space-y-1">
+              <span className="text-[10.5px] font-bold text-purple-800 dark:text-purple-300 uppercase tracking-wider block">
+                {isEn ? 'Software & Licenses' : 'Bản Quyền & License'}
+              </span>
+              <strong className="text-lg font-black text-purple-900 dark:text-purple-100 block truncate">
+                {formatVND(forecastData.summary?.licenseAnnualTotal || 0)}
+              </strong>
+              <span className="text-[10px] text-purple-700 dark:text-purple-400 block">
+                {forecastData.licenses?.expiringLicenses?.length || 0} {isEn ? 'packages renewing in 12M' : 'gói cần gia hạn trong năm'}
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 space-y-1">
+              <span className="text-[10.5px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider block">
+                {isEn ? 'Hardware Replacement' : 'Quỹ Thay Thế Thiết Bị (CapEx)'}
+              </span>
+              <strong className="text-lg font-black text-rose-900 dark:text-rose-100 block truncate">
+                {formatVND(forecastData.summary?.totalHardwareCapEx || 0)}
+              </strong>
+              <span className="text-[10px] text-rose-700 dark:text-rose-400 block">
+                {forecastData.summary?.replacementCandidateCount || 0} {isEn ? 'devices with Health < 40' : 'thiết bị điểm sức khỏe < 40'}
+              </span>
+            </div>
+          </div>
+
+          {/* Conditional Display: Cashflow Chart or Replacement Candidates Table */}
+          {forecastViewMode === 'CASHFLOW' ? (
+            <div className="h-60 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={forecastData.monthlyForecast || []} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#64748B' }} />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#64748B' }}
+                    tickFormatter={(val) => (val >= 1000000 ? `${(val / 1000000).toFixed(0)}Tr` : String(val))}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', fontSize: '11px' }}
+                    formatter={(val: any, name: any) => [formatVND(Number(val) || 0), name]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
+                  <Bar dataKey="services" name={isEn ? 'Services & Telecom' : 'Dịch Vụ & Cloud'} fill="#06B6D4" stackId="a" />
+                  <Bar dataKey="licenses" name={isEn ? 'License Renewals' : 'Gia Hạn Bản Quyền'} fill="#8B5CF6" stackId="a" />
+                  <Bar dataKey="hardware" name={isEn ? 'Hardware CapEx Allocation' : 'Phân Bổ Thay Thế Máy'} fill="#F43F5E" stackId="a" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="overflow-x-auto max-h-60 overflow-y-auto">
+              {forecastData.hardware?.replacementCandidates?.length === 0 ? (
+                <div className="p-6 text-center text-slate-400 text-xs">
+                  {isEn ? 'No assets currently flagged for urgent replacement.' : 'Tất cả thiết bị hiện tại đều có chỉ số sức khỏe ổn định (Health ≥ 40).'}
+                </div>
+              ) : (
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold text-[10.5px] uppercase sticky top-0">
+                    <tr>
+                      <th className="py-2 px-3">Mã & Tên Thiết Bị</th>
+                      <th className="py-2 px-3">Phòng Ban / Nhân Sự</th>
+                      <th className="py-2 px-3">Điểm Sức Khỏe</th>
+                      <th className="py-2 px-3">Lý Do Đề Xuất</th>
+                      <th className="py-2 px-3 text-right">Dự Toán Mua Mới</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {forecastData.hardware?.replacementCandidates?.map((item: any) => (
+                      <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <td className="py-2 px-3 font-semibold text-slate-800 dark:text-slate-200">
+                          [{item.assetTag}] {item.name}
+                        </td>
+                        <td className="py-2 px-3 text-slate-500">
+                          {item.assignedTo ? `${item.assignedTo} (${item.department})` : item.department}
+                        </td>
+                        <td className="py-2 px-3">
+                          <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">
+                            🩺 {item.healthScore}/100
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-slate-600 dark:text-slate-400 text-[11px]">
+                          {item.recommendationReason}
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold text-rose-600">
+                          {formatVND(item.estimatedReplacementCost)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 5. RECENT ACTIVITY & CRITICAL TICKETS LIST */}
       <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">

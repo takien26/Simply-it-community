@@ -89,6 +89,17 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {isOffboarding && (
+              <a
+                href={`/documents?search=${encodeURIComponent(docNumber)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                title="Xem trong Kho Tài Liệu"
+              >
+                📁 <span>{t('users.handover.view_in_docs', 'Kho Hồ Sơ')}</span>
+              </a>
+            )}
             <button
               type="button"
               onClick={handlePrint}

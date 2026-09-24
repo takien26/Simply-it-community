@@ -233,6 +233,108 @@ export async function POST(
       },
     });
 
+    // 6. Tự động khởi tạo Biên bản bàn giao & thu hồi thiết bị số hóa (Digital Offboarding Protocol)
+    let generatedDocument: any = null;
+    try {
+      const nowFormatted = now.toLocaleDateString('vi-VN');
+      const docCode = `BBTH-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}/${(targetUser.email?.split('@')[0] || targetUser.id.slice(0, 6)).toUpperCase()}`;
+      
+      const protocolMarkdown = `# CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+---
+## BIÊN BẢN BÀN GIAO & THU HỒI TÀI NGUYÊN CNTT KHI THÔI VIỆC
+**Mã hồ sơ:** ${docCode}
+**Ngày lập:** ${nowFormatted}
+
+### 1. THÔNG TIN NHÂN SỰ NGHỈ VIỆC
+- **Họ và tên:** ${targetUser.fullName}
+- **Email:** ${targetUser.email}
+- **Phòng ban:** ${targetUser.department || 'N/A'}
+- **Chức danh:** ${targetUser.position || 'N/A'}
+- **Đơn vị / Công ty:** ${targetUser.companyName || 'Tập đoàn'}
+
+### 2. ĐẠI DIỆN BỘ PHẬN CNTT TIẾP NHẬN
+- **Kỹ thuật viên thực hiện:** ${currentUser.name || currentUser.fullName || 'IT Administrator'} (ID: ${currentUser.userId})
+
+### 3. THIẾT BỊ & TÀI SẢN PHẦN CỨNG ĐÃ THU HỒI (${revokedAssetsDetails.length})
+${
+  revokedAssetsDetails.length === 0
+    ? '_Nhân sự không giữ tài sản phần cứng nào khi thôi việc._'
+    : '| STT | Mã tài sản | Tên thiết bị | Hãng & Model | Số Serial | Tình trạng |\n|---|---|---|---|---|---|\n' +
+      revokedAssetsDetails.map((a, i) => `| ${i + 1} | **${a.assetTag}** | ${a.name} | ${[a.brand, a.model].filter(Boolean).join(' ') || 'N/A'} | \`${a.serialNumber || 'N/A'}\` | ${a.condition || 'GOOD'} |`).join('\n')
+}
+
+### 4. TÀI KHOẢN & BẢN QUYỀN PHẦN MỀM ĐÃ THU HỒI (${revokedLicensesDetails.length})
+${
+  revokedLicensesDetails.length === 0
+    ? '_Nhân sự không được phân bổ license phần mềm đặc thù nào._'
+    : '| STT | Tên phần mềm / Gói dịch vụ | Loại bản quyền | License Key / ID |\n|---|---|---|---|\n' +
+      revokedLicensesDetails.map((l, i) => `| ${i + 1} | **${l.name}** | ${l.licenseType || 'SaaS'} | \`${l.licenseKey ? l.licenseKey.slice(0, 10) + '...' : 'System Managed'}\` |`).join('\n')
+}
+
+### 5. BIỆN PHÁP AN TOÀN THÔNG TIN & XỬ LÝ DỮ LIỆU
+- [x] Khóa tài khoản đăng nhập nội bộ, hủy phiên SSO/Email công ty.
+- [x] Đã tạo lệnh kiểm tra kỹ thuật (Sanitize / Wipe OS) cho toàn bộ máy tính thu hồi trước khi nhập kho.
+- [x] Đã điều phối chuyển giao ${transferredTicketsCount.count} ticket công việc đang mở cho kỹ thuật viên tiếp nhận.
+- [x] Nhân sự cam kết đã bàn giao toàn bộ tài liệu chuyên môn và không sao lưu dữ liệu bí mật kinh doanh.
+
+### 6. GHI CHÚ
+${notes || 'Thủ tục thôi việc hoàn tất theo quy chế công ty.'}
+
+---
+*Biên bản điện tử được xác thực và lưu trữ tự động trên Hệ thống Quản trị CNTT Simply-IT.*
+`;
+
+      generatedDocument = await prisma.document.create({
+        data: {
+          title: `Biên bản bàn giao & thu hồi tài sản - ${targetUser.fullName}`,
+          type: 'HANDOVER',
+          contractNumber: docCode,
+          companyName: targetUser.companyName || null,
+          projectName: 'Thủ tục thôi việc nhân sự',
+          documentDate: now,
+          fileUrl: `/documents?search=${encodeURIComponent(docCode)}`,
+          fileName: `${docCode}.md`,
+          fileSize: Buffer.byteLength(protocolMarkdown, 'utf8'),
+          fileType: 'text/markdown',
+          attachments: [
+            {
+              name: `${docCode}.md`,
+              url: `/documents?search=${encodeURIComponent(docCode)}`,
+              size: Buffer.byteLength(protocolMarkdown, 'utf8'),
+              type: 'text/markdown',
+              protocolData: {
+                docNumber: docCode,
+                offboardDate: now.toISOString(),
+                user: {
+                  id: targetUser.id,
+                  fullName: targetUser.fullName,
+                  email: targetUser.email,
+                  department: targetUser.department,
+                  position: targetUser.position,
+                  companyName: targetUser.companyName,
+                },
+                executor: {
+                  id: currentUser.userId,
+                  fullName: currentUser.name || currentUser.fullName || 'IT Admin',
+                },
+                revokedAssets: revokedAssetsDetails,
+                revokedLicenses: revokedLicensesDetails,
+                transferredTicketsCount: transferredTicketsCount.count,
+                contentMarkdown: protocolMarkdown,
+              },
+            },
+          ],
+          notes: protocolMarkdown,
+          createdById: currentUser.userId,
+          assetId: revokedAssetsDetails[0]?.id || null,
+          licenseId: revokedLicensesDetails[0]?.id || null,
+        },
+      });
+    } catch (docErr) {
+      console.error('Failed to create offboarding protocol document:', docErr);
+    }
+
     return NextResponse.json({
       success: true,
       message: `Đã hoàn tất thủ tục nghỉ việc cho "${targetUser.fullName}": Thu hồi ${revokedAssetsDetails.length} thiết bị, giải phóng ${revokedLicensesDetails.length} license, khóa tài khoản thành công!`,
@@ -254,6 +356,11 @@ export async function POST(
         revokedAssets: revokedAssetsDetails,
         revokedLicenses: revokedLicensesDetails,
         transferredTicketsCount: transferredTicketsCount.count,
+        document: generatedDocument ? {
+          id: generatedDocument.id,
+          documentNumber: generatedDocument.contractNumber,
+          title: generatedDocument.title,
+        } : null,
       },
     });
   } catch (error: any) {

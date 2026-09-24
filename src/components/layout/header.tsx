@@ -89,15 +89,15 @@ export function Header({
   const [currentTab, setCurrentTab] = useState<string>('');
   const [appName, setAppName] = useState('IT Asset Manager');
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [notifTab, setNotifTab] = useState<'ALL' | 'TICKETS' | 'LICENSES' | 'SERVICES'>('ALL');
+  const [notifTab, setNotifTab] = useState<'ALL' | 'PROACTIVE' | 'TICKETS' | 'LICENSES' | 'SERVICES'>('ALL');
   const [readNotifIds, setReadNotifIds] = useState<string[]>([]);
   const [notifsData, setNotifsData] = useState<{
-    summary?: { total: number; ticketsTotal: number; unassignedTickets: number; myTickets: number; licensesExpiring: number; servicesExpiring: number; warrantiesExpiring: number };
-    counts?: { total: number; tickets: number; licenses: number; services: number; unassignedTickets: number; myTickets: number };
+    summary?: { total: number; ticketsTotal: number; unassignedTickets: number; myTickets: number; licensesExpiring: number; servicesExpiring: number; warrantiesExpiring: number; proactiveRisks?: number };
+    counts?: { total: number; tickets: number; licenses: number; services: number; unassignedTickets: number; myTickets: number; proactive?: number };
     notifications: any[];
   }>({
-    summary: { total: 0, ticketsTotal: 0, unassignedTickets: 0, myTickets: 0, licensesExpiring: 0, servicesExpiring: 0, warrantiesExpiring: 0 },
-    counts: { total: 0, tickets: 0, licenses: 0, services: 0, unassignedTickets: 0, myTickets: 0 },
+    summary: { total: 0, ticketsTotal: 0, unassignedTickets: 0, myTickets: 0, licensesExpiring: 0, servicesExpiring: 0, warrantiesExpiring: 0, proactiveRisks: 0 },
+    counts: { total: 0, tickets: 0, licenses: 0, services: 0, unassignedTickets: 0, myTickets: 0, proactive: 0 },
     notifications: [],
   });
 
@@ -344,9 +344,11 @@ export function Header({
   const ticketsCount = notifsData?.counts?.tickets ?? notifsData?.summary?.ticketsTotal ?? notificationsList.filter((n) => n.type === 'TICKET').length;
   const licensesCount = notifsData?.counts?.licenses ?? notifsData?.summary?.licensesExpiring ?? notificationsList.filter((n) => n.type === 'LICENSE').length;
   const servicesCount = notifsData?.counts?.services ?? notifsData?.summary?.servicesExpiring ?? notificationsList.filter((n) => n.type === 'SERVICE').length;
+  const proactiveCount = notifsData?.counts?.proactive ?? notifsData?.summary?.proactiveRisks ?? notificationsList.filter((n) => n.type === 'PROACTIVE').length;
   const totalCount = notifsData?.counts?.total ?? notificationsList.length;
 
   const filteredNotifs = notificationsList.filter((n) => {
+    if (notifTab === 'PROACTIVE') return n.type === 'PROACTIVE';
     if (notifTab === 'TICKETS') return n.type === 'TICKET';
     if (notifTab === 'LICENSES') return n.type === 'LICENSE';
     if (notifTab === 'SERVICES') return n.type === 'SERVICE';
@@ -523,6 +525,16 @@ export function Header({
                 </button>
                 <button
                   type="button"
+                  onClick={() => setNotifTab('PROACTIVE')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1 ${
+                    notifTab === 'PROACTIVE' ? 'bg-amber-100 text-amber-900 shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <AlertTriangle className="w-3 h-3 text-amber-600" />
+                  <span>{language === 'en' ? 'Risks' : 'Rủi ro'} ({proactiveCount})</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setNotifTab('TICKETS')}
                   className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1 ${
                     notifTab === 'TICKETS' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
@@ -579,6 +591,10 @@ export function Header({
                           {item.type === 'ESCALATION' ? (
                             <div className="w-7 h-7 rounded-lg bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center font-bold text-xs shadow-2xs animate-pulse">
                               🚨
+                            </div>
+                          ) : item.type === 'PROACTIVE' ? (
+                            <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-300 text-amber-800 flex items-center justify-center font-bold text-xs shadow-2xs">
+                              {item.subType === 'SLA_RISK' ? '⚡' : item.subType === 'SPARE_PART' ? '🔩' : item.subType === 'LICENSE_WASTE' ? '💡' : '🩺'}
                             </div>
                           ) : item.type === 'TICKET' ? (
                             <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center">
