@@ -5,6 +5,7 @@ import {
   LicenseFormModal,
   CrossCompanyMatrix,
   LicenseIntegrationModal,
+  ZombieLicensesModal,
 } from '@/components/licenses';
 import { LicenseGroup, groupLicenses } from '@/components/licenses/types';
 import { exportConglomerateExcel, exportSingleLicenseExcel } from '@/components/licenses/license-excel-export';
@@ -513,6 +514,7 @@ export default function LicensesPage() {
   const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
   const [revokingAssignmentId, setRevokingAssignmentId] = useState<string | null>(null);
   const [isReclaimingAllWaste, setIsReclaimingAllWaste] = useState(false);
+  const [isWasteModalOpen, setIsWasteModalOpen] = useState(false);
 
   // Helper kiểm tra ghế lãng phí: Nhân viên nghỉ việc hoặc Thiết bị hỏng/bảo trì/thanh lý
   const isAssignmentWasteful = useCallback((a: any) => {
@@ -664,6 +666,8 @@ export default function LicensesPage() {
     const now = new Date();
     const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
+    const seenWasteAssignmentIds = new Set<string>();
+
     licenses.forEach((lic) => {
       totalSeats += lic.totalSeats || 1;
       usedSeats += lic.usedSeats || lic.assignments?.filter((a: any) => !a.revokedAt)?.length || 0;
@@ -680,7 +684,8 @@ export default function LicensesPage() {
 
       // Count inactive in direct assignments
       (lic.assignments || []).forEach((a: any) => {
-        if (isAssignmentWasteful(a)) {
+        if (isAssignmentWasteful(a) && a.id && !seenWasteAssignmentIds.has(a.id)) {
+          seenWasteAssignmentIds.add(a.id);
           inactiveSeatsCount++;
           inactivePotentialSavings += costPerSeatVnd;
         }
@@ -695,7 +700,8 @@ export default function LicensesPage() {
         const bCostPerSeat = bSeats > 0 ? (bPrice * bRate) / bSeats : costPerSeatVnd;
 
         (b.assignments || []).forEach((ba: any) => {
-          if (isAssignmentWasteful(ba)) {
+          if (isAssignmentWasteful(ba) && ba.id && !seenWasteAssignmentIds.has(ba.id)) {
+            seenWasteAssignmentIds.add(ba.id);
             inactiveSeatsCount++;
             inactivePotentialSavings += bCostPerSeat;
           }
@@ -728,6 +734,121 @@ export default function LicensesPage() {
       inactivePotentialSavings,
     };
   }, [licenses, selectedCurrency, exchangeRatesMap, isAssignmentWasteful]);
+
+  // ==================== WASTEFUL / ZOMBIE SEATS LIST ====================
+  const wastefulSeatsList = useMemo(() => {
+    const list: Array<{
+      assignmentId: string;
+      licenseId: string;
+      licenseName: string;
+      licenseKey?: string;
+      licenseType?: string;
+      licenseRef: any;
+      assignedAt?: string | Date;
+      user?: any;
+      asset?: any;
+      wasteReason: string;
+      wasteReasonBadge?: string;
+      costPerSeatVnd: number;
+    }> = [];
+    const seenAssignmentIds = new Set<string>();
+
+    licenses.forEach((lic) => {
+      const rawPrice = Number(lic.purchasePrice) || 0;
+      const cur = lic.purchaseCurrency || 'VND';
+      const recordedRate = Number((lic as any).exchangeRate || (lic as any).specs?.exchangeRate);
+      const effectiveRate = recordedRate && recordedRate > 0 ? recordedRate : (exchangeRatesMap[cur] || 1);
+      const inVnd = rawPrice * effectiveRate;
+      const licSeats = lic.totalSeats || 1;
+      const costPerSeatVnd = licSeats > 0 ? inVnd / licSeats : 0;
+
+      // Direct assignments
+      (lic.assignments || []).forEach((a: any) => {
+        if (isAssignmentWasteful(a) && a.id && !seenAssignmentIds.has(a.id)) {
+          seenAssignmentIds.add(a.id);
+          let reason = '';
+          let badge = 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border-rose-300';
+          if (a.user && a.user.isActive === false) {
+            reason = language === 'en'
+              ? 'Employee resigned / Account deactivated'
+              : 'Nhân sự đã thôi việc / Khóa tài khoản';
+            badge = 'bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200 dark:border-rose-800';
+          } else if (a.asset && ['MAINTENANCE', 'RETIRED', 'LOST'].includes(a.asset.status)) {
+            const st = a.asset.status;
+            reason = language === 'en'
+              ? `Device status: ${st}`
+              : (st === 'MAINTENANCE' ? 'Thiết bị đang bảo dưỡng/sửa chữa' : st === 'RETIRED' ? 'Thiết bị đã thanh lý/hủy' : 'Thiết bị thất lạc/mất');
+            badge = st === 'MAINTENANCE'
+              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+              : 'bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200 dark:border-rose-800';
+          }
+
+          list.push({
+            assignmentId: a.id,
+            licenseId: lic.id,
+            licenseName: lic.name,
+            licenseKey: lic.licenseKey,
+            licenseType: lic.licenseType || lic.type,
+            licenseRef: lic,
+            assignedAt: a.assignedAt,
+            user: a.user,
+            asset: a.asset,
+            wasteReason: reason,
+            wasteReasonBadge: badge,
+            costPerSeatVnd,
+          });
+        }
+      });
+
+      // Child batch assignments
+      (lic.batches || []).forEach((b: any) => {
+        const bSeats = b.totalSeats || 1;
+        const bPrice = Number(b.purchasePrice) || 0;
+        const bCur = b.purchaseCurrency || cur;
+        const bRate = b.exchangeRate || exchangeRatesMap[bCur] || 1;
+        const bCostPerSeat = bSeats > 0 ? (bPrice * bRate) / bSeats : costPerSeatVnd;
+
+        (b.assignments || []).forEach((ba: any) => {
+          if (isAssignmentWasteful(ba) && ba.id && !seenAssignmentIds.has(ba.id)) {
+            seenAssignmentIds.add(ba.id);
+            let reason = '';
+            let badge = 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border-rose-300';
+            if (ba.user && ba.user.isActive === false) {
+              reason = language === 'en'
+                ? 'Employee resigned / Account deactivated'
+                : 'Nhân sự đã thôi việc / Khóa tài khoản';
+              badge = 'bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200 dark:border-rose-800';
+            } else if (ba.asset && ['MAINTENANCE', 'RETIRED', 'LOST'].includes(ba.asset.status)) {
+              const st = ba.asset.status;
+              reason = language === 'en'
+                ? `Device status: ${st}`
+                : (st === 'MAINTENANCE' ? 'Thiết bị đang bảo dưỡng/sửa chữa' : st === 'RETIRED' ? 'Thiết bị đã thanh lý/hủy' : 'Thiết bị thất lạc/mất');
+              badge = st === 'MAINTENANCE'
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                : 'bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200 dark:border-rose-800';
+            }
+
+            list.push({
+              assignmentId: ba.id,
+              licenseId: lic.id,
+              licenseName: `${lic.name} (Lô ${b.batchNumber || b.id.slice(0, 6)})`,
+              licenseKey: b.licenseKey || lic.licenseKey,
+              licenseType: lic.licenseType || lic.type,
+              licenseRef: lic,
+              assignedAt: ba.assignedAt,
+              user: ba.user,
+              asset: ba.asset,
+              wasteReason: reason,
+              wasteReasonBadge: badge,
+              costPerSeatVnd: bCostPerSeat,
+            });
+          }
+        });
+      });
+    });
+
+    return list;
+  }, [licenses, language, exchangeRatesMap, isAssignmentWasteful]);
 
   // ==================== FILTERED LICENSES ====================
   const filteredLicenses = useMemo(() => {
@@ -1548,16 +1669,22 @@ export default function LicensesPage() {
         <>
           {/* ==================== INACTIVE / ZOMBIE LICENSES DETECTION ALERT ==================== */}
           {kpis.inactiveSeatsCount > 0 && (
-            <div className="p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border border-amber-300 dark:border-amber-700/80 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div
+              onClick={() => setIsWasteModalOpen(true)}
+              className="p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border border-amber-300 dark:border-amber-700/80 hover:border-amber-400 dark:hover:border-amber-600 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs cursor-pointer group transition-all"
+            >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-                  <AlertTriangle className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                  <AlertTriangle className="w-5 h-5 animate-pulse" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200 flex items-center gap-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200 flex items-center gap-2 flex-wrap">
                     <span>{language === 'en' ? 'Inactive / Zombie Licenses Detected' : 'Phát Hiện Bản Quyền Lãng Phí (Zombie Licenses)'}</span>
                     <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-black">
                       {kpis.inactiveSeatsCount} {language === 'en' ? 'seats' : 'ghế'}
+                    </span>
+                    <span className="text-[11px] font-medium text-amber-700/80 dark:text-amber-400 hidden md:inline">
+                      {language === 'en' ? '(Click to view list ↗)' : '(Bấm để xem danh sách chi tiết ↗)'}
                     </span>
                   </h4>
                   <p className="text-[11.5px] text-amber-800 dark:text-amber-300 mt-0.5">
@@ -1570,7 +1697,18 @@ export default function LicensesPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                {/* Nút Xem chi tiết: mở modal liệt kê từng ghế lãng phí */}
+                <button
+                  type="button"
+                  onClick={() => setIsWasteModalOpen(true)}
+                  className="px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs bg-amber-500 hover:bg-amber-600 text-white"
+                  title={language === 'en' ? 'View details of all wasted seats' : 'Xem chi tiết danh sách từng ghế lãng phí'}
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>{language === 'en' ? `View Details (${kpis.inactiveSeatsCount})` : `👁️ Xem chi tiết (${kpis.inactiveSeatsCount} ghế)`}</span>
+                </button>
+
                 <button
                   type="button"
                   disabled={isReclaimingAllWaste}
@@ -1579,7 +1717,7 @@ export default function LicensesPage() {
                   title={language === 'en' ? 'Reclaim all wasted seats at once' : 'Thu hồi toàn bộ ghế lãng phí trong 1 chạm'}
                 >
                   {isReclaimingAllWaste ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                  <span>{language === 'en' ? `Reclaim All (${kpis.inactiveSeatsCount})` : `⚡ Thu hồi tất cả (${kpis.inactiveSeatsCount} ghế)`}</span>
+                  <span>{language === 'en' ? `Reclaim All` : `⚡ Thu hồi tất cả`}</span>
                 </button>
 
                 <button
@@ -1952,17 +2090,38 @@ export default function LicensesPage() {
                             )}
 
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-extrabold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors text-[11.5px] leading-snug">
-                                  {group.name}
-                                </span>
-                                {hasBatches && (
-                                  <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-extrabold text-[10px] border border-purple-200 dark:border-purple-800 shadow-2xs inline-flex items-center gap-1">
-                                    <Package className="w-2.8 h-2.8 text-purple-600" />
-                                    <span>{group.batches.length} đợt mua</span>
-                                  </span>
-                                )}
-                              </div>
+                              {(() => {
+                                const groupWasteSeats = wastefulSeatsList.filter(
+                                  (w) => w.licenseId === group.id || group.batches?.some((b: any) => b.id === w.licenseId)
+                                );
+                                return (
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-extrabold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors text-[11.5px] leading-snug">
+                                      {group.name}
+                                    </span>
+                                    {hasBatches && (
+                                      <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-extrabold text-[10px] border border-purple-200 dark:border-purple-800 shadow-2xs inline-flex items-center gap-1">
+                                        <Package className="w-2.8 h-2.8 text-purple-600" />
+                                        <span>{group.batches.length} đợt mua</span>
+                                      </span>
+                                    )}
+                                    {groupWasteSeats.length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setIsWasteModalOpen(true);
+                                        }}
+                                        className="px-2 py-0.5 rounded-full bg-rose-100 hover:bg-rose-200 dark:bg-rose-950/80 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 font-extrabold text-[10px] border border-rose-300 dark:border-rose-800 shadow-2xs inline-flex items-center gap-1 cursor-pointer transition-all animate-pulse"
+                                        title={language === 'en' ? `Click to inspect ${groupWasteSeats.length} wasteful seats` : `Bấm để xem chi tiết ${groupWasteSeats.length} ghế lãng phí cần thu hồi`}
+                                      >
+                                        <AlertTriangle className="w-2.8 h-2.8 text-rose-600" />
+                                        <span>{groupWasteSeats.length} {language === 'en' ? 'zombie seats' : 'ghế lãng phí'}</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })()}
 
                               {/* Subtext: License Key or Batch Summary */}
                               {hasBatches ? (
@@ -2750,6 +2909,28 @@ export default function LicensesPage() {
           }
         }}
       />
+
+      {/* ==================== MODAL: CHI TIẾT GHẾ BẢN QUYỀN LÃNG PHÍ (ZOMBIE LICENSES) ==================== */}
+      <ZombieLicensesModal
+        isOpen={isWasteModalOpen}
+        onClose={() => setIsWasteModalOpen(false)}
+        wastefulSeats={wastefulSeatsList}
+        selectedCurrency={selectedCurrency}
+        exchangeRatesMap={exchangeRatesMap}
+        formatPrice={formatPrice}
+        isEn={language === 'en'}
+        onViewLicense={(licRef: any) => {
+          setSelectedDetailLicense(licRef);
+          setIsDetailModalOpen(true);
+          setIsWasteModalOpen(false);
+        }}
+        onReclaimSuccess={async () => {
+          invalidateClientCache('/api/licenses');
+          triggerDataRefresh('licenses');
+          await loadData(true);
+        }}
+      />
+
 
       {/* ==================== MODAL: XEM NHANH CHỨNG TỪ ==================== */}
       {selectedDetailLicense && (

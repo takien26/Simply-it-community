@@ -4,3 +4,4 @@ export * from './LicenseAssignModal';
 export * from './LicenseFormModal';
 export * from './CrossCompanyMatrix';
 export * from './LicenseIntegrationModal';
+export * from './ZombieLicensesModal';
