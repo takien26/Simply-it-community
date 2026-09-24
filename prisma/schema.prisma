@@ -469,6 +469,8 @@ model Asset {
   documents            Document[]
   passwordEntries      PasswordEntry[]
   maintenanceSchedules MaintenanceSchedule[]
+  health               AssetHealth?
+  healthAlerts         HealthAlert[]
 
   @@index([status])
   @@index([categoryId])
@@ -758,6 +760,7 @@ model Ticket {
   queue           SupportQueue?  @relation(fields: [queueId], references: [id])
   incident        Incident?      @relation(fields: [incidentId], references: [id])
   comments        TicketComment[]
+  healthAlerts    HealthAlert[]
 
   @@index([status])
   @@index([priority])
@@ -1376,3 +1379,90 @@ model TrashItem {
   @@index([deletedById])
   @@map("trash_items")
 }
+
+// ==================== IT HEALTH MONITORING ====================
+
+model AssetHealth {
+  id               String    @id @default(uuid()) @db.Uuid
+  assetId          String    @unique @map("asset_id") @db.Uuid
+  status           String    @default("HEALTHY") // HEALTHY | WARNING | CRITICAL | OFFLINE
+  cpuUsagePercent  Float?    @map("cpu_usage_percent")
+  ramTotalGB       Float?    @map("ram_total_gb")
+  ramUsedGB        Float?    @map("ram_used_gb")
+  ramAvailableGB   Float?    @map("ram_available_gb")
+  ramUsedPercent   Float?    @map("ram_used_percent")
+  storage          Json?     // [{ drive: "C:", totalGB: 500, freeGB: 45, usedGB: 455, usedPercent: 91 }]
+  securityStatus   Json?     // { defender: { available, enabled, realTimeProtection, signatureAgeDays }, firewall: { domain, private, public }, bitlocker: [{ drive, protectionStatus, encryptionPercentage }] }
+  windowsUpdate    Json?     // { lastUpdate, pendingReboot }
+  services         Json?     // [{ name: "WinDefend", status: "Running" }]
+  battery          Json?     // { present, percentage, healthPercent }
+  uptimeMinutes    Int?      @map("uptime_minutes")
+  lastBoot         DateTime? @map("last_boot")
+  agentVersion     String?   @map("agent_version")
+  schemaVersion    String?   @map("schema_version")
+  lastReportedAt   DateTime  @default(now()) @map("last_reported_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  asset            Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([lastReportedAt])
+  @@map("asset_health")
+}
+
+model HealthAlert {
+  id                  String    @id @default(uuid()) @db.Uuid
+  assetId             String    @map("asset_id") @db.Uuid
+  fingerprint         String    // e.g. "${assetId}:STORAGE:C:"
+  metric              String    // STORAGE | CPU | RAM | DEFENDER | FIREWALL | BITLOCKER | WINDOWS_UPDATE | AGENT_OFFLINE | PENDING_REBOOT
+  resource            String?   // "C:", "WinDefend", etc.
+  severity            String    // WARNING | CRITICAL
+  status              String    @default("ACTIVE") // ACTIVE | RESOLVED | ACKNOWLEDGED
+  currentValue        Float?    @map("current_value")
+  currentValueText    String?   @map("current_value_text")
+  thresholdValue      Float?    @map("threshold_value")
+  thresholdValueText  String?   @map("threshold_value_text")
+  message             String
+  occurrenceCount     Int       @default(1) @map("occurrence_count")
+  firstDetectedAt     DateTime  @default(now()) @map("first_detected_at")
+  lastDetectedAt      DateTime  @default(now()) @map("last_detected_at")
+  resolvedAt          DateTime? @map("resolved_at")
+  ticketId            String?   @map("ticket_id") @db.Uuid
+  metadata            Json?
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  asset               Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  ticket              Ticket?   @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  @@index([assetId])
+  @@index([fingerprint])
+  @@index([metric])
+  @@index([status])
+  @@index([severity])
+  @@index([lastDetectedAt])
+  @@map("health_alerts")
+}
+
+model HealthAlertPolicy {
+  id                   String   @id @default(uuid()) @db.Uuid
+  metric               String   @unique // STORAGE | CPU | RAM | DEFENDER | FIREWALL | BITLOCKER | WINDOWS_UPDATE | AGENT_OFFLINE | PENDING_REBOOT
+  name                 String
+  description          String?
+  isEnabled            Boolean  @default(true) @map("is_enabled")
+  warningThreshold     Float?   @map("warning_threshold")
+  criticalThreshold    Float?   @map("critical_threshold")
+  clearThreshold       Float?   @map("clear_threshold") // Hysteresis threshold
+  durationMinutes      Int      @default(0) @map("duration_minutes") // Sustained minutes required before alert
+  requiredOccurrences  Int      @default(1) @map("required_occurrences")
+  severity             String   @default("WARNING") // WARNING | CRITICAL
+  autoCreateTicket     Boolean  @default(false) @map("auto_create_ticket")
+  ticketPriority       String   @default("MEDIUM") @map("ticket_priority") // LOW | MEDIUM | HIGH | URGENT
+  notifyChannels       Json?    @map("notify_channels")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("health_alert_policies")
+}
+

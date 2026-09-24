@@ -38,11 +38,12 @@ import { GeneralSettingsTab } from '@/components/settings/general-settings-tab';
 import { SsoSettingsTab } from '@/components/settings/sso-settings-tab';
 import { LdapSettingsTab } from '@/components/settings/ldap-settings-tab';
 import { RbacSettingsTab } from '@/components/settings/rbac-settings-tab';
+import { HealthAlertPoliciesTab } from '@/components/settings/HealthAlertPoliciesTab';
 import { EnterpriseFeatureLock } from '@/components/common/EnterpriseFeatureLock';
 import { useLanguage } from '@/lib/i18n/context';
 
 interface NavItem {
-  id: 'GENERAL' | 'ALERTS' | 'EMAIL' | 'MAINTENANCE' | 'WEBHOOKS' | 'AI_COPILOT' | 'CURRENCY' | 'ROUTING' | 'RBAC' | 'SSO' | 'LDAP' | 'AUDIT' | 'LICENSE';
+  id: 'GENERAL' | 'ALERTS' | 'HEALTH_ALERTS' | 'EMAIL' | 'MAINTENANCE' | 'WEBHOOKS' | 'AI_COPILOT' | 'CURRENCY' | 'ROUTING' | 'RBAC' | 'SSO' | 'LDAP' | 'AUDIT' | 'LICENSE';
   label: string;
   icon: string;
   desc: string;
@@ -77,6 +78,7 @@ function getSettingsNavGroups(isEn: boolean, isEnterprise: boolean, activeModule
       title: isEn ? 'Integrations & Notifications' : 'Tích Hợp & Thông Báo',
       items: [
         { id: 'ALERTS', label: isEn ? 'Automated Alerts (Telegram/Email)' : 'Cảnh Báo Tự Động (Telegram/Email)', icon: '🚨', desc: isEn ? 'Scan expiry dates for IT services, licenses, warranties' : 'Quét hạn Dịch vụ IT, License, Bảo hành và bắn tin', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
+        { id: 'HEALTH_ALERTS', label: isEn ? 'Device Health & Metric Alerts' : 'Cảnh Báo IT Health & Thiết Bị', icon: '🩺', desc: isEn ? 'Threshold policies for CPU, RAM, Disk, BitLocker, Defender & Offline' : 'Cấu hình ngưỡng CPU, RAM, Ổ đĩa, Defender, BitLocker, Mất kết nối' },
         { id: 'EMAIL', label: isEn ? 'Email & SMTP Configuration' : 'Cấu Hình Email & SMTP', icon: '📧', desc: isEn ? 'Mail servers & 7 automated notification email templates' : 'Máy chủ gửi mail & 7 mẫu email có link CTA' },
         { id: 'WEBHOOKS', label: isEn ? 'Multi-Channel Webhooks' : 'Webhook Đa Kênh (Teams/Zalo)', icon: '🔔', desc: isEn ? 'Instant alerts to Teams, Zalo, Slack webhooks' : 'Bắn thông báo tức thời qua Zalo, Teams, Slack', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
       ],
@@ -101,7 +103,7 @@ function getSettingsNavGroups(isEn: boolean, isEnterprise: boolean, activeModule
 export default function SettingsPage() {
   const { language, setLanguage, t, supportedLanguages } = useLanguage();
   const isEn = language === 'en';
-  const [activeTab, setActiveTab] = useState<'GENERAL' | 'ALERTS' | 'EMAIL' | 'MAINTENANCE' | 'WEBHOOKS' | 'AI_COPILOT' | 'CURRENCY' | 'ROUTING' | 'RBAC' | 'SSO' | 'LDAP' | 'AUDIT' | 'LICENSE'>('GENERAL');
+  const [activeTab, setActiveTab] = useState<'GENERAL' | 'ALERTS' | 'HEALTH_ALERTS' | 'EMAIL' | 'MAINTENANCE' | 'WEBHOOKS' | 'AI_COPILOT' | 'CURRENCY' | 'ROUTING' | 'RBAC' | 'SSO' | 'LDAP' | 'AUDIT' | 'LICENSE'>('GENERAL');
   const [isEnterprise, setIsEnterprise] = useState<boolean>(false);
   const [activeModules, setActiveModules] = useState<string[]>([]);
   const [searchFilter, setSearchFilter] = useState('');
@@ -992,6 +994,9 @@ export default function SettingsPage() {
               />
             )
           )}
+
+          {/* TAB: HEALTH ALERTS */}
+          {activeTab === 'HEALTH_ALERTS' && <HealthAlertPoliciesTab />}
 
           {/* TAB 8: EMAIL */}
           {activeTab === 'EMAIL' && <EmailSettingsTab />}

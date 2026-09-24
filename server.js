@@ -364,6 +364,21 @@ async function initServer() {
   // Initial check 120s after startup, then check every hour
   setTimeout(triggerDailyBackup, 120000);
   setInterval(triggerDailyBackup, 60 * 60 * 1000);
+
+  // 9. Automated IT Health Offline Detection Engine (Runs every 5 minutes)
+  function triggerHealthOfflineCron() {
+    try {
+      const req = http.request(`http://127.0.0.1:${HTTP_PORT}/api/cron/health-offline`, { headers: { 'x-cron-secret': process.env.CRON_SECRET || 'simply-internal-cron' } }, (res) => {
+        if (res.statusCode === 200) {
+          // Silent success
+        }
+      });
+      req.on('error', () => {});
+      req.end();
+    } catch (e) {}
+  }
+  setTimeout(triggerHealthOfflineCron, 45000);
+  setInterval(triggerHealthOfflineCron, 5 * 60 * 1000);
 }
 
 initServer().catch((err) => {

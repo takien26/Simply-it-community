@@ -39,6 +39,7 @@ import {
   Key,
   Check,
 } from 'lucide-react';
+import { HealthOverviewTab } from '@/components/discovery/HealthOverviewTab';
 
 interface DiscoveredDevice {
   ipAddress: string;
@@ -155,7 +156,7 @@ export default function DiscoveryPage() {
     return () => window.removeEventListener('simply:license-updated', handleUpdate);
   }, []);
 
-  const [activeTab, setActiveTab] = useState<'SCAN' | 'AI_ENRICH' | 'GUIDE'>('SCAN');
+  const [activeTab, setActiveTab] = useState<'SCAN' | 'HEALTH' | 'AI_ENRICH' | 'GUIDE'>('SCAN');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // TAB 1: Network Scanner State
@@ -595,6 +596,19 @@ export default function DiscoveryPage() {
 
         <button
           type="button"
+          onClick={() => setActiveTab('HEALTH')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+            activeTab === 'HEALTH'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5" />
+          <span>{isEn ? '2. IT Health Fleet Monitor' : '2. Giám Sát Sức Khỏe IT Health'}</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('AI_ENRICH')}
           className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'AI_ENRICH'
@@ -603,7 +617,7 @@ export default function DiscoveryPage() {
           }`}
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-          <span>{isEn ? '2. AI Spec Lookup' : '2. Tra Cứu Thông Số Model (AI)'}</span>
+          <span>{isEn ? '3. AI Spec Lookup' : '3. Tra Cứu Thông Số Model (AI)'}</span>
         </button>
 
         <button
@@ -616,7 +630,7 @@ export default function DiscoveryPage() {
           }`}
         >
           <Terminal className="w-3.5 h-3.5" />
-          <span>{isEn ? '3. PowerShell & Deployment Guide' : '3. Script PowerShell & Hướng Dẫn'}</span>
+          <span>{isEn ? '4. PowerShell & Deployment Guide' : '4. Script PowerShell & Hướng Dẫn'}</span>
         </button>
       </div>
 
@@ -875,6 +889,13 @@ export default function DiscoveryPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 2: IT HEALTH FLEET MONITOR */}
+      {/* ======================================================== */}
+      {activeTab === 'HEALTH' && (
+        <HealthOverviewTab />
       )}
 
       {/* ======================================================== */}

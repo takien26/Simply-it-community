@@ -10,6 +10,7 @@ const publicRoutes = [
   '/api/license',
   '/api/auto-scan',
   '/api/v1/auto-scan',
+  '/api/v1/health',
   '/api/scripts',
   '/secret',
   '/api/passwords/share',

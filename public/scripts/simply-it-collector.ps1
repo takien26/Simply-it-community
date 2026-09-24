@@ -14,7 +14,10 @@
 # ==============================================================================
 
 param(
-    [string]$ServerUrl = "__AUTO__"
+    [string]$ServerUrl = "__AUTO__",
+    [ValidateSet("Inventory", "Health", "Install")]
+    [string]$Mode = "Inventory",
+    [int]$IntervalMinutes = 15
 )
 
 # Set UTF-8 Output Encoding for console compatibility
@@ -134,6 +137,33 @@ function Get-NetworkSafe {
         MAC         = ""
         Description = ""
     }
+}
+
+# Safe Serial Number detection with robust blacklist filtering
+$genericSerials = @(
+    "Default string",
+    "To be filled by O.E.M.",
+    "None",
+    "System Serial Number",
+    "All Series",
+    "0123456789",
+    "1234567890",
+    "Chassis Serial Number",
+    "Not Specified",
+    "System Manufacturer"
+)
+
+function Test-IsGenericSerial {
+    param([string]$Serial)
+    if ([string]::IsNullOrWhiteSpace($Serial)) { return $true }
+    $s = $Serial.Trim()
+    if ($s.Length -lt 3) { return $true }
+    foreach ($g in $genericSerials) {
+        if ($s -ieq $g -or $s.ToLower().StartsWith($g.ToLower())) {
+            return $true
+        }
+    }
+    return $false
 }
 
 function Get-SoftwareSafe {
@@ -362,6 +392,503 @@ function Get-CrackDetectionSafe {
     }
 }
 
+# ==============================================================================
+# IT HEALTH MONITORING COLLECTORS (Lightweight, 1-3 seconds, isolated try/catch)
+# ==============================================================================
+
+function Get-HealthCpu {
+    try {
+        $cpus = @(Get-CimCompat "Win32_Processor")
+        if ($cpus.Count -gt 0) {
+            $avg = ($cpus | Measure-Object -Property LoadPercentage -Average).Average
+            if ($null -ne $avg) {
+                return @{ usagePercent = [math]::Round([double]$avg, 1) }
+            }
+        }
+    } catch {
+        Log "Health CPU failed: $($_.Exception.Message)"
+    }
+    return @{ usagePercent = $null }
+}
+
+function Get-HealthRam {
+    try {
+        $os = Get-CimCompat "Win32_OperatingSystem"
+        if ($os) {
+            $totalKb = [double]$os.TotalVisibleMemorySize
+            $freeKb  = [double]$os.FreePhysicalMemory
+            if ($totalKb -gt 0) {
+                $totalGB = [math]::Round($totalKb / (1024 * 1024), 2)
+                $freeGB  = [math]::Round($freeKb / (1024 * 1024), 2)
+                $usedGB  = [math]::Round($totalGB - $freeGB, 2)
+                $usedPct = [math]::Round(($usedGB / $totalGB) * 100, 1)
+                return @{
+                    totalGB     = $totalGB
+                    usedGB      = $usedGB
+                    availableGB = $freeGB
+                    usedPercent = $usedPct
+                }
+            }
+        }
+    } catch {
+        Log "Health RAM failed: $($_.Exception.Message)"
+    }
+    return @{ totalGB = $null; usedGB = $null; availableGB = $null; usedPercent = $null }
+}
+
+function Get-HealthStorage {
+    $drives = @()
+    try {
+        $disks = @(Get-CimCompat "Win32_LogicalDisk" | Where-Object { $_.DriveType -eq 3 })
+        foreach ($d in $disks) {
+            try {
+                $size = [double]$d.Size
+                $free = [double]$d.FreeSpace
+                if ($size -gt 0) {
+                    $totalGB = [math]::Round($size / (1024 * 1024 * 1024), 1)
+                    $freeGB  = [math]::Round($free / (1024 * 1024 * 1024), 1)
+                    $usedGB  = [math]::Round($totalGB - $freeGB, 1)
+                    $usedPct = [math]::Round(($usedGB / $totalGB) * 100, 1)
+                    $drives += @{
+                        drive       = [string]$d.DeviceID
+                        totalGB     = $totalGB
+                        freeGB      = $freeGB
+                        usedGB      = $usedGB
+                        usedPercent = $usedPct
+                    }
+                }
+            } catch {}
+        }
+    } catch {
+        Log "Health Storage failed: $($_.Exception.Message)"
+    }
+    return @($drives)
+}
+
+function Get-HealthDefender {
+    $result = @{
+        available          = $false
+        enabled            = $false
+        realTimeProtection = $false
+        signatureAgeDays   = $null
+    }
+    try {
+        if (Get-Command Get-MpComputerStatus -ErrorAction SilentlyContinue) {
+            $mp = Get-MpComputerStatus -ErrorAction Stop
+            if ($mp) {
+                $sigAge = if ($mp.AntivirusSignatureAge) { [int]$mp.AntivirusSignatureAge } else { 0 }
+                return @{
+                    available          = $true
+                    enabled            = [bool]$mp.AntivirusEnabled
+                    realTimeProtection = [bool]$mp.RealTimeProtectionEnabled
+                    signatureAgeDays   = $sigAge
+                }
+            }
+        }
+    } catch {
+        Log "Get-MpComputerStatus failed: $($_.Exception.Message)"
+    }
+
+    try {
+        $av = Get-CimInstance -Namespace root\SecurityCenter2 -ClassName AntiVirusProduct -ErrorAction Stop |
+            Where-Object { $_.displayName -match "Defender" } | Select-Object -First 1
+        if ($av) {
+            return @{
+                available          = $true
+                enabled            = $true
+                realTimeProtection = $true
+                signatureAgeDays   = $null
+            }
+        }
+    } catch {}
+
+    return $result
+}
+
+function Get-HealthFirewall {
+    $result = @{
+        domain  = $null
+        private = $null
+        public  = $null
+    }
+    try {
+        if (Get-Command Get-NetFirewallProfile -ErrorAction SilentlyContinue) {
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            foreach ($p in $profiles) {
+                if ($p.Name -ieq "Domain") { $result.domain = [bool]$p.Enabled }
+                if ($p.Name -ieq "Private") { $result.private = [bool]$p.Enabled }
+                if ($p.Name -ieq "Public") { $result.public = [bool]$p.Enabled }
+            }
+            return $result
+        }
+    } catch {
+        Log "Get-NetFirewallProfile failed: $($_.Exception.Message)"
+    }
+
+    try {
+        $netsh = netsh advfirewall show allprofiles state
+        $result.domain  = [bool]($netsh -match "Domain Profile[\s\S]*?State\s+ON")
+        $result.private = [bool]($netsh -match "Private Profile[\s\S]*?State\s+ON")
+        $result.public  = [bool]($netsh -match "Public Profile[\s\S]*?State\s+ON")
+    } catch {}
+
+    return $result
+}
+
+function Get-HealthBitLocker {
+    $volumes = @()
+    try {
+        if (Get-Command Get-BitLockerVolume -ErrorAction SilentlyContinue) {
+            $bvs = @(Get-BitLockerVolume -ErrorAction Stop)
+            foreach ($bv in $bvs) {
+                $status = switch ([int]$bv.ProtectionStatus) {
+                    1 { "On" }
+                    0 { "Off" }
+                    default { [string]$bv.ProtectionStatus }
+                }
+                $volumes += @{
+                    drive                = [string]$bv.MountPoint
+                    protectionStatus     = $status
+                    encryptionPercentage = [int]$bv.EncryptionPercentage
+                }
+            }
+            return @($volumes)
+        }
+    } catch {
+        Log "Get-BitLockerVolume failed: $($_.Exception.Message)"
+    }
+
+    try {
+        $wmiBv = Get-CimInstance -Namespace root\CIMv2\Security\MicrosoftVolumeEncryption -ClassName Win32_EncryptableVolume -ErrorAction Stop
+        foreach ($wb in $wmiBv) {
+            $volumes += @{
+                drive                = [string]$wb.DriveLetter
+                protectionStatus     = if ($wb.ProtectionStatus -eq 1) { "On" } else { "Off" }
+                encryptionPercentage = $null
+            }
+        }
+    } catch {}
+
+    return @($volumes)
+}
+
+function Get-HealthWindowsUpdate {
+    $result = @{
+        lastUpdate        = $null
+        pendingReboot     = $false
+        rebootPendingDays = 0
+    }
+
+    try {
+        $rebootPending = $false
+        $keys = @(
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending",
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired",
+            "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\PendingFileRenameOperations"
+        )
+        foreach ($k in $keys) {
+            if (Test-Path $k) {
+                $rebootPending = $true
+                break
+            }
+        }
+        $result.pendingReboot = $rebootPending
+    } catch {}
+
+    try {
+        $detectKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\Results\Detect"
+        if (Test-Path $detectKey) {
+            $lastDetect = (Get-ItemProperty $detectKey -Name LastSuccessTime -ErrorAction SilentlyContinue).LastSuccessTime
+            if ($lastDetect) {
+                $result.lastUpdate = [string]$lastDetect
+            }
+        }
+    } catch {}
+
+    if (-not $result.lastUpdate) {
+        try {
+            $qfe = Get-CimCompat "Win32_QuickFixEngineering" | Sort-Object InstalledOn -Descending | Select-Object -First 1
+            if ($qfe -and $qfe.InstalledOn) {
+                $result.lastUpdate = [string]$qfe.InstalledOn
+            }
+        } catch {}
+    }
+
+    return $result
+}
+
+function Get-HealthServices {
+    $targetServices = @("WinDefend", "wuauserv", "LanmanWorkstation")
+    $list = @()
+    foreach ($svcName in $targetServices) {
+        try {
+            $s = Get-Service -Name $svcName -ErrorAction SilentlyContinue
+            if ($s) {
+                $list += @{
+                    name        = [string]$s.Name
+                    status      = [string]$s.Status
+                    displayName = [string]$s.DisplayName
+                }
+            }
+        } catch {}
+    }
+    return @($list)
+}
+
+function Get-HealthBattery {
+    try {
+        $bats = @(Get-CimCompat "Win32_Battery")
+        if ($bats.Count -gt 0) {
+            $b = $bats[0]
+            return @{
+                present       = $true
+                percentage    = [int]$b.EstimatedChargeRemaining
+                healthPercent = if ($b.DesignCapacity -and $b.FullChargeCapacity -and $b.DesignCapacity -gt 0) {
+                    [math]::Round(($b.FullChargeCapacity / $b.DesignCapacity) * 100, 0)
+                } else { $null }
+            }
+        }
+    } catch {}
+    return @{ present = $false; percentage = $null; healthPercent = $null }
+}
+
+function Get-HealthUptime {
+    try {
+        $os = Get-CimCompat "Win32_OperatingSystem"
+        if ($os -and $os.LastBootUpTime) {
+            $boot = [datetime]$os.LastBootUpTime
+            $diff = (Get-Date) - $boot
+            return @{
+                lastBoot      = $boot.ToString("o")
+                uptimeMinutes = [int][math]::Floor($diff.TotalMinutes)
+            }
+        }
+    } catch {}
+    return @{ lastBoot = $null; uptimeMinutes = $null }
+}
+
+function Install-HealthTask {
+    param(
+        [string]$TargetServerUrl,
+        [int]$Minutes = 15
+    )
+
+    $TaskName = "SIMPLY IT Agent Health"
+    $InstallDir = $AgentRoot
+    $TargetScript = Join-Path $InstallDir "simply-it-agent.ps1"
+
+    Write-Host "[Install] Dang cai dat Scheduled Task '$TaskName' (Chu ky: $Minutes phut)..." -ForegroundColor Cyan
+    Log "INSTALL: Starting installation of Scheduled Task '$TaskName' with interval $Minutes min"
+
+    try {
+        $currentScriptPath = $MyInvocation.MyCommand.Definition
+        if ($currentScriptPath -and (Test-Path $currentScriptPath)) {
+            Copy-Item -Path $currentScriptPath -Destination $TargetScript -Force -ErrorAction SilentlyContinue
+            Log "INSTALL: Copied current script to $TargetScript"
+        }
+
+        if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) {
+            $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+            if ($existingTask) {
+                Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+                Log "INSTALL: Removed existing task to prevent duplicates"
+            }
+
+            $action = New-ScheduledTaskAction -Execute "powershell.exe" `
+                -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -NonInteractive -File `"$TargetScript`" -Mode Health -ServerUrl `"$TargetServerUrl`""
+
+            $timespan = New-TimeSpan -Minutes $Minutes
+            $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval $timespan
+            $principal = New-ScheduledTaskPrincipal -UserId "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+            $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
+
+            Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+
+            Write-Host "==========================================================" -ForegroundColor Green
+            Write-Host "   [SIMPLY IT] CAI DAT HEALTH TASK THANH CONG!            " -ForegroundColor Green
+            Write-Host "   Task Name: $TaskName" -ForegroundColor Yellow
+            Write-Host "   Chu ky   : Moi $Minutes phut" -ForegroundColor Yellow
+            Write-Host "   Quyen    : NT AUTHORITY\SYSTEM" -ForegroundColor Yellow
+            Write-Host "   Script   : $TargetScript" -ForegroundColor Yellow
+            Write-Host "==========================================================" -ForegroundColor Green
+            Log "INSTALL: Successfully registered task '$TaskName' under SYSTEM"
+            return $true
+        } else {
+            $schCmd = "schtasks.exe /Create /TN `"$TaskName`" /TR `"powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File `\`"$TargetScript`\`" -Mode Health -ServerUrl `\`"$TargetServerUrl`\`"`" /SC MINUTE /MO $Minutes /RU `"SYSTEM`" /RL HIGHEST /F"
+            cmd.exe /c $schCmd | Out-Null
+            Log "INSTALL: Created task via schtasks fallback"
+            return $true
+        }
+    } catch {
+        Write-Host "   [SIMPLY IT] LOI CAI DAT TASK: $($_.Exception.Message)" -ForegroundColor Red
+        Log "INSTALL FAILED: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+# --------------------------------------------------------------------------
+# SANITIZE PAYLOAD - PostgreSQL does not accept NUL (U+0000) in text fields.
+# Some Windows WMI/Registry values can contain embedded NUL characters.
+# Clean recursively before JSON serialization so the API cannot receive them.
+# --------------------------------------------------------------------------
+function Remove-NullCharacters {
+    param(
+        [Parameter(Mandatory = $false)]
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    if ($Value -is [string]) {
+        if ($Value.IndexOf([char]0) -ge 0) {
+            return $Value.Replace([string][char]0, "")
+        }
+        return $Value
+    }
+
+    if ($Value -is [System.Collections.IDictionary]) {
+        $clean = @{}
+        foreach ($key in $Value.Keys) {
+            $cleanKey = if ($key -is [string]) {
+                ([string]$key).Replace([string][char]0, "")
+            } else {
+                $key
+            }
+            $clean[$cleanKey] = Remove-NullCharacters $Value[$key]
+        }
+        return $clean
+    }
+
+    if ($Value -is [System.Collections.IEnumerable] -and
+        -not ($Value -is [System.Management.Automation.PSObject])) {
+        $items = @()
+        foreach ($item in $Value) {
+            $items += ,(Remove-NullCharacters $item)
+        }
+        return $items
+    }
+
+    if ($Value.PSObject -and $Value.PSObject.Properties.Count -gt 0) {
+        $clean = [ordered]@{}
+        foreach ($prop in $Value.PSObject.Properties) {
+            $clean[$prop.Name] = Remove-NullCharacters $prop.Value
+        }
+        return $clean
+    }
+
+    return $Value
+}
+
+# ==============================================================================
+# MODE DISPATCHER: Install / Health / Inventory (Default)
+# ==============================================================================
+
+if ($Mode -eq "Install") {
+    Install-HealthTask -TargetServerUrl $ServerUrl -Minutes $IntervalMinutes
+    exit 0
+}
+
+if ($Mode -eq "Health") {
+    Write-Host "==========================================================" -ForegroundColor Cyan
+    Write-Host "   SIMPLY IT - THU THAP CHI SO SINH TON (HEALTH REPORT)   " -ForegroundColor Yellow
+    Write-Host "==========================================================" -ForegroundColor Cyan
+    Log "===== SIMPLY IT HEALTH AGENT START ====="
+
+    try {
+        $bios      = Get-CimCompat "Win32_BIOS"
+        $csProduct = Get-CimCompat "Win32_ComputerSystemProduct"
+        $hostname  = [string]$env:COMPUTERNAME
+
+        $serialNumber = [string]$bios.SerialNumber
+        if (Test-IsGenericSerial $serialNumber) {
+            $serialNumber = [string]$csProduct.IdentifyingNumber
+        }
+        if (Test-IsGenericSerial $serialNumber) {
+            $serialNumber = ""
+        }
+
+        $healthPayload = [ordered]@{
+            hostname       = $hostname
+            serialNumber   = $serialNumber
+            agent          = @{
+                version       = "4.1.0"
+                schemaVersion = "1.0"
+                collectedAt   = (Get-Date).ToString("o")
+            }
+            cpu            = Get-HealthCpu
+            ram            = Get-HealthRam
+            storage        = Get-HealthStorage
+            security       = @{
+                defender  = Get-HealthDefender
+                firewall  = Get-HealthFirewall
+                bitlocker = Get-HealthBitLocker
+            }
+            windowsUpdate  = Get-HealthWindowsUpdate
+            services       = Get-HealthServices
+            battery        = Get-HealthBattery
+            uptime         = Get-HealthUptime
+        }
+
+        $healthPayloadClean = Remove-NullCharacters $healthPayload
+        $jsonHealth = $healthPayloadClean | ConvertTo-Json -Depth 8 -Compress
+
+        $HealthJsonFile = Join-Path $AgentRoot "SimplyIT-last-health.json"
+        try {
+            $healthPayloadClean | ConvertTo-Json -Depth 8 | Set-Content -Path $HealthJsonFile -Encoding UTF8
+            Log "Health payload saved to $HealthJsonFile"
+        } catch {}
+
+        $healthEndpoints = @(
+            "$ServerUrl/api/v1/health/report",
+            "http://127.0.0.1:3001/api/v1/health/report",
+            "http://localhost:3001/api/v1/health/report"
+        ) | Select-Object -Unique
+
+        $sentHealth = $false
+        foreach ($hep in $healthEndpoints) {
+            if ($sentHealth) { break }
+            try {
+                Log "POST $hep ..."
+                $webReq = [System.Net.HttpWebRequest]::Create($hep)
+                $webReq.Method = "POST"
+                $webReq.ContentType = "application/json; charset=utf-8"
+                $webReq.Timeout = 15000
+                $webReq.UserAgent = "SimplyIT-Agent-Health/4.1.0"
+
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes($jsonHealth)
+                $webReq.ContentLength = $bytes.Length
+
+                $reqStream = $webReq.GetRequestStream()
+                $reqStream.Write($bytes, 0, $bytes.Length)
+                $reqStream.Close()
+
+                $resp = $webReq.GetResponse()
+                $respStream = $resp.GetResponseStream()
+                $reader = New-Object System.IO.StreamReader($respStream, [System.Text.Encoding]::UTF8)
+                $respText = $reader.ReadToEnd()
+                $reader.Close()
+                $resp.Close()
+
+                $sentHealth = $true
+                Write-Host "   [SIMPLY IT] GUI BAO CAO HEALTH THANH CONG!" -ForegroundColor Green
+                Log "HEALTH SUCCESS: $hep"
+            } catch {
+                Log "HEALTH FAILED $hep : $($_.Exception.Message)"
+            }
+        }
+    } catch {
+        Log "HEALTH FATAL: $($_.Exception.Message)"
+    }
+
+    Log "===== SIMPLY IT HEALTH AGENT END ====="
+    exit 0
+}
+
+# ==============================================================================
+# MODE = "Inventory" (DEFAULT / ORIGINAL v4 EXECUTION)
+# ==============================================================================
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "   SIMPLY IT - THU THAP PHAN CUNG, PHAN MEM & BAN QUYEN   " -ForegroundColor Yellow
 Write-Host "==========================================================" -ForegroundColor Cyan
@@ -392,33 +919,6 @@ try {
     $osObj      = Get-CimCompat "Win32_OperatingSystem"
     $enclosure  = Get-CimCompat "Win32_SystemEnclosure"
     $batteries  = @(Get-CimCompat "Win32_Battery")
-
-    # Safe Serial Number detection with robust blacklist filtering
-    $genericSerials = @(
-        "Default string",
-        "To be filled by O.E.M.",
-        "None",
-        "System Serial Number",
-        "All Series",
-        "0123456789",
-        "1234567890",
-        "Chassis Serial Number",
-        "Not Specified",
-        "System Manufacturer"
-    )
-
-    function Test-IsGenericSerial {
-        param([string]$Serial)
-        if ([string]::IsNullOrWhiteSpace($Serial)) { return $true }
-        $s = $Serial.Trim()
-        if ($s.Length -lt 3) { return $true }
-        foreach ($g in $genericSerials) {
-            if ($s -ieq $g -or $s.ToLower().StartsWith($g.ToLower())) {
-                return $true
-            }
-        }
-        return $false
-    }
 
     $serialNumber = [string]$bios.SerialNumber
     if (Test-IsGenericSerial $serialNumber) {
@@ -547,61 +1047,6 @@ try {
         officeLicense     = $OfficeLicense
         crackDetection    = $CrackDetection
         scannedAt         = (Get-Date).ToString("o")
-    }
-
-    # --------------------------------------------------------------------------
-    # SANITIZE PAYLOAD - PostgreSQL does not accept NUL (U+0000) in text fields.
-    # Some Windows WMI/Registry values can contain embedded NUL characters.
-    # Clean recursively before JSON serialization so the API cannot receive them.
-    # --------------------------------------------------------------------------
-    function Remove-NullCharacters {
-        param(
-            [Parameter(Mandatory = $false)]
-            $Value
-        )
-
-        if ($null -eq $Value) {
-            return $null
-        }
-
-        if ($Value -is [string]) {
-            if ($Value.IndexOf([char]0) -ge 0) {
-                return $Value.Replace([string][char]0, "")
-            }
-            return $Value
-        }
-
-        if ($Value -is [System.Collections.IDictionary]) {
-            $clean = @{}
-            foreach ($key in $Value.Keys) {
-                $cleanKey = if ($key -is [string]) {
-                    ([string]$key).Replace([string][char]0, "")
-                } else {
-                    $key
-                }
-                $clean[$cleanKey] = Remove-NullCharacters $Value[$key]
-            }
-            return $clean
-        }
-
-        if ($Value -is [System.Collections.IEnumerable] -and
-            -not ($Value -is [System.Management.Automation.PSObject])) {
-            $items = @()
-            foreach ($item in $Value) {
-                $items += ,(Remove-NullCharacters $item)
-            }
-            return $items
-        }
-
-        if ($Value.PSObject -and $Value.PSObject.Properties.Count -gt 0) {
-            $clean = [ordered]@{}
-            foreach ($prop in $Value.PSObject.Properties) {
-                $clean[$prop.Name] = Remove-NullCharacters $prop.Value
-            }
-            return $clean
-        }
-
-        return $Value
     }
 
     $payloadClean = Remove-NullCharacters $payload

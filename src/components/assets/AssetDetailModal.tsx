@@ -53,6 +53,7 @@ import {
   getFriendlySpecLabel,
 } from './types';
 import { AssetTimeline360 } from './AssetTimeline360';
+import { AssetHealthTab } from './AssetHealthTab';
 
 export interface AssetDetailModalProps {
   isOpen: boolean;
@@ -105,7 +106,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const [detailSoftwareFilter, setDetailSoftwareFilter] = useState<'ALL' | 'MATCHED' | 'UNMANAGED' | 'CRACK' | 'OTHER'>('ALL');
   const [detailMaintenanceLogs, setDetailMaintenanceLogs] = useState<any[]>([]);
   const [isUpdatingDepreciation, setIsUpdatingDepreciation] = useState(false);
-  const [mainTab, setMainTab] = useState<'details' | 'timeline'>('details');
+  const [mainTab, setMainTab] = useState<'details' | 'timeline' | 'health'>('details');
   const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
   const [handoverMode, setHandoverMode] = useState<'HANDOVER' | 'RETURN'>('HANDOVER');
 
@@ -324,6 +325,18 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                   <Clock className="w-3.5 h-3.5" />
                   <span>🌟 {txt('Vòng Đời 360° (Lifecycle Journey)', '360° Lifecycle Journey', '360° ライフサイクル履歴')}</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setMainTab('health')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    mainTab === 'health'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>🩺 {txt('Sức Khỏe & Giám Sát (Health)', 'IT Health & Telemetry', 'IT健康・稼働状況')}</span>
+                </button>
               </div>
 
               {/* Scrollable Body */}
@@ -332,6 +345,11 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                   <AssetTimeline360
                     assetId={selectedDetailAsset.id}
                     asset={selectedDetailAsset}
+                  />
+                ) : mainTab === 'health' ? (
+                  <AssetHealthTab
+                    assetId={selectedDetailAsset.id}
+                    assetName={selectedDetailAsset.name}
                   />
                 ) : (
                   <>
