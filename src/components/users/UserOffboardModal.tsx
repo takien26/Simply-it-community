@@ -379,7 +379,7 @@ export const UserOffboardModal: React.FC<UserOffboardModalProps> = ({
                             </div>
 
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800">
-                              {t('users.offboard.release_seat', 'Giải phóng ghế (+1 Quota)')}
+                              {t('users.offboard.release_seat', 'Thu hồi license (+1 Quota)')}
                             </span>
                           </label>
                         );

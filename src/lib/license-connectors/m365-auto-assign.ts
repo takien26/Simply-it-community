@@ -226,7 +226,7 @@ export async function executeAutoAssignM365(options: AutoAssignOptions = {}) {
       }
     });
 
-    // 1. Luôn thêm chính license cha nếu có số ghế > 0 (Đợt 1 / Pool chính)
+    // 1. Luôn thêm chính license cha nếu có số lượng totalSeats > 0 (Đợt 1 / Pool chính)
     if ((lic.totalSeats || 0) > 0) {
       allBatches.push({
         id: lic.id,
@@ -324,7 +324,7 @@ export async function executeAutoAssignM365(options: AutoAssignOptions = {}) {
               batchName: foundBatch?.name || 'Gói bản quyền',
               isCross: false,
               action: 'RECLAIMED',
-              notes: 'Đã giải phóng ghế do tài khoản bị vô hiệu hóa trên Cloud',
+              notes: 'Đã thu hồi license do tài khoản bị vô hiệu hóa trên Cloud',
             });
           }
         }
@@ -505,7 +505,7 @@ export async function executeAutoAssignM365(options: AutoAssignOptions = {}) {
     dryRun,
     message: dryRun
       ? `Đã mô phỏng phân bổ: ${selfAssignedCount} đúng công ty, ${crossAssignedCount} mượn chéo, ${reclaimedCount} thu hồi.`
-      : `Phân bổ thành công! ${selfAssignedCount} ghế đúng công ty, ${crossAssignedCount} ghế mượn chéo, ${reclaimedCount} ghế đã giải phóng.`,
+      : `Phân bổ thành công! ${selfAssignedCount} license đúng công ty, ${crossAssignedCount} license mượn chéo, ${reclaimedCount} license đã thu hồi.`,
     stats: {
       selfAssignedCount,
       crossAssignedCount,

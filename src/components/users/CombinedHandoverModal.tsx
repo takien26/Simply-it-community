@@ -260,7 +260,7 @@ export const CombinedHandoverModal: React.FC<CombinedHandoverModalProps> = ({
                         {lic.licenseType || 'SUBSCRIPTION'}
                       </td>
                       <td className="p-2 text-slate-600">
-                        {isOffboarding ? t('users.handover.license_status_offboard', 'Đã giải phóng ghế bản quyền về kho') : t('users.handover.license_status_onboard', 'Đã kích hoạt cấp phát cho nhân sự')}
+                        {isOffboarding ? t('users.handover.license_status_offboard', 'Đã thu hồi license về kho') : t('users.handover.license_status_onboard', 'Đã kích hoạt cấp phát cho nhân sự')}
                       </td>
                     </tr>
                   ))}

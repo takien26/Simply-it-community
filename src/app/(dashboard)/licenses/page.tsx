@@ -516,7 +516,7 @@ export default function LicensesPage() {
   const [isReclaimingAllWaste, setIsReclaimingAllWaste] = useState(false);
   const [isWasteModalOpen, setIsWasteModalOpen] = useState(false);
 
-  // Helper kiểm tra ghế lãng phí: Nhân viên nghỉ việc hoặc Thiết bị hỏng/bảo trì/thanh lý
+  // Helper kiểm tra license lãng phí: Nhân viên nghỉ việc hoặc Thiết bị hỏng/bảo trì/thanh lý
   const isAssignmentWasteful = useCallback((a: any) => {
     if (!a || a.revokedAt) return false;
     if (a.user && a.user.isActive === false) return true;
@@ -524,11 +524,11 @@ export default function LicensesPage() {
     return false;
   }, []);
 
-  // Thu hồi nhanh toàn bộ ghế lãng phí
+  // Thu hồi nhanh toàn bộ license lãng phí
   const handleReclaimAllWaste = async () => {
     const confirmMsg = language === 'en'
       ? `Are you sure you want to reclaim all wasted seats from resigned employees or decommissioned/maintenance devices?`
-      : `Bạn có chắc chắn muốn thu hồi toàn bộ ghế bản quyền cấp cho nhân viên đã nghỉ việc hoặc thiết bị ngừng sử dụng/đang sửa chữa không?`;
+      : `Bạn có chắc chắn muốn thu hồi toàn bộ license cấp cho nhân viên đã nghỉ việc hoặc thiết bị ngừng sử dụng/đang sửa chữa không?`;
 
     if (!confirm(confirmMsg)) return;
 
@@ -543,7 +543,7 @@ export default function LicensesPage() {
         alert(
           language === 'en'
             ? `✅ Successfully reclaimed ${data.reclaimedCount} license seats!`
-            : `✅ Đã thu hồi thành công ${data.reclaimedCount} ghế bản quyền!`
+            : `✅ Đã thu hồi thành công ${data.reclaimedCount} license!`
         );
         invalidateClientCache('/api/licenses');
         triggerDataRefresh('licenses');
@@ -1681,7 +1681,7 @@ export default function LicensesPage() {
                   <h4 className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200 flex items-center gap-2 flex-wrap">
                     <span>{language === 'en' ? 'Inactive / Zombie Licenses Detected' : 'Phát Hiện Bản Quyền Lãng Phí (Zombie Licenses)'}</span>
                     <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-black">
-                      {kpis.inactiveSeatsCount} {language === 'en' ? 'seats' : 'ghế'}
+                      {kpis.inactiveSeatsCount} {language === 'en' ? 'seats' : 'license'}
                     </span>
                     <span className="text-[11px] font-medium text-amber-700/80 dark:text-amber-400 hidden md:inline">
                       {language === 'en' ? '(Click to view list ↗)' : '(Bấm để xem danh sách chi tiết ↗)'}
@@ -1690,7 +1690,7 @@ export default function LicensesPage() {
                   <p className="text-[11.5px] text-amber-800 dark:text-amber-300 mt-0.5">
                     {language === 'en'
                       ? `There are ${kpis.inactiveSeatsCount} software seats currently assigned to deactivated staff or decommissioned/maintenance devices. Potential cost savings: `
-                      : `Đang có ${kpis.inactiveSeatsCount} ghế bản quyền cấp cho nhân sự thôi việc hoặc thiết bị ngừng sử dụng/đang sửa chữa. Tiết kiệm tiềm năng: `}
+                      : `Đang có ${kpis.inactiveSeatsCount} license cấp cho nhân sự thôi việc hoặc thiết bị ngừng sử dụng/đang sửa chữa. Tiết kiệm tiềm năng: `}
                     <strong className="text-rose-600 dark:text-rose-400 font-mono font-bold">
                       {formatPrice(kpis.inactivePotentialSavings / (exchangeRatesMap[selectedCurrency] || 1), selectedCurrency)}
                     </strong>
@@ -1698,15 +1698,15 @@ export default function LicensesPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                {/* Nút Xem chi tiết: mở modal liệt kê từng ghế lãng phí */}
+                {/* Nút Xem chi tiết: mở modal liệt kê từng license lãng phí */}
                 <button
                   type="button"
                   onClick={() => setIsWasteModalOpen(true)}
                   className="px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs bg-amber-500 hover:bg-amber-600 text-white"
-                  title={language === 'en' ? 'View details of all wasted seats' : 'Xem chi tiết danh sách từng ghế lãng phí'}
+                  title={language === 'en' ? 'View details of all wasted seats' : 'Xem chi tiết danh sách từng license lãng phí'}
                 >
                   <Eye className="w-3.5 h-3.5" />
-                  <span>{language === 'en' ? `View Details (${kpis.inactiveSeatsCount})` : `👁️ Xem chi tiết (${kpis.inactiveSeatsCount} ghế)`}</span>
+                  <span>{language === 'en' ? `View Details (${kpis.inactiveSeatsCount})` : `👁️ Xem chi tiết (${kpis.inactiveSeatsCount} license)`}</span>
                 </button>
 
                 <button
@@ -1714,7 +1714,7 @@ export default function LicensesPage() {
                   disabled={isReclaimingAllWaste}
                   onClick={handleReclaimAllWaste}
                   className="px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-60"
-                  title={language === 'en' ? 'Reclaim all wasted seats at once' : 'Thu hồi toàn bộ ghế lãng phí trong 1 chạm'}
+                  title={language === 'en' ? 'Reclaim all wasted seats at once' : 'Thu hồi toàn bộ license lãng phí trong 1 chạm'}
                 >
                   {isReclaimingAllWaste ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
                   <span>{language === 'en' ? `Reclaim All` : `⚡ Thu hồi tất cả`}</span>
@@ -2113,10 +2113,10 @@ export default function LicensesPage() {
                                           setIsWasteModalOpen(true);
                                         }}
                                         className="px-2 py-0.5 rounded-full bg-rose-100 hover:bg-rose-200 dark:bg-rose-950/80 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 font-extrabold text-[10px] border border-rose-300 dark:border-rose-800 shadow-2xs inline-flex items-center gap-1 cursor-pointer transition-all animate-pulse"
-                                        title={language === 'en' ? `Click to inspect ${groupWasteSeats.length} wasteful seats` : `Bấm để xem chi tiết ${groupWasteSeats.length} ghế lãng phí cần thu hồi`}
+                                        title={language === 'en' ? `Click to inspect ${groupWasteSeats.length} wasteful seats` : `Bấm để xem chi tiết ${groupWasteSeats.length} license lãng phí cần thu hồi`}
                                       >
                                         <AlertTriangle className="w-2.8 h-2.8 text-rose-600" />
-                                        <span>{groupWasteSeats.length} {language === 'en' ? 'zombie seats' : 'ghế lãng phí'}</span>
+                                        <span>{groupWasteSeats.length} {language === 'en' ? 'zombie seats' : 'license lãng phí'}</span>
                                       </button>
                                     )}
                                   </div>
@@ -2910,7 +2910,7 @@ export default function LicensesPage() {
         }}
       />
 
-      {/* ==================== MODAL: CHI TIẾT GHẾ BẢN QUYỀN LÃNG PHÍ (ZOMBIE LICENSES) ==================== */}
+      {/* ==================== MODAL: CHI TIẾT LICENSE LÃNG PHÍ (ZOMBIE LICENSES) ==================== */}
       <ZombieLicensesModal
         isOpen={isWasteModalOpen}
         onClose={() => setIsWasteModalOpen(false)}

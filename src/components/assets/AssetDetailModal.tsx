@@ -1420,7 +1420,7 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                                       {sw.isMatched && sw.matchedLicense && (
                                         <div className="text-[11px] text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 inline-block">
                                           {txt('Trùng khớp với License:', 'Matched with License:', '一致するライセンス:')} <strong>{sw.matchedLicense.name}</strong> ({sw.matchedLicense.licenseType || txt('Vĩnh viễn', 'Perpetual', '無期限')})
-                                          {' — '}{txt('Ghế:', 'Seats:', 'シート:')} <strong>{sw.matchedLicense.usedSeats || 0}/{sw.matchedLicense.totalSeats || 1}</strong>
+                                          {' — '}{txt('License:', 'Seats:', 'シート:')} <strong>{sw.matchedLicense.usedSeats || 0}/{sw.matchedLicense.totalSeats || 1}</strong>
                                         </div>
                                       )}
                                     </div>

@@ -6,7 +6,7 @@ import { createAuditLog } from '@/lib/audit';
 
 const DECOMMISSIONED_ASSET_STATUSES = ['MAINTENANCE', 'RETIRED', 'LOST'];
 
-// GET /api/licenses/reclaim-waste — Quét và liệt kê toàn bộ các ghế bản quyền đang bị lãng phí
+// GET /api/licenses/reclaim-waste — Quét và liệt kê toàn bộ các license bản quyền đang bị lãng phí
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/licenses/reclaim-waste — Thu hồi 1-chạm hoặc hàng loạt ghế bản quyền lãng phí
+// POST /api/licenses/reclaim-waste — Thu hồi 1-chạm hoặc hàng loạt license bản quyền lãng phí
 export async function POST(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       }
     } catch {}
 
-    // Nếu không truyền ID cụ thể, lấy tất cả các ghế lãng phí hiện tại
+    // Nếu không truyền ID cụ thể, lấy tất cả các license lãng phí hiện tại
     if (targetIds.length === 0) {
       const allWasted = await prisma.licenseAssignment.findMany({
         where: {
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (targetIds.length === 0) {
-      return NextResponse.json({ success: true, reclaimedCount: 0, message: 'Không có ghế lãng phí nào cần thu hồi' });
+      return NextResponse.json({ success: true, reclaimedCount: 0, message: 'Không có license lãng phí nào cần thu hồi' });
     }
 
     // Tiến hành thu hồi

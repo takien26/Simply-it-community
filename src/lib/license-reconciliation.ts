@@ -105,7 +105,7 @@ export async function reconcileSoftwareLicenses(
           matchStatus: isAssigned ? 'ASSIGNED_MATCH' : 'UNASSIGNED_MATCH',
           message: isAssigned
             ? `Thiết bị đã được gán license "${matchedLic.name}" hợp lệ.`
-            : `Phát hiện trùng với License trong kho: "${matchedLic.name}" (Còn ${availableSeats}/${matchedLic.totalSeats} ghế trống). Chưa gán cho thiết bị này!`,
+            : `Phát hiện trùng với License trong kho: "${matchedLic.name}" (Còn ${availableSeats}/${matchedLic.totalSeats} license trống). Chưa gán cho thiết bị này!`,
         });
       } else {
         const isCommercial = commercialPatterns.some((p) => p.test(swName));

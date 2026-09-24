@@ -82,10 +82,10 @@ export function ZombieLicensesModal({
   const totalSavingsFormatted = formatPrice(totalSavingsVnd / currentRate, selectedCurrency);
 
   const handleReclaimSingle = async (seat: WastefulSeatItem) => {
-    const targetName = seat.user?.fullName || (seat.asset ? `[${seat.asset.assetTag}] ${seat.asset.name}` : 'ghế này');
+    const targetName = seat.user?.fullName || (seat.asset ? `[${seat.asset.assetTag}] ${seat.asset.name}` : 'license này');
     const confirmMsg = isEn
       ? `Are you sure you want to reclaim license seat "${seat.licenseName}" from "${targetName}"?\nThis seat will be returned to the license pool immediately.`
-      : `Bạn có chắc chắn muốn thu hồi ghế bản quyền "${seat.licenseName}" đang cấp cho "${targetName}" không?\nGhế sẽ được hoàn trả về kho bản quyền để cấp phát lại.`;
+      : `Bạn có chắc chắn muốn thu hồi license "${seat.licenseName}" đang cấp cho "${targetName}" không?\nLicense sẽ được hoàn trả về kho bản quyền để cấp phát lại.`;
 
     if (!confirm(confirmMsg)) return;
 
@@ -100,7 +100,7 @@ export function ZombieLicensesModal({
       if (res.ok && data.success) {
         await onReclaimSuccess();
       } else {
-        alert(data.error || (isEn ? 'Failed to reclaim seat' : 'Thu hồi ghế thất bại'));
+        alert(data.error || (isEn ? 'Failed to reclaim seat' : 'Thu hồi license thất bại'));
       }
     } catch (err: any) {
       alert(err?.message || (isEn ? 'Connection error' : 'Lỗi kết nối khi thu hồi'));
@@ -114,7 +114,7 @@ export function ZombieLicensesModal({
 
     const confirmMsg = isEn
       ? `Are you sure you want to reclaim all ${wastefulSeats.length} wasted license seats?\nThis will immediately free up seats assigned to deactivated staff or decommissioned/maintenance devices.`
-      : `Bạn có chắc chắn muốn thu hồi toàn bộ ${wastefulSeats.length} ghế bản quyền lãng phí không?\nThao tác này sẽ giải phóng ghế cấp cho nhân sự đã nghỉ việc hoặc thiết bị đang bảo trì/hỏng.`;
+      : `Bạn có chắc chắn muốn thu hồi toàn bộ ${wastefulSeats.length} license lãng phí không?\nThao tác này sẽ giải phóng quota cấp cho nhân sự đã nghỉ việc hoặc thiết bị đang bảo trì/hỏng.`;
 
     if (!confirm(confirmMsg)) return;
 
@@ -154,16 +154,16 @@ export function ZombieLicensesModal({
                   {isEn ? 'Zombie Licenses Detection' : 'Phát Hiện Bản Quyền Lãng Phí (Zombie Licenses)'}
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-xs font-black">
-                  {wastefulSeats.length} {isEn ? 'seats' : 'ghế'}
+                  {wastefulSeats.length} {isEn ? 'seats' : 'license'}
                 </span>
               </div>
               <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-1">
-                {isEn ? 'Wasted Software License Seats' : 'Chi Tiết Ghế Bản Quyền Cần Thu Hồi'}
+                {isEn ? 'Wasted Software License Seats' : 'Chi Tiết License Cần Thu Hồi'}
               </h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                 {isEn
                   ? 'Software seats currently assigned to resigned employees or decommissioned/maintenance devices.'
-                  : 'Ghế bản quyền đang cấp cho nhân sự thôi việc hoặc thiết bị ngừng sử dụng / đang sửa chữa.'}
+                  : 'License đang cấp cho nhân sự thôi việc hoặc thiết bị ngừng sử dụng / đang sửa chữa.'}
               </p>
             </div>
           </div>
@@ -200,7 +200,7 @@ export function ZombieLicensesModal({
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                {isEn ? 'No Wasted Seats Found' : 'Không Có Ghế Bản Quyền Bị Lãng Phí'}
+                {isEn ? 'No Wasted Seats Found' : 'Không Có License Bị Lãng Phí'}
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
                 {isEn
@@ -288,7 +288,7 @@ export function ZombieLicensesModal({
                       )}
                       <span className="flex items-center gap-1">
                         <DollarSign className="w-3 h-3 text-emerald-500" />
-                        {isEn ? 'Seat Cost:' : 'Chi phí ghế:'}{' '}
+                        {isEn ? 'Seat Cost:' : 'Chi phí license:'}{' '}
                         <strong className="text-slate-700 dark:text-slate-200 font-mono font-bold">
                           {costFormatted}
                         </strong>
@@ -313,14 +313,14 @@ export function ZombieLicensesModal({
                       disabled={isCurrentReclaiming || isReclaimingAll}
                       onClick={() => handleReclaimSingle(seat)}
                       className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-60"
-                      title={isEn ? 'Reclaim this specific seat' : 'Thu hồi ghế này ngay lập tức'}
+                      title={isEn ? 'Reclaim this specific seat' : 'Thu hồi license này ngay lập tức'}
                     >
                       {isCurrentReclaiming ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
                         <Zap className="w-3.5 h-3.5" />
                       )}
-                      <span>{isEn ? 'Reclaim' : 'Thu hồi ghế'}</span>
+                      <span>{isEn ? 'Reclaim' : 'Thu hồi license'}</span>
                     </button>
                   </div>
                 </div>
@@ -336,7 +336,7 @@ export function ZombieLicensesModal({
             <span>
               {isEn
                 ? 'Reclaiming frees up seat quota to assign to other staff without deleting the license.'
-                : 'Thu hồi ghế sẽ hoàn lại quota để gán cho nhân sự/máy khác, không làm xóa bản quyền.'}
+                : 'Thu hồi license sẽ hoàn lại hạn ngạch để gán cho nhân sự/máy khác, không làm xóa gói bản quyền.'}
             </span>
           </div>
 
@@ -356,7 +356,7 @@ export function ZombieLicensesModal({
                 <span>
                   {isEn
                     ? `Reclaim All (${wastefulSeats.length})`
-                    : `⚡ Thu hồi tất cả (${wastefulSeats.length} ghế)`}
+                    : `⚡ Thu hồi tất cả (${wastefulSeats.length} license)`}
                 </span>
               </button>
             )}

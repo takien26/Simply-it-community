@@ -528,7 +528,7 @@ export const UserOnboardModal: React.FC<UserOnboardModalProps> = ({
                             <div className="min-w-0">
                               <span className="font-bold text-xs truncate block">{lic.name}</span>
                               <span className="text-[10px] text-slate-400">
-                                {lic.licenseType || 'SUBSCRIPTION'} • {t('users.onboard.available_seats', 'Ghế trống: {seats}').replace('{seats}', String(Math.max(0, (lic.totalSeats || 1) - (lic.usedSeats || 0))))}
+                                {lic.licenseType || 'SUBSCRIPTION'} • {t('users.onboard.available_seats', 'License khả dụng: {seats}').replace('{seats}', String(Math.max(0, (lic.totalSeats || 1) - (lic.usedSeats || 0))))}
                               </span>
                             </div>
                           </div>

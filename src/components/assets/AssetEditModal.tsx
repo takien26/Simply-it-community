@@ -1287,7 +1287,7 @@ export const AssetEditModal: React.FC<AssetEditModalProps> = ({
                         <Layers className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                         <div>
                           <span className="font-bold">{txt('Quản Lý & Gán Bản Quyền Phần Mềm (Software & License)', 'Manage & Assign Software Licenses', 'ソフトウェア＆ライセンス管理・割当')}</span>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{txt('Kiểm tra bản quyền OS/Office đã quét từ máy trạm, đối soát với kho License và gán ghế sử dụng.', 'Review OS/Office licenses scanned from workstation, reconcile with License inventory, and assign seats.', 'ワークステーションから検出されたOS/Officeライセンスを確認し、ライセンス台帳と突合して割り当てます。')}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{txt('Kiểm tra bản quyền OS/Office đã quét từ máy trạm, đối soát với kho License và cấp phát license sử dụng.', 'Review OS/Office licenses scanned from workstation, reconcile with License inventory, and assign seats.', 'ワークステーションから検出されたOS/Officeライセンスを確認し、ライセンス台帳と突合して割り当てます。')}</p>
                         </div>
                       </div>
                       <button
@@ -1337,7 +1337,7 @@ export const AssetEditModal: React.FC<AssetEditModalProps> = ({
                           </div>
                           <div>
                             <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                              {txt('Số Ghế (Seats):', 'Total Seats:', 'シート数 (ライセンス数):')}
+                              {txt('Số License (Seats):', 'Total Seats:', 'シート数 (ライセンス数):')}
                             </label>
                             <input
                               type="number"
@@ -1512,7 +1512,7 @@ export const AssetEditModal: React.FC<AssetEditModalProps> = ({
                                       <span className="text-blue-700 dark:text-blue-300 font-bold">{m.licenseName}</span>
                                     </div>
                                     <div className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                                      {txt('Ghế trống khả dụng:', 'Available seats:', '空きシート数:')} <strong className="text-emerald-600">{m.availableSeats} / {m.seats}</strong>
+                                      {txt('License khả dụng:', 'Available seats:', '空きシート数:')} <strong className="text-emerald-600">{m.availableSeats} / {m.seats}</strong>
                                     </div>
                                   </div>
                                   <button

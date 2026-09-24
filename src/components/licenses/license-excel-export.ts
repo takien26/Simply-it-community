@@ -342,7 +342,7 @@ export async function exportConglomerateExcel({
     'Số Hóa Đơn VAT',
     'Nhà Cung Cấp',
     'License Key / Serial',
-    'Số Ghế Mua',
+    'Số License Mua',
     'Đang Dùng',
     'Còn Trống',
     'Ngày Mua',
@@ -782,7 +782,7 @@ export async function exportSingleLicenseExcel(
     'Đang Dùng',
     'Còn Trống',
     'Tình Trạng Hạn',
-    'Đơn Giá / Ghế',
+    'Đơn Giá / License',
     'Tổng Tiền Đợt (Nguyên Tệ)',
     `Thành Tiền Quy Đổi (${selectedCurrency})`,
     'Số Hợp Đồng',
@@ -934,7 +934,7 @@ export async function exportSingleLicenseExcel(
   sheet1.getColumn(7).width = 14;  // Đang dùng
   sheet1.getColumn(8).width = 14;  // Còn trống / Chênh lệch
   sheet1.getColumn(9).width = 18;  // Tình trạng hạn / Tình trạng cân đối
-  sheet1.getColumn(10).width = 18; // Đơn giá / Ghế
+  sheet1.getColumn(10).width = 18; // Đơn giá / License
   sheet1.getColumn(11).width = 24; // Tổng tiền đợt (Nguyên tệ)
   sheet1.getColumn(12).width = 24; // Thành tiền quy đổi (VNĐ)
   sheet1.getColumn(13).width = 22; // Số hợp đồng
@@ -960,7 +960,7 @@ export async function exportSingleLicenseExcel(
 
   sheet2.mergeCells('A2:I2');
   const sub2 = sheet2.getCell('A2');
-  sub2.value = `Tổng số ghế đã cấp phát: ${group.allAssignments?.length || 0} seats  |  Phục vụ đối soát nội bộ và kiểm toán bản quyền phần mềm`;
+  sub2.value = `Tổng số license đã cấp phát: ${group.allAssignments?.length || 0}  |  Phục vụ đối soát nội bộ và kiểm toán bản quyền phần mềm`;
   sub2.font = { name: 'Arial', size: 9.5, italic: true, color: { argb: 'FF475569' } };
   sub2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
   sub2.alignment = { vertical: 'middle', horizontal: 'center' };

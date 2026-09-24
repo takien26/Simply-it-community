@@ -699,13 +699,13 @@ export function LicenseIntegrationModal({
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-semibold text-[11px]">
                     <div className="p-2 bg-white/70 dark:bg-slate-900/70 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300">
-                      {t('licenses.hub.auto_assign_self', '🏢 Đúng công ty nhân sự: {count} ghế').replace('{count}', String(autoAssignResult.stats?.selfAssignedCount || 0))}
+                      {t('licenses.hub.auto_assign_self', '🏢 Đúng công ty nhân sự: {count} license').replace('{count}', String(autoAssignResult.stats?.selfAssignedCount || 0))}
                     </div>
                     <div className="p-2 bg-white/70 dark:bg-slate-900/70 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
-                      {t('licenses.hub.auto_assign_cross', '🔄 Mượn chéo (khi cty hết quota): {count} ghế').replace('{count}', String(autoAssignResult.stats?.crossAssignedCount || 0))}
+                      {t('licenses.hub.auto_assign_cross', '🔄 Mượn chéo (khi cty hết quota): {count} license').replace('{count}', String(autoAssignResult.stats?.crossAssignedCount || 0))}
                     </div>
                     <div className="p-2 bg-white/70 dark:bg-slate-900/70 rounded-xl border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300">
-                      {t('licenses.hub.auto_assign_reclaimed', '♻️ Giải phóng (nhân sự nghỉ việc): {count} ghế').replace('{count}', String(autoAssignResult.stats?.reclaimedCount || 0))}
+                      {t('licenses.hub.auto_assign_reclaimed', '♻️ Thu hồi (nhân sự nghỉ việc): {count} license').replace('{count}', String(autoAssignResult.stats?.reclaimedCount || 0))}
                     </div>
                   </div>
                 </div>
@@ -718,10 +718,10 @@ export function LicenseIntegrationModal({
                     {t('licenses.hub.metric_cloud_total', 'Tổng Mua Trên Cloud')}
                   </p>
                   <h4 className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
-                    {report.totalCloudSeats} <span className="text-xs font-normal text-slate-400">{t('licenses.matrix.seats_unit', 'ghế')}</span>
+                    {report.totalCloudSeats} <span className="text-xs font-normal text-slate-400">{t('licenses.matrix.seats_unit', 'license')}</span>
                   </h4>
                   <p className="text-[10px] text-slate-500 mt-0.5">
-                    {t('licenses.hub.metric_cloud_consumed', 'Đã gán: {count} ghế').replace('{count}', String(report.totalCloudConsumed))}
+                    {t('licenses.hub.metric_cloud_consumed', 'Đã gán: {count} license').replace('{count}', String(report.totalCloudConsumed))}
                   </p>
                 </div>
 
@@ -730,11 +730,11 @@ export function LicenseIntegrationModal({
                     {t('licenses.hub.metric_local_title', 'Sổ Sách Simply IT')}
                   </p>
                   <h4 className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
-                    {report.totalLocalConsumed} <span className="text-xs font-normal text-slate-400">{t('licenses.matrix.seats_unit', 'ghế')}</span>
+                    {report.totalLocalConsumed} <span className="text-xs font-normal text-slate-400">{t('licenses.matrix.seats_unit', 'license')}</span>
                   </h4>
                   <p className="text-[10px] text-slate-500 mt-0.5">
                     <span className={report.totalCloudConsumed !== report.totalLocalConsumed ? 'text-amber-600 font-bold' : 'text-emerald-600 font-bold'}>
-                      {t('licenses.hub.metric_local_diff', 'Lệch: {diff} ghế').replace('{diff}', String(report.totalCloudConsumed - report.totalLocalConsumed))}
+                      {t('licenses.hub.metric_local_diff', 'Lệch: {diff} license').replace('{diff}', String(report.totalCloudConsumed - report.totalLocalConsumed))}
                     </span>
                   </p>
                 </div>
@@ -744,7 +744,7 @@ export function LicenseIntegrationModal({
                     {t('licenses.hub.metric_dormant_title', 'Tài Khoản Lãng Phí (Dormant)')}
                   </p>
                   <h4 className="text-lg font-black text-amber-700 dark:text-amber-300 mt-0.5">
-                    {report.dormantUsers.length} <span className="text-xs font-normal">{t('licenses.matrix.seats_unit', 'ghế')}</span>
+                    {report.dormantUsers.length} <span className="text-xs font-normal">{t('licenses.matrix.seats_unit', 'license')}</span>
                   </h4>
                   <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
                     {t('licenses.hub.metric_dormant_desc', 'Đã khóa hoặc >45 ngày không đăng nhập')}
@@ -897,7 +897,7 @@ export function LicenseIntegrationModal({
                                 <div className="inline-flex flex-col items-center gap-1">
                                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1 rounded-full">
                                     <AlertTriangle className="w-3 h-3" />
-                                    <span>{t('licenses.hub.match_diff', 'Lệch {diff} ghế').replace('{diff}', disc?.diff > 0 ? `+${disc.diff}` : String(disc?.diff))}</span>
+                                    <span>{t('licenses.hub.match_diff', 'Lệch {diff} license').replace('{diff}', disc?.diff > 0 ? `+${disc.diff}` : String(disc?.diff))}</span>
                                   </span>
                                   {(disc?.localConsumed || 0) === 0 && (
                                     <button

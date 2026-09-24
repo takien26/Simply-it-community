@@ -412,10 +412,10 @@ export async function GET(req: NextRequest) {
             type: 'PROACTIVE',
             subType: 'LICENSE_WASTE',
             severity: 'INFO',
-            title: isEn ? `💡 Zombie Licenses Detected (${zombieAssignments.length} seats)` : `💡 Bản quyền nhàn rỗi (${zombieAssignments.length} ghế)`,
+            title: isEn ? `💡 Zombie Licenses Detected (${zombieAssignments.length} seats)` : `💡 Bản quyền nhàn rỗi (${zombieAssignments.length} license)`,
             message: isEn
               ? `Found ${zombieAssignments.length} assigned seat(s) on inactive users or retired assets ready to be reclaimed.`
-              : `Có ${zombieAssignments.length} ghế bản quyền gán cho nhân sự thôi việc hoặc máy ngừng dùng có thể thu hồi.`,
+              : `Có ${zombieAssignments.length} license bản quyền gán cho nhân sự thôi việc hoặc máy ngừng dùng có thể thu hồi.`,
             detail: isEn ? 'Click to open license management' : 'Bấm để vào trang quản lý bản quyền thu hồi',
             link: `/licenses`,
             createdAt: new Date().toISOString(),

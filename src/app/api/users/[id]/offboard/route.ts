@@ -152,7 +152,7 @@ export async function POST(
       });
     }
 
-    // Cập nhật lại số ghế usedSeats cho các license bị ảnh hưởng
+    // Cập nhật lại số lượng usedSeats cho các license bị ảnh hưởng
     for (const licId of affectedLicenseIds) {
       const activeCount = await prisma.licenseAssignment.count({
         where: { licenseId: licId, revokedAt: null },

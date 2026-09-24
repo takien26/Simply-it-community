@@ -355,7 +355,7 @@ export async function POST(
     }
 
     const assignSummary = autoAssignStats
-      ? ` và tự động cấp phát ${autoAssignStats.selfAssignedCount + autoAssignStats.crossAssignedCount} ghế cho nhân sự!`
+      ? ` và tự động cấp phát ${autoAssignStats.selfAssignedCount + autoAssignStats.crossAssignedCount} license cho nhân sự!`
       : '!';
 
     return NextResponse.json({
