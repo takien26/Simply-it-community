@@ -960,6 +960,7 @@ try {
     $bios       = Invoke-CollectorSafe -Name "Hardware.BIOS" -DefaultValue $null -Collector { Get-CimCompat "Win32_BIOS" }
     $cs         = Invoke-CollectorSafe -Name "Hardware.ComputerSystem" -DefaultValue $null -Collector { Get-CimCompat "Win32_ComputerSystem" }
     $csProduct  = Invoke-CollectorSafe -Name "Hardware.ComputerSystemProduct" -DefaultValue $null -Collector { Get-CimCompat "Win32_ComputerSystemProduct" }
+    $baseBoard  = Invoke-CollectorSafe -Name "Hardware.BaseBoard" -DefaultValue $null -Collector { Get-CimCompat "Win32_BaseBoard" }
     $cpuObj     = @(Invoke-CollectorSafe -Name "Hardware.CPU" -DefaultValue @() -Collector { @(Get-CimCompat "Win32_Processor") | Select-Object -First 1 })
     $ramChips   = @(Invoke-CollectorSafe -Name "Hardware.RAM" -DefaultValue @() -Collector { @(Get-CimCompat "Win32_PhysicalMemory") })
     $disks      = @(Invoke-CollectorSafe -Name "Hardware.Disk" -DefaultValue @() -Collector { @(Get-CimCompat "Win32_DiskDrive") })
@@ -980,6 +981,20 @@ try {
 
     $brand = [string]$cs.Manufacturer
     $model = [string]$cs.Model
+
+    # Collect Motherboard (BaseBoard) details
+    $motherboard = ""
+    if ($baseBoard) {
+        $mbMfg  = [string]$baseBoard.Manufacturer
+        $mbProd = [string]$baseBoard.Product
+        if ($mbProd -and $mbProd -notmatch '(?i)base\s*board|to\s*be\s*filled') {
+            if ($mbMfg -and -not ($mbProd.StartsWith($mbMfg, [System.StringComparison]::OrdinalIgnoreCase))) {
+                $motherboard = "$mbMfg $mbProd".Trim()
+            } else {
+                $motherboard = $mbProd.Trim()
+            }
+        }
+    }
 
     $cpu = [string]$cpuObj.Name
     if ($cpu) { $cpu = $cpu.Trim() }
@@ -1055,20 +1070,33 @@ try {
         return @()
     })
 
-    $laptopChassis = @(8, 9, 10, 11, 12, 14, 30, 31, 32)
-    $serverChassis = @(17, 23, 28, 29)
+    $desktopChassis = @(3, 4, 5, 6, 7, 15, 16, 24)
+    $laptopChassis  = @(8, 9, 10, 11, 12, 14, 30, 31, 32)
+    $serverChassis  = @(17, 23, 28, 29)
 
     $deviceType = "Desktop"
 
-    # Check Desktop motherboards and PC models (takes precedence over UPS / false chassis codes)
-    $desktopPatterns = "B450|B550|B650|A320|A520|X370|X470|X570|X670|H310|H410|H510|H610|B360|B365|B460|B560|B660|B760|Z370|Z390|Z490|Z590|Z690|Z790|AORUS|OptiPlex|ProDesk|EliteDesk|ThinkCentre|Tower|Workstation"
+    # Comprehensive Desktop motherboards pattern (supports B760M, H610M, B550M, Z790, etc.)
+    $desktopPatterns = '(?i)\b(b[12345678]\d{2}|h[134568]\d{2}|z[12345678]\d{2}|x[2345678]\d{2}|a[356]\d{2}|q[13456]\d{2}|b85|h81|h61|b75)(m|e|-|\b)|AORUS|TOMAHAWK|MORTAR|PRO-VDH|GAMING-X|STRIX\s+[BHZX]|TUF\s+GAMING\s+[BHZX]|PRIME\s+[BHZA]|STEEL\s+LEGEND|OptiPlex|ProDesk|EliteDesk|ThinkCentre|Tower|Workstation'
 
-    if ($model -match $desktopPatterns -or $brand -match "Gigabyte|ASRock|Micro-Star") {
+    if (-not $motherboard -and $model -match $desktopPatterns) {
+        $motherboard = $model
+    }
+
+    if ($motherboard -match $desktopPatterns -or $model -match $desktopPatterns -or $brand -match "Gigabyte|ASRock|Micro-Star|ASUSTeK|ASUS" -or ($chassisList | Where-Object { $desktopChassis -contains $_ })) {
         $deviceType = "Desktop"
     } elseif ($hasBattery -or ($chassisList | Where-Object { $laptopChassis -contains $_ })) {
         $deviceType = "Laptop"
     } elseif ($chassisList | Where-Object { $serverChassis -contains $_ } -or ($os -match "Server")) {
         $deviceType = "Server"
+    }
+
+    # For Custom Desktop PC: If model is the motherboard name or generic placeholder, clean it to "PC Lắp Ráp"
+    if ($deviceType -eq "Desktop") {
+        if ($model -match $desktopPatterns -or $model -match '(?i)system\s*product\s*name|all\s*series|to\s*be\s*filled|default\s*string' -or ($motherboard -and $model -ieq $motherboard)) {
+            if (-not $motherboard) { $motherboard = $model }
+            $model = "PC Lắp Ráp"
+        }
     }
 
     Write-Host "-> Nhan dien thiet bi: $deviceType (Pin: $hasBattery, Chassis: $($chassisList -join ','))" -ForegroundColor Cyan
@@ -1111,6 +1139,7 @@ try {
         model             = $model
         deviceType        = $deviceType
         specs             = @{
+            motherboard  = $motherboard
             deviceType   = $deviceType
             hasBattery   = $hasBattery
             chassisTypes = ($chassisList -join ',')

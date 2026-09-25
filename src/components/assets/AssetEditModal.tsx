@@ -676,11 +676,17 @@ export const AssetEditModal: React.FC<AssetEditModalProps> = ({
                       </div>
                       <input
                         type="text"
-                        placeholder="VD: Latitude 5540, ThinkPad T14..."
+                        placeholder="VD: Latitude 5540, ThinkPad T14, PC Lắp Ráp..."
                         value={editFormData.model}
                         onChange={(e) => setEditFormData({ ...editFormData, model: e.target.value })}
                         className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
                       />
+                      {(editFormData.specs?.motherboard || editFormData.specs?.mainboard) && (
+                        <p className="text-[10.5px] text-blue-600 dark:text-blue-400 mt-1 truncate font-medium flex items-center gap-1" title={editFormData.specs?.motherboard || editFormData.specs?.mainboard}>
+                          <span className="text-slate-400">Main:</span>
+                          <span className="font-semibold">{editFormData.specs?.motherboard || editFormData.specs?.mainboard}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -833,6 +839,23 @@ export const AssetEditModal: React.FC<AssetEditModalProps> = ({
                           }))
                         }
                         className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-mono outline-none"
+                      />
+                    </div>
+
+                    {/* Mainboard */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{txt('Bo mạch chủ (Mainboard)', 'Motherboard / Mainboard', 'マザーボード (Mainboard)')}</label>
+                      <input
+                        type="text"
+                        placeholder="ASUS TUF Gaming B760M, MSI B550M, Gigabyte B760..."
+                        value={editFormData.specs?.motherboard || editFormData.specs?.mainboard || ''}
+                        onChange={(e) =>
+                          setEditFormData((prev: any) => ({
+                            ...prev,
+                            specs: { ...prev.specs, motherboard: e.target.value },
+                          }))
+                        }
+                        className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none"
                       />
                     </div>
 

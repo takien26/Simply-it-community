@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { reconcileSoftwareLicenses } from '@/lib/license-reconciliation';
-import { detectDeviceType, resolveCategoryForDevice, isGenericSerial } from '@/lib/device-detection';
+import {
+  detectDeviceType,
+  resolveCategoryForDevice,
+  isGenericSerial,
+  isCustomAssembledPC,
+  DESKTOP_MOTHERBOARD_REGEX,
+} from '@/lib/device-detection';
 
 import { checkRateLimit } from '@/lib/rate-limit';
 
@@ -69,6 +75,17 @@ export async function POST(request: NextRequest) {
     const isGeneric = isGenericSerial(rawSerial);
     const validSerial = !isGeneric ? rawSerial : null;
 
+    const rawMotherboard = (specs?.motherboard || specs?.mainboard || body.motherboard || '').trim();
+    const isCustomPC = isCustomAssembledPC({
+      brand,
+      model,
+      motherboard: rawMotherboard,
+      deviceType,
+    });
+    const detectedMotherboard =
+      rawMotherboard ||
+      (DESKTOP_MOTHERBOARD_REGEX.test(model || '') ? (model || '').trim() : '');
+
     // 1. Check if asset exists by Serial Number (only if valid & not generic) or Hostname
     let existingAsset = null;
     if (validSerial) {
@@ -113,10 +130,17 @@ export async function POST(request: NextRequest) {
 
       const reconciliation = await reconcileSoftwareLicenses(targetSoftware, existingAsset.id);
 
+      const targetMotherboard =
+        detectedMotherboard ||
+        currentSpecs.motherboard ||
+        currentSpecs.mainboard ||
+        (DESKTOP_MOTHERBOARD_REGEX.test(existingAsset.model || '') ? existingAsset.model : '');
+
       // Merge Specs
       const mergedSpecs = {
         ...currentSpecs,
         ...newSpecs,
+        ...(targetMotherboard ? { motherboard: targetMotherboard } : {}),
         installedSoftware: targetSoftware,
         osLicense: osLicense || currentSpecs.osLicense || null,
         officeLicense: officeLicense || currentSpecs.officeLicense || null,
@@ -134,7 +158,7 @@ export async function POST(request: NextRequest) {
         brand: brand || existingAsset.brand,
         model: model || existingAsset.model,
         hostname: cleanHostname,
-        specs: { ...mergedSpecs, ...newSpecs },
+        specs: { ...mergedSpecs, ...newSpecs, motherboard: targetMotherboard },
       });
       const targetCategory = await resolveCategoryForDevice(detectedType);
 
@@ -161,11 +185,32 @@ export async function POST(request: NextRequest) {
 
       mergedSpecs.deviceType = detectedType;
 
+      let updatedModel = model || existingAsset.model;
+      if (
+        detectedType === 'Desktop' &&
+        (isCustomPC || isCustomAssembledPC({ brand: existingAsset.brand, model: existingAsset.model, motherboard: targetMotherboard }))
+      ) {
+        if (
+          !updatedModel ||
+          DESKTOP_MOTHERBOARD_REGEX.test(updatedModel) ||
+          /^(system\s*product\s*name|all\s*series|to\s*be\s*filled|default\s*string|standard\s*pc|desktop|pc)$/i.test(updatedModel.trim())
+        ) {
+          updatedModel = 'PC Lắp Ráp';
+        }
+      }
+
+      let updatedName = existingAsset.name;
+      if (detectedType === 'Desktop' && existingAsset.name.toLowerCase().startsWith('laptop ')) {
+        updatedName = `PC ${existingAsset.name.slice(7)}`.trim();
+        changeLogs.push(`Tự động điều chỉnh tiền tố tên thiết bị: "${existingAsset.name}" ➔ "${updatedName}"`);
+      }
+
       const updated = await prisma.asset.update({
         where: { id: existingAsset.id },
         data: {
-          brand: brand || existingAsset.brand,
-          model: model || existingAsset.model,
+          name: updatedName,
+          brand: (isCustomPC && (!brand || /o\.?e\.?m|system/i.test(brand))) ? (existingAsset.brand || 'Lắp ráp') : (brand || existingAsset.brand),
+          model: updatedModel,
           categoryId: targetCategoryId,
           specs: mergedSpecs,
           updatedAt: new Date(),
@@ -199,7 +244,7 @@ export async function POST(request: NextRequest) {
       brand,
       model,
       hostname: cleanHostname,
-      specs: newSpecs,
+      specs: { ...newSpecs, motherboard: detectedMotherboard },
     });
     const category = await resolveCategoryForDevice(detectedType);
 
@@ -259,8 +304,21 @@ export async function POST(request: NextRequest) {
     const targetSoftware = Array.isArray(installedSoftware) ? installedSoftware : [];
     const reconciliation = await reconcileSoftwareLicenses(targetSoftware, null);
 
+    let finalModel = model || (detectedType === 'Laptop' ? 'Laptop' : 'PC');
+    let finalBrand = brand || (isCustomPC ? 'Lắp ráp' : 'Generic');
+    if (detectedType === 'Desktop' && isCustomPC) {
+      if (
+        !model ||
+        DESKTOP_MOTHERBOARD_REGEX.test(model) ||
+        /^(system\s*product\s*name|all\s*series|to\s*be\s*filled|default\s*string|standard\s*pc|desktop|pc)$/i.test(model.trim())
+      ) {
+        finalModel = 'PC Lắp Ráp';
+      }
+    }
+
     const newSpecsData = {
       ...newSpecs,
+      ...(detectedMotherboard ? { motherboard: detectedMotherboard } : {}),
       deviceType: detectedType,
       installedSoftware: targetSoftware,
       osLicense: osLicense || null,
@@ -273,13 +331,13 @@ export async function POST(request: NextRequest) {
       autoDiscovered: true,
     };
 
-    const deviceTypeLabel = detectedType === 'Laptop' ? 'Laptop' : detectedType === 'Server' ? 'Máy chủ' : 'Máy tính';
+    const deviceTypeLabel = detectedType === 'Laptop' ? 'Laptop' : detectedType === 'Server' ? 'Máy chủ' : 'PC';
     const newAsset = await prisma.asset.create({
       data: {
         assetTag: generatedTag,
-        name: cleanHostname ? `${deviceTypeLabel} ${cleanHostname}` : `${deviceTypeLabel} ${model || 'Mới'}`,
-        brand: brand || 'Generic',
-        model: model || (detectedType === 'Laptop' ? 'Laptop' : 'PC'),
+        name: cleanHostname ? `${deviceTypeLabel} ${cleanHostname}` : `${deviceTypeLabel} ${finalModel || 'Mới'}`,
+        brand: finalBrand,
+        model: finalModel,
         serialNumber: validSerial, // null if generic to avoid @unique collision
         categoryId: targetCategoryId,
         status: 'PENDING',

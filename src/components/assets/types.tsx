@@ -58,6 +58,9 @@ export function getFriendlySpecLabel(rawKey: string, categoryId?: string, catego
   }
 
   const DICTIONARY: Record<string, string> = {
+    motherboard: 'Bo mạch chủ (Mainboard)',
+    mainboard: 'Bo mạch chủ (Mainboard)',
+    baseboard: 'Bo mạch chủ (Mainboard)',
     cpu: 'CPU / Vi xử lý',
     processor: 'CPU / Vi xử lý',
     chip: 'CPU / Vi xử lý',

@@ -703,6 +703,23 @@ export const AssetAddModal: React.FC<AssetAddModalProps> = ({
                       />
                     </div>
 
+                    {/* Mainboard */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{txt('Bo mạch chủ (Mainboard)', 'Motherboard / Mainboard', 'マザーボード (Mainboard)')}</label>
+                      <input
+                        type="text"
+                        placeholder="ASUS TUF Gaming B760M, MSI B550M, Gigabyte B760..."
+                        value={formData.specs?.motherboard || ''}
+                        onChange={(e) =>
+                          setFormData((prev: any) => ({
+                            ...prev,
+                            specs: { ...prev.specs, motherboard: e.target.value },
+                          }))
+                        }
+                        className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none"
+                      />
+                    </div>
+
                     {/* CPU */}
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{txt('Vi xử lý (CPU)', 'Processor (CPU)', 'プロセッサ (CPU)')}</label>
