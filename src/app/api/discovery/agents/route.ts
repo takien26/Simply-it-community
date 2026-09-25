@@ -37,7 +37,7 @@ export async function GET() {
         },
       },
       orderBy: { updatedAt: 'desc' },
-      take: 100,
+      take: 2000,
     });
 
     const agentReports = assetsWithScans

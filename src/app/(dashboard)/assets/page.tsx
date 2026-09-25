@@ -805,7 +805,7 @@ export default function AssetsPage() {
       }
       await Promise.all([
         // 1. Fetch Assets with SWR Cache (0ms instant render)
-        fetchWithSwr<any>('/api/assets?pageSize=1000', (assetsRes) => {
+        fetchWithSwr<any>('/api/assets?pageSize=5000', (assetsRes) => {
           if (assetsRes) {
             const list = Array.isArray(assetsRes) ? assetsRes : assetsRes.data || assetsRes.assets || [];
             setAssets(list);

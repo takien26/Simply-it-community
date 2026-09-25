@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const companyName = searchParams.get('companyName');
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
     const rawPageSize = parseInt(searchParams.get('pageSize') || '50', 10) || 50;
-    const pageSize = Math.max(1, Math.min(100, rawPageSize));
+    const pageSize = Math.max(1, Math.min(10000, rawPageSize));
 
     // Build filter query
     const where: Record<string, unknown> = {};
