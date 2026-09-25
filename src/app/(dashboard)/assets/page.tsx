@@ -473,13 +473,37 @@ export default function AssetsPage() {
 
   // Filters & Search
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedCompany, setSelectedCompany] = useState('');
   const [selectedSource, setSelectedSource] = useState<'ALL' | 'MANUAL' | 'AUTO_SCAN'>('ALL');
   const [selectedWarranty, setSelectedWarranty] = useState<'ALL' | 'VALID' | 'EXPIRING' | 'EXPIRED'>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 15;
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [serverTotal, setServerTotal] = useState<number>(0);
+  const [serverTotalPages, setServerTotalPages] = useState<number>(1);
+  const [serverSummary, setServerSummary] = useState<any>(null);
+
+  // Initialize pageSize from localStorage if available
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('simply_it_assets_page_size');
+      if (saved) {
+        const n = parseInt(saved, 10);
+        if ([15, 25, 50, 100].includes(n)) setPageSize(n);
+      }
+    } catch {}
+  }, []);
+
+  // Debounce search input (350ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   // Dynamic Currencies & Exchange Rates
   const [currencies, setCurrencies] = useState<CurrencyConfig[]>(DEFAULT_CURRENCIES);
@@ -803,12 +827,30 @@ export default function AssetsPage() {
       if (forceFresh) {
         invalidateClientCache('/api/assets');
       }
+
+      const params = new URLSearchParams();
+      params.append('page', String(currentPage));
+      params.append('pageSize', String(pageSize));
+      if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
+      if (selectedCompany) params.append('companyName', selectedCompany);
+      if (selectedCategory) params.append('categoryId', selectedCategory);
+      if (selectedStatus) params.append('status', selectedStatus);
+      if (selectedSource !== 'ALL') params.append('source', selectedSource);
+      if (selectedWarranty !== 'ALL') params.append('warranty', selectedWarranty);
+
       await Promise.all([
         // 1. Fetch Assets with SWR Cache (0ms instant render)
-        fetchWithSwr<any>('/api/assets?pageSize=5000', (assetsRes) => {
+        fetchWithSwr<any>(`/api/assets?${params.toString()}`, (assetsRes) => {
           if (assetsRes) {
             const list = Array.isArray(assetsRes) ? assetsRes : assetsRes.data || assetsRes.assets || [];
             setAssets(list);
+            if (assetsRes.pagination) {
+              setServerTotal(assetsRes.pagination.total);
+              setServerTotalPages(assetsRes.pagination.totalPages || 1);
+            }
+            if (assetsRes.summary) {
+              setServerSummary(assetsRes.summary);
+            }
             setLoading(false);
           }
         }, 30000, forceFresh),
@@ -845,7 +887,7 @@ export default function AssetsPage() {
       console.error('Failed to load assets data:', error);
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, pageSize, debouncedSearch, selectedCompany, selectedCategory, selectedStatus, selectedSource, selectedWarranty]);
 
   // Connect Professional Auto-Refresh & Instant Reactive Sync
   const { isRefreshing: isAutoRefreshing, refreshNow } = useAutoRefresh({
@@ -1908,77 +1950,16 @@ export default function AssetsPage() {
     ).length;
   }, [assets]);
 
-  // Filter assets in memory with search, company, category, status, source, and warranty
-  const displayAssets = useMemo(() => {
-    return assets.filter((a) => {
-      // Search filter
-      if (search.trim()) {
-        const s = search.toLowerCase();
-        const tagMatch = a.assetTag?.toLowerCase().includes(s);
-        const nameMatch = a.name?.toLowerCase().includes(s);
-        const snMatch = a.serialNumber?.toLowerCase().includes(s);
-        const brandMatch = a.brand?.toLowerCase().includes(s);
-        const modelMatch = a.model?.toLowerCase().includes(s);
-        const companyMatch = a.companyName?.toLowerCase().includes(s);
-        const contractMatch = a.contractNumber?.toLowerCase().includes(s);
-        const invoiceMatch = a.invoiceNumber?.toLowerCase().includes(s);
-        const specsMatch = a.specs ? JSON.stringify(a.specs).toLowerCase().includes(s) : false;
-        if (!tagMatch && !nameMatch && !snMatch && !brandMatch && !modelMatch && !companyMatch && !contractMatch && !invoiceMatch && !specsMatch) {
-          return false;
-        }
-      }
-
-      // Company filter
-      if (selectedCompany && a.companyName !== selectedCompany) return false;
-
-      // Category filter
-      if (selectedCategory && a.categoryId !== selectedCategory) return false;
-
-      // Status filter
-      if (selectedStatus && a.status !== selectedStatus) return false;
-
-      // Source filter
-      const isAuto =
-        a.source === 'AUTO_SCAN' ||
-        a.source === 'AGENT_PS1' ||
-        a.isAutoScanned ||
-        a.specs?.autoScanned ||
-        a.specs?.source === 'AGENT_PS1' ||
-        a.notes?.includes('PowerShell') ||
-        a.notes?.includes('Auto-Scan') ||
-        a.notes?.includes('Agent');
-
-      if (selectedSource === 'MANUAL' && isAuto) return false;
-      if (selectedSource === 'AUTO_SCAN' && !isAuto) return false;
-
-      // Warranty filter
-      if (selectedWarranty !== 'ALL') {
-        if (!a.warrantyExpiry) {
-          if (selectedWarranty !== 'EXPIRED') return false;
-        } else {
-          const exp = new Date(a.warrantyExpiry).getTime();
-          const now = Date.now();
-          const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-          if (selectedWarranty === 'VALID' && exp < now) return false;
-          if (selectedWarranty === 'EXPIRING' && (exp < now || exp > now + thirtyDays)) return false;
-          if (selectedWarranty === 'EXPIRED' && exp >= now) return false;
-        }
-      }
-
-      return true;
-    });
-  }, [assets, search, selectedCompany, selectedCategory, selectedStatus, selectedSource, selectedWarranty]);
+  // Assets are already filtered & paginated by the server API
+  const displayAssets = assets;
+  const paginatedAssets = assets;
+  const totalFilteredAssets = serverTotal || (serverSummary?.totalCount ?? assets.length);
+  const totalPages = serverTotalPages || Math.max(1, Math.ceil(totalFilteredAssets / pageSize));
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedCompany, selectedCategory, selectedStatus, selectedSource, selectedWarranty]);
-
-  const totalFilteredAssets = displayAssets.length;
-  const totalPages = Math.max(1, Math.ceil(totalFilteredAssets / pageSize));
-  const paginatedAssets = useMemo(() => {
-    return displayAssets.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  }, [displayAssets, currentPage, pageSize]);
+  }, [debouncedSearch, selectedCompany, selectedCategory, selectedStatus, selectedSource, selectedWarranty, pageSize]);
 
   // Export filtered assets to formatted Excel
   const handleExportExcel = async () => {
@@ -1987,6 +1968,19 @@ export default function AssetsPage() {
       return;
     }
     try {
+      // Fetch all matching assets for complete export (up to 10000)
+      const exportParams = new URLSearchParams();
+      exportParams.append('pageSize', '10000');
+      if (debouncedSearch.trim()) exportParams.append('search', debouncedSearch.trim());
+      if (selectedCompany) exportParams.append('companyName', selectedCompany);
+      if (selectedCategory) exportParams.append('categoryId', selectedCategory);
+      if (selectedStatus) exportParams.append('status', selectedStatus);
+      if (selectedSource !== 'ALL') exportParams.append('source', selectedSource);
+      if (selectedWarranty !== 'ALL') exportParams.append('warranty', selectedWarranty);
+
+      const exportRes = await fetch(`/api/assets?${exportParams.toString()}`).then((r) => r.json());
+      const exportItems = exportRes?.data || assets;
+
       const ExcelJS = await import('exceljs');
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Danh Sách Tài Sản IT', {
@@ -2007,8 +2001,8 @@ export default function AssetsPage() {
       const subCell = sheet.getCell('A2');
       const filterCompanyText = selectedCompany ? ` | Công ty: ${selectedCompany}` : '';
       const filterCatText = selectedCategory ? ` | Danh mục: ${categories.find((c) => c.id === selectedCategory)?.name || ''}` : '';
-      const deviceCountText = isEn ? (displayAssets.length === 1 ? 'device' : 'devices') : 'thiết bị';
-      subCell.value = `Thời gian xuất: ${new Date().toLocaleString('vi-VN')} | Tổng số lượng: ${displayAssets.length} ${deviceCountText} lọc${filterCompanyText}${filterCatText}`;
+      const deviceCountText = isEn ? (exportItems.length === 1 ? 'device' : 'devices') : 'thiết bị';
+      subCell.value = `Thời gian xuất: ${new Date().toLocaleString('vi-VN')} | Tổng số lượng: ${exportItems.length} ${deviceCountText} lọc${filterCompanyText}${filterCatText}`;
       subCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF475569' } };
       subCell.alignment = { vertical: 'middle', horizontal: 'center' };
       sheet.getRow(2).height = 20;
@@ -2062,7 +2056,7 @@ export default function AssetsPage() {
         BROKEN: 'Hỏng hóc',
       };
 
-      displayAssets.forEach((asset, index) => {
+      exportItems.forEach((asset: any, index: number) => {
         const assignedUser = asset.assignments?.[0]?.user;
         const holderName = assignedUser ? assignedUser.fullName : 'Sẵn sàng trong kho';
         const holderDept = assignedUser?.department || (assignedUser ? 'Nhân sự' : 'Kho IT');
@@ -2148,70 +2142,41 @@ export default function AssetsPage() {
 
 
 
-  // Financial KPI Metrics (Linear Depreciation & Dual Currency Calculation)
+  // Financial KPI Metrics (Server-side Aggregation & Selected Currency Conversion)
   const financialStats = useMemo(() => {
-    let totalOriginal = 0;
-    let totalDepreciation = 0;
-    const now = new Date();
+    if (serverSummary) {
+      const origVnd = serverSummary.totalOriginalPrice || 0;
+      const deprecVnd = serverSummary.totalDepreciation || 0;
+      const convertedOriginal = convertCurrency(origVnd, 'VND', selectedCurrency, 1);
+      const convertedDeprec = convertCurrency(deprecVnd, 'VND', selectedCurrency, 1);
+      const remaining = Math.max(0, convertedOriginal - convertedDeprec);
+      const depPercent = convertedOriginal > 0 ? Math.round((convertedDeprec / convertedOriginal) * 100) : 0;
 
-    displayAssets.forEach((asset) => {
-      const rawPrice = Number(asset.purchasePrice) || 0;
-      const rawCurr = asset.purchaseCurrency || 'VND';
-      const recordedRate = Number((asset as any).exchangeRate || (asset as any).specs?.exchangeRate);
-      const priceInSelected = convertCurrency(rawPrice, rawCurr, selectedCurrency, recordedRate);
-      totalOriginal += priceInSelected;
-
-      if (rawPrice > 0) {
-        const catName = (asset.category?.name || '').toLowerCase();
-        const customMonths = Number((asset as any).specs?.depreciationMonths);
-        const usefulLifeMonths =
-          customMonths > 0
-            ? customMonths
-            : (catName.includes('server') ||
-              catName.includes('máy chủ') ||
-              catName.includes('switch') ||
-              catName.includes('router') ||
-              catName.includes('mạng')
-                ? 60
-                : 36);
-
-        if (asset.purchaseDate) {
-          const purchaseDate = new Date(asset.purchaseDate);
-          if (!isNaN(purchaseDate.getTime())) {
-            const diffMonths = Math.max(
-              0,
-              (now.getFullYear() - purchaseDate.getFullYear()) * 12 +
-                (now.getMonth() - purchaseDate.getMonth())
-            );
-            const depreciationRatio = usefulLifeMonths > 0 ? Math.min(1, Math.max(0, diffMonths / usefulLifeMonths)) : 1;
-            const assetDeprec = priceInSelected * (isNaN(depreciationRatio) ? 0 : depreciationRatio);
-            totalDepreciation += Math.min(priceInSelected, isNaN(assetDeprec) ? 0 : assetDeprec);
-          } else {
-            const deprecRatio = asset.condition === 'NEW' ? 0 : 0.25;
-            totalDepreciation += priceInSelected * deprecRatio;
-          }
-        } else {
-          const deprecRatio = asset.condition === 'NEW' ? 0 : 0.25;
-          totalDepreciation += priceInSelected * deprecRatio;
-        }
-      }
-    });
-
-    const safeTotalDeprec = isNaN(totalDepreciation) ? 0 : totalDepreciation;
-    const remainingValue = Math.max(0, totalOriginal - safeTotalDeprec);
+      return {
+        totalCount: serverSummary.totalCount ?? totalFilteredAssets,
+        pendingCount: serverSummary.pendingCount ?? 0,
+        availableCount: serverSummary.availableCount ?? 0,
+        inUseCount: serverSummary.inUseCount ?? 0,
+        maintenanceCount: serverSummary.maintenanceCount ?? 0,
+        totalOriginalPrice: convertedOriginal,
+        totalDepreciation: convertedDeprec,
+        remainingValue: remaining,
+        depreciationPercent: depPercent,
+      };
+    }
 
     return {
-      totalCount: displayAssets.length,
-      pendingCount: displayAssets.filter((a) => a.status === 'PENDING').length,
-      availableCount: displayAssets.filter((a) => a.status === 'AVAILABLE').length,
-      inUseCount: displayAssets.filter((a) => a.status === 'IN_USE').length,
-      maintenanceCount: displayAssets.filter((a) => a.status === 'MAINTENANCE').length,
-      totalOriginalPrice: totalOriginal,
-      totalDepreciation: totalDepreciation,
-      remainingValue: remainingValue,
-      depreciationPercent: totalOriginal > 0 ? Math.round((totalDepreciation / totalOriginal) * 100) : 0,
+      totalCount: totalFilteredAssets,
+      pendingCount: assets.filter((a) => a.status === 'PENDING').length,
+      availableCount: assets.filter((a) => a.status === 'AVAILABLE').length,
+      inUseCount: assets.filter((a) => a.status === 'IN_USE').length,
+      maintenanceCount: assets.filter((a) => a.status === 'MAINTENANCE').length,
+      totalOriginalPrice: 0,
+      totalDepreciation: 0,
+      remainingValue: 0,
+      depreciationPercent: 0,
     };
-  }, [displayAssets, selectedCurrency]);
+  }, [serverSummary, selectedCurrency, totalFilteredAssets, assets]);
 
   const hasActiveFilters =
     Boolean(search) ||
@@ -2574,7 +2539,7 @@ export default function AssetsPage() {
                     }`}
                   >
                     <span>{isEn ? '📦 All devices' : '📦 Tất cả thiết bị'}</span>
-                    <span className="text-[10px] opacity-80">{assets.length}</span>
+                    <span className="text-[10px] opacity-80">{totalFilteredAssets}</span>
                   </div>
                   {categories
                     .filter((c) => !categorySearchTerm || c.name.toLowerCase().includes(categorySearchTerm.toLowerCase()))
@@ -2594,7 +2559,7 @@ export default function AssetsPage() {
                           <span>{renderCategoryIcon(cat.icon, 'w-3.5 h-3.5')}</span>
                           <span className="truncate">{cat.name}</span>
                         </div>
-                        <span className="text-[10px] opacity-80">{assets.filter((a) => a.categoryId === cat.id).length}</span>
+                        <span className="text-[10px] opacity-80">{serverSummary?.categoryCounts?.[cat.id] ?? ''}</span>
                       </div>
                     ))}
                 </div>
@@ -3200,22 +3165,66 @@ export default function AssetsPage() {
             </div>
 
             {/* Pagination Controls */}
-            {totalFilteredAssets > pageSize && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 text-xs shrink-0">
-                <div className="text-slate-500 font-medium">
-                  Hiển thị <span className="font-bold text-slate-900 dark:text-white">{Math.min(totalFilteredAssets, (currentPage - 1) * pageSize + 1)}</span> - <span className="font-bold text-slate-900 dark:text-white">{Math.min(totalFilteredAssets, currentPage * pageSize)}</span> trên <span className="font-bold text-blue-600 dark:text-blue-400">{totalFilteredAssets}</span> thiết bị
+            {totalFilteredAssets > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 text-xs shrink-0">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="text-slate-500 font-medium">
+                    {language === 'en' ? 'Showing' : 'Hiển thị'}{' '}
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {totalFilteredAssets === 0 ? 0 : (currentPage - 1) * pageSize + 1}
+                    </span>
+                    {' - '}
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {Math.min(totalFilteredAssets, currentPage * pageSize)}
+                    </span>{' '}
+                    {language === 'en' ? 'of' : 'trên'}{' '}
+                    <span className="font-bold text-blue-600 dark:text-blue-400">{totalFilteredAssets}</span>{' '}
+                    {language === 'en' ? 'devices' : 'thiết bị'}
+                  </div>
+
+                  {/* Page Size Selector */}
+                  <div className="flex items-center gap-1.5 text-slate-500">
+                    <span>{language === 'en' ? 'Per page:' : 'Số dòng:'}</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        const newSize = Number(e.target.value);
+                        setPageSize(newSize);
+                        setCurrentPage(1);
+                        try {
+                          localStorage.setItem('simply_it_assets_page_size', String(newSize));
+                        } catch {}
+                      }}
+                      className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                    >
+                      <option value={15}>15</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage(1)}
+                    className="p-1.5 px-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 font-bold transition-all shadow-xs cursor-pointer"
+                    title={language === 'en' ? 'First page' : 'Trang đầu'}
+                  >
+                    «
+                  </button>
                   <button
                     type="button"
                     disabled={currentPage <= 1}
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 font-bold transition-all shadow-xs cursor-pointer"
                   >
-                    ← Trước
+                    ← {language === 'en' ? 'Prev' : 'Trước'}
                   </button>
                   <span className="px-2.5 py-1 font-bold text-slate-800 dark:text-slate-200">
-                    Trang {currentPage} / {totalPages}
+                    {language === 'en' ? `Page ${currentPage} / ${totalPages}` : `Trang ${currentPage} / ${totalPages}`}
                   </span>
                   <button
                     type="button"
@@ -3223,7 +3232,16 @@ export default function AssetsPage() {
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 font-bold transition-all shadow-xs cursor-pointer"
                   >
-                    Sau →
+                    {language === 'en' ? 'Next' : 'Sau'} →
+                  </button>
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage(totalPages)}
+                    className="p-1.5 px-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 font-bold transition-all shadow-xs cursor-pointer"
+                    title={language === 'en' ? 'Last page' : 'Trang cuối'}
+                  >
+                    »
                   </button>
                 </div>
               </div>
