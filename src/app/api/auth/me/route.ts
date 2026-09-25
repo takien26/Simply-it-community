@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { getUserPermissions, isAdminOrAbove } from '@/lib/permissions';
 import { prisma } from '@/lib/db';
-
-const meCache = new Map<string, { timestamp: number; data: any }>();
-const ME_CACHE_TTL_MS = 2 * 1000; // 2s cache
+import { getCachedMe, setCachedMe } from '@/lib/me-cache';
 
 export async function GET() {
   try {
@@ -13,9 +11,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const cached = meCache.get(currentUser.userId);
-    if (cached && Date.now() - cached.timestamp < ME_CACHE_TTL_MS) {
-      return NextResponse.json(cached.data);
+    const cached = getCachedMe(currentUser.userId);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     const user = await prisma.user.findUnique({
@@ -50,13 +48,26 @@ export async function GET() {
 
     const permissions = await getUserPermissions(currentUser.userId);
 
+    // Determine authProvider and password status
+    const authRecord = await prisma.user.findUnique({
+      where: { id: currentUser.userId },
+      select: { passwordHash: true },
+    });
+
+    let authProvider: 'LOCAL' | 'SSO' | 'LDAP' = 'LOCAL';
+    const deptLower = (user.department || '').toLowerCase();
+
+    if (authRecord?.passwordHash?.startsWith('SSO_')) {
+      authProvider = 'SSO';
+    } else if (deptLower.includes('ldap') || deptLower.includes('active directory')) {
+      authProvider = 'LDAP';
+    } else {
+      authProvider = 'LOCAL';
+    }
+
     let isDefaultPassword = false;
-    if (isAdminOrAbove(user.role?.name)) {
-      const authRecord = await prisma.user.findUnique({
-        where: { id: currentUser.userId },
-        select: { passwordHash: true },
-      });
-      if (authRecord?.passwordHash) {
+    if (authProvider === 'LOCAL' && authRecord?.passwordHash) {
+      if (isAdminOrAbove(user.role?.name)) {
         try {
           const bcrypt = await import('bcryptjs');
           isDefaultPassword = await bcrypt.default.compare('Admin@123', authRecord.passwordHash);
@@ -70,9 +81,10 @@ export async function GET() {
         ...user,
         permissions: Array.from(permissions),
         isDefaultPassword,
+        authProvider,
       },
     };
-    meCache.set(currentUser.userId, { timestamp: Date.now(), data: responsePayload });
+    setCachedMe(currentUser.userId, responsePayload);
     return NextResponse.json(responsePayload);
   } catch (error) {
     console.error('Get current user error:', error);

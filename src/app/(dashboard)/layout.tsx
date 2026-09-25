@@ -24,6 +24,10 @@ const RealtimeNotificationListener = dynamic(
   () => import('@/components/common/RealtimeNotificationListener').then((mod) => mod.RealtimeNotificationListener),
   { ssr: false }
 );
+const UserProfileSecurityModal = dynamic(
+  () => import('@/components/common/UserProfileSecurityModal').then((mod) => mod.UserProfileSecurityModal),
+  { ssr: false }
+);
 
 import { triggerDataRefresh } from '@/lib/client-cache';
 import { TrashUndoToast } from '@/components/common/TrashUndoToast';
@@ -101,6 +105,9 @@ export default function DashboardLayout({
 
       {/* Global Trash Undo Toast (0ms Instant Recovery) */}
       <TrashUndoToast />
+
+      {/* Global User Profile & Security Modal */}
+      <UserProfileSecurityModal />
 
       {/* Mobile-Only Bottom Navigation Bar */}
       <MobileBottomNav />

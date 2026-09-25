@@ -43,6 +43,7 @@ import {
 import { useEffect, useState, useRef } from 'react';
 import { useLanguage } from '@/lib/i18n/context';
 import { EnterpriseUpgradeModal } from '@/components/common/EnterpriseUpgradeModal';
+import { openUserProfileModal } from '@/components/common/UserProfileSecurityModal';
 
 interface SubNavItem {
   label: string;
@@ -603,14 +604,23 @@ export function Sidebar({
 
         {/* User Footer Profile */}
         <div className="p-3 border-t border-slate-800 bg-slate-950/40 shrink-0">
-          <div className={`flex items-center space-x-2.5 ${isExpanded ? 'mb-2.5' : 'justify-center'}`}>
-            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-200 font-bold border border-slate-600 shrink-0 text-xs">
+          <div
+            onClick={() => openUserProfileModal({ tab: 'profile' })}
+            className={`flex items-center space-x-2.5 p-1.5 -m-1.5 rounded-xl hover:bg-slate-800/80 cursor-pointer transition-all group ${
+              isExpanded ? 'mb-2.5' : 'justify-center'
+            }`}
+            title={isExpanded ? undefined : t('header.user_profile', 'Hồ sơ & Đổi mật khẩu')}
+          >
+            <div className="w-8 h-8 rounded-full bg-slate-700 group-hover:bg-blue-600 flex items-center justify-center text-slate-200 group-hover:text-white font-bold border border-slate-600 group-hover:border-blue-400 shrink-0 text-xs transition-colors">
               {user?.fullName?.charAt(0) || <UserIcon className="w-4 h-4" />}
             </div>
 
             {isExpanded && (
               <div className="flex-1 min-w-0 animate-in fade-in duration-200">
-                <p className="text-xs font-bold text-white truncate">{user?.fullName || t('common.loading', 'Đang tải...')}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-white group-hover:text-blue-300 truncate transition-colors">{user?.fullName || t('common.loading', 'Đang tải...')}</p>
+                  <KeyRound className="w-3 h-3 text-slate-500 group-hover:text-blue-400 shrink-0 ml-1 transition-colors" />
+                </div>
                 <p className="text-[10px] text-blue-400 truncate font-mono">{user?.role?.name || user?.email || 'IT Manager'}</p>
               </div>
             )}

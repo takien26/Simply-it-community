@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { ShieldAlert, ArrowRight, X } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
+import { openUserProfileModal } from '@/components/common/UserProfileSecurityModal';
 
 export function DefaultPasswordBanner() {
   const [showBanner, setShowBanner] = useState(false);
@@ -30,6 +30,18 @@ export function DefaultPasswordBanner() {
     }
 
     checkPasswordStatus();
+
+    const handlePasswordChanged = () => {
+      setShowBanner(false);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('simply:dismiss-default-pwd-banner', 'true');
+      }
+    };
+
+    window.addEventListener('simply:password-changed', handlePasswordChanged);
+    return () => {
+      window.removeEventListener('simply:password-changed', handlePasswordChanged);
+    };
   }, []);
 
   const handleDismiss = () => {
@@ -100,13 +112,14 @@ export function DefaultPasswordBanner() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
-          <Link
-            href="/users"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white px-3 py-1.5 text-xs font-medium shadow-sm transition-colors"
+          <button
+            type="button"
+            onClick={() => openUserProfileModal({ tab: 'password' })}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white px-3 py-1.5 text-xs font-medium shadow-sm transition-colors cursor-pointer"
           >
             <span>{actionText}</span>
             <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          </button>
           <button
             onClick={handleDismiss}
             className="rounded-lg p-1.5 text-amber-700 hover:bg-amber-200/60 transition-colors cursor-pointer"
