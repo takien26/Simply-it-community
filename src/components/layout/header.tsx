@@ -40,7 +40,6 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { GlobalSearch } from '@/components/common/GlobalSearch';
 import { useLanguage } from '@/lib/i18n/context';
-import { openUserProfileModal } from '@/components/common/UserProfileSecurityModal';
 
 const PAGE_TITLES: Record<string, { titleVi: string; titleEn: string; titleJa?: string; icon: string }> = {
   '/dashboard': { titleVi: 'Tổng Quan & Dashboard', titleEn: 'Dashboard & Overview', titleJa: '総合ダッシュボード＆概要', icon: '📊' },
@@ -1201,21 +1200,6 @@ export function Header({
             </div>
           )}
         </div>
-
-        {/* User Profile & Password Quick Button */}
-        <button
-          type="button"
-          onClick={() => openUserProfileModal({ tab: 'profile' })}
-          className="h-8 pl-1.5 pr-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 shadow-2xs border border-slate-200 hover:scale-102 transition-all cursor-pointer shrink-0"
-          title={language === 'en' ? 'User Profile & Security' : 'Hồ sơ & Đổi mật khẩu'}
-        >
-          <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-            {user?.fullName?.charAt(0) || <User className="w-3 h-3" />}
-          </div>
-          <span className="text-slate-800 font-bold text-xs hidden sm:inline max-w-[100px] truncate">
-            {user?.fullName?.split(' ').slice(-1)[0] || 'User'}
-          </span>
-        </button>
       </div>
     </header>
   );

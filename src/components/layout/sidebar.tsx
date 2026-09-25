@@ -619,7 +619,17 @@ export function Sidebar({
               <div className="flex-1 min-w-0 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-bold text-white group-hover:text-blue-300 truncate transition-colors">{user?.fullName || t('common.loading', 'Đang tải...')}</p>
-                  <KeyRound className="w-3 h-3 text-slate-500 group-hover:text-blue-400 shrink-0 ml-1 transition-colors" />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openUserProfileModal({ tab: 'password' });
+                    }}
+                    className="p-1 rounded-md text-slate-400 hover:text-amber-400 hover:bg-slate-700/60 transition-colors cursor-pointer"
+                    title={t('auth.tab_password', 'Đổi mật khẩu')}
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                  </button>
                 </div>
                 <p className="text-[10px] text-blue-400 truncate font-mono">{user?.role?.name || user?.email || 'IT Manager'}</p>
               </div>
