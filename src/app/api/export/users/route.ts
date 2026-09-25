@@ -17,8 +17,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: Bạn không có quyền trích xuất danh sách nhân sự' }, { status: 403 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get('search');
+    const department = searchParams.get('department');
+    const status = searchParams.get('status');
+
+    const where: any = {};
+    if (status === 'inactive') {
+      where.isActive = false;
+    } else if (status !== 'all') {
+      where.isActive = true;
+    }
+
+    if (department && department !== 'ALL') {
+      where.department = { contains: department, mode: 'insensitive' };
+    }
+
+    if (search && search.trim()) {
+      const q = search.trim();
+      where.OR = [
+        { fullName: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { phone: { contains: q, mode: 'insensitive' } },
+        { employeeId: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
     const users = await prisma.user.findMany({
-      where: { isActive: true },
+      where,
       include: {
         role: true,
         assetAssignments: {
@@ -42,7 +68,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Title Header
-    sheet.mergeCells('A1:H1');
+    sheet.mergeCells('A1:I1');
     const titleCell = sheet.getCell('A1');
     titleCell.value = 'DANH SÁCH NHÂN SỰ & THIẾT BỊ / LICENSE ĐÃ BÀN GIAO';
     titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -55,9 +81,13 @@ export async function GET(request: NextRequest) {
     sheet.getRow(1).height = 35;
 
     // Subtitle
-    sheet.mergeCells('A2:H2');
+    sheet.mergeCells('A2:I2');
     const subCell = sheet.getCell('A2');
-    subCell.value = `Thời gian xuất: ${new Date().toLocaleString('vi-VN')} | Tổng số nhân sự: ${users.length}`;
+    const filterInfo = [
+      department && department !== 'ALL' ? `Phòng ban: ${department}` : null,
+      search ? `Tìm kiếm: "${search}"` : null,
+    ].filter(Boolean).join(' | ');
+    subCell.value = `Thời gian xuất: ${new Date().toLocaleString('vi-VN')} | Tổng số nhân sự: ${users.length}${filterInfo ? ` (${filterInfo})` : ''}`;
     subCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF475569' } };
     subCell.alignment = { vertical: 'middle', horizontal: 'center' };
     sheet.getRow(2).height = 20;

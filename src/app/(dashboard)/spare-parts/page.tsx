@@ -38,6 +38,7 @@ import {
   Tag,
   FileText,
   SlidersHorizontal,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface SparePart {
@@ -558,6 +559,131 @@ export default function SparePartsPage() {
     return filteredParts.slice(start, start + pageSize);
   }, [filteredParts, currentPage, pageSize]);
 
+  // Excel Export Handler
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const handleExportExcel = async () => {
+    if (filteredParts.length === 0) {
+      alert(isEn ? 'No spare parts to export' : 'Không có phụ tùng / linh kiện nào trong danh sách để xuất');
+      return;
+    }
+    setIsExportingExcel(true);
+    try {
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Simply IT [Community Edition]';
+      const sheet = workbook.addWorksheet(isEn ? 'Spare Parts Inventory' : 'Kho Linh Kiện IT', {
+        views: [{ showGridLines: true }],
+      });
+
+      // Title Banner
+      sheet.mergeCells('A1:J1');
+      const titleCell = sheet.getCell('A1');
+      titleCell.value = isEn
+        ? 'IT SPARE PARTS & CONSUMABLES INVENTORY REPORT'
+        : 'BÁO CÁO TỒN KHO LINH KIỆN & PHỤ TÙNG CÔNG NGHỆ THÔNG TIN';
+      titleCell.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } };
+      titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      sheet.getRow(1).height = 36;
+
+      // Subtitle
+      sheet.mergeCells('A2:J2');
+      const subCell = sheet.getCell('A2');
+      subCell.value = `${isEn ? 'Exported at' : 'Thời gian xuất'}: ${new Date().toLocaleString(isEn ? 'en-US' : 'vi-VN')} | ${isEn ? 'Total Items' : 'Tổng số mặt hàng'}: ${filteredParts.length}`;
+      subCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF475569' } };
+      subCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      sheet.getRow(2).height = 20;
+
+      sheet.addRow([]);
+
+      const headers = [
+        'STT',
+        isEn ? 'Part Name & Specs' : 'Tên Linh Kiện & Thông Số',
+        isEn ? 'SKU / Part Number' : 'Mã SKU / Part No',
+        isEn ? 'Category' : 'Danh Mục',
+        isEn ? 'Stock Qty' : 'Số Lượng Tồn',
+        isEn ? 'Min Stock' : 'Ngưỡng Tối Thiểu',
+        isEn ? 'Stock Status' : 'Tình Trạng Tồn',
+        isEn ? 'Unit Price' : 'Đơn Giá (VNĐ)',
+        isEn ? 'Storage Location' : 'Vị Trí Lưu Kho',
+        isEn ? 'Vendor / Supplier' : 'Nhà Cung Cấp',
+      ];
+
+      const headerRow = sheet.addRow(headers);
+      headerRow.height = 26;
+      headerRow.eachCell((cell) => {
+        cell.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+
+      filteredParts.forEach((p, idx) => {
+        const isOutOfStock = p.quantity === 0;
+        const isLowStock = p.quantity > 0 && p.quantity <= p.minStock;
+        const statusText = isOutOfStock
+          ? (isEn ? 'Out of Stock' : 'Hết hàng (0)')
+          : isLowStock
+          ? (isEn ? 'Low Stock' : 'Sắp hết (Dưới mức tối thiểu)')
+          : (isEn ? 'In Stock' : 'Đủ tồn kho');
+
+        const row = sheet.addRow([
+          idx + 1,
+          p.name,
+          p.sku || '—',
+          p.category?.name || (isEn ? 'Uncategorized' : 'Chưa phân loại'),
+          `${p.quantity} ${p.unit || ''}`.trim(),
+          `${p.minStock} ${p.unit || ''}`.trim(),
+          statusText,
+          p.unitPrice ? Number(p.unitPrice) : 0,
+          p.location?.name || '—',
+          p.vendor?.name || '—',
+        ]);
+
+        row.height = 22;
+        row.alignment = { vertical: 'middle' };
+        row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(3).alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(8).numFmt = '#,##0 "₫"';
+
+        if (idx % 2 === 1) {
+          row.eachCell((c) => {
+            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+          });
+        }
+      });
+
+      sheet.columns = [
+        { width: 6 },
+        { width: 34 },
+        { width: 20 },
+        { width: 20 },
+        { width: 16 },
+        { width: 16 },
+        { width: 24 },
+        { width: 18 },
+        { width: 22 },
+        { width: 24 },
+      ];
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Bao_Cao_Ton_Kho_Linh_Kien_${new Date().toISOString().split('T')[0]}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      alert(isEn ? 'Failed to export Excel' : 'Xuất file Excel thất bại');
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-20">
       {/* Header */}
@@ -574,14 +700,31 @@ export default function SparePartsPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{isEn ? 'Add Spare Part' : 'Thêm Phụ Tùng Mới'}</span>
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            type="button"
+            disabled={isExportingExcel}
+            onClick={handleExportExcel}
+            className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+            title={isEn ? 'Export spare parts inventory to Excel' : 'Xuất danh sách tồn kho linh kiện ra file Excel'}
+          >
+            {isExportingExcel ? (
+              <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+            ) : (
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            )}
+            <span>{isExportingExcel ? (isEn ? 'Exporting...' : 'Đang xuất...') : (isEn ? 'Export Excel' : 'Xuất Excel')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{isEn ? 'Add Spare Part' : 'Thêm Phụ Tùng Mới'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}

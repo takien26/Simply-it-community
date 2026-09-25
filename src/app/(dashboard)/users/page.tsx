@@ -1015,7 +1015,11 @@ export default function UsersPage() {
             </button>
 
             <a
-              href="/api/export/users"
+              href={`/api/export/users?${new URLSearchParams({
+                ...(search.trim() ? { search: search.trim() } : {}),
+                ...(selectedDeptFilter ? { department: selectedDeptFilter } : {}),
+                status: selectedFilter === 'RESIGNED' ? 'inactive' : selectedFilter === 'ACTIVE' ? 'active' : 'all',
+              }).toString()}`}
               download
               className="px-2.5 py-1.5 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
               title={language === 'en' ? 'Export users and assets to Excel' : 'Xuất danh sách nhân sự & thiết bị ra file Excel'}

@@ -1,7 +1,7 @@
-import { EnterpriseFeatureLock } from '@/components/common/EnterpriseFeatureLock';
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 import { useLanguage } from '@/lib/i18n/context';
 import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
 import {
@@ -929,6 +929,30 @@ export default function AssetsAuditPage() {
       return true;
     });
   }, [currentSession, tableFilterTab, tableCompanyFilter, tableSearch]);
+
+  // Pagination state with localStorage persistence for audit reconciliation table
+  const [pageSize, setPageSize] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_asset_audit_page_size');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if ([15, 25, 50, 100].includes(parsed)) return parsed;
+      }
+    }
+    return 25;
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Auto-reset page when audit filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [tableFilterTab, tableCompanyFilter, tableSearch, currentSession?.id]);
+
+  const totalPages = Math.ceil(displayItems.length / pageSize) || 1;
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return displayItems.slice(start, start + pageSize);
+  }, [displayItems, currentPage, pageSize]);
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -2123,7 +2147,7 @@ export default function AssetsAuditPage() {
                       </td>
                     </tr>
                   ) : (
-                    displayItems.map((item) => {
+                    paginatedItems.map((item) => {
                       const isMismatched = item.auditStatus === 'MISMATCH_LOCATION_USER';
                       const isDamaged = item.auditStatus === 'DAMAGED_OR_LOST';
                       const isMatched = item.auditStatus === 'MATCHED';
@@ -2260,6 +2284,18 @@ export default function AssetsAuditPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            <TablePaginationBar
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={displayItems.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              storageKey="simply_it_asset_audit_page_size"
+              itemName={isEn ? 'reconciliation assets' : 'thiết bị đối soát'}
+            />
           </div>
         </div>
       )}

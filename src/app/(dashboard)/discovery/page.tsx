@@ -1,7 +1,7 @@
-import { EnterpriseFeatureLock } from '@/components/common/EnterpriseFeatureLock';
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 import { useLanguage } from '@/lib/i18n/context';
 import {
   Wifi,
@@ -479,6 +479,30 @@ export default function DiscoveryPage() {
     return d.deviceType === filterType;
   });
 
+  // Pagination state with localStorage persistence
+  const [pageSize, setPageSize] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_discovery_page_size');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if ([15, 25, 50, 100].includes(parsed)) return parsed;
+      }
+    }
+    return 25;
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Auto-reset page on search or filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType, searchDevice]);
+
+  const totalPages = Math.ceil(filteredDevices.length / pageSize) || 1;
+  const paginatedDevices = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredDevices.slice(start, start + pageSize);
+  }, [filteredDevices, currentPage, pageSize]);
+
   return (
     <div className="space-y-4 pb-12">
       {/* Toast */}
@@ -810,7 +834,7 @@ export default function DiscoveryPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredDevices.map((dev, idx) => (
+                    paginatedDevices.map((dev, idx) => (
                       <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
                         <td className="p-3">
                           <div className="flex items-center gap-2">
@@ -887,6 +911,18 @@ export default function DiscoveryPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            <TablePaginationBar
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={filteredDevices.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              storageKey="simply_it_discovery_page_size"
+              itemName={isEn ? 'devices' : 'thiết bị'}
+            />
           </div>
         </div>
       )}
