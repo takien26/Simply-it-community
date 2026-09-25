@@ -24,11 +24,9 @@ import {
   Check,
   Info,
   Globe,
-  Sparkles,
-  CheckCheck,
+  ChevronDown,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
-import { Language } from '@/lib/i18n/locales';
 
 export interface OpenProfileModalDetail {
   tab?: 'profile' | 'password' | 'security';
@@ -56,12 +54,6 @@ function getPasswordStrength(password: string) {
   }
   return { score: 3, labelVi: 'Mạnh & An toàn', labelEn: 'Strong', labelJa: '強力', color: 'bg-emerald-500', text: 'text-emerald-500' };
 }
-
-const LANGUAGES_CONFIG = [
-  { code: 'vi' as Language, label: 'Tiếng Việt', sub: 'Việt Nam', flag: '🇻🇳' },
-  { code: 'en' as Language, label: 'English', sub: 'Global', flag: '🇬🇧' },
-  { code: 'ja' as Language, label: '日本語', sub: 'Japanese', flag: '🇯🇵' },
-];
 
 export function UserProfileSecurityModal() {
   const { language, setLanguage, isEn, isJa } = useLanguage();
@@ -253,42 +245,17 @@ export function UserProfileSecurityModal() {
       >
         {/* Header with User Info Card */}
         <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white relative shrink-0 border-b border-white/10">
-          {/* Top action row: Language Picker & Close button */}
-          <div className="absolute top-3.5 right-3.5 flex items-center gap-1.5 z-10">
-            {/* Quick Language Switcher Pills */}
-            <div className="flex items-center bg-white/10 backdrop-blur-md rounded-xl p-0.5 border border-white/15">
-              {LANGUAGES_CONFIG.map((lang) => {
-                const isActive = language === lang.code;
-                return (
-                  <button
-                    key={lang.code}
-                    type="button"
-                    onClick={() => setLanguage(lang.code)}
-                    title={lang.label}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-slate-300 hover:text-white hover:bg-white/10'
-                    }`}
-                  >
-                    <span>{lang.flag}</span>
-                    <span className="text-[11px] uppercase tracking-wider">{lang.code}</span>
-                  </button>
-                );
-              })}
-            </div>
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
+            title={txt('Đóng (Esc)', 'Close (Esc)', '閉じる (Esc)')}
+          >
+            <X className="w-5 h-5" />
+          </button>
 
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
-              title={txt('Đóng (Esc)', 'Close (Esc)', '閉じる (Esc)')}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3.5 sm:gap-4 pr-32 sm:pr-36 pt-1">
+          <div className="flex items-center gap-3.5 sm:gap-4 pr-12 pt-1">
             <div className="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white font-black text-xl sm:text-2xl shadow-xl border-2 border-white/25 shrink-0 select-none">
               {userData?.fullName?.charAt(0) || <UserIcon className="w-7 h-7" />}
             </div>
@@ -452,54 +419,36 @@ export function UserProfileSecurityModal() {
               )}
 
               {/* Dedicated Language Selector Card in Profile */}
-              <div className="p-4 bg-gradient-to-br from-slate-50 to-blue-50/40 dark:from-slate-800/60 dark:to-slate-800/30 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-blue-600/10 text-blue-600 dark:text-blue-400">
-                      <Globe className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                        {txt('Ngôn ngữ giao diện', 'Display Language', '表示言語設定')}
-                      </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {txt(
-                          'Chọn ngôn ngữ ưu tiên khi làm việc trên Simply IT',
-                          'Select your preferred language across Simply IT',
-                          'Simply ITで使用する優先言語を選択してください'
-                        )}
-                      </p>
-                    </div>
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                    <Globe className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                      {txt('Ngôn ngữ hiển thị', 'Display Language', '表示言語')}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {txt(
+                        'Chọn ngôn ngữ giao diện sử dụng trên hệ thống',
+                        'Select your preferred interface language across Simply IT',
+                        'Simply IT全体で使用する表示言語を選択してください'
+                      )}
+                    </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2.5 pt-1">
-                  {LANGUAGES_CONFIG.map((lang) => {
-                    const isSelected = language === lang.code;
-                    return (
-                      <button
-                        key={lang.code}
-                        type="button"
-                        onClick={() => setLanguage(lang.code)}
-                        className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer relative ${
-                          isSelected
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20 ring-2 ring-blue-500/30'
-                            : 'bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        <span className="text-xl">{lang.flag}</span>
-                        <span className="text-xs font-extrabold">{lang.label}</span>
-                        <span className={`text-[10px] ${isSelected ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'}`}>
-                          {lang.sub}
-                        </span>
-                        {isSelected && (
-                          <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white text-blue-600 flex items-center justify-center">
-                            <CheckCheck className="w-3 h-3" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                <div className="relative min-w-[210px]">
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value as any)}
+                    className="w-full pl-3 pr-9 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none shadow-xs transition-all hover:border-blue-400 dark:hover:border-blue-500"
+                  >
+                    <option value="vi">🇻🇳 Tiếng Việt (Việt Nam)</option>
+                    <option value="en">🇬🇧 English (Global)</option>
+                    <option value="ja">🇯🇵 日本語 (Japanese)</option>
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
             </div>
