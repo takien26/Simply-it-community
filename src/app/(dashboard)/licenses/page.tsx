@@ -12,6 +12,7 @@ import { exportConglomerateExcel, exportSingleLicenseExcel } from '@/components/
 
 
 import { QuickLink } from '@/components/common/QuickLink';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/context';
 import { DocumentQuickPreviewModal } from '@/components/documents/document-quick-preview-modal';
@@ -231,7 +232,15 @@ export default function LicensesPage() {
   const [selectedExpiryFilter, setSelectedExpiryFilter] = useState<'ALL' | 'VALID' | 'EXPIRING' | 'EXPIRED'>('ALL');
   const [showWastefulOnly, setShowWastefulOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 15;
+  const [pageSize, setPageSize] = useState<number>(25);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_licenses_page_size');
+      const n = Number(saved);
+      if ([15, 25, 50, 100].includes(n)) setPageSize(n);
+    }
+  }, []);
 
   // Active Dropdown Action Menu
   const [activeDropdownLicenseId, setActiveDropdownLicenseId] = useState<string | null>(null);
@@ -2796,34 +2805,16 @@ export default function LicensesPage() {
         </div>
 
         {/* Pagination Controls */}
-        {totalFilteredLicenses > pageSize && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 text-xs shrink-0 rounded-b-2xl">
-            <div className="text-slate-500 font-medium">
-              Hiển thị <span className="font-bold text-slate-900 dark:text-white">{Math.min(totalFilteredLicenses, (currentPage - 1) * pageSize + 1)}</span> - <span className="font-bold text-slate-900 dark:text-white">{Math.min(totalFilteredLicenses, currentPage * pageSize)}</span> trên <span className="font-bold text-purple-600 dark:text-purple-400">{totalFilteredLicenses}</span> license
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 font-bold transition-all shadow-xs cursor-pointer"
-              >
-                ← Trước
-              </button>
-              <span className="px-2.5 py-1 font-bold text-slate-800 dark:text-slate-200">
-                Trang {currentPage} / {totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={currentPage >= totalPages}
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 font-bold transition-all shadow-xs cursor-pointer"
-              >
-                Sau →
-              </button>
-            </div>
-          </div>
-        )}
+        <TablePaginationBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={totalFilteredLicenses}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          storageKey="simply_it_licenses_page_size"
+          itemName={language === 'en' ? 'licenses' : 'bản quyền'}
+        />
       </div>
       </>
       )}

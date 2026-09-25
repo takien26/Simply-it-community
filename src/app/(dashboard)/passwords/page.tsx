@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
 import {
   KeyRound,
@@ -499,6 +500,29 @@ export default function PasswordsPage() {
       return true;
     });
   }, [passwords, search, favoriteOnly, selectedGroupPath]);
+
+  // 📄 Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_passwords_page_size');
+      const n = Number(saved);
+      if ([15, 25, 50, 100].includes(n)) setPageSize(n);
+    }
+  }, []);
+
+  // Reset page when filters or pageSize change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, favoriteOnly, selectedGroupPath, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredPasswords.length / pageSize));
+  const paginatedPasswords = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredPasswords.slice(start, start + pageSize);
+  }, [filteredPasswords, currentPage, pageSize]);
 
   // Load saved splitter width
   useEffect(() => {
@@ -1285,7 +1309,7 @@ export default function PasswordsPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredPasswords.map((item, rowIdx) => {
+                  paginatedPasswords.map((item, rowIdx) => {
                     const isVisible = visiblePasswords.has(item.id);
                     const strength = evaluatePasswordStrength(item.password);
 
@@ -1484,6 +1508,18 @@ export default function PasswordsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          <TablePaginationBar
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={filteredPasswords.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            storageKey="simply_it_passwords_page_size"
+            itemName={isEn ? 'accounts' : 'tài khoản'}
+          />
         </div>
       </div>
 

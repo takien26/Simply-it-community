@@ -1,6 +1,7 @@
 'use client';
 
 import { useLanguage } from '@/lib/i18n/context';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -67,9 +68,18 @@ export const AuditLogsSettingsTab: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
   const [totalPages, setTotalPages] = useState(1);
   const [totalLogs, setTotalLogs] = useState(0);
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_audit_logs_page_size');
+      const n = Number(saved);
+      if ([15, 25, 50, 100].includes(n)) setPageSize(n);
+    }
+  }, []);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -81,7 +91,7 @@ export const AuditLogsSettingsTab: React.FC = () => {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       params.append('page', String(page));
-      params.append('limit', '40');
+      params.append('limit', String(pageSize));
 
       const res = await fetch(`/api/system/audit-logs?${params.toString()}`);
       const data = await res.json();
@@ -95,7 +105,7 @@ export const AuditLogsSettingsTab: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, actionFilter, entityFilter, startDate, endDate, page]);
+  }, [search, actionFilter, entityFilter, startDate, endDate, page, pageSize]);
 
   useEffect(() => {
     fetchLogs();
@@ -430,29 +440,16 @@ export const AuditLogsSettingsTab: React.FC = () => {
         </div>
 
         {/* Pagination Bar */}
-        <div className="p-3 bg-slate-50 dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
-          <div>
-            Trang <strong>{page}</strong> / <strong>{totalPages}</strong> (Tổng <strong>{totalLogs}</strong> bản ghi)
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl disabled:opacity-40 hover:bg-slate-100 cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl disabled:opacity-40 hover:bg-slate-100 cursor-pointer"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+        <TablePaginationBar
+          currentPage={page}
+          totalPages={totalPages}
+          totalCount={totalLogs}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          storageKey="simply_it_audit_logs_page_size"
+          itemName={isEn ? 'audit logs' : 'nhật ký'}
+        />
       </div>
 
       {/* MODAL: DETAIL AUDIT LOG */}

@@ -1,7 +1,8 @@
 'use client';
 
 import { OfficeDocumentViewer } from '@/components/documents/office-document-viewer';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
 import {
   FileText,
@@ -313,6 +314,29 @@ export default function DocumentsPage() {
   useEffect(() => {
     loadDocuments();
   }, [search, selectedType, selectedCompany, selectedVendor, selectedProjectFilter, startDate, endDate]);
+
+  // 📄 Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_documents_page_size');
+      const n = Number(saved);
+      if ([15, 25, 50, 100].includes(n)) setPageSize(n);
+    }
+  }, []);
+
+  // Reset page when filters or pageSize change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedType, selectedCompany, selectedVendor, selectedProjectFilter, startDate, endDate, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(documents.length / pageSize));
+  const paginatedDocuments = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return documents.slice(start, start + pageSize);
+  }, [documents, currentPage, pageSize]);
 
   // Project CRUD Handlers
   const currentSelectedProject = isEditModalOpen ? editFormData.projectName : formData.projectName;
@@ -1463,7 +1487,7 @@ export default function DocumentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {documents.map((doc) => {
+                {paginatedDocuments.map((doc) => {
                   const attachList = Array.isArray(doc.attachments) && doc.attachments.length > 0
                     ? doc.attachments
                     : (doc.fileUrl ? [{ url: doc.fileUrl, name: doc.fileName, size: doc.fileSize, type: doc.fileType }] : []);
@@ -1624,12 +1648,25 @@ export default function DocumentsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          <TablePaginationBar
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={documents.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            storageKey="simply_it_documents_page_size"
+            itemName={language === 'en' ? 'documents' : 'hồ sơ'}
+          />
         </div>
       ) : (
         /* ==================== VIEW MODE: GRID VIEW ==================== */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {documents.map((doc) => {
-            const attachList = Array.isArray(doc.attachments) && doc.attachments.length > 0
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {paginatedDocuments.map((doc) => {
+              const attachList = Array.isArray(doc.attachments) && doc.attachments.length > 0
               ? doc.attachments
               : (doc.fileUrl ? [{ url: doc.fileUrl, name: doc.fileName, size: doc.fileSize, type: doc.fileType }] : []);
 
@@ -1745,7 +1782,22 @@ export default function DocumentsPage() {
             );
           })}
         </div>
-      )}
+
+        {/* Pagination Controls for Grid View */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+          <TablePaginationBar
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={documents.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            storageKey="simply_it_documents_page_size"
+            itemName={language === 'en' ? 'documents' : 'hồ sơ'}
+          />
+        </div>
+      </div>
+    )}
 
       {/* MODAL: ADD NEW DOCUMENT */}
       {isAddModalOpen && (

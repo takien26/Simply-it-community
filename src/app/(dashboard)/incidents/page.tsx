@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/lib/i18n/context';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 import {
   AlertTriangle,
   Flame,
@@ -231,6 +232,29 @@ export default function IncidentsPage() {
   useEffect(() => {
     loadData();
   }, [selectedSeverity, selectedStatus, search]);
+
+  // 📄 Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_incidents_page_size');
+      const n = Number(saved);
+      if ([15, 25, 50, 100].includes(n)) setPageSize(n);
+    }
+  }, []);
+
+  // Reset page when filters or pageSize change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedSeverity, selectedStatus, search, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(incidents.length / pageSize));
+  const paginatedIncidents = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return incidents.slice(start, start + pageSize);
+  }, [incidents, currentPage, pageSize]);
 
   const handleCreateIncident = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -500,9 +524,10 @@ export default function IncidentsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {incidents.map((incident) => {
-            const sev = SEVERITY_CONFIG[incident.severity] || SEVERITY_CONFIG.MEDIUM_P3;
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            {paginatedIncidents.map((incident) => {
+              const sev = SEVERITY_CONFIG[incident.severity] || SEVERITY_CONFIG.MEDIUM_P3;
             const sta = STATUS_CONFIG[incident.status] || STATUS_CONFIG.INVESTIGATING;
             const SevIcon = sev.icon;
             const sevLabel = isEn ? sev.labelEn : sev.labelVi;
@@ -581,7 +606,22 @@ export default function IncidentsPage() {
             );
           })}
         </div>
-      )}
+
+        {/* Pagination Controls */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+          <TablePaginationBar
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={incidents.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            storageKey="simply_it_incidents_page_size"
+            itemName={isEn ? 'incidents' : 'sự cố'}
+          />
+        </div>
+      </div>
+    )}
 
       {/* Modal: Khai Báo Sự Cố Mới */}
       {isCreateModalOpen && (

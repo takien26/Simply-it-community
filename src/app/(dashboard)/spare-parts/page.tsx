@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/context';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 import { fetchWithSwr, invalidateClientCache, useAutoRefresh, triggerDataRefresh } from '@/lib/client-cache';
 import {
   Boxes,
@@ -534,6 +535,29 @@ export default function SparePartsPage() {
     );
   });
 
+  // 📄 Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_spare_parts_page_size');
+      const n = Number(saved);
+      if ([15, 25, 50, 100].includes(n)) setPageSize(n);
+    }
+  }, []);
+
+  // Reset page when filters or pageSize change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, lowStockFilter, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredParts.length / pageSize));
+  const paginatedParts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredParts.slice(start, start + pageSize);
+  }, [filteredParts, currentPage, pageSize]);
+
   return (
     <div className="space-y-6 pb-20">
       {/* Header */}
@@ -667,7 +691,7 @@ export default function SparePartsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredParts.map((p) => {
+                {paginatedParts.map((p) => {
                   const isLow = p.quantity <= p.minStock;
                   return (
                     <tr
@@ -776,6 +800,18 @@ export default function SparePartsPage() {
             </table>
           </div>
         )}
+
+        {/* Pagination Controls */}
+        <TablePaginationBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={filteredParts.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          storageKey="simply_it_spare_parts_page_size"
+          itemName={isEn ? 'parts' : 'linh kiện'}
+        />
       </div>
 
       {/* ======================================================== */}

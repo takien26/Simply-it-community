@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/lib/i18n/context';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 import {
   Trash2,
   RotateCcw,
@@ -87,6 +88,29 @@ export default function TrashPage() {
   useEffect(() => {
     loadData();
   }, [selectedType, search]);
+
+  // 📄 Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_trash_page_size');
+      const n = Number(saved);
+      if ([15, 25, 50, 100].includes(n)) setPageSize(n);
+    }
+  }, []);
+
+  // Reset page when filters or pageSize change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedType, search, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  }, [items, currentPage, pageSize]);
 
   // Restore item
   const handleRestore = async (item: TrashItemRecord) => {
@@ -448,7 +472,7 @@ export default function TrashPage() {
                 </td>
               </tr>
             ) : (
-              items.map((item) => {
+              paginatedItems.map((item) => {
                 const daysLeft = getDaysRemaining(item.expiresAt);
                 const isUrgent = daysLeft <= 3;
 
@@ -536,6 +560,18 @@ export default function TrashPage() {
             )}
           </tbody>
         </table>
+
+        {/* Pagination Controls */}
+        <TablePaginationBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={items.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          storageKey="simply_it_trash_page_size"
+          itemName={isEn ? 'items' : 'mục'}
+        />
       </div>
 
       {/* Modal Cài Đặt Số Ngày Lưu Trữ (Retention Settings Modal) */}

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 import { useLanguage } from '@/lib/i18n/context';
 import {
   BookOpen,
@@ -142,6 +143,7 @@ export default function KnowledgeBasePage() {
   const [search, setSearch] = useState('');
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
+
   const [isITStaff, setIsITStaff] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [canCreate, setCanCreate] = useState(false);
@@ -153,6 +155,30 @@ export default function KnowledgeBasePage() {
   const [needsImprovementCount, setNeedsImprovementCount] = useState<number>(0);
   const [totalDeflectedTickets, setTotalDeflectedTickets] = useState<number>(0);
   const [feedbackSubmitting, setFeedbackSubmitting] = useState<boolean>(false);
+
+  // Pagination state with localStorage persistence
+  const [pageSize, setPageSize] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_kb_page_size');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if ([15, 25, 50, 100].includes(parsed)) return parsed;
+      }
+    }
+    return 25;
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset page when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedCategory, selectedTeamScope, filterNeedsImprovement]);
+
+  const totalPages = Math.ceil(articles.length / pageSize) || 1;
+  const paginatedArticles = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return articles.slice(start, start + pageSize);
+  }, [articles, currentPage, pageSize]);
 
   // Unified Editor Modal State (Create & Edit)
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
@@ -615,109 +641,125 @@ export default function KnowledgeBasePage() {
                 </p>
               </div>
             ) : (
-              articles.map((item) => {
-                const style = CATEGORY_STYLES[item.categoryKey] || CATEGORY_STYLES.OTHER;
-                const catLabel = getCategoryDisplayName(item.category, item.categoryKey, isEn);
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => setSelectedArticle(item)}
-                    className="p-4 sm:p-5 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between gap-4 cursor-pointer group"
-                  >
-                    <div className="space-y-1.5 flex-1">
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-2 flex-wrap">
-                        {item.isInternalIT && (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
-                            <Lock className="w-2.5 h-2.5 text-indigo-600" />
-                            <span>{item.teamScope}</span>
-                          </span>
-                        )}
-                        <span>{item.title}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
-                      </h3>
-
-                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-                        {item.summary}
-                      </p>
-
-                      <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-0.5 flex-wrap">
-                        <span className="flex items-center gap-1 font-medium">
-                          <User className="w-3 h-3 text-slate-400" />
-                          <span>{item.author}</span>
-                        </span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{isEn ? 'Updated:' : 'Cập nhật:'} {new Date(item.updatedAt).toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}</span>
-                        </span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1">
-                          <Eye className="w-3 h-3" />
-                          <span>{item.views.toLocaleString()} {isEn ? 'views' : 'lượt xem'}</span>
-                        </span>
-                        {typeof item.feedbackRatio === 'number' && (
-                          <>
-                            <span>•</span>
-                            {item.needsImprovement ? (
-                              <span className="inline-flex items-center gap-1 text-[10.5px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
-                                <AlertTriangle className="w-3 h-3 text-amber-600" />
-                                <span>{item.feedbackRatio}% {isEn ? 'resolved' : 'tự sửa được'} • {isEn ? 'Needs review' : 'Cần bổ sung'}</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                                <ThumbsUp className="w-3 h-3 text-emerald-500" />
-                                <span>{item.feedbackRatio}% {isEn ? 'helpful' : 'hữu ích'} ({item.helpfulCount || 0})</span>
+              <>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {paginatedArticles.map((item) => {
+                    const style = CATEGORY_STYLES[item.categoryKey] || CATEGORY_STYLES.OTHER;
+                    const catLabel = getCategoryDisplayName(item.category, item.categoryKey, isEn);
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => setSelectedArticle(item)}
+                        className="p-4 sm:p-5 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between gap-4 cursor-pointer group"
+                      >
+                        <div className="space-y-1.5 flex-1">
+                          <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-2 flex-wrap">
+                            {item.isInternalIT && (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
+                                <Lock className="w-2.5 h-2.5 text-indigo-600" />
+                                <span>{item.teamScope}</span>
                               </span>
                             )}
-                          </>
-                        )}
-                        {typeof item.deflectedTickets === 'number' && item.deflectedTickets > 0 && (
-                          <>
-                            <span>•</span>
-                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
-                              <span>🛡️</span>
-                              <span>{item.deflectedTickets} {isEn ? 'deflected' : 'ticket đã tự xử lý'}</span>
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                            <span>{item.title}</span>
+                            <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
+                          </h3>
 
-                    {/* Action buttons & Category Tag Badge on the right */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      {(canUpdate || canDelete) && (
-                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          {canUpdate && (
-                            <button
-                              type="button"
-                              onClick={() => openEditModal(item)}
-                              title={isEn ? "Edit article" : "Chỉnh sửa bài viết"}
-                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                          )}
-                          {canDelete && (
-                            <button
-                              type="button"
-                              onClick={() => openDeleteConfirm(item)}
-                              title={isEn ? "Delete article" : "Xóa bài viết"}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                            {item.summary}
+                          </p>
+
+                          <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-0.5 flex-wrap">
+                            <span className="flex items-center gap-1 font-medium">
+                              <User className="w-3 h-3 text-slate-400" />
+                              <span>{item.author}</span>
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              <span>{isEn ? 'Updated:' : 'Cập nhật:'} {new Date(item.updatedAt).toLocaleDateString(isEn ? 'en-US' : 'vi-VN')}</span>
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Eye className="w-3 h-3" />
+                              <span>{item.views.toLocaleString()} {isEn ? 'views' : 'lượt xem'}</span>
+                            </span>
+                            {typeof item.feedbackRatio === 'number' && (
+                              <>
+                                <span>•</span>
+                                {item.needsImprovement ? (
+                                  <span className="inline-flex items-center gap-1 text-[10.5px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
+                                    <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                    <span>{item.feedbackRatio}% {isEn ? 'resolved' : 'tự sửa được'} • {isEn ? 'Needs review' : 'Cần bổ sung'}</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                                    <ThumbsUp className="w-3 h-3 text-emerald-500" />
+                                    <span>{item.feedbackRatio}% {isEn ? 'helpful' : 'hữu ích'} ({item.helpfulCount || 0})</span>
+                                  </span>
+                                )}
+                              </>
+                            )}
+                            {typeof item.deflectedTickets === 'number' && item.deflectedTickets > 0 && (
+                              <>
+                                <span>•</span>
+                                <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+                                  <span>🛡️</span>
+                                  <span>{item.deflectedTickets} {isEn ? 'deflected' : 'ticket đã tự xử lý'}</span>
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold border shrink-0 ${style.bg} ${style.text} ${style.border}`}
-                      >
-                        {catLabel}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
+
+                        {/* Action buttons & Category Tag Badge on the right */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {(canUpdate || canDelete) && (
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              {canUpdate && (
+                                <button
+                                  type="button"
+                                  onClick={() => openEditModal(item)}
+                                  title={isEn ? "Edit article" : "Chỉnh sửa bài viết"}
+                                  className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors cursor-pointer"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              )}
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  onClick={() => openDeleteConfirm(item)}
+                                  title={isEn ? "Delete article" : "Xóa bài viết"}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold border shrink-0 ${style.bg} ${style.text} ${style.border}`}
+                          >
+                            {catLabel}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Pagination Controls */}
+                <TablePaginationBar
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalCount={articles.length}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={setPageSize}
+                  storageKey="simply_it_kb_page_size"
+                  itemName={isEn ? 'articles' : 'bài viết'}
+                />
+              </>
             )}
           </div>
         </div>

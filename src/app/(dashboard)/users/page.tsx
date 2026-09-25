@@ -2,9 +2,10 @@
 
 import { useLanguage } from '@/lib/i18n/context';
 import { QuickLink } from '@/components/common/QuickLink';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 import { ManageableDropdown } from '@/components/ui/manageable-dropdown';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { invalidateClientCache, triggerDataRefresh } from '@/lib/client-cache';
 import { UserOffboardModal, UserOnboardModal } from '@/components/users';
 import { showTrashUndoToast } from '@/components/common/TrashUndoToast';
@@ -943,6 +944,29 @@ export default function UsersPage() {
     return true;
   });
 
+  // 📄 Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_users_page_size');
+      const n = Number(saved);
+      if ([15, 25, 50, 100].includes(n)) setPageSize(n);
+    }
+  }, []);
+
+  // Reset page when filters or pageSize change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedCompany, selectedDeptFilter, selectedFilter, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredUsers.slice(start, start + pageSize);
+  }, [filteredUsers, currentPage, pageSize]);
+
   // Selected parent node in Modal to render its sub-departments (company-specific OU)
   const addModalDepartments = getDepartmentsForCompany(userFormData.companyName);
   const addModalParentNode = addModalDepartments.find((d) => d.name === formParentDept);
@@ -1301,7 +1325,7 @@ export default function UsersPage() {
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((u) => {
+                paginatedUsers.map((u) => {
                   const { parent, child } = parseDeptParts(u.department);
                   const isIT = u.department?.includes('IT') || u.department?.includes('CNTT');
 
@@ -1551,7 +1575,7 @@ export default function UsersPage() {
               {isEn ? 'No matching employees found' : 'Không tìm thấy nhân viên nào phù hợp'}
             </div>
           ) : (
-            filteredUsers.map((u) => {
+            paginatedUsers.map((u) => {
               const { parent, child } = parseDeptParts(u.department);
 
               return (
@@ -1668,123 +1692,151 @@ export default function UsersPage() {
             })
           )}
         </div>
+
+        {/* Pagination Controls for Table View */}
+        <TablePaginationBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={filteredUsers.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          storageKey="simply_it_users_page_size"
+          itemName={isEn ? 'employees' : 'nhân sự'}
+        />
       </div>
       ) : (
-        /* VIEW 2: GRID VIEW */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredUsers.map((u) => {
-            const { parent, child } = parseDeptParts(u.department);
-            return (
-              <div
-                key={u.id}
-                onClick={() => handleOpenEditUser(u)}
-                className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 cursor-pointer hover:border-purple-300 transition-all"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center font-bold text-sm">
-                      {u.fullName.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <h4 className={`font-bold text-sm ${u.isActive === false ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white'}`}>
-                          {u.fullName}
-                        </h4>
-                        {u.isActive === false && (
-                          <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-[10px] font-bold border border-rose-200">
-                            🛑 {isEn ? 'Resigned' : 'Nghỉ việc'}
-                          </span>
+        <div className="space-y-4">
+          {/* VIEW 2: GRID VIEW */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedUsers.map((u) => {
+              const { parent, child } = parseDeptParts(u.department);
+              return (
+                <div
+                  key={u.id}
+                  onClick={() => handleOpenEditUser(u)}
+                  className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 cursor-pointer hover:border-purple-300 transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center font-bold text-sm">
+                        {u.fullName.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className={`font-bold text-sm ${u.isActive === false ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white'}`}>
+                            {u.fullName}
+                          </h4>
+                          {u.isActive === false && (
+                            <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-[10px] font-bold border border-rose-200">
+                              🛑 {isEn ? 'Resigned' : 'Nghỉ việc'}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-purple-700 font-semibold">{u.position || (isEn ? 'Staff' : 'Nhân viên')}</span>
+                        {u.manager && (
+                          <div className="pt-0.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const mgr = users.find((item: any) => item.id === u.manager.id || item.email === u.manager.email);
+                                if (mgr) {
+                                  setViewingUserDetail(mgr);
+                                  setIsUserDetailModalOpen(true);
+                                } else {
+                                  fetch(`/api/users/${u.manager.id}`)
+                                    .then((r) => r.json())
+                                    .then((res) => {
+                                      const item = res.data || res.user || res;
+                                      if (item && item.id) {
+                                        setViewingUserDetail(item);
+                                        setIsUserDetailModalOpen(true);
+                                      }
+                                    });
+                                }
+                              }}
+                              title={isEn ? `Manager: ${u.manager.fullName}` : `Cấp trên: ${u.manager.fullName}`}
+                              className="text-[10px] text-slate-700 dark:text-slate-300 font-medium inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 transition-all cursor-pointer group"
+                            >
+                              <UserCheck className="w-3 h-3 text-slate-500 shrink-0" />
+                              <span className="group-hover:underline">{isEn ? 'Manager: ' : 'Cấp trên: '}{u.manager.fullName}</span>
+                              <ExternalLink className="w-2.5 h-2.5 text-slate-400 opacity-60 group-hover:opacity-100" />
+                            </button>
+                          </div>
                         )}
                       </div>
-                      <span className="text-xs text-purple-700 font-semibold">{u.position || (isEn ? 'Staff' : 'Nhân viên')}</span>
-                      {u.manager && (
-                        <div className="pt-0.5">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const mgr = users.find((item: any) => item.id === u.manager.id || item.email === u.manager.email);
-                              if (mgr) {
-                                setViewingUserDetail(mgr);
-                                setIsUserDetailModalOpen(true);
-                              } else {
-                                fetch(`/api/users/${u.manager.id}`)
-                                  .then((r) => r.json())
-                                  .then((res) => {
-                                    const item = res.data || res.user || res;
-                                    if (item && item.id) {
-                                      setViewingUserDetail(item);
-                                      setIsUserDetailModalOpen(true);
-                                    }
-                                  });
-                              }
-                            }}
-                            title={isEn ? `Manager: ${u.manager.fullName}` : `Cấp trên: ${u.manager.fullName}`}
-                            className="text-[10px] text-slate-700 dark:text-slate-300 font-medium inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 transition-all cursor-pointer group"
-                          >
-                            <UserCheck className="w-3 h-3 text-slate-500 shrink-0" />
-                            <span className="group-hover:underline">{isEn ? 'Manager: ' : 'Cấp trên: '}{u.manager.fullName}</span>
-                            <ExternalLink className="w-2.5 h-2.5 text-slate-400 opacity-60 group-hover:opacity-100" />
-                          </button>
-                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      {u.isActive === false ? (
+                        <button
+                          type="button"
+                          onClick={() => handleReactivateUser(u)}
+                          title={isEn ? 'Reactivate employee' : 'Khôi phục công tác'}
+                          className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer"
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenOffboardModal(u)}
+                          title={isEn ? 'Mark as resigned' : 'Chuyển sang Nghỉ việc'}
+                          className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                        >
+                          <span className="text-xs">🛑</span>
+                        </button>
                       )}
+                      <button
+                        onClick={() => handleOpenEditUser(u)}
+                        className="p-1 text-slate-400 hover:text-blue-600 cursor-pointer"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(u)}
+                        className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    {u.isActive === false ? (
-                      <button
-                        type="button"
-                        onClick={() => handleReactivateUser(u)}
-                        title={isEn ? 'Reactivate employee' : 'Khôi phục công tác'}
-                        className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenOffboardModal(u)}
-                        title={isEn ? 'Mark as resigned' : 'Chuyển sang Nghỉ việc'}
-                        className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
-                      >
-                        <span className="text-xs">🛑</span>
-                      </button>
+                  <div className="text-xs space-y-1 text-slate-600 dark:text-slate-300">
+                    {u.companyName && (
+                      <div className="flex items-center gap-1 font-semibold text-indigo-700">
+                        <Building2 className="w-3.5 h-3.5" />
+                        <span>{u.companyName}</span>
+                      </div>
                     )}
-                    <button
-                      onClick={() => handleOpenEditUser(u)}
-                      className="p-1 text-slate-400 hover:text-blue-600 cursor-pointer"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(u)}
-                      className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div>Phòng ban: <strong>{parent}</strong></div>
+                    {child && <div>Bộ phận: <strong className="text-purple-700">{child}</strong></div>}
+                    <div>Email: <span className="font-mono">{u.email}</span></div>
+                  </div>
+
+                  <div className="pt-2 border-t flex items-center justify-between text-xs">
+                    <span>Máy: <strong>{u.assetAssignments?.length || 0}</strong></span>
+                    <span>License: <strong>{u.licenseAssignments?.length || 0}</strong></span>
                   </div>
                 </div>
+              );
+            })}
+          </div>
 
-                <div className="text-xs space-y-1 text-slate-600 dark:text-slate-300">
-                  {u.companyName && (
-                    <div className="flex items-center gap-1 font-semibold text-indigo-700">
-                      <Building2 className="w-3.5 h-3.5" />
-                      <span>{u.companyName}</span>
-                    </div>
-                  )}
-                  <div>Phòng ban: <strong>{parent}</strong></div>
-                  {child && <div>Bộ phận: <strong className="text-purple-700">{child}</strong></div>}
-                  <div>Email: <span className="font-mono">{u.email}</span></div>
-                </div>
-
-                <div className="pt-2 border-t flex items-center justify-between text-xs">
-                  <span>Máy: <strong>{u.assetAssignments?.length || 0}</strong></span>
-                  <span>License: <strong>{u.licenseAssignments?.length || 0}</strong></span>
-                </div>
-              </div>
-            );
-          })}
+          {/* Pagination Controls for Grid View */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+            <TablePaginationBar
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={filteredUsers.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              storageKey="simply_it_users_page_size"
+              itemName={isEn ? 'employees' : 'nhân sự'}
+            />
+          </div>
         </div>
       )}
       {/* Modal: Edit Staff / User */}

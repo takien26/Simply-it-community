@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 import {
   ClipboardCheck,
   Plus,
@@ -91,6 +92,24 @@ export default function ApprovalsPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Pagination state with localStorage persistence
+  const [pageSize, setPageSize] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_approvals_page_size');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if ([15, 25, 50, 100].includes(parsed)) return parsed;
+      }
+    }
+    return 25;
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, typeFilter]);
 
   // Modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -547,6 +566,12 @@ export default function ApprovalsPage() {
     return true;
   });
 
+  const totalPages = Math.ceil(filteredApprovals.length / pageSize) || 1;
+  const paginatedApprovals = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredApprovals.slice(start, start + pageSize);
+  }, [filteredApprovals, currentPage, pageSize]);
+
   const stats = {
     pendingManager: approvals.filter((a) => a.status === 'PENDING_MANAGER').length,
     pendingIT: approvals.filter((a) => a.status === 'PENDING_IT').length,
@@ -717,81 +742,95 @@ export default function ApprovalsPage() {
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
-            {filteredApprovals.map((req) => {
-              const typeCfg = getTypeInfo(req.type);
-              const statusCfg = getStatusInfo(req.status);
-              const TypeIcon = typeCfg.icon;
+          <>
+            <div className="divide-y divide-slate-100">
+              {paginatedApprovals.map((req) => {
+                const typeCfg = getTypeInfo(req.type);
+                const statusCfg = getStatusInfo(req.status);
+                const TypeIcon = typeCfg.icon;
 
-              return (
-                <div
-                  key={req.id}
-                  onClick={() => {
-                    setSelectedApproval(req);
-                    setIsDetailOpen(true);
-                  }}
-                  className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer group"
-                >
-                  <div className="flex items-start gap-3.5 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                      <TypeIcon className="w-5 h-5 text-slate-600 group-hover:text-blue-600" />
-                    </div>
-
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-bold text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                          {req.code}
-                        </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${typeCfg.color}`}>
-                          {typeCfg.label}
-                        </span>
-                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${statusCfg.badge}`}>
-                          <span>{statusCfg.label}</span>
-                        </span>
+                return (
+                  <div
+                    key={req.id}
+                    onClick={() => {
+                      setSelectedApproval(req);
+                      setIsDetailOpen(true);
+                    }}
+                    className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer group"
+                  >
+                    <div className="flex items-start gap-3.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                        <TypeIcon className="w-5 h-5 text-slate-600 group-hover:text-blue-600" />
                       </div>
 
-                      <h3 className="font-bold text-slate-800 text-sm truncate group-hover:text-blue-600 transition-colors">
-                        {req.title}
-                      </h3>
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-bold text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                            {req.code}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${typeCfg.color}`}>
+                            {typeCfg.label}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${statusCfg.badge}`}>
+                            <span>{statusCfg.label}</span>
+                          </span>
+                        </div>
 
-                      <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
-                        <span className="flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          <strong className="text-slate-600">{req.requester?.fullName || (language === 'en' ? 'Employee' : 'Nhân viên')}</strong>
-                          {req.requester?.department && ` (${req.requester.department})`}
-                        </span>
-                        <span>•</span>
-                        <span>{new Date(req.createdAt).toLocaleDateString(language === 'en' ? 'en-GB' : 'vi-VN')}</span>
-                        {req.estimatedCost && (
-                          <>
-                            <span>•</span>
-                            <span className="font-semibold text-slate-700">
-                              {Number(req.estimatedCost).toLocaleString(language === 'en' ? 'en-US' : 'vi-VN')} {req.currency}
-                            </span>
-                          </>
-                        )}
+                        <h3 className="font-bold text-slate-800 text-sm truncate group-hover:text-blue-600 transition-colors">
+                          {req.title}
+                        </h3>
+
+                        <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            <strong className="text-slate-600">{req.requester?.fullName || (language === 'en' ? 'Employee' : 'Nhân viên')}</strong>
+                            {req.requester?.department && ` (${req.requester.department})`}
+                          </span>
+                          <span>•</span>
+                          <span>{new Date(req.createdAt).toLocaleDateString(language === 'en' ? 'en-GB' : 'vi-VN')}</span>
+                          {req.estimatedCost && (
+                            <>
+                              <span>•</span>
+                              <span className="font-semibold text-slate-700">
+                                {Number(req.estimatedCost).toLocaleString(language === 'en' ? 'en-US' : 'vi-VN')} {req.currency}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
-                    {/* Action pill indicator */}
-                    {req.status === 'PENDING_MANAGER' && (
-                      <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
-                        {t('approvals.need_manager_action', 'Cần Cấp Trên Duyệt')}
-                      </span>
-                    )}
-                    {req.status === 'PENDING_IT' && (
-                      <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">
-                        {t('approvals.need_it_action', 'Cần IT Xác Nhận')}
-                      </span>
-                    )}
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                    <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                      {/* Action pill indicator */}
+                      {req.status === 'PENDING_MANAGER' && (
+                        <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                          {t('approvals.need_manager_action', 'Cần Cấp Trên Duyệt')}
+                        </span>
+                      )}
+                      {req.status === 'PENDING_IT' && (
+                        <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">
+                          {t('approvals.need_it_action', 'Cần IT Xác Nhận')}
+                        </span>
+                      )}
+                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination Controls */}
+            <TablePaginationBar
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={filteredApprovals.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              storageKey="simply_it_approvals_page_size"
+              itemName={isEn ? 'approval requests' : 'yêu cầu phê duyệt'}
+            />
+          </>
         )}
       </div>
 

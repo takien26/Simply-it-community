@@ -1,6 +1,7 @@
 'use client';
 
 import { QuickLink } from '@/components/common/QuickLink';
+import { TablePaginationBar } from '@/components/common/TablePaginationBar';
 import { MaintenanceSchedulesTab } from '@/components/settings/maintenance-schedules-tab';
 import CreateTicketModal from '@/components/tickets/CreateTicketModal';
 import { TicketDetailModal } from '@/components/tickets/TicketDetailModal';
@@ -1131,6 +1132,29 @@ export default function TicketsPage() {
     });
   }, [tickets, scopeMode, currentUser, activeChip, statusFilter, categoryFilter, priorityFilter, creatorFilter, assigneeFilter, assetFilter, search]);
 
+  // 📄 Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('simply_it_tickets_page_size');
+      const n = Number(saved);
+      if ([15, 25, 50, 100].includes(n)) setPageSize(n);
+    }
+  }, []);
+
+  // Reset page when filters or pageSize change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, scopeMode, activeChip, statusFilter, categoryFilter, priorityFilter, creatorFilter, assigneeFilter, assetFilter, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTickets.length / pageSize));
+  const paginatedTickets = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTickets.slice(start, start + pageSize);
+  }, [filteredTickets, currentPage, pageSize]);
+
   // Update Status
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
     try {
@@ -1762,7 +1786,7 @@ export default function TicketsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredTickets.map((t) => {
+                paginatedTickets.map((t) => {
                   const cat = CATEGORY_MAP[t.category] || CATEGORY_MAP.OTHER;
                   const pri = PRIORITY_MAP[t.priority] || PRIORITY_MAP.MEDIUM;
                   const sta = STATUS_MAP[t.status] || STATUS_MAP.OPEN;
@@ -1990,7 +2014,7 @@ export default function TicketsPage() {
               <p className="text-xs text-slate-400">{isEn ? 'No support requests match the current filters.' : 'Không có yêu cầu hỗ trợ nào phù hợp với bộ lọc hiện tại.'}</p>
             </div>
           ) : (
-            filteredTickets.map((t) => {
+            paginatedTickets.map((t) => {
               const cat = CATEGORY_MAP[t.category] || CATEGORY_MAP.OTHER;
               const pri = PRIORITY_MAP[t.priority] || PRIORITY_MAP.MEDIUM;
               const sta = STATUS_MAP[t.status] || STATUS_MAP.OPEN;
@@ -2062,6 +2086,18 @@ export default function TicketsPage() {
             })
           )}
         </div>
+
+        {/* Pagination Controls */}
+        <TablePaginationBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={filteredTickets.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          storageKey="simply_it_tickets_page_size"
+          itemName={isEn ? 'tickets' : 'ticket'}
+        />
       </div>
 
       {/* MODAL 1: CHI TIẾT TICKET & TRAO ĐỔI (BÓC TÁCH COMPONENT CHUYÊN TRÁCH) */}
