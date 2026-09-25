@@ -1,5 +1,5 @@
 # ==============================================================================
-# SIMPLY IT - Enterprise Asset Agent v4
+# SIMPLY IT - Enterprise Asset Agent v4.1.1
 # Windows 10/11 + PowerShell 5.1 + GPO/SYSTEM compatible
 #
 # FEATURES:
@@ -54,6 +54,34 @@ function Log {
     try {
         Add-Content -Path $LogFile -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $Text" -Encoding UTF8
     } catch {}
+}
+
+function Invoke-CollectorSafe {
+    param(
+        [Parameter(Mandatory=$true)][string]$Name,
+        [Parameter(Mandatory=$true)][scriptblock]$Collector,
+        $DefaultValue = $null
+    )
+
+    try {
+        $result = & $Collector
+        $isEmpty = ($null -eq $result)
+        if (-not $isEmpty -and $result -is [string]) {
+            $isEmpty = [string]::IsNullOrWhiteSpace([string]$result)
+        } elseif (-not $isEmpty -and $result -is [array]) {
+            $isEmpty = ($result.Count -eq 0)
+        }
+
+        if ($isEmpty) {
+            Log "COLLECTOR EMPTY [$Name]"
+        } else {
+            Log "COLLECTOR OK [$Name]"
+        }
+        return $result
+    } catch {
+        Log "COLLECTOR FAILED [$Name] : $($_.Exception.Message)"
+        return $DefaultValue
+    }
 }
 
 function Get-CimCompat {
@@ -443,10 +471,10 @@ function Get-HealthStorage {
         foreach ($d in $disks) {
             try {
                 $size = [double]$d.Size
-                $free = [double]$d.FreeSpace
+                $free = [double]$freeSpace = [double]$d.FreeSpace
                 if ($size -gt 0) {
                     $totalGB = [math]::Round($size / (1024 * 1024 * 1024), 1)
-                    $freeGB  = [math]::Round($free / (1024 * 1024 * 1024), 1)
+                    $freeGB  = [math]::Round($freeSpace / (1024 * 1024 * 1024), 1)
                     $usedGB  = [math]::Round($totalGB - $freeGB, 1)
                     $usedPct = [math]::Round(($usedGB / $totalGB) * 100, 1)
                     $drives += @{
@@ -809,26 +837,38 @@ if ($Mode -eq "Health") {
             $serialNumber = ""
         }
 
+        # Each health collector is isolated so one failure cannot stop the remaining report.
+        $healthCpu = Invoke-CollectorSafe -Name "Health.CPU" -DefaultValue @{ usagePercent = $null } -Collector { Get-HealthCpu }
+        $healthRam = Invoke-CollectorSafe -Name "Health.RAM" -DefaultValue @{ totalGB = $null; usedGB = $null; availableGB = $null; usedPercent = $null } -Collector { Get-HealthRam }
+        $healthStorage = Invoke-CollectorSafe -Name "Health.Storage" -DefaultValue @() -Collector { Get-HealthStorage }
+        $healthDefender = Invoke-CollectorSafe -Name "Health.Defender" -DefaultValue @{ available=$false; enabled=$false; realTimeProtection=$false; signatureAgeDays=$null } -Collector { Get-HealthDefender }
+        $healthFirewall = Invoke-CollectorSafe -Name "Health.Firewall" -DefaultValue @{ domain=$null; private=$null; public=$null } -Collector { Get-HealthFirewall }
+        $healthBitLocker = Invoke-CollectorSafe -Name "Health.BitLocker" -DefaultValue @() -Collector { Get-HealthBitLocker }
+        $healthWindowsUpdate = Invoke-CollectorSafe -Name "Health.WindowsUpdate" -DefaultValue @{ lastUpdate=$null; pendingReboot=$false; rebootPendingDays=0 } -Collector { Get-HealthWindowsUpdate }
+        $healthServices = Invoke-CollectorSafe -Name "Health.Services" -DefaultValue @() -Collector { Get-HealthServices }
+        $healthBattery = Invoke-CollectorSafe -Name "Health.Battery" -DefaultValue @{ present=$false; percentage=$null; healthPercent=$null } -Collector { Get-HealthBattery }
+        $healthUptime = Invoke-CollectorSafe -Name "Health.Uptime" -DefaultValue @{ lastBoot=$null; uptimeMinutes=$null } -Collector { Get-HealthUptime }
+
         $healthPayload = [ordered]@{
             hostname       = $hostname
             serialNumber   = $serialNumber
             agent          = @{
-                version       = "4.1.0"
+                version       = "4.1.1"
                 schemaVersion = "1.0"
                 collectedAt   = (Get-Date).ToString("o")
             }
-            cpu            = Get-HealthCpu
-            ram            = Get-HealthRam
-            storage        = Get-HealthStorage
+            cpu            = $healthCpu
+            ram            = $healthRam
+            storage        = $healthStorage
             security       = @{
-                defender  = Get-HealthDefender
-                firewall  = Get-HealthFirewall
-                bitlocker = Get-HealthBitLocker
+                defender  = $healthDefender
+                firewall  = $healthFirewall
+                bitlocker = $healthBitLocker
             }
-            windowsUpdate  = Get-HealthWindowsUpdate
-            services       = Get-HealthServices
-            battery        = Get-HealthBattery
-            uptime         = Get-HealthUptime
+            windowsUpdate  = $healthWindowsUpdate
+            services       = $healthServices
+            battery        = $healthBattery
+            uptime         = $healthUptime
         }
 
         $healthPayloadClean = Remove-NullCharacters $healthPayload
@@ -855,7 +895,7 @@ if ($Mode -eq "Health") {
                 $webReq.Method = "POST"
                 $webReq.ContentType = "application/json; charset=utf-8"
                 $webReq.Timeout = 15000
-                $webReq.UserAgent = "SimplyIT-Agent-Health/4.1.0"
+                $webReq.UserAgent = "SimplyIT-Agent-Health/4.1.1"
 
                 $bytes = [System.Text.Encoding]::UTF8.GetBytes($jsonHealth)
                 $webReq.ContentLength = $bytes.Length
@@ -895,7 +935,7 @@ Write-Host "==========================================================" -Foregro
 Write-Host "PowerShell: $($PSVersionTable.PSVersion)"
 Write-Host "Identity  : $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)"
 
-Log "===== SIMPLY IT AGENT v4 START ====="
+Log "===== SIMPLY IT AGENT v4.1.1 START ====="
 Log "PowerShell=$($PSVersionTable.PSVersion)"
 Log "Identity=$([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)"
 Log "ServerUrl=$ServerUrl"
@@ -906,19 +946,27 @@ try {
     # --------------------------------------------------------------------------
     Write-Host "[1/4] Dang thu thap thong so phan cung..." -ForegroundColor Green
 
-    $hostname   = [string]$env:COMPUTERNAME
-    $loggedUser = Get-LoggedOnUserSafe
+    $hostname = [string]$env:COMPUTERNAME
+    if ([string]::IsNullOrWhiteSpace($hostname)) {
+        Log "COLLECTOR FAILED [Hardware.Hostname] : COMPUTERNAME is empty"
+    } else {
+        Log "COLLECTOR OK [Hardware.Hostname]"
+    }
 
-    $bios       = Get-CimCompat "Win32_BIOS"
-    $cs         = Get-CimCompat "Win32_ComputerSystem"
-    $csProduct  = Get-CimCompat "Win32_ComputerSystemProduct"
-    $cpuObj     = @(Get-CimCompat "Win32_Processor") | Select-Object -First 1
-    $ramChips   = @(Get-CimCompat "Win32_PhysicalMemory")
-    $disks      = @(Get-CimCompat "Win32_DiskDrive")
-    $gpus       = @(Get-CimCompat "Win32_VideoController")
-    $osObj      = Get-CimCompat "Win32_OperatingSystem"
-    $enclosure  = Get-CimCompat "Win32_SystemEnclosure"
-    $batteries  = @(Get-CimCompat "Win32_Battery")
+    $loggedUser = Invoke-CollectorSafe -Name "Hardware.LoggedOnUser" -DefaultValue "" -Collector { Get-LoggedOnUserSafe }
+
+    # Hardware WMI/CIM collectors are isolated. A missing/broken class returns an empty value
+    # and does not prevent the remaining hardware collectors from running.
+    $bios       = Invoke-CollectorSafe -Name "Hardware.BIOS" -DefaultValue $null -Collector { Get-CimCompat "Win32_BIOS" }
+    $cs         = Invoke-CollectorSafe -Name "Hardware.ComputerSystem" -DefaultValue $null -Collector { Get-CimCompat "Win32_ComputerSystem" }
+    $csProduct  = Invoke-CollectorSafe -Name "Hardware.ComputerSystemProduct" -DefaultValue $null -Collector { Get-CimCompat "Win32_ComputerSystemProduct" }
+    $cpuObj     = @(Invoke-CollectorSafe -Name "Hardware.CPU" -DefaultValue @() -Collector { @(Get-CimCompat "Win32_Processor") | Select-Object -First 1 })
+    $ramChips   = @(Invoke-CollectorSafe -Name "Hardware.RAM" -DefaultValue @() -Collector { @(Get-CimCompat "Win32_PhysicalMemory") })
+    $disks      = @(Invoke-CollectorSafe -Name "Hardware.Disk" -DefaultValue @() -Collector { @(Get-CimCompat "Win32_DiskDrive") })
+    $gpus       = @(Invoke-CollectorSafe -Name "Hardware.GPU" -DefaultValue @() -Collector { @(Get-CimCompat "Win32_VideoController") })
+    $osObj      = Invoke-CollectorSafe -Name "Hardware.OS" -DefaultValue $null -Collector { Get-CimCompat "Win32_OperatingSystem" }
+    $enclosure  = Invoke-CollectorSafe -Name "Hardware.Enclosure" -DefaultValue $null -Collector { Get-CimCompat "Win32_SystemEnclosure" }
+    $batteries  = @(Invoke-CollectorSafe -Name "Hardware.Battery" -DefaultValue @() -Collector { @(Get-CimCompat "Win32_Battery") })
 
     $serialNumber = [string]$bios.SerialNumber
     if (Test-IsGenericSerial $serialNumber) {
@@ -936,43 +984,76 @@ try {
     $cpu = [string]$cpuObj.Name
     if ($cpu) { $cpu = $cpu.Trim() }
 
-    $totalRamBytes = 0
-    foreach ($r in $ramChips) {
-        try { $totalRamBytes += [int64]$r.Capacity } catch {}
+    # RAM: never report fake 0 GB when RAM cannot be read. Preserve the existing
+    # payload field (specs.ram) and return an empty string when no usable capacity is available.
+    $ramInfo = Invoke-CollectorSafe -Name "Hardware.RAM.Format" -DefaultValue "" -Collector {
+        $totalRamBytes = [int64]0
+        $validRamChips = 0
+
+        foreach ($r in $ramChips) {
+            try {
+                $capacity = [int64]$r.Capacity
+                if ($capacity -gt 0) {
+                    $totalRamBytes += $capacity
+                    $validRamChips++
+                }
+            } catch {}
+        }
+
+        if ($totalRamBytes -le 0 -or $validRamChips -le 0) {
+            Log "COLLECTOR FAILED [Hardware.RAM.Format] : RAM capacity unavailable; returning empty string"
+            return ""
+        }
+
+        $ramGB = [math]::Round($totalRamBytes / 1GB, 0)
+        $ramSpeed = ""
+        try { $ramSpeed = [string](($ramChips | Select-Object -First 1).Speed) } catch {}
+        $ramCount = $validRamChips
+
+        if ([string]::IsNullOrWhiteSpace($ramSpeed)) {
+            return "$ramGB GB ($ramCount slots,  MHz)"
+        }
+
+        return "$ramGB GB ($ramCount slots, $ramSpeed MHz)"
     }
-    $ramGB    = [math]::Round($totalRamBytes / 1GB, 0)
-    $ramSpeed = [string](($ramChips | Select-Object -First 1).Speed)
-    $ramCount = @($ramChips).Count
-    $ramInfo  = "$ramGB GB ($ramCount slots, $ramSpeed MHz)"
 
-    $storageList = @()
-    foreach ($d in $disks) {
-        try {
-            $sizeGB = [math]::Round(([double]$d.Size) / 1GB, 0)
-            $storageList += "$([string]$d.Model) ($sizeGB GB)"
-        } catch {}
+    $storageInfo = Invoke-CollectorSafe -Name "Hardware.Storage.Format" -DefaultValue "" -Collector {
+        $storageList = @()
+        foreach ($d in $disks) {
+            try {
+                $sizeGB = [math]::Round(([double]$d.Size) / 1GB, 0)
+                $storageList += "$([string]$d.Model) ($sizeGB GB)"
+            } catch {
+                Log "COLLECTOR ITEM FAILED [Hardware.Storage.Format] : $($_.Exception.Message)"
+            }
+        }
+        return ($storageList -join " + ")
     }
-    $storageInfo = $storageList -join " + "
 
-    $gpuNames = @()
-    foreach ($g in $gpus) {
-        if ($g.Name) { $gpuNames += [string]$g.Name }
+    $gpusText = Invoke-CollectorSafe -Name "Hardware.GPU.Format" -DefaultValue "" -Collector {
+        $gpuNames = @()
+        foreach ($g in $gpus) {
+            if ($g.Name) { $gpuNames += [string]$g.Name }
+        }
+        return ($gpuNames -join " / ")
     }
-    $gpusText = $gpuNames -join " / "
 
-    $os = [string]$osObj.Caption
-    if ($os) { $os = $os.Trim() }
+    $os = Invoke-CollectorSafe -Name "Hardware.OS.Format" -DefaultValue "" -Collector {
+        $v = [string]$osObj.Caption
+        if ($v) { $v = $v.Trim() }
+        return $v
+    }
 
-    $network    = Get-NetworkSafe
+    $network = Invoke-CollectorSafe -Name "Hardware.Network" -DefaultValue ([pscustomobject]@{ IP=""; MAC=""; Description="" }) -Collector { Get-NetworkSafe }
     $ipAddress  = [string]$network.IP
     $macAddress = [string]$network.MAC
 
     # Detect Device Type (Laptop / Desktop / Server)
     $hasBattery = ($batteries.Count -gt 0)
-    $chassisList = @()
-    if ($enclosure -and $enclosure.ChassisTypes) {
-        $chassisList = @($enclosure.ChassisTypes)
-    }
+    $chassisList = @(Invoke-CollectorSafe -Name "Hardware.Chassis" -DefaultValue @() -Collector {
+        if ($enclosure -and $enclosure.ChassisTypes) { return @($enclosure.ChassisTypes) }
+        return @()
+    })
 
     $laptopChassis = @(8, 9, 10, 11, 12, 14, 30, 31, 32)
     $serverChassis = @(17, 23, 28, 29)
@@ -998,7 +1079,7 @@ try {
     # --------------------------------------------------------------------------
     Write-Host "[2/4] Dang quet danh sach ung dung & phan mem da cai dat..." -ForegroundColor Green
 
-    $InstalledApps = @(Get-SoftwareSafe)
+    $InstalledApps = @(Invoke-CollectorSafe -Name "Software.Inventory" -DefaultValue @() -Collector { @(Get-SoftwareSafe) })
 
     Write-Host "-> Da phat hien $($InstalledApps.Count) phan mem/ung dung tren may tinh." -ForegroundColor Cyan
     Log "Software count=$($InstalledApps.Count)"
@@ -1009,9 +1090,9 @@ try {
     Write-Host "[3/4] Dang kiem tra ban quyen Windows, Office & dau hieu be khoa..." -ForegroundColor Green
 
     $licenseStart   = Get-Date
-    $WindowsLicense = Get-WindowsLicenseSafe
-    $OfficeLicense  = Get-OfficeLicenseSafe
-    $CrackDetection = Get-CrackDetectionSafe
+    $WindowsLicense = Invoke-CollectorSafe -Name "License.Windows" -DefaultValue @{ name=""; status="Unknown"; channel="Unknown"; partialKey=""; isKms=$false; isKmsCrack=$false; isGenuine=$false } -Collector { Get-WindowsLicenseSafe }
+    $OfficeLicense  = Invoke-CollectorSafe -Name "License.Office" -DefaultValue @{ name="Microsoft Office"; status="NotDetected"; channel=""; partialKey=""; isKms=$false } -Collector { Get-OfficeLicenseSafe }
+    $CrackDetection = Invoke-CollectorSafe -Name "Audit.CrackDetection" -DefaultValue @{ hasSuspect=$false; warnings=@() } -Collector { Get-CrackDetectionSafe }
     Log "License/audit collection time: $([math]::Round(((Get-Date)-$licenseStart).TotalSeconds,2)) sec"
 
     if ($WindowsLicense.isKmsCrack) {
@@ -1049,8 +1130,15 @@ try {
         scannedAt         = (Get-Date).ToString("o")
     }
 
-    $payloadClean = Remove-NullCharacters $payload
-    $jsonBody = $payloadClean | ConvertTo-Json -Depth 8 -Compress
+    try {
+        $payloadClean = Remove-NullCharacters $payload
+        $jsonBody = $payloadClean | ConvertTo-Json -Depth 8 -Compress
+        Log "COLLECTOR OK [Payload.Serialize]"
+    } catch {
+        Log "COLLECTOR FAILED [Payload.Serialize] : $($_.Exception.Message)"
+        $payloadClean = Remove-NullCharacters @{ hostname=$hostname }
+        $jsonBody = $payloadClean | ConvertTo-Json -Depth 8 -Compress
+    }
 
     try {
         $payloadClean | ConvertTo-Json -Depth 8 | Set-Content -Path $JsonFile -Encoding UTF8
@@ -1171,7 +1259,7 @@ catch {
     Log "FATAL: $($_.Exception.Message)"
 }
 
-Log "===== SIMPLY IT AGENT v4 END ====="
+Log "===== SIMPLY IT AGENT v4.1.1 END ====="
 
 # GPO Startup safe: don't report failure if network is temporarily unreachable
 exit 0
