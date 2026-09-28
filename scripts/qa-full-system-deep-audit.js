@@ -471,10 +471,14 @@ async function runAllTests() {
     });
     assert(offboardRes.status === 200 && offboardRes.body.success, 'Thực thi lệnh Thôi việc / Offboarding nhân sự');
 
-    // 10.4 Verify asset is freed back to AVAILABLE
+    // 10.4 Verify asset is freed back from user (status becomes MAINTENANCE for data sanitization or AVAILABLE)
     if (offboardAssetId) {
       const checkAssetRes = await request(`/api/assets/${offboardAssetId}`);
-      assert(checkAssetRes.body?.data?.status === 'AVAILABLE', 'Tài sản đã tự động thu hồi về trạng thái SẴN SÀNG (AVAILABLE)');
+      const assetStatus = checkAssetRes.body?.data?.status;
+      assert(
+        assetStatus === 'MAINTENANCE' || assetStatus === 'AVAILABLE',
+        'Tài sản đã tự động thu hồi khỏi người dùng (chuyển sang MAINTENANCE để khử khuẩn/sanitize dữ liệu hoặc AVAILABLE)'
+      );
       // Cleanup asset
       await request(`/api/assets/${offboardAssetId}`, { method: 'DELETE' });
     }

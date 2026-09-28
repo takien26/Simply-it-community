@@ -171,16 +171,16 @@ export async function POST(
         }
       }
 
-      // Recalculate and update total used seats for all affected license IDs within transaction
+      // Update total used seats for all affected license IDs within transaction using atomic increment
       const affectedIds = new Set([licenseId, ...results.map((a) => a.licenseId)]);
       for (const affId of affectedIds) {
-        const cnt = await tx.licenseAssignment.count({
-          where: { licenseId: affId, revokedAt: null },
-        });
-        await tx.license.update({
-          where: { id: affId },
-          data: { usedSeats: cnt },
-        });
+        const countToAdd = results.filter((r) => r.licenseId === affId).length;
+        if (countToAdd > 0) {
+          await tx.license.update({
+            where: { id: affId },
+            data: { usedSeats: { increment: countToAdd } },
+          });
+        }
       }
 
       return results;

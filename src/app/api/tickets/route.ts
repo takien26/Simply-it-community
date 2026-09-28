@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { syncExpiryTickets } from '@/lib/auto-tickets';
 import { routeTicket } from '@/lib/routing-engine';
 import { calculateBusinessSlaDeadline } from '@/lib/sla-escalation';
+import { generateNextTicketNumber } from '@/lib/ticket-sequence';
 import { TicketCategory, TicketPriority, TicketStatus } from '@prisma/client';
 import { sendEmail } from '@/lib/email';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
@@ -202,37 +203,11 @@ export async function POST(request: NextRequest) {
     const isResolved = effectiveStatus === 'RESOLVED' || effectiveStatus === 'CLOSED';
     const isClosed = effectiveStatus === 'CLOSED';
 
-    // Query the latest ticket for the current year to determine the next sequence number
-    const latestTicket = await prisma.ticket.findFirst({
-      where: {
-        ticketNumber: {
-          startsWith: `TK-${currentYear}-`,
-        },
-      },
-      orderBy: { ticketNumber: 'desc' },
-      select: { ticketNumber: true },
-    });
-
-    let baseSeq = 1;
-    if (latestTicket?.ticketNumber) {
-      const match = latestTicket.ticketNumber.match(/^TK-\d{4}-(\d+)/);
-      if (match && match[1]) {
-        const parsed = parseInt(match[1], 10);
-        if (!isNaN(parsed)) {
-          baseSeq = parsed + 1;
-        }
-      }
-    }
-
     let ticket: any = null;
     let attempts = 0;
     while (attempts < 5) {
       attempts++;
-      const currentSeq = baseSeq + attempts - 1;
-      const numPart = attempts === 1
-        ? String(currentSeq).padStart(4, '0')
-        : `${String(currentSeq).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
-      const ticketNumber = `TK-${currentYear}-${numPart}`;
+      const ticketNumber = await generateNextTicketNumber(currentYear);
 
       try {
         ticket = await prisma.ticket.create({
