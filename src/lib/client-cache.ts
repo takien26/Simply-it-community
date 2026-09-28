@@ -12,7 +12,18 @@ interface CacheEntry<T> {
   timestamp: number;
 }
 
+const MAX_CACHE_ENTRIES = 100;
 const memoryCache = new Map<string, CacheEntry<any>>();
+
+function setLruCache(url: string, entry: CacheEntry<any>) {
+  if (memoryCache.has(url)) {
+    memoryCache.delete(url);
+  } else if (memoryCache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = memoryCache.keys().next().value;
+    if (oldestKey) memoryCache.delete(oldestKey);
+  }
+  memoryCache.set(url, entry);
+}
 
 export async function fetchWithSwr<T>(
   url: string,
@@ -25,6 +36,10 @@ export async function fetchWithSwr<T>(
   const now = Date.now();
 
   if (cached) {
+    // Move to end to mark as recently used
+    memoryCache.delete(url);
+    memoryCache.set(url, cached);
+
     // Return stale data immediately for 0ms transition
     onData(cached.data, true);
 
@@ -40,8 +55,8 @@ export async function fetchWithSwr<T>(
     if (!res.ok) throw new Error('HTTP error ' + res.status);
     const freshData = await res.json();
 
-    // Store in cache
-    memoryCache.set(url, {
+    // Store in LRU cache
+    setLruCache(url, {
       data: freshData,
       timestamp: Date.now(),
     });

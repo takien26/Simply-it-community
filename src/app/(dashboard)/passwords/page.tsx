@@ -245,9 +245,26 @@ export default function PasswordsPage() {
     type: 'EMPTY',
   });
 
-  // Visible Passwords Set
+  // Visible Passwords Set & Revealed Secrets Cache (Zero-Trust on-demand)
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
+  const [revealedSecrets, setRevealedSecrets] = useState<Record<string, { password: string; totpSecret?: string | null }>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Helper to fetch plaintext secret on-demand and audit log
+  const revealSecret = async (id: string): Promise<{ password: string; totpSecret?: string | null } | null> => {
+    if (revealedSecrets[id]) return revealedSecrets[id];
+    try {
+      const res = await fetch(`/api/passwords/${id}/reveal`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setRevealedSecrets((prev) => ({ ...prev, [id]: data.data }));
+        return data.data;
+      }
+    } catch (err) {
+      console.error('Failed to reveal secret:', err);
+    }
+    return null;
+  };
 
   // Modals
   const [formModalConfig, setFormModalConfig] = useState<{
@@ -300,8 +317,45 @@ export default function PasswordsPage() {
     setFormModalConfig({ isOpen: true, mode: 'create', item: null });
   };
 
-  const handleOpenEdit = (item: PasswordItem) => {
-    setFormModalConfig({ isOpen: true, mode: 'edit', item });
+  const handleOpenEdit = async (item: PasswordItem) => {
+    let secret = revealedSecrets[item.id]?.password;
+    let totp = revealedSecrets[item.id]?.totpSecret;
+    if (!secret || secret === '••••••••') {
+      const res = await revealSecret(item.id);
+      if (res) {
+        secret = res.password;
+        totp = res.totpSecret;
+      }
+    }
+    setFormModalConfig({
+      isOpen: true,
+      mode: 'edit',
+      item: secret
+        ? {
+            ...item,
+            password: secret,
+            totpSecret: (totp !== undefined ? totp : item.totpSecret) ?? null,
+          }
+        : item,
+    });
+  };
+
+  const handleOpenDetail = async (item: PasswordItem) => {
+    let secret = revealedSecrets[item.id]?.password;
+    let totp = revealedSecrets[item.id]?.totpSecret;
+    if (!secret || secret === '••••••••') {
+      const res = await revealSecret(item.id);
+      if (res) {
+        secret = res.password;
+        totp = res.totpSecret;
+      }
+    }
+    setSelectedPassword({
+      ...item,
+      password: secret || item.password,
+      totpSecret: (totp !== undefined ? totp : item.totpSecret) ?? null,
+    });
+    setIsDetailModalOpen(true);
   };
 
   // Secondary Password (Mật khẩu cấp 2) Vault Lock States
@@ -326,6 +380,8 @@ export default function PasswordsPage() {
       sessionStorage.removeItem('simply_sec_pw_unlocked');
     }
     setIsVaultUnlocked(false);
+    setVisiblePasswords(new Set());
+    setRevealedSecrets({});
     setSecPwModalMode('verify');
     setIsSecPwModalOpen(true);
   };
@@ -827,14 +883,37 @@ export default function PasswordsPage() {
     }
   };
 
-  // Toggle visible password
-  const toggleShowPassword = (id: string) => {
-    setVisiblePasswords((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  // Toggle visible password (with on-demand zero-trust reveal)
+  const toggleShowPassword = async (id: string) => {
+    if (visiblePasswords.has(id)) {
+      setVisiblePasswords((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    } else {
+      if (!revealedSecrets[id]) {
+        await revealSecret(id);
+      }
+      setVisiblePasswords((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+    }
+  };
+
+  const handleCopyPassword = async (item: PasswordItem) => {
+    let secret = revealedSecrets[item.id]?.password;
+    if (!secret || secret === '••••••••') {
+      const res = await revealSecret(item.id);
+      if (res) secret = res.password;
+    }
+    if (secret && secret !== '••••••••') {
+      copyToClipboard(secret, 'Mật khẩu');
+    } else {
+      showToast('❌ Không thể sao chép mật khẩu');
+    }
   };
 
   // Toggle Favorite
@@ -1311,6 +1390,7 @@ export default function PasswordsPage() {
                 ) : (
                   paginatedPasswords.map((item, rowIdx) => {
                     const isVisible = visiblePasswords.has(item.id);
+                    const displayPassword = isVisible ? (revealedSecrets[item.id]?.password || item.password) : '••••••••';
                     const strength = evaluatePasswordStrength(item.password);
 
                     return (
@@ -1319,10 +1399,7 @@ export default function PasswordsPage() {
                         draggable={true}
                         onDragStart={(e) => handleDragStartItem(e, item.id)}
                         onContextMenu={(e) => handleContextMenuOnItem(e, item)}
-                        onClick={() => {
-                          setSelectedPassword(item);
-                          setIsDetailModalOpen(true);
-                        }}
+                        onClick={() => handleOpenDetail(item)}
                         className={`transition-colors cursor-pointer group hover:bg-indigo-50/50 ${
                           rowIdx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'
                         }`}
@@ -1376,7 +1453,7 @@ export default function PasswordsPage() {
                         <td className="px-3 py-2 min-w-[150px]">
                           <div className="flex items-center gap-1.5">
                             <span className="font-mono text-xs font-bold text-slate-900 tracking-wider">
-                              {isVisible ? item.password : '••••••••'}
+                              {displayPassword}
                             </span>
                             <button
                               type="button"
@@ -1393,7 +1470,7 @@ export default function PasswordsPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                copyToClipboard(item.password, 'Mật khẩu');
+                                handleCopyPassword(item);
                               }}
                               title="Copy Mật khẩu"
                               className="text-slate-400 hover:text-emerald-600 cursor-pointer shrink-0"
@@ -1452,8 +1529,7 @@ export default function PasswordsPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedPassword(item);
-                                setIsDetailModalOpen(true);
+                                handleOpenDetail(item);
                               }}
                               title={isEn ? 'View Details' : 'Xem chi tiết'}
                               className="p-1 text-slate-400 hover:text-indigo-600 rounded hover:bg-slate-100 cursor-pointer"
@@ -1462,12 +1538,17 @@ export default function PasswordsPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={(e) => {
+                              onClick={async (e) => {
                                 e.stopPropagation();
+                                let secret = revealedSecrets[item.id]?.password;
+                                if (!secret || secret === '••••••••') {
+                                  const res = await revealSecret(item.id);
+                                  if (res) secret = res.password;
+                                }
                                 setOneTimeSecretData({
                                   title: item.title,
                                   username: item.username,
-                                  password: item.password,
+                                  password: secret || item.password,
                                   notes: item.notes,
                                 });
                                 setIsOneTimeSecretModalOpen(true);
@@ -1596,8 +1677,8 @@ export default function PasswordsPage() {
               {/* Copy Password */}
               <button
                 type="button"
-                onClick={() => {
-                  handleCopy(contextMenu.targetItem!.password, 'cm_pass', 'Mật khẩu');
+                onClick={async () => {
+                  await handleCopyPassword(contextMenu.targetItem!);
                   setContextMenu((prev) => ({ ...prev, visible: false }));
                 }}
                 className="w-full text-left px-3 py-2 hover:bg-indigo-50 text-indigo-700 font-bold flex items-center gap-2 cursor-pointer transition-colors"
@@ -1640,8 +1721,7 @@ export default function PasswordsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedPassword(contextMenu.targetItem!);
-                  setIsDetailModalOpen(true);
+                  handleOpenDetail(contextMenu.targetItem!);
                   setContextMenu((prev) => ({ ...prev, visible: false }));
                 }}
                 className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-800 font-semibold flex items-center gap-2 cursor-pointer transition-colors border-t border-slate-100"
@@ -1667,12 +1747,17 @@ export default function PasswordsPage() {
               {/* Share One-Time Secret */}
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   const item = contextMenu.targetItem!;
+                  let secret = revealedSecrets[item.id]?.password;
+                  if (!secret || secret === '••••••••') {
+                    const res = await revealSecret(item.id);
+                    if (res) secret = res.password;
+                  }
                   setOneTimeSecretData({
                     title: item.title,
                     username: item.username,
-                    password: item.password,
+                    password: secret || item.password,
                     notes: item.notes,
                   });
                   setIsOneTimeSecretModalOpen(true);

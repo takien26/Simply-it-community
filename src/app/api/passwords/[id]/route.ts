@@ -55,7 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       data: {
         title: body.title !== undefined ? String(body.title).trim() : undefined,
         username: body.username !== undefined ? String(body.username).trim() : undefined,
-        password: body.password !== undefined ? encrypt(String(body.password)) : undefined,
+        password: body.password !== undefined && body.password !== '••••••••' && body.password !== '' ? encrypt(String(body.password)) : undefined,
         url: body.url !== undefined ? String(body.url).trim() : undefined,
         category: body.category !== undefined ? body.category : undefined,
         groupName: body.groupName !== undefined ? String(body.groupName).trim() : undefined,
@@ -64,7 +64,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         serviceId: body.serviceId !== undefined ? body.serviceId || null : undefined,
         vendorId: body.vendorId !== undefined ? body.vendorId || null : undefined,
         isFavorite: body.isFavorite !== undefined ? Boolean(body.isFavorite) : undefined,
-        totpSecret: body.totpSecret !== undefined ? encryptOptional(body.totpSecret ? String(body.totpSecret).trim() : null) : undefined,
+        totpSecret: body.totpSecret !== undefined && body.totpSecret !== '••••••••' ? encryptOptional(body.totpSecret ? String(body.totpSecret).trim() : null) : undefined,
         notes: body.notes !== undefined ? String(body.notes).trim() : undefined,
       },
       include: {

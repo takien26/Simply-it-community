@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { syncExpiryTickets } from '@/lib/auto-tickets';
 import { routeTicket } from '@/lib/routing-engine';
+import { calculateBusinessSlaDeadline } from '@/lib/sla-escalation';
 import { TicketCategory, TicketPriority, TicketStatus } from '@prisma/client';
 import { sendEmail } from '@/lib/email';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest) {
 
     const currentYear = new Date().getFullYear();
 
-    // Calculate SLA deadline based on priority (P1 Urgent = 4h, P2 High = 8h, P3 Medium = 24h, P4 Low = 48h)
+    // Calculate SLA deadline based on business hours (Mon-Fri 08:00-17:30) or 24/7 for URGENT
     const hoursMap: Record<string, number> = {
       URGENT: 4,
       HIGH: 8,
@@ -193,7 +194,8 @@ export async function POST(request: NextRequest) {
       LOW: 48,
     };
     const hours = hoursMap[priority || 'MEDIUM'] || 24;
-    const slaDeadline = new Date(Date.now() + hours * 60 * 60 * 1000);
+    const is24x7 = (priority || 'MEDIUM') === 'URGENT';
+    const slaDeadline = calculateBusinessSlaDeadline(new Date(), hours, is24x7);
 
     const effectiveCreatedById = requesterId || createdById || currentUser.userId;
     const effectiveStatus = (initialStatus as TicketStatus) || 'OPEN';

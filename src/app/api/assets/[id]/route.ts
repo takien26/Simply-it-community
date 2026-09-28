@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
 import { moveToTrash } from '@/lib/trash';
 import { normalizeAssetTag, normalizeCompanyName } from '@/lib/normalize';
+import { invalidateAssetKpiCache } from '@/lib/asset-kpi-cache';
 
 // GET /api/assets/[id]
 export async function GET(
@@ -290,6 +291,8 @@ export async function PUT(
       changes: { before: existing, after: updated },
     });
 
+    invalidateAssetKpiCache();
+
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     console.error('Update asset error:', error);
@@ -415,6 +418,8 @@ export async function DELETE(
       userId: currentUser.userId,
       changes: { deleted: existing },
     });
+
+    invalidateAssetKpiCache();
 
     return NextResponse.json({
       success: true,

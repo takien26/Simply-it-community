@@ -97,89 +97,94 @@ export async function POST(
       }
     }
 
-    const createdAssignments = [];
+    // Execute all assignments and usedSeats updates inside an atomic database transaction
+    const createdAssignments = await prisma.$transaction(async (tx) => {
+      const results = [];
 
-    for (const target of targets) {
-      // Determine which batch / license ID receives this assignment
-      let effectiveLicenseId = licenseId;
-      if (batchId) {
-        effectiveLicenseId = batchId;
-      } else if (candidateBatches.length > 0) {
-        // FIFO: pick the earliest expiring batch that still has available seats
-        const availableBatch = candidateBatches.find((b) => b.usedCount < b.totalSeats);
-        if (availableBatch) {
-          effectiveLicenseId = availableBatch.id;
-          availableBatch.usedCount += 1;
-        } else {
-          // If all batches are full, allocate to the latest batch
-          effectiveLicenseId = candidateBatches[candidateBatches.length - 1].id;
+      for (const target of targets) {
+        // Determine which batch / license ID receives this assignment
+        let effectiveLicenseId = licenseId;
+        if (batchId) {
+          effectiveLicenseId = batchId;
+        } else if (candidateBatches.length > 0) {
+          // FIFO: pick the earliest expiring batch that still has available seats
+          const availableBatch = candidateBatches.find((b) => b.usedCount < b.totalSeats);
+          if (availableBatch) {
+            effectiveLicenseId = availableBatch.id;
+            availableBatch.usedCount += 1;
+          } else {
+            // If all batches are full, allocate to the latest batch
+            effectiveLicenseId = candidateBatches[candidateBatches.length - 1].id;
+          }
+        }
+
+        // If assetId is provided but no userId, try to lookup who is currently using this asset
+        let finalUserId = target.userId;
+        if (!finalUserId && target.assetId) {
+          const activeAssetAssignment = await tx.assetAssignment.findFirst({
+            where: { assetId: target.assetId, returnedAt: null },
+            select: { userId: true },
+          });
+          if (activeAssetAssignment) {
+            finalUserId = activeAssetAssignment.userId;
+          }
+        }
+
+        // Check if this specific asset or user-only assignment already exists actively on this effective license
+        let isAlreadyAssigned = false;
+        if (target.assetId) {
+          const existingAsset = await tx.licenseAssignment.findFirst({
+            where: {
+              licenseId: effectiveLicenseId,
+              assetId: target.assetId,
+              revokedAt: null,
+            },
+          });
+          if (existingAsset) isAlreadyAssigned = true;
+        } else if (finalUserId) {
+          const existingUserOnly = await tx.licenseAssignment.findFirst({
+            where: {
+              licenseId: effectiveLicenseId,
+              userId: finalUserId,
+              assetId: null,
+              revokedAt: null,
+            },
+          });
+          if (existingUserOnly) isAlreadyAssigned = true;
+        }
+
+        if (!isAlreadyAssigned) {
+          const a = await tx.licenseAssignment.create({
+            data: {
+              licenseId: effectiveLicenseId,
+              userId: finalUserId || null,
+              assetId: target.assetId || null,
+              assignedById: currentUser.userId,
+              notes: notes || null,
+            },
+            include: {
+              user: { select: { id: true, fullName: true, department: true } },
+              asset: { select: { id: true, assetTag: true, name: true } },
+            },
+          });
+          results.push(a);
         }
       }
 
-      // If assetId is provided but no userId, try to lookup who is currently using this asset
-      let finalUserId = target.userId;
-      if (!finalUserId && target.assetId) {
-        const activeAssetAssignment = await prisma.assetAssignment.findFirst({
-          where: { assetId: target.assetId, returnedAt: null },
-          select: { userId: true },
+      // Recalculate and update total used seats for all affected license IDs within transaction
+      const affectedIds = new Set([licenseId, ...results.map((a) => a.licenseId)]);
+      for (const affId of affectedIds) {
+        const cnt = await tx.licenseAssignment.count({
+          where: { licenseId: affId, revokedAt: null },
         });
-        if (activeAssetAssignment) {
-          finalUserId = activeAssetAssignment.userId;
-        }
+        await tx.license.update({
+          where: { id: affId },
+          data: { usedSeats: cnt },
+        });
       }
 
-      // Check if this specific asset or user-only assignment already exists actively on this effective license
-      let isAlreadyAssigned = false;
-      if (target.assetId) {
-        const existingAsset = await prisma.licenseAssignment.findFirst({
-          where: {
-            licenseId: effectiveLicenseId,
-            assetId: target.assetId,
-            revokedAt: null,
-          },
-        });
-        if (existingAsset) isAlreadyAssigned = true;
-      } else if (finalUserId) {
-        const existingUserOnly = await prisma.licenseAssignment.findFirst({
-          where: {
-            licenseId: effectiveLicenseId,
-            userId: finalUserId,
-            assetId: null,
-            revokedAt: null,
-          },
-        });
-        if (existingUserOnly) isAlreadyAssigned = true;
-      }
-
-      if (!isAlreadyAssigned) {
-        const a = await prisma.licenseAssignment.create({
-          data: {
-            licenseId: effectiveLicenseId,
-            userId: finalUserId || null,
-            assetId: target.assetId || null,
-            assignedById: currentUser.userId,
-            notes: notes || null,
-          },
-          include: {
-            user: { select: { id: true, fullName: true, department: true } },
-            asset: { select: { id: true, assetTag: true, name: true } },
-          },
-        });
-        createdAssignments.push(a);
-      }
-    }
-
-    // Recalculate and update total used seats for all affected license IDs
-    const affectedIds = new Set([licenseId, ...createdAssignments.map((a) => a.licenseId)]);
-    for (const affId of affectedIds) {
-      const cnt = await prisma.licenseAssignment.count({
-        where: { licenseId: affId, revokedAt: null },
-      });
-      await prisma.license.update({
-        where: { id: affId },
-        data: { usedSeats: cnt },
-      });
-    }
+      return results;
+    });
 
     await createAuditLog({
       action: 'ASSIGN',

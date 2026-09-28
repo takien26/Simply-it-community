@@ -81,15 +81,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const decryptedPasswords = passwords.map((p) => ({
+    // In compliance with zero-trust password vault standards (Bitwarden/1Password):
+    // Do not transmit plaintext decrypted secrets for the entire database on list view.
+    // Return masked strings; secrets are revealed on-demand via POST /api/passwords/[id]/reveal with audit logging.
+    const maskedPasswords = passwords.map((p) => ({
       ...p,
-      password: decrypt(p.password),
-      totpSecret: decryptOptional(p.totpSecret),
+      password: p.password ? '••••••••' : '',
+      hasPassword: Boolean(p.password),
+      hasTotp: Boolean(p.totpSecret),
+      totpSecret: p.totpSecret ? '••••••••' : null,
     }));
 
     return NextResponse.json({
       success: true,
-      data: decryptedPasswords,
+      data: maskedPasswords,
       stats: {
         total: passwords.length,
         favorites: passwords.filter((p) => p.isFavorite).length,

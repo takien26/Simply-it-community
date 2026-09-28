@@ -33,31 +33,36 @@ export async function POST(
       return NextResponse.json({ error: 'Không tìm thấy tài sản' }, { status: 404 });
     }
 
-    // Close any previous active assignments if any
-    await prisma.assetAssignment.updateMany({
-      where: { assetId, returnedAt: null },
-      data: { returnedAt: new Date() },
-    });
+    // Wrap in atomic transaction to prevent race conditions or inconsistent states
+    const assignment = await prisma.$transaction(async (tx) => {
+      // Close any previous active assignments if any
+      await tx.assetAssignment.updateMany({
+        where: { assetId, returnedAt: null },
+        data: { returnedAt: new Date() },
+      });
 
-    // Create new assignment
-    const assignment = await prisma.assetAssignment.create({
-      data: {
-        assetId,
-        userId,
-        assignedById: currentUser.userId,
-        assignedAt: assignedAt ? new Date(assignedAt) : new Date(),
-        notes: notes || null,
-      },
-      include: {
-        user: { select: { fullName: true, email: true } },
-        asset: { select: { name: true, assetTag: true } },
-      },
-    });
+      // Create new assignment
+      const newAssignment = await tx.assetAssignment.create({
+        data: {
+          assetId,
+          userId,
+          assignedById: currentUser.userId,
+          assignedAt: assignedAt ? new Date(assignedAt) : new Date(),
+          notes: notes || null,
+        },
+        include: {
+          user: { select: { fullName: true, email: true } },
+          asset: { select: { name: true, assetTag: true } },
+        },
+      });
 
-    // Update asset status to IN_USE
-    await prisma.asset.update({
-      where: { id: assetId },
-      data: { status: 'IN_USE' },
+      // Update asset status to IN_USE
+      await tx.asset.update({
+        where: { id: assetId },
+        data: { status: 'IN_USE' },
+      });
+
+      return newAssignment;
     });
 
     await createAuditLog({

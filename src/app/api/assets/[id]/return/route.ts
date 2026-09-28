@@ -34,18 +34,20 @@ export async function POST(
       return NextResponse.json({ error: 'Tài sản hiện không được gán cho ai' }, { status: 400 });
     }
 
-    await prisma.assetAssignment.updateMany({
-      where: { assetId, returnedAt: null },
-      data: {
-        returnedAt: new Date(),
-        notes: notes ? notes : undefined,
-      },
-    });
+    // Wrap in atomic transaction to ensure status and assignment are updated together
+    const updatedAsset = await prisma.$transaction(async (tx) => {
+      await tx.assetAssignment.updateMany({
+        where: { assetId, returnedAt: null },
+        data: {
+          returnedAt: new Date(),
+          notes: notes ? notes : undefined,
+        },
+      });
 
-    // Update asset status back to AVAILABLE
-    const updatedAsset = await prisma.asset.update({
-      where: { id: assetId },
-      data: { status: 'AVAILABLE' },
+      return tx.asset.update({
+        where: { id: assetId },
+        data: { status: 'AVAILABLE' },
+      });
     });
 
     await createAuditLog({
