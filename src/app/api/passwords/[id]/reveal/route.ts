@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { hasPermission, isAdminOrAbove } from '@/lib/permissions';
 import { createAuditLog } from '@/lib/audit';
 import { decrypt, decryptOptional } from '@/lib/crypto';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // POST /api/passwords/[id]/reveal - On-demand decrypt with audit trail logging
 export async function POST(
@@ -14,6 +15,15 @@ export async function POST(
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
+    }
+
+    // Rate limit: Max 30 secret reveals per minute per user to prevent bulk scraping
+    const rateLimit = checkRateLimit(`reveal:${user.userId}`, 30, 60_000);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: 'Bạn đã thao tác xem mật khẩu quá nhanh. Vui lòng thử lại sau 1 phút.' },
+        { status: 429 }
+      );
     }
 
     const allowed = isAdminOrAbove(user.roleName) || (await hasPermission(user.userId, 'passwords.view'));

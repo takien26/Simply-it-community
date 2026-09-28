@@ -74,35 +74,38 @@ export async function POST(
 
     const mergeReason = reason?.trim() || 'Trùng lặp nội dung yêu cầu';
 
-    // Update source ticket to CLOSED and link to target
-    await prisma.ticket.update({
-      where: { id: sourceTicketId },
-      data: {
-        mergedIntoTicketId: targetTicketId,
-        status: 'CLOSED',
-        resolvedAt: new Date(),
-        resolutionNotes: `🔀 Đã gộp vào ticket #${targetTicket.ticketNumber} (${targetTicket.title}). Lý do: ${mergeReason}`,
-      },
-    });
+    // Atomic update: close source ticket, link to target, and post audit comments on both tickets
+    await prisma.$transaction(async (tx) => {
+      // 1. Update source ticket to CLOSED and link to target
+      await tx.ticket.update({
+        where: { id: sourceTicketId },
+        data: {
+          mergedIntoTicketId: targetTicketId,
+          status: 'CLOSED',
+          resolvedAt: new Date(),
+          resolutionNotes: `🔀 Đã gộp vào ticket #${targetTicket.ticketNumber} (${targetTicket.title}). Lý do: ${mergeReason}`,
+        },
+      });
 
-    // Add comment to source ticket
-    await prisma.ticketComment.create({
-      data: {
-        ticketId: sourceTicketId,
-        userId: currentUser.userId,
-        content: `🔀 Ticket này đã được kỹ thuật viên ${techName} gộp vào ticket #${targetTicket.ticketNumber} (${targetTicket.title}).\n\n📌 Lý do: ${mergeReason}\nℹ️ Mọi cập nhật tiếp theo về sự cố sẽ được xử lý tại ticket chính.`,
-        isInternal: false,
-      },
-    });
+      // 2. Add comment to source ticket
+      await tx.ticketComment.create({
+        data: {
+          ticketId: sourceTicketId,
+          userId: currentUser.userId,
+          content: `🔀 Ticket này đã được kỹ thuật viên ${techName} gộp vào ticket #${targetTicket.ticketNumber} (${targetTicket.title}).\n\n📌 Lý do: ${mergeReason}\nℹ️ Mọi cập nhật tiếp theo về sự cố sẽ được xử lý tại ticket chính.`,
+          isInternal: false,
+        },
+      });
 
-    // Add comment to target ticket
-    await prisma.ticketComment.create({
-      data: {
-        ticketId: targetTicketId,
-        userId: currentUser.userId,
-        content: `[Gộp Ticket]: Đã tiếp nhận và gộp ticket con #${sourceTicket.ticketNumber} ("${sourceTicket.title}") của người yêu cầu: ${sourceTicket.createdBy?.fullName || 'N/A'}.\n\nLý do gộp: ${mergeReason}`,
-        isInternal: false,
-      },
+      // 3. Add comment to target ticket
+      await tx.ticketComment.create({
+        data: {
+          ticketId: targetTicketId,
+          userId: currentUser.userId,
+          content: `[Gộp Ticket]: Đã tiếp nhận và gộp ticket con #${sourceTicket.ticketNumber} ("${sourceTicket.title}") của người yêu cầu: ${sourceTicket.createdBy?.fullName || 'N/A'}.\n\nLý do gộp: ${mergeReason}`,
+          isInternal: false,
+        },
+      });
     });
 
     // Optional email notification to source requester

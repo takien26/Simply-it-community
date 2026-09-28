@@ -348,6 +348,44 @@ export function formatHtmlEmailReport(scan: AlertScanResult, appUrl = ''): strin
 }
 
 /**
+ * Tự động dọn dẹp các liên kết bí mật chia sẻ 1 lần đã quá hạn hiệu lực
+ */
+export async function purgeExpiredOneTimeSecrets(): Promise<number> {
+  try {
+    const secrets = await prisma.systemSetting.findMany({
+      where: {
+        key: { startsWith: 'vault.secret.' },
+      },
+    });
+
+    const now = Date.now();
+    const expiredKeys: string[] = [];
+
+    for (const s of secrets) {
+      try {
+        const record = JSON.parse(s.value);
+        if (record.expiresAt && now > new Date(record.expiresAt).getTime()) {
+          expiredKeys.push(s.key);
+        }
+      } catch {
+        expiredKeys.push(s.key);
+      }
+    }
+
+    if (expiredKeys.length > 0) {
+      await prisma.systemSetting.deleteMany({
+        where: { key: { in: expiredKeys } },
+      });
+    }
+
+    return expiredKeys.length;
+  } catch (err) {
+    console.error('Failed to purge expired one-time secrets:', err);
+    return 0;
+  }
+}
+
+/**
  * Execute full scan & multi-channel dispatch
  */
 export async function runDailyAlertJob(appUrl = ''): Promise<AlertScanResult> {
@@ -387,7 +425,11 @@ export async function runDailyAlertJob(appUrl = ''): Promise<AlertScanResult> {
     .filter(Boolean);
 
   const threshold = Number(map.get('alert.threshold_days')) || 30;
-  const targetAppUrl = appUrl || map.get('app.server_url') || 'http://localhost:3000';
+  // Prioritize configured company domain name, then passed appUrl (if non-loopback), fallback to local port 3001
+  const targetAppUrl = map.get('app.server_url') || (appUrl && !appUrl.includes('127.0.0.1') ? appUrl : '') || 'http://localhost:3001';
+
+  // Tự động dọn dẹp các liên kết bí mật chia sẻ 1 lần đã quá hạn hiệu lực
+  await purgeExpiredOneTimeSecrets().catch(() => {});
 
   // 2. Perform Scan
   const scanResult = await scanExpiringAlerts(threshold);

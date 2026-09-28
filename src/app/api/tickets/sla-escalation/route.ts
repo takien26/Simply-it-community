@@ -27,11 +27,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
+    const cronSecret = request.headers.get('x-cron-secret');
+    const isCronAuthorized = cronSecret && cronSecret === (process.env.CRON_SECRET || 'simply-internal-cron');
+
+    if (!user && !isCronAuthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const result = await processSlaEscalation(user.userId);
+    const result = await processSlaEscalation(user?.userId);
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('Error in POST /api/tickets/sla-escalation:', error);

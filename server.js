@@ -379,6 +379,40 @@ async function initServer() {
   }
   setTimeout(triggerHealthOfflineCron, 45000);
   setInterval(triggerHealthOfflineCron, 5 * 60 * 1000);
+
+  // 10. Automated Ticket SLA Escalation & Breach Warning Engine (Runs every 10 minutes)
+  function triggerSlaEscalationCron() {
+    try {
+      const req = http.request(
+        `http://127.0.0.1:${HTTP_PORT}/api/tickets/sla-escalation`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cron-secret': process.env.CRON_SECRET || 'simply-internal-cron',
+          },
+        },
+        (res) => {
+          let body = '';
+          res.on('data', (chunk) => { body += chunk; });
+          res.on('end', () => {
+            if (res.statusCode === 200) {
+              try {
+                const data = JSON.parse(body);
+                if (data.escalatedCount > 0) {
+                  console.log(`⚡ [SLA Escalation Engine] Auto-routed & alerted ${data.escalatedCount} ticket(s) at risk of breach.`);
+                }
+              } catch {}
+            }
+          });
+        }
+      );
+      req.on('error', () => {});
+      req.end();
+    } catch (e) {}
+  }
+  setTimeout(triggerSlaEscalationCron, 60000);
+  setInterval(triggerSlaEscalationCron, 10 * 60 * 1000);
 }
 
 initServer().catch((err) => {

@@ -8,6 +8,7 @@ import {
   isAdminOrAbove,
   canDeleteUser,
 } from '@/lib/permissions';
+import { invalidateAssetKpiCache } from '@/lib/asset-kpi-cache';
 
 export async function POST(
   req: NextRequest,
@@ -118,6 +119,10 @@ export async function POST(
         serialNumber: asg.asset.serialNumber,
         condition: asg.asset.condition,
       });
+    }
+
+    if (revokedAssetsDetails.length > 0) {
+      invalidateAssetKpiCache();
     }
 
     // 2. Thu hồi các bản quyền phần mềm được chọn (hoặc tất cả)
