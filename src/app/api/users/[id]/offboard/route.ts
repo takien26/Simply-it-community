@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, invalidateUserActiveCache } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import {
   hasPermission,
@@ -219,6 +219,7 @@ export async function POST(
         isActive: false,
       },
     });
+    invalidateUserActiveCache(id);
 
     // 5. Ghi nhận Audit Log
     await prisma.auditLog.create({

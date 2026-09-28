@@ -2,6 +2,7 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const next = require('next');
 const selfsigned = require('selfsigned');
 
@@ -50,10 +51,15 @@ function serveUploadsDirect(req, res) {
     if (fs.existsSync(safePath) && fs.statSync(safePath).isFile()) {
       const ext = path.extname(safePath).toLowerCase();
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-      res.writeHead(200, {
+      const headers = {
         'Content-Type': contentType,
         'Cache-Control': 'public, max-age=31536000, immutable',
-      });
+        'X-Content-Type-Options': 'nosniff',
+      };
+      if (ext === '.svg') {
+        headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'";
+      }
+      res.writeHead(200, headers);
       fs.createReadStream(safePath).pipe(res);
       return true;
     }
@@ -125,12 +131,26 @@ async function initServer() {
   const certPath = path.join(certDir, 'localhost.crt');
 
   let pems;
+  let isCertValid = false;
   if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
-    pems = {
-      private: fs.readFileSync(keyPath, 'utf8'),
-      cert: fs.readFileSync(certPath, 'utf8'),
-    };
-  } else {
+    try {
+      const existingCert = fs.readFileSync(certPath, 'utf8');
+      const existingKey = fs.readFileSync(keyPath, 'utf8');
+      const x509 = new crypto.X509Certificate(existingCert);
+      const validTo = new Date(x509.validTo);
+      // Valid if remaining validity is at least 7 days
+      if (validTo.getTime() - Date.now() > 7 * 24 * 60 * 60 * 1000) {
+        pems = { private: existingKey, cert: existingCert };
+        isCertValid = true;
+      } else {
+        console.log('⚠️ [SSL] Chứng chỉ HTTPS đã hết hạn hoặc sắp hết hạn (< 7 ngày). Đang tự động làm mới...');
+      }
+    } catch (certCheckErr) {
+      console.warn('⚠️ [SSL] Không thể đọc chứng chỉ hiện tại, tiến hành tạo mới:', certCheckErr.message);
+    }
+  }
+
+  if (!isCertValid) {
     console.log('🔐 Generating self-signed SSL certificate for HTTPS mobile camera...');
     const attrs = [{ name: 'commonName', value: '192.168.144.198' }];
     const pemsGen = await selfsigned.generate(attrs, {

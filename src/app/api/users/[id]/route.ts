@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, invalidateUserActiveCache } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import {
   hasPermission,
@@ -194,6 +194,8 @@ export async function PUT(
       },
     });
 
+    invalidateUserActiveCache(id);
+
     return NextResponse.json({ success: true, data: updatedUser });
   } catch (error) {
     console.error('Update user error:', error);
@@ -260,6 +262,8 @@ export async function DELETE(
       where: { id },
       data: { isActive: false },
     });
+
+    invalidateUserActiveCache(id);
 
     return NextResponse.json({
       success: true,

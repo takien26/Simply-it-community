@@ -209,6 +209,32 @@ export async function authenticate(
   return null;
 }
 
+// Lightweight in-memory cache for user active status (TTL 30s)
+const userActiveCache = new Map<string, { isActive: boolean; expiresAt: number }>();
+
+export function invalidateUserActiveCache(userId: string): void {
+  userActiveCache.delete(userId);
+}
+
+export async function isUserActive(userId: string): Promise<boolean> {
+  const cached = userActiveCache.get(userId);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.isActive;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isActive: true },
+    });
+    const isActive = Boolean(user && user.isActive);
+    userActiveCache.set(userId, { isActive, expiresAt: Date.now() + 30_000 });
+    return isActive;
+  } catch {
+    return true; // Fallback gracefully on transient DB error
+  }
+}
+
 export async function getCurrentUser(): Promise<JWTPayload | null> {
   const cookieStore = await cookies();
   let token: string | undefined;
@@ -220,7 +246,15 @@ export async function getCurrentUser(): Promise<JWTPayload | null> {
     }
   }
   if (!token) return null;
-  return verifyToken(token);
+  const payload = await verifyToken(token);
+  if (!payload) return null;
+
+  const active = await isUserActive(payload.userId);
+  if (!active) {
+    return null;
+  }
+
+  return payload;
 }
 
 export async function hashPassword(password: string): Promise<string> {

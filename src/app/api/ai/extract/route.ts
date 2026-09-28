@@ -99,6 +99,26 @@ export async function POST(request: NextRequest) {
 
     if (file) {
       const fileName = file.name.toLowerCase();
+      const ext = path.extname(fileName);
+      const ALLOWED_AI_EXTS = new Set([
+        '.xlsx', '.xls', '.csv', '.pdf', '.docx', '.doc', '.txt', '.rtf',
+        '.png', '.jpg', '.jpeg', '.webp'
+      ]);
+
+      if (!ALLOWED_AI_EXTS.has(ext)) {
+        return NextResponse.json(
+          { error: `Định dạng tệp "${ext || 'không xác định'}" không được hỗ trợ để trích xuất dữ liệu.` },
+          { status: 400 }
+        );
+      }
+
+      if (file.size > 25 * 1024 * 1024) {
+        return NextResponse.json(
+          { error: 'Kích thước tệp tải lên vượt quá giới hạn 25MB' },
+          { status: 400 }
+        );
+      }
+
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 

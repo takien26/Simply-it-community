@@ -50,6 +50,7 @@ export interface InboundSyncResult {
 
 // In-memory mutex lock to prevent concurrent polling executions
 let isPollingInProgress = false;
+let lastPollStartTime = 0;
 
 /**
  * Load Inbound IMAP configuration from system settings
@@ -184,6 +185,13 @@ export async function testImapConnection(config: ImapConfig): Promise<{
 /**
  * Save attachments from parsed email into public/uploads/tickets/email/
  */
+const INBOUND_DANGEROUS_EXTENSIONS = new Set([
+  '.exe', '.bat', '.cmd', '.ps1', '.sh', '.vbs', '.js', '.mjs', '.cjs',
+  '.php', '.phtml', '.php3', '.php4', '.php5', '.phps',
+  '.cgi', '.pl', '.jar', '.msi', '.dll', '.com', '.scr', '.hta',
+  '.vbe', '.wsf', '.wsh', '.reg', '.iso', '.bin', '.svg', '.html', '.htm'
+]);
+
 async function saveEmailAttachments(
   attachments: Attachment[]
 ): Promise<Array<{ url: string; name: string; size: number; type: string }>> {
@@ -198,6 +206,20 @@ async function saveEmailAttachments(
 
   for (const att of attachments) {
     try {
+      const ext = path.extname(att.filename || '').toLowerCase();
+      // Block dangerous executable/script/SVG files from email
+      if (INBOUND_DANGEROUS_EXTENSIONS.has(ext)) {
+        console.warn(`[Email Inbound] Đã từ chối tệp đính kèm tiềm ẩn nguy cơ an toàn (${att.filename})`);
+        continue;
+      }
+
+      // Max size: 25MB
+      const fileSize = att.size || att.content?.length || 0;
+      if (fileSize > 25 * 1024 * 1024) {
+        console.warn(`[Email Inbound] Tệp đính kèm vượt quá 25MB (${att.filename}), bỏ qua`);
+        continue;
+      }
+
       const safeFilename = att.filename
         ? `${Date.now()}_${crypto.randomBytes(4).toString('hex')}_${att.filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`
         : `${Date.now()}_${crypto.randomBytes(4).toString('hex')}.bin`;
@@ -208,7 +230,7 @@ async function saveEmailAttachments(
       saved.push({
         url: `/uploads/tickets/email/${safeFilename}`,
         name: att.filename || 'Tệp đính kèm',
-        size: att.size || att.content.length,
+        size: fileSize,
         type: att.contentType || 'application/octet-stream',
       });
     } catch (attErr) {
@@ -435,7 +457,8 @@ export async function processInboundEmails(customConfig?: Partial<ImapConfig>): 
     processedEmails: [],
   };
 
-  if (isPollingInProgress) {
+  const MAX_POLL_DURATION_MS = 5 * 60 * 1000;
+  if (isPollingInProgress && Date.now() - lastPollStartTime < MAX_POLL_DURATION_MS) {
     result.errors.push('Tác vụ quét hộp thư đang chạy trong nền, vui lòng đợi kết thúc.');
     result.success = false;
     return result;
@@ -465,6 +488,7 @@ export async function processInboundEmails(customConfig?: Partial<ImapConfig>): 
   }
 
   isPollingInProgress = true;
+  lastPollStartTime = Date.now();
 
   const client = new ImapFlow({
     host: config.host.trim(),
@@ -476,6 +500,8 @@ export async function processInboundEmails(customConfig?: Partial<ImapConfig>): 
     },
     logger: false,
     emitLogs: false,
+    connectionTimeout: 30000,
+    greetingTimeout: 15000,
   });
 
   try {

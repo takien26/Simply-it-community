@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/db';
 import { decrypt } from '@/lib/crypto';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,15 @@ export async function GET(
     const { token } = await params;
     if (!token) {
       return NextResponse.json({ error: 'Token không hợp lệ' }, { status: 400 });
+    }
+
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'anonymous';
+    const rateLimit = checkRateLimit(`share_token:${token}:${ip}`, 15, 60_000);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: 'Quá nhiều yêu cầu. Vui lòng thử lại sau.' },
+        { status: 429 }
+      );
     }
 
     const key = `vault.secret.${token}`;
@@ -85,8 +95,32 @@ export async function GET(
 
       const providedHash = hashPassphrase(providedPassphrase);
       if (providedHash !== record.passphraseHash) {
+        const failedAttempts = (record.failedAttempts || 0) + 1;
+        if (failedAttempts >= 5) {
+          // Burn secret immediately on 5 failed attempts!
+          await prisma.systemSetting.delete({ where: { key } }).catch(() => {});
+          return NextResponse.json(
+            {
+              error: 'Nhập sai mật khẩu bảo vệ quá 5 lần. Liên kết bí mật đã tự động tiêu hủy vĩnh viễn vì lý do an toàn.',
+              burned: true,
+            },
+            { status: 403 }
+          );
+        }
+
+        record.failedAttempts = failedAttempts;
+        await prisma.systemSetting.update({
+          where: { key },
+          data: { value: JSON.stringify(record) },
+        }).catch(() => {});
+
+        const remaining = 5 - failedAttempts;
         return NextResponse.json(
-          { error: 'Mật khẩu bảo vệ không chính xác.', incorrectPassphrase: true },
+          {
+            error: `Mật khẩu bảo vệ không chính xác. Bạn còn ${remaining} lần thử trước khi liên kết tự hủy.`,
+            incorrectPassphrase: true,
+            remainingAttempts: remaining,
+          },
           { status: 403 }
         );
       }

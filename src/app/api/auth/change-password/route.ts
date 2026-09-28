@@ -4,12 +4,21 @@ import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
 import bcrypt from 'bcryptjs';
 import { clearMeCache } from '@/lib/me-cache';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const rateLimit = checkRateLimit(`change_pwd:${currentUser.userId}`, 5, 60_000);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: 'Thao tác quá nhanh hoặc nhập sai nhiều lần. Vui lòng thử lại sau 1 phút.' },
+        { status: 429 }
+      );
     }
 
     const body = await request.json();

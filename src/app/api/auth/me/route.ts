@@ -27,6 +27,7 @@ export async function GET() {
         phone: true,
         avatarUrl: true,
         managerId: true,
+        isActive: true,
         manager: {
           select: {
             id: true,
@@ -42,8 +43,8 @@ export async function GET() {
       },
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!user || !user.isActive) {
+      return NextResponse.json({ error: 'Tài khoản của bạn đã bị vô hiệu hóa hoặc ngừng hoạt động' }, { status: 401 });
     }
 
     const permissions = await getUserPermissions(currentUser.userId);

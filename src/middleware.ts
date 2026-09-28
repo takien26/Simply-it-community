@@ -82,6 +82,18 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // Protect cron routes: if internal secret was absent, only Admins are allowed to trigger manual cron runs
+  if (pathname.startsWith('/api/cron')) {
+    const roleLower = (payload.roleName || '').toLowerCase();
+    const isAdmin = roleLower.includes('admin');
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Forbidden: Chỉ Quản trị viên mới có quyền kích hoạt tác vụ cron hệ thống' },
+        { status: 403 }
+      );
+    }
+  }
+
   // Redirect Staff users to /portal when accessing root or dashboard
   if (payload.roleName === 'Staff' && (pathname === '/' || pathname === '/dashboard')) {
     return NextResponse.redirect(new URL('/portal', request.url));
