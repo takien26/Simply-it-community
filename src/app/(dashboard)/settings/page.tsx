@@ -56,45 +56,45 @@ interface NavGroup {
   items: NavItem[];
 }
 
-function getSettingsNavGroups(isEn: boolean, isEnterprise: boolean, activeModules: string[] = []): NavGroup[] {
+function getSettingsNavGroups(t: (key: string, fallback?: string) => string, isEnterprise: boolean, activeModules: string[] = []): NavGroup[] {
   return [
     {
-      title: isEn ? 'System & Interface' : 'Hệ Thống & Giao Diện',
+      title: t('settings.group.system_interface', 'Hệ Thống & Giao Diện'),
       items: [
-        { id: 'GENERAL', label: isEn ? 'General Settings & Logo' : 'Cài đặt Chung & Logo', icon: '⚙️', desc: isEn ? 'System name, logo, favicon, interface appearance' : 'Tên hệ thống, logo, favicon, màu sắc giao diện' },
-        { id: 'CURRENCY', label: isEn ? 'Currency & Base Denomination' : 'Tiền Tệ & Đồng Tiền Gốc', icon: '💰', desc: isEn ? 'Configure VND, USD, EUR and exchange rates' : 'Cấu hình VND, USD, EUR và tỷ giá hối đoái' },
-        { id: 'LICENSE', label: isEn ? 'Edition & License' : 'Giấy Phép & Bản Quyền', icon: '🛡️', desc: isEn ? 'System edition, activation status' : 'Phiên bản hệ thống, kích hoạt bản quyền Enterprise' },
+        { id: 'GENERAL', label: t('settings.nav.general', 'Cài đặt Chung & Logo'), icon: '⚙️', desc: t('settings.nav.general_desc', 'Tên hệ thống, logo, favicon, màu sắc giao diện') },
+        { id: 'CURRENCY', label: t('settings.nav.currency', 'Tiền Tệ & Đồng Tiền Gốc'), icon: '💰', desc: t('settings.nav.currency_desc', 'Cấu hình VND, USD, EUR và tỷ giá hối đoái') },
+        { id: 'LICENSE', label: t('settings.nav.license', 'Giấy Phép & Bản Quyền'), icon: '🛡️', desc: t('settings.nav.license_desc', 'Phiên bản hệ thống, kích hoạt bản quyền Enterprise') },
       ],
     },
     {
-      title: isEn ? 'Security & Access Control' : 'Bảo Mật & Phân Quyền',
+      title: t('settings.group.security_access', 'Bảo Mật & Phân Quyền'),
       items: [
-        { id: 'RBAC', label: isEn ? 'Role-Based Access Control (RBAC)' : 'Phân Quyền Vai Trò (RBAC)', icon: '🔐', desc: isEn ? 'Detailed permission matrix for Admin, IT, Staff' : 'Ma trận quyền hạn chi tiết Admin, IT, Staff' },
-        { id: 'SSO', label: isEn ? 'Microsoft 365 Single Sign-On' : 'Đăng Nhập SSO Microsoft 365', icon: '🔑', desc: isEn ? '1-click login via Microsoft Azure AD / Entra ID' : 'Đăng nhập 1 chạm qua Microsoft Azure AD', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
-        { id: 'LDAP', label: isEn ? 'LDAP / Active Directory' : 'Xác Thực LDAP / Active Directory', icon: '🏢', desc: isEn ? 'Synchronize Windows Server Active Directory accounts' : 'Đồng bộ tài khoản máy chủ Windows Server', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
+        { id: 'RBAC', label: t('settings.nav.rbac', 'Phân Quyền Vai Trò (RBAC)'), icon: '🔐', desc: t('settings.nav.rbac_desc', 'Ma trận quyền hạn chi tiết Admin, IT, Staff') },
+        { id: 'SSO', label: t('settings.nav.sso', 'Đăng Nhập SSO Microsoft 365'), icon: '🔑', desc: t('settings.nav.sso_desc', 'Đăng nhập 1 chạm qua Microsoft Azure AD'), badge: !isEnterprise ? 'ENTERPRISE' : undefined },
+        { id: 'LDAP', label: t('settings.nav.ldap', 'Xác Thực LDAP / Active Directory'), icon: '🏢', desc: t('settings.nav.ldap_desc', 'Đồng bộ tài khoản máy chủ Windows Server'), badge: !isEnterprise ? 'ENTERPRISE' : undefined },
       ],
     },
     {
-      title: isEn ? 'Integrations & Notifications' : 'Tích Hợp & Thông Báo',
+      title: t('settings.group.integrations_notifications', 'Tích Hợp & Thông Báo'),
       items: [
-        { id: 'ALERTS', label: isEn ? 'Automated Alerts (Telegram/Email)' : 'Cảnh Báo Tự Động (Telegram/Email)', icon: '🚨', desc: isEn ? 'Scan expiry dates for IT services, licenses, warranties' : 'Quét hạn Dịch vụ IT, License, Bảo hành và bắn tin', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
-        { id: 'HEALTH_ALERTS', label: isEn ? 'Device Health & Metric Alerts' : 'Cảnh Báo IT Health & Thiết Bị', icon: '🩺', desc: isEn ? 'Threshold policies for CPU, RAM, Disk, BitLocker, Defender & Offline' : 'Cấu hình ngưỡng CPU, RAM, Ổ đĩa, Defender, BitLocker, Mất kết nối' },
-        { id: 'EMAIL', label: isEn ? 'Email & SMTP Configuration' : 'Cấu Hình Email & SMTP', icon: '📧', desc: isEn ? 'Mail servers & 7 automated notification email templates' : 'Máy chủ gửi mail & 7 mẫu email có link CTA' },
-        { id: 'WEBHOOKS', label: isEn ? 'Multi-Channel Webhooks' : 'Webhook Đa Kênh (Teams/Zalo)', icon: '🔔', desc: isEn ? 'Instant alerts to Teams, Zalo, Slack webhooks' : 'Bắn thông báo tức thời qua Zalo, Teams, Slack', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
+        { id: 'ALERTS', label: t('settings.nav.alerts', 'Cảnh Báo Tự Động (Telegram/Email)'), icon: '🚨', desc: t('settings.nav.alerts_desc', 'Quét hạn Dịch vụ IT, License, Bảo hành và bắn tin'), badge: !isEnterprise ? 'ENTERPRISE' : undefined },
+        { id: 'HEALTH_ALERTS', label: t('settings.nav.health_alerts', 'Cảnh Báo IT Health & Thiết Bị'), icon: '🩺', desc: t('settings.nav.health_alerts_desc', 'Cấu hình ngưỡng CPU, RAM, Ổ đĩa, Defender, BitLocker, Mất kết nối') },
+        { id: 'EMAIL', label: t('settings.nav.email', 'Cấu Hình Email & SMTP'), icon: '📧', desc: t('settings.nav.email_desc', 'Máy chủ gửi mail & 7 mẫu email có link CTA') },
+        { id: 'WEBHOOKS', label: t('settings.nav.webhooks', 'Webhook Đa Kênh (Teams/Zalo)'), icon: '🔔', desc: t('settings.nav.webhooks_desc', 'Bắn thông báo tức thời qua Zalo, Teams, Slack'), badge: !isEnterprise ? 'ENTERPRISE' : undefined },
       ],
     },
     {
-      title: isEn ? 'ITSM Workflows & Operations' : 'Quy Trình & Vận Hành IT',
+      title: t('settings.group.itsm_operations', 'Quy Trình & Vận Hành IT'),
       items: [
-        { id: 'ROUTING', label: isEn ? 'IT Support Org, Routing & SLA' : 'Tổ Chức IT, Phân Tuyến & SLA', icon: '🎯', desc: isEn ? 'Support teams, queues, and committed SLA policies' : 'Đội ngũ hỗ trợ, hàng đợi và hạn cam kết SLA', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
-        { id: 'MAINTENANCE', label: isEn ? 'Periodic Maintenance Schedules' : 'Lịch Bảo Trì Định Kỳ', icon: '📅', desc: isEn ? 'Automated maintenance schedules for enterprise assets' : 'Lên lịch tự động kiểm tra bảo dưỡng thiết bị' },
-        { id: 'AI_COPILOT', label: isEn ? 'Artificial Intelligence (AI)' : 'Trí Tuệ Nhân Tạo (AI)', icon: '🤖', desc: isEn ? 'Configure Gemini AI models, Copilot assistant, and OCR' : 'Cấu hình Gemini API, Trợ lý AI và OCR hóa đơn', badge: !isEnterprise ? 'ENTERPRISE' : undefined },
+        { id: 'ROUTING', label: t('settings.nav.routing', 'Tổ Chức IT, Phân Tuyến & SLA'), icon: '🎯', desc: t('settings.nav.routing_desc', 'Đội ngũ hỗ trợ, hàng đợi và hạn cam kết SLA'), badge: !isEnterprise ? 'ENTERPRISE' : undefined },
+        { id: 'MAINTENANCE', label: t('settings.nav.maintenance', 'Lịch Bảo Trì Định Kỳ'), icon: '📅', desc: t('settings.nav.maintenance_desc', 'Lên lịch tự động kiểm tra bảo dưỡng thiết bị') },
+        { id: 'AI_COPILOT', label: t('settings.nav.ai_copilot', 'Trí Tuệ Nhân Tạo (AI)'), icon: '🤖', desc: t('settings.nav.ai_copilot_desc', 'Cấu hình Gemini API, Trợ lý AI và OCR hóa đơn'), badge: !isEnterprise ? 'ENTERPRISE' : undefined },
       ],
     },
     {
-      title: isEn ? 'Audit & Compliance' : 'Nhật Ký & Tuân Thủ',
+      title: t('settings.group.audit_compliance', 'Nhật Ký & Tuân Thủ'),
       items: [
-        { id: 'AUDIT', label: isEn ? 'Activity Logs (Audit Logs)' : 'Nhật Ký Hoạt Động (Audit Logs)', icon: '📜', desc: isEn ? 'Trace all user activities and audit trials' : 'Ghi vết toàn bộ hành động người dùng' },
+        { id: 'AUDIT', label: t('settings.nav.audit', 'Nhật Ký Hoạt Động (Audit Logs)'), icon: '📜', desc: t('settings.nav.audit_desc', 'Ghi vết toàn bộ hành động người dùng') },
       ],
     },
   ];
@@ -536,7 +536,7 @@ export default function SettingsPage() {
     );
   }
 
-  const navGroups = getSettingsNavGroups(isEn, isEnterprise, activeModules);
+  const navGroups = getSettingsNavGroups(t, isEnterprise, activeModules);
   const filteredNavGroups = navGroups.map((group) => {
     if (!searchFilter.trim()) return group;
     const term = searchFilter.toLowerCase();
@@ -554,18 +554,18 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className="space-y-4 sm:space-y-6 w-full pb-20 md:pb-12">
+    <div className="space-y-4 sm:space-y-5 w-full pb-20 md:pb-12">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
             <span className="p-2 bg-blue-600 text-white rounded-2xl shadow-xs text-lg">⚙️</span>
-            <span>{isEn ? 'System Settings & Configuration' : 'Cài đặt & Cấu hình Hệ thống'}</span>
+            <span>{t('settings.page_title', 'Cài đặt & Cấu hình Hệ thống')}</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             {isEnterprise
-              ? (isEn ? 'Central administration for identity, role-based access control (RBAC), SSO/LDAP authentication, and ITSM integrations' : 'Trung tâm quản trị nhận diện, phân quyền vai trò (RBAC), bảo mật xác thực SSO/LDAP và tích hợp vận hành ITSM')
-              : (isEn ? 'Central administration for system configuration, role-based access control (RBAC), and ITSM operations' : 'Trung tâm cấu hình hệ thống, phân quyền vai trò (RBAC) và tích hợp vận hành ITSM')}
+              ? t('settings.page_subtitle_enterprise', 'Trung tâm quản trị nhận diện, phân quyền vai trò (RBAC), bảo mật xác thực SSO/LDAP và tích hợp vận hành ITSM')
+              : t('settings.page_subtitle_community', 'Trung tâm cấu hình hệ thống, phân quyền vai trò (RBAC) và tích hợp vận hành ITSM')}
           </p>
         </div>
       </div>
@@ -598,16 +598,16 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setIsMobileTabMenuOpen(true)}
-            aria-label={isEn ? 'Open settings menu' : 'Mở menu cài đặt'}
+            aria-label={t('settings.all_tabs', 'Tất cả mục')}
             className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/70 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer active:scale-95 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
           >
-            <span>{isEn ? 'All Tabs' : 'Tất cả mục'}</span>
+            <span>{t('settings.all_tabs', 'Tất cả mục')}</span>
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {/* Quick Horizontal Scrollable Strip for Fast 1-Touch Switching */}
-        <nav aria-label={isEn ? 'Settings tabs' : 'Các mục cài đặt'} className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar -mx-1 px-1">
+        <nav aria-label={t('settings.all_tabs', 'Các mục cài đặt')} className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar -mx-1 px-1">
           {navGroups.flatMap((g) => g.items).map((item) => {
             const isActive = activeTab === item.id;
             return (
@@ -630,14 +630,14 @@ export default function SettingsPage() {
 
         {/* Full Modal Bottom Sheet for Selecting Settings on Mobile */}
         {isMobileTabMenuOpen && (
-          <div role="dialog" aria-modal="true" aria-label={isEn ? 'System Settings Menu' : 'Danh Mục Cài Đặt Hệ Thống'} className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
+          <div role="dialog" aria-modal="true" aria-label={t('settings.mobile_menu_title', 'Danh Mục Cài Đặt Hệ Thống')} className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
             <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom duration-200">
               {/* Modal Header */}
               <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">⚙️</span>
                   <h3 className="text-sm font-bold text-slate-900">
-                    {isEn ? 'System Settings Menu' : 'Danh Mục Cài Đặt Hệ Thống'}
+                    {t('settings.mobile_menu_title', 'Danh Mục Cài Đặt Hệ Thống')}
                   </h3>
                 </div>
                 <button
@@ -707,28 +707,28 @@ export default function SettingsPage() {
       </div>
 
       {/* Main 2-Column Layout */}
-      <div className="flex flex-col md:flex-row items-start gap-4 lg:gap-6 relative">
+      <div className="flex flex-col md:flex-row items-start gap-4 lg:gap-5 relative">
         {/* Left Sidebar Menu (Hidden on mobile, pristine on desktop) */}
         <aside
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           className={`hidden md:block shrink-0 transition-all duration-300 ease-in-out z-20 ${
-            isExpanded ? 'w-80' : 'w-16'
+            isExpanded ? 'w-64' : 'w-16'
           }`}
         >
-          <div className="sticky top-4 bg-white rounded-3xl border border-slate-200 shadow-sm p-3 space-y-4 overflow-hidden">
+          <div className="sticky top-4 bg-white rounded-3xl border border-slate-200 shadow-sm p-3 space-y-3 overflow-hidden">
             {/* Sidebar Controls */}
             <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-100">
               {isExpanded ? (
                 <>
                   <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                    {isEn ? 'Navigation' : 'Điều Hướng'}
+                    {t('settings.navigation', 'Điều Hướng')}
                   </span>
                   <button
                     type="button"
                     onClick={handleTogglePin}
                     className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
-                    title={isPinned ? (isEn ? 'Unpin sidebar' : 'Bỏ ghim thanh bên') : (isEn ? 'Pin sidebar' : 'Ghim thanh bên')}
+                    title={isPinned ? t('settings.unpin_sidebar', 'Bỏ ghim thanh bên') : t('settings.pin_sidebar', 'Ghim thanh bên')}
                   >
                     {isPinned ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
                   </button>
@@ -738,7 +738,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={handleTogglePin}
                   className="w-full flex justify-center p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
-                  title={isEn ? 'Expand sidebar' : 'Mở rộng thanh bên'}
+                  title={t('settings.expand_sidebar', 'Mở rộng thanh bên')}
                 >
                   <PanelLeftOpen className="w-4 h-4" />
                 </button>
@@ -751,7 +751,7 @@ export default function SettingsPage() {
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
-                  placeholder={isEn ? 'Search settings...' : 'Tìm cấu hình...'}
+                  placeholder={t('settings.search_placeholder', 'Tìm cấu hình...')}
                   value={searchFilter}
                   onChange={(e) => setSearchFilter(e.target.value)}
                   className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -837,14 +837,14 @@ export default function SettingsPage() {
         </aside>
 
         {/* Right Content Area */}
-        <main className="w-full flex-1 min-w-0 space-y-4 sm:space-y-6">
-          {/* Active Tab Heading Card (Desktop only, mobile has top selector) */}
-          {currentNavItem && (
-            <div className="hidden md:flex p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs items-center justify-between">
+        <main className="w-full flex-1 min-w-0 space-y-4">
+          {/* Active Tab Heading Card (Desktop only, mobile has top selector; omitted on AUDIT tab which has its own integrated header) */}
+          {currentNavItem && activeTab !== 'AUDIT' && (
+            <div className="hidden md:flex p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-2xl p-2 bg-slate-50 rounded-xl border border-slate-100">{currentNavItem.icon}</span>
+                <span className="text-xl p-1.5 bg-slate-50 rounded-xl border border-slate-100">{currentNavItem.icon}</span>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                     <span>{currentNavItem.label}</span>
                     {currentNavItem.badge && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-amber-100 text-amber-800 border border-amber-200 font-bold">

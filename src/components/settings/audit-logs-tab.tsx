@@ -1,9 +1,8 @@
 'use client';
 
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/lib/i18n/context';
 import { TablePaginationBar } from '@/components/common/TablePaginationBar';
-
-import React, { useState, useEffect, useCallback } from 'react';
 import {
   History,
   Search,
@@ -11,21 +10,10 @@ import {
   Calendar,
   Download,
   RefreshCw,
-  User,
-  Shield,
-  Layers,
-  ChevronLeft,
-  ChevronRight,
+  Clock,
   Eye,
   X,
   FileText,
-  Clock,
-  Laptop,
-  Key,
-  Globe,
-  Tag,
-  CheckCircle2,
-  AlertTriangle,
 } from 'lucide-react';
 
 interface AuditLogItem {
@@ -46,20 +34,8 @@ interface AuditLogItem {
   };
 }
 
-const ACTION_BADGES: Record<string, { label: string; bg: string; text: string; border: string }> = {
-  CREATE: { label: '➕ Tạo Mới', bg: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-800' },
-  UPDATE: { label: '✏️ Cập Nhật', bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800' },
-  DELETE: { label: '🗑️ Xóa Bỏ', bg: 'bg-rose-50 dark:bg-rose-950/40', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800' },
-  ASSIGN: { label: '🤝 Gán Cấp Phát', bg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-800' },
-  REVOKE: { label: '↩️ Thu Hồi', bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800' },
-  LOGIN: { label: '🔑 Đăng Nhập', bg: 'bg-indigo-50 dark:bg-indigo-950/40', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-800' },
-  IMPORT: { label: '📥 Import Dữ Liệu', bg: 'bg-teal-50 dark:bg-teal-950/40', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800' },
-  AI_EXTRACT: { label: '✨ Trích Xuất AI', bg: 'bg-violet-50 dark:bg-violet-950/40', text: 'text-violet-700 dark:text-violet-300', border: 'border-violet-200 dark:border-violet-800' },
-};
-
 export const AuditLogsSettingsTab: React.FC = () => {
-  const { language } = useLanguage();
-  const isEn = language === 'en';
+  const { language, t, isEn } = useLanguage();
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -72,6 +48,74 @@ export const AuditLogsSettingsTab: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalLogs, setTotalLogs] = useState(0);
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
+
+  const getActionBadge = (action: string) => {
+    switch (action) {
+      case 'CREATE':
+        return {
+          label: t('settings.audit.action_create', '➕ Tạo Mới'),
+          bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+          text: 'text-emerald-700 dark:text-emerald-300',
+          border: 'border-emerald-200 dark:border-emerald-800',
+        };
+      case 'UPDATE':
+        return {
+          label: t('settings.audit.action_update', '✏️ Cập Nhật'),
+          bg: 'bg-blue-50 dark:bg-blue-950/40',
+          text: 'text-blue-700 dark:text-blue-300',
+          border: 'border-blue-200 dark:border-blue-800',
+        };
+      case 'DELETE':
+        return {
+          label: t('settings.audit.action_delete', '🗑️ Xóa Bỏ'),
+          bg: 'bg-rose-50 dark:bg-rose-950/40',
+          text: 'text-rose-700 dark:text-rose-300',
+          border: 'border-rose-200 dark:border-rose-800',
+        };
+      case 'ASSIGN':
+        return {
+          label: t('settings.audit.action_assign', '🤝 Gán Cấp Phát'),
+          bg: 'bg-purple-50 dark:bg-purple-950/40',
+          text: 'text-purple-700 dark:text-purple-300',
+          border: 'border-purple-200 dark:border-purple-800',
+        };
+      case 'REVOKE':
+        return {
+          label: t('settings.audit.action_revoke', '↩️ Thu Hồi'),
+          bg: 'bg-amber-50 dark:bg-amber-950/40',
+          text: 'text-amber-700 dark:text-amber-300',
+          border: 'border-amber-200 dark:border-amber-800',
+        };
+      case 'LOGIN':
+        return {
+          label: t('settings.audit.action_login', '🔑 Đăng Nhập'),
+          bg: 'bg-indigo-50 dark:bg-indigo-950/40',
+          text: 'text-indigo-700 dark:text-indigo-300',
+          border: 'border-indigo-200 dark:border-indigo-800',
+        };
+      case 'IMPORT':
+        return {
+          label: t('settings.audit.action_import', '📥 Import Dữ Liệu'),
+          bg: 'bg-teal-50 dark:bg-teal-950/40',
+          text: 'text-teal-700 dark:text-teal-300',
+          border: 'border-teal-200 dark:border-teal-800',
+        };
+      case 'AI_EXTRACT':
+        return {
+          label: t('settings.audit.action_ai_extract', '✨ Trích Xuất AI'),
+          bg: 'bg-violet-50 dark:bg-violet-950/40',
+          text: 'text-violet-700 dark:text-violet-300',
+          border: 'border-violet-200 dark:border-violet-800',
+        };
+      default:
+        return {
+          label: action,
+          bg: 'bg-slate-50 dark:bg-slate-800',
+          text: 'text-slate-700 dark:text-slate-300',
+          border: 'border-slate-200 dark:border-slate-700',
+        };
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -136,12 +180,23 @@ export const AuditLogsSettingsTab: React.FC = () => {
     setPage(1);
   };
 
+  const locale = isEn ? 'en-US' : language === 'ja' ? 'ja-JP' : 'vi-VN';
+
   const handleExportCSV = () => {
     if (logs.length === 0) return;
-    const headers = isEn ? ['Timestamp', 'Actor', 'Email', 'Action', 'Module', 'Target ID', 'IP Address', 'Changes Detail'] : ['Thời gian', 'Người thực hiện', 'Email', 'Hành động', 'Phân hệ', 'ID Đối tượng', 'Địa chỉ IP', 'Chi tiết thay đổi'];
+    const headers = [
+      t('settings.audit.col_time', 'Thời gian'),
+      t('settings.audit.col_performed_by', 'Người thực hiện'),
+      'Email',
+      t('settings.audit.col_action', 'Hành động'),
+      t('settings.audit.col_module', 'Phân hệ'),
+      'ID Target',
+      'IP Address',
+      t('settings.audit.col_content', 'Chi tiết thay đổi'),
+    ];
     const rows = logs.map((l) => [
-      `"${new Date(l.createdAt).toLocaleString('vi-VN')}"`,
-      `"${l.user?.fullName || (isEn ? 'System' : 'Hệ thống')}"`,
+      `"${new Date(l.createdAt).toLocaleString(locale)}"`,
+      `"${l.user?.fullName || t('settings.audit.system_actor', 'Hệ thống')}"`,
       `"${l.user?.email || ''}"`,
       `"${l.action}"`,
       `"${l.entityType}"`,
@@ -150,268 +205,280 @@ export const AuditLogsSettingsTab: React.FC = () => {
       `"${JSON.stringify(l.changes || '').replace(/"/g, '""')}"`,
     ]);
 
-    const csvContent = '﻿' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Nhat_Ky_Hoat_Dong_SIMPLY_IT_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `Audit_Logs_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
 
   return (
-    <div className="space-y-4">
-      {/* Top Filter Bar */}
-      <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
-          <div>
-            <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <History className="w-4 h-4 text-purple-600" />
-              <span>{isEn ? 'System Audit Trail & Activity Logs' : 'Nhật Ký Hoạt Động & Biến Động Hệ Thống (Audit Logs)'}</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {isEn ? `Detailed audit trail of creation, updates, deletions, assignments and security changes by admins and users (${totalLogs} records)` : `Theo dõi chi tiết các thao tác Thêm, Sửa, Xóa, Bàn giao, Reset bảo mật của quản trị viên và người dùng (${totalLogs} bản ghi)`}
-            </p>
+    <div className="space-y-3">
+      {/* Top Filter Bar (Compact & Space-Optimized) */}
+      <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2.5">
+        {/* Row 1: Title, Record Count & Quick Date Presets + Export */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <History className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white leading-tight">
+                  {t('settings.audit.title', 'Nhật Ký Hoạt Động & Biến Động Hệ Thống')}
+                </h3>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800">
+                  {totalLogs.toLocaleString()} {t('settings.audit.item_name', 'bản ghi')}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Quick Date Presets */}
+            <div className="flex items-center bg-slate-100/80 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+              <button
+                type="button"
+                onClick={() => handleDatePreset('TODAY')}
+                className={`px-2 py-1 rounded-lg text-[10.5px] font-bold transition-all cursor-pointer ${
+                  startDate === endDate && startDate === new Date().toISOString().split('T')[0]
+                    ? 'bg-purple-600 text-white shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {t('settings.audit.date_today', 'Hôm nay')}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDatePreset('7DAYS')}
+                className="px-2 py-1 rounded-lg text-[10.5px] font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
+              >
+                {t('settings.audit.date_7days', '7 ngày')}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDatePreset('30DAYS')}
+                className="px-2 py-1 rounded-lg text-[10.5px] font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
+              >
+                {t('settings.audit.date_30days', '30 ngày')}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDatePreset('ALL')}
+                className={`px-2 py-1 rounded-lg text-[10.5px] font-bold transition-all cursor-pointer ${
+                  !startDate && !endDate
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs font-extrabold'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {t('settings.audit.date_all', 'Tất cả')}
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={handleExportCSV}
-              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>{isEn ? 'Export CSV' : 'Xuất CSV'}</span>
+              <span>{t('settings.audit.export_csv', 'Xuất CSV')}</span>
             </button>
 
             <button
               type="button"
               onClick={() => fetchLogs()}
-              className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl cursor-pointer transition-colors"
-              title={isEn ? 'Reload audit logs' : 'Tải lại nhật ký'}
+              className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl cursor-pointer transition-colors"
+              title={t('settings.audit.reload', 'Tải lại nhật ký')}
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-purple-600' : ''}`} />
             </button>
           </div>
         </div>
 
-        {/* Filter Controls */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+        {/* Row 2: Filter Controls Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 items-center">
           {/* 1. Search Box */}
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+          <div className="relative sm:col-span-2 lg:col-span-4">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
             <input
               type="text"
-              placeholder={isEn ? 'Search by actor name, email, target ID...' : 'Tìm theo tên người thực hiện, email, ID...'}
+              placeholder={t('settings.audit.search_placeholder', 'Tìm theo tên người thực hiện, email, ID...')}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-8 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+              className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 font-medium"
             />
           </div>
 
           {/* 2. Action Filter */}
-          <div>
+          <div className="lg:col-span-3">
             <select
               value={actionFilter}
               onChange={(e) => {
                 setActionFilter(e.target.value);
                 setPage(1);
               }}
-              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-purple-500 font-semibold text-slate-700 dark:text-slate-200 cursor-pointer"
+              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 font-semibold text-slate-700 dark:text-slate-200 cursor-pointer"
             >
-              <option value="ALL">{isEn ? '⚡ All Actions' : '⚡ Tất cả hành động'}</option>
-              <option value="CREATE">{isEn ? '➕ CREATE - Create New' : '➕ CREATE - Tạo mới'}</option>
-              <option value="UPDATE">{isEn ? '✏️ UPDATE - Update' : '✏️ UPDATE - Cập nhật / Sửa'}</option>
-              <option value="DELETE">{isEn ? '🗑️ DELETE - Delete' : '🗑️ Xóa bỏ'}</option>
-              <option value="ASSIGN">{isEn ? '🤝 ASSIGN - Assignment' : '🤝 ASSIGN - Gán cấp phát'}</option>
-              <option value="REVOKE">{isEn ? '↩️ REVOKE - Revoke' : '↩️ REVOKE - Thu hồi'}</option>
-              <option value="LOGIN">{isEn ? '🔑 LOGIN - User Login' : '🔑 LOGIN - Đăng nhập'}</option>
-              <option value="IMPORT">{isEn ? '📥 IMPORT - Import' : '📥 IMPORT - Nhập dữ liệu'}</option>
-              <option value="AI_EXTRACT">{isEn ? '✨ AI_EXTRACT - AI Extraction' : '✨ AI_EXTRACT - Trích xuất AI'}</option>
+              <option value="ALL">{t('settings.audit.all_actions', '⚡ Tất cả hành động')}</option>
+              <option value="CREATE">{t('settings.audit.action_create', '➕ CREATE - Tạo mới')}</option>
+              <option value="UPDATE">{t('settings.audit.action_update', '✏️ UPDATE - Cập nhật')}</option>
+              <option value="DELETE">{t('settings.audit.action_delete', '🗑️ DELETE - Xóa bỏ')}</option>
+              <option value="ASSIGN">{t('settings.audit.action_assign', '🤝 ASSIGN - Gán cấp phát')}</option>
+              <option value="REVOKE">{t('settings.audit.action_revoke', '↩️ REVOKE - Thu hồi')}</option>
+              <option value="LOGIN">{t('settings.audit.action_login', '🔑 LOGIN - Đăng nhập')}</option>
+              <option value="IMPORT">{t('settings.audit.action_import', '📥 IMPORT - Nhập dữ liệu')}</option>
+              <option value="AI_EXTRACT">{t('settings.audit.action_ai_extract', '✨ AI_EXTRACT - Trích xuất AI')}</option>
             </select>
           </div>
 
           {/* 3. Entity Type Filter */}
-          <div>
+          <div className="lg:col-span-3">
             <select
               value={entityFilter}
               onChange={(e) => {
                 setEntityFilter(e.target.value);
                 setPage(1);
               }}
-              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-purple-500 font-semibold text-slate-700 dark:text-slate-200 cursor-pointer"
+              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 font-semibold text-slate-700 dark:text-slate-200 cursor-pointer"
             >
-              <option value="ALL">{isEn ? '📦 All Modules' : '📦 Tất cả phân hệ'}</option>
-              <option value="User">👤 Người dùng / Tài khoản</option>
-              <option value="Asset">💻 Thiết bị / Tài sản</option>
-              <option value="License">🔑 Bản quyền / License</option>
-              <option value="ITService">☁️ Dịch vụ IT / Thuê bao</option>
-              <option value="Ticket">🎫 Ticket / Yêu cầu hỗ trợ</option>
-              <option value="PasswordEntry">🔐 Mật khẩu / Credentials</option>
-              <option value="Document">📄 Hồ sơ / Hóa đơn / HĐ</option>
-              <option value="Project">📁 Gói mua sắm / Dự án</option>
-              <option value="Vendor">🤝 Nhà cung cấp / Đối tác</option>
+              <option value="ALL">{t('settings.audit.all_modules', '📦 Tất cả phân hệ')}</option>
+              <option value="User">{t('settings.audit.module_user', '👤 Người dùng / Tài khoản')}</option>
+              <option value="Asset">{t('settings.audit.module_asset', '💻 Thiết bị / Tài sản')}</option>
+              <option value="License">{t('settings.audit.module_license', '🔑 Bản quyền / License')}</option>
+              <option value="ITService">{t('settings.audit.module_service', '☁️ Dịch vụ IT / Thuê bao')}</option>
+              <option value="Ticket">{t('settings.audit.module_ticket', '🎫 Ticket / Yêu cầu hỗ trợ')}</option>
+              <option value="PasswordEntry">{t('settings.audit.module_password', '🔐 Mật khẩu / Credentials')}</option>
+              <option value="Document">{t('settings.audit.module_document', '📄 Hồ sơ / Hóa đơn / HĐ')}</option>
+              <option value="Project">{t('settings.audit.module_project', '📁 Gói mua sắm / Dự án')}</option>
+              <option value="Vendor">{t('settings.audit.module_vendor', '🤝 Nhà cung cấp / Đối tác')}</option>
             </select>
           </div>
 
-          {/* 4. Date Filter Presets */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => handleDatePreset('TODAY')}
-              className={`px-2 py-1.5 rounded-xl text-[10.5px] font-bold border transition-colors cursor-pointer ${
-                startDate === endDate && startDate === new Date().toISOString().split('T')[0]
-                  ? 'bg-purple-600 text-white border-purple-600'
-                  : 'bg-slate-50 dark:bg-slate-800 border-slate-200 text-slate-600'
-              }`}
-            >
-              Hôm nay
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDatePreset('7DAYS')}
-              className="px-2 py-1.5 rounded-xl text-[10.5px] font-bold border bg-slate-50 dark:bg-slate-800 border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer"
-            >
-              7 ngày
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDatePreset('30DAYS')}
-              className="px-2 py-1.5 rounded-xl text-[10.5px] font-bold border bg-slate-50 dark:bg-slate-800 border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer"
-            >
-              30 ngày
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDatePreset('ALL')}
-              className="px-2 py-1.5 rounded-xl text-[10.5px] font-bold border bg-slate-50 dark:bg-slate-800 border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer"
-            >{isEn ? 'All' : 'Tất cả'}</button>
+          {/* 4. Custom Date Range Pickers (Compact) */}
+          <div className="lg:col-span-2 flex items-center gap-1 text-[11px] text-slate-500">
+            <input
+              type="date"
+              value={startDate}
+              aria-label="Start Date"
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-1.5 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] outline-none font-mono"
+            />
+            <span>-</span>
+            <input
+              type="date"
+              value={endDate}
+              aria-label="End Date"
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-1.5 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] outline-none font-mono"
+            />
           </div>
-        </div>
-
-        {/* Custom Date Inputs */}
-        <div className="flex items-center gap-2 pt-1 text-xs text-slate-500">
-          <Calendar className="w-3.5 h-3.5 text-purple-600" />
-          <span className="font-bold text-slate-700 dark:text-slate-300">{isEn ? 'Custom filter:' : 'Lọc tùy chọn:'}</span>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => {
-              setStartDate(e.target.value);
-              setPage(1);
-            }}
-            className="px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none"
-          />
-          <span>→</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => {
-              setEndDate(e.target.value);
-              setPage(1);
-            }}
-            className="px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none"
-          />
         </div>
       </div>
 
-      {/* Logs Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto max-h-[calc(100vh-360px)] scrollbar-thin">
+      {/* Logs Table (Dense, Compact, Multi-row Visible) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+        <div className="overflow-x-auto max-h-[calc(100vh-280px)] scrollbar-thin">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+            <thead className="sticky top-0 z-10 bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xs text-slate-600 dark:text-slate-300 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="py-3 px-4">{isEn ? 'Time' : 'Thời gian'}</th>
-                <th className="py-3 px-4">{isEn ? 'Performed By' : 'Người thực hiện'}</th>
-                <th className="py-3 px-4 text-center">{isEn ? 'Action' : 'Hành động'}</th>
-                <th className="py-3 px-4">{isEn ? 'Module / Entity' : 'Phân hệ / Đối tượng'}</th>
-                <th className="py-3 px-4">{isEn ? 'Content / Changes' : 'Nội dung / Thay đổi'}</th>
-                <th className="py-3 px-4 text-right">{isEn ? 'Details' : 'Chi tiết'}</th>
+                <th className="py-2 px-3 whitespace-nowrap">{t('settings.audit.col_time', 'Thời gian')}</th>
+                <th className="py-2 px-3 whitespace-nowrap">{t('settings.audit.col_performed_by', 'Người thực hiện')}</th>
+                <th className="py-2 px-2 text-center whitespace-nowrap">{t('settings.audit.col_action', 'Hành động')}</th>
+                <th className="py-2 px-3 whitespace-nowrap">{t('settings.audit.col_module', 'Phân hệ / Đối tượng')}</th>
+                <th className="py-2 px-3">{t('settings.audit.col_content', 'Nội dung / Thay đổi')}</th>
+                <th className="py-2 px-3 text-right whitespace-nowrap">{t('settings.audit.col_details', 'Chi tiết')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
               {loading ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-purple-600 mb-2" />
-                    <span>Đang tải danh sách nhật ký hoạt động...</span>
+                    <RefreshCw className="w-5 h-5 animate-spin mx-auto text-purple-600 mb-2" />
+                    <span className="text-xs">{t('settings.audit.loading', 'Đang tải danh sách nhật ký hoạt động...')}</span>
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
-                    <History className="w-8 h-8 mx-auto text-slate-300 mb-1.5" />
-                    <p className="font-bold text-xs text-slate-600">Không tìm thấy bản ghi nhật ký nào</p>
-                    <p className="text-[11px]">Thử điều chỉnh lại bộ lọc thời gian hoặc từ khóa tìm kiếm.</p>
+                    <History className="w-7 h-7 mx-auto text-slate-300 mb-1.5" />
+                    <p className="font-bold text-xs text-slate-600 dark:text-slate-300">
+                      {t('settings.audit.empty_title', 'Không tìm thấy bản ghi nhật ký nào')}
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      {t('settings.audit.empty_desc', 'Thử điều chỉnh lại bộ lọc thời gian hoặc từ khóa tìm kiếm.')}
+                    </p>
                   </td>
                 </tr>
               ) : (
                 logs.map((log) => {
-                  const badge = ACTION_BADGES[log.action] || {
-                    label: log.action,
-                    bg: 'bg-slate-100',
-                    text: 'text-slate-700',
-                    border: 'border-slate-200',
-                  };
+                  const badge = getActionBadge(log.action);
 
                   return (
                     <tr
                       key={log.id}
                       onClick={() => setSelectedLog(log)}
-                      className="hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors cursor-pointer"
+                      className="hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors cursor-pointer group"
                     >
-                      {/* Thời gian */}
-                      <td className="py-3 px-4 font-mono text-[11px] whitespace-nowrap text-slate-600 dark:text-slate-400">
+                      {/* Thời gian (Compact font-mono) */}
+                      <td className="py-2 px-3 font-mono text-[11px] whitespace-nowrap text-slate-600 dark:text-slate-400">
                         <div className="flex items-center gap-1.5">
-                          <Clock className="w-3 h-3 text-purple-600" />
-                          <span>{new Date(log.createdAt).toLocaleString(isEn ? 'en-US' : 'vi-VN')}</span>
+                          <Clock className="w-3 h-3 text-purple-500 shrink-0" />
+                          <span>{new Date(log.createdAt).toLocaleString(locale)}</span>
                         </div>
                       </td>
 
-                      {/* Người thực hiện */}
-                      <td className="py-3 px-4">
+                      {/* Người thực hiện (Compact Avatar + Name + Email) */}
+                      <td className="py-2 px-3 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                            {log.user?.fullName ? log.user.fullName.charAt(0) : 'S'}
+                          <div className="w-5 h-5 rounded-md bg-purple-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                            {log.user?.fullName ? log.user.fullName.charAt(0).toUpperCase() : 'S'}
                           </div>
-                          <div>
-                            <span className="font-bold text-slate-900 dark:text-white block text-xs truncate max-w-[140px]">
-                              {log.user?.fullName || 'Hệ Thống'}
+                          <div className="min-w-0">
+                            <span className="font-semibold text-slate-900 dark:text-white block text-xs truncate max-w-[130px] leading-tight">
+                              {log.user?.fullName || t('settings.audit.system_actor', 'Hệ Thống')}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[140px]">
-                              {log.user?.email || 'System Bot'}
+                            <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[130px] leading-tight">
+                              {log.user?.email || t('settings.audit.system_bot', 'System Bot')}
                             </span>
                           </div>
                         </div>
                       </td>
 
-                      {/* {isEn ? 'Action' : 'Hành động'} */}
-                      <td className="py-3 px-4 text-center">
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold border ${badge.bg} ${badge.text} ${badge.border}`}>
+                      {/* Action Badge (Compact) */}
+                      <td className="py-2 px-2 text-center whitespace-nowrap">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${badge.bg} ${badge.text} ${badge.border}`}>
                           {badge.label}
                         </span>
                       </td>
 
-                      {/* {isEn ? 'Module' : 'Phân hệ'} / Đối tượng */}
-                      <td className="py-3 px-4">
+                      {/* Module / Đối tượng */}
+                      <td className="py-2 px-3 whitespace-nowrap">
                         <div>
-                          <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 block text-xs leading-tight">
                             {log.entityType}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[150px]">
+                          <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[130px] leading-tight">
                             ID: {log.entityId}
                           </span>
                         </div>
                       </td>
 
                       {/* Nội dung tóm tắt */}
-                      <td className="py-3 px-4 max-w-[280px]">
-                        <div className="truncate text-xs font-mono text-slate-600 dark:text-slate-400">
+                      <td className="py-2 px-3 max-w-[280px]">
+                        <div className="truncate text-[11px] font-mono text-slate-600 dark:text-slate-400">
                           {log.changes?.message ? (
-                            <span className="font-sans font-semibold text-purple-700 dark:text-purple-300">
+                            <span className="font-sans font-medium text-purple-700 dark:text-purple-300">
                               {log.changes.message}
                             </span>
                           ) : (
@@ -421,15 +488,17 @@ export const AuditLogsSettingsTab: React.FC = () => {
                       </td>
 
                       {/* Nút Xem chi tiết */}
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-2 px-3 text-right whitespace-nowrap">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedLog(log);
                           }}
-                          className="px-2.5 py-1 bg-slate-100 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                        >{isEn ? 'Details' : 'Chi tiết'}</button>
+                          className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-md text-[11px] font-bold transition-colors cursor-pointer"
+                        >
+                          {t('settings.audit.col_details', 'Chi tiết')}
+                        </button>
                       </td>
                     </tr>
                   );
@@ -448,55 +517,66 @@ export const AuditLogsSettingsTab: React.FC = () => {
           onPageChange={setPage}
           onPageSizeChange={setPageSize}
           storageKey="simply_it_audit_logs_page_size"
-          itemName={isEn ? 'audit logs' : 'nhật ký'}
+          itemName={t('settings.audit.item_name', 'bản ghi nhật ký')}
         />
       </div>
 
       {/* MODAL: DETAIL AUDIT LOG */}
       {selectedLog && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-3xl w-full border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-4 bg-gradient-to-r from-purple-700 to-indigo-700 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-white/20 flex items-center justify-center">
-                  <History className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                  <History className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm">Chi Tiết Bản Ghi Nhật Ký (Audit Log)</h3>
+                  <h3 className="font-extrabold text-sm">
+                    {t('settings.audit.modal_title', 'Chi Tiết Bản Ghi Nhật Ký (Audit Log)')}
+                  </h3>
                   <p className="text-[11px] text-purple-200 font-mono">ID: {selectedLog.id}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedLog(null)}
+                aria-label={t('settings.audit.modal_close', 'Đóng')}
                 className="text-white/80 hover:text-white p-1 rounded-xl hover:bg-white/10 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="p-5 overflow-y-auto space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
                 <div>
-                  <span className="text-slate-400 block font-bold text-[10.5px]">Người thực hiện:</span>
-                  <span className="font-bold text-slate-900 dark:text-white text-sm">
-                    {selectedLog.user?.fullName || (isEn ? 'System' : 'Hệ thống')} ({selectedLog.user?.email || 'System'})
+                  <span className="text-slate-400 block font-bold text-[10.5px]">
+                    {t('settings.audit.modal_actor', 'Người thực hiện:')}
+                  </span>
+                  <span className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
+                    {selectedLog.user?.fullName || t('settings.audit.system_actor', 'Hệ thống')} ({selectedLog.user?.email || 'System'})
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-bold text-[10.5px]">Thời gian ghi nhận:</span>
+                  <span className="text-slate-400 block font-bold text-[10.5px]">
+                    {t('settings.audit.modal_time', 'Thời gian ghi nhận:')}
+                  </span>
                   <span className="font-bold font-mono text-purple-700 dark:text-purple-300">
-                    {new Date(selectedLog.createdAt).toLocaleString('vi-VN')}
+                    {new Date(selectedLog.createdAt).toLocaleString(locale)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-bold text-[10.5px]">{isEn ? 'Action' : 'Hành động'}:</span>
+                  <span className="text-slate-400 block font-bold text-[10.5px]">
+                    {t('settings.audit.modal_action', 'Hành động:')}
+                  </span>
                   <span className="font-extrabold text-indigo-700 dark:text-indigo-300 font-mono">
                     {selectedLog.action}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-bold text-[10.5px]">{isEn ? 'Module' : 'Phân hệ'} / Đối tượng:</span>
+                  <span className="text-slate-400 block font-bold text-[10.5px]">
+                    {t('settings.audit.modal_target', 'Phân hệ / Đối tượng:')}
+                  </span>
                   <span className="font-bold text-slate-900 dark:text-white font-mono">
                     {selectedLog.entityType} ({selectedLog.entityId})
                   </span>
@@ -507,20 +587,22 @@ export const AuditLogsSettingsTab: React.FC = () => {
               <div>
                 <span className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-purple-600" />
-                  <span>Dữ liệu biến động & Chi tiết thay đổi (JSON Diff):</span>
+                  <span>{t('settings.audit.modal_diff', 'Dữ liệu biến động & Chi tiết thay đổi (JSON Diff):')}</span>
                 </span>
-                <pre className="p-4 bg-slate-900 text-purple-300 rounded-2xl font-mono text-xs overflow-x-auto max-h-72 border border-slate-800 scrollbar-thin">
+                <pre className="p-3 bg-slate-900 text-purple-300 rounded-xl font-mono text-xs overflow-x-auto max-h-72 border border-slate-800 scrollbar-thin">
                   {JSON.stringify(selectedLog.changes || {}, null, 2)}
                 </pre>
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-end">
               <button
                 type="button"
                 onClick={() => setSelectedLog(null)}
-                className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-bold text-xs shadow-sm cursor-pointer"
-              >{isEn ? 'Close' : 'Đóng'}</button>
+                className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs shadow-sm cursor-pointer"
+              >
+                {t('settings.audit.modal_close', 'Đóng')}
+              </button>
             </div>
           </div>
         </div>
