@@ -105,15 +105,33 @@ export async function POST(request: NextRequest) {
     }
 
     const currentYear = new Date().getFullYear();
+    const prefix = `PRB-${currentYear}-`;
+
+    const recentProblems = await prisma.problem.findMany({
+      where: { problemNumber: { startsWith: prefix } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { problemNumber: true },
+    });
+    let baseSeq = 1;
+    for (const prb of recentProblems) {
+      if (prb.problemNumber) {
+        const match = prb.problemNumber.match(/^PRB-\d{4}-(\d+)/);
+        if (match && match[1]) {
+          const parsed = parseInt(match[1], 10);
+          if (!isNaN(parsed) && parsed >= baseSeq) baseSeq = parsed + 1;
+        }
+      }
+    }
 
     let problem: any = null;
     let attempts = 0;
     while (attempts < 5) {
       attempts++;
-      const count = await prisma.problem.count();
+      const currentSeq = baseSeq + attempts - 1;
       const numPart = attempts === 1
-        ? String(count + 1).padStart(4, '0')
-        : `${String(count + attempts).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
+        ? String(currentSeq).padStart(4, '0')
+        : `${String(currentSeq).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
       const problemNumber = `PRB-${currentYear}-${numPart}`;
 
       try {

@@ -111,14 +111,33 @@ export async function POST(request: NextRequest) {
         ? `${description || ''}\n\n<!-- ATTACHMENTS_JSON: ${JSON.stringify(attachments)} -->`.trim()
         : (description || null);
 
+    const prefix = `AR-${currentYear}-`;
+
+    const recentApprovals = await prisma.approvalRequest.findMany({
+      where: { code: { startsWith: prefix } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { code: true },
+    });
+    let baseSeq = 1;
+    for (const apr of recentApprovals) {
+      if (apr.code) {
+        const match = apr.code.match(/^AR-\d{4}-(\d+)/);
+        if (match && match[1]) {
+          const parsed = parseInt(match[1], 10);
+          if (!isNaN(parsed) && parsed >= baseSeq) baseSeq = parsed + 1;
+        }
+      }
+    }
+
     let approval: any = null;
     let attempts = 0;
     while (attempts < 5) {
       attempts++;
-      const count = await prisma.approvalRequest.count();
+      const currentSeq = baseSeq + attempts - 1;
       const numPart = attempts === 1
-        ? String(count + 1).padStart(4, '0')
-        : `${String(count + attempts).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
+        ? String(currentSeq).padStart(4, '0')
+        : `${String(currentSeq).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
       const code = `AR-${currentYear}-${numPart}`;
 
       try {

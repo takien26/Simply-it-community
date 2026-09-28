@@ -122,15 +122,33 @@ export async function POST(request: NextRequest) {
     }
 
     const currentYear = new Date().getFullYear();
+    const prefix = `INC-${currentYear}-`;
+
+    const recentIncidents = await prisma.incident.findMany({
+      where: { incidentNumber: { startsWith: prefix } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { incidentNumber: true },
+    });
+    let baseSeq = 1;
+    for (const inc of recentIncidents) {
+      if (inc.incidentNumber) {
+        const match = inc.incidentNumber.match(/^INC-\d{4}-(\d+)/);
+        if (match && match[1]) {
+          const parsed = parseInt(match[1], 10);
+          if (!isNaN(parsed) && parsed >= baseSeq) baseSeq = parsed + 1;
+        }
+      }
+    }
 
     let incident: any = null;
     let attempts = 0;
     while (attempts < 5) {
       attempts++;
-      const count = await prisma.incident.count();
+      const currentSeq = baseSeq + attempts - 1;
       const numPart = attempts === 1
-        ? String(count + 1).padStart(4, '0')
-        : `${String(count + attempts).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
+        ? String(currentSeq).padStart(4, '0')
+        : `${String(currentSeq).padStart(4, '0')}-${Date.now().toString().slice(-3)}${Math.floor(Math.random() * 90 + 10)}`;
       const incidentNumber = `INC-${currentYear}-${numPart}`;
 
       try {

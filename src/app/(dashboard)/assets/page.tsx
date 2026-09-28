@@ -2224,9 +2224,6 @@ export default function AssetsPage() {
               <Laptop className="w-5 h-5" />
             </span>
             <span>{isEn ? 'IT Asset & Hardware Management' : 'Quản Lý Danh Mục Tài Sản IT'}</span>
-            <span className="text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
-              {displayAssets.length} {isEn ? (displayAssets.length === 1 ? 'device' : 'devices') : 'thiết bị'}
-            </span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             {isEn ? 'Track device lifecycle, financial depreciation, smart warranty, GPO agent scans, and QR barcode printing' : 'Theo dõi vòng đời thiết bị, khấu hao tài chính, bảo hành thông minh, quét Agent GPO và in tem QR'}
@@ -3399,7 +3396,7 @@ export default function AssetsPage() {
           isOpen={isAuditCampaignCreateOpen}
           onClose={() => setIsAuditCampaignCreateOpen(false)}
           selectedAssetIds={[]}
-          totalFilteredAssets={displayAssets.length}
+          totalFilteredAssets={totalFilteredAssets}
           currentCompanyFilter={selectedCompany || 'ALL'}
           currentLocationFilter="ALL"
           currentCategoryFilter={selectedCategory || 'ALL'}

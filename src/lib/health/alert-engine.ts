@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { generateNextTicketNumber } from '@/lib/ticket-sequence';
 
 export interface HealthMetricReport {
   cpu?: {
@@ -225,14 +226,7 @@ async function autoCreateSupportTicket(
 
     if (!adminUser) return null;
 
-    // Sinh số ticket dạng TK-YYYYMMDD-XXXX
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const countToday = await prisma.ticket.count({
-      where: {
-        ticketNumber: { startsWith: `TK-${today}` },
-      },
-    });
-    const ticketNumber = `TK-${today}-${String(countToday + 1).padStart(4, '0')}`;
+    const ticketNumber = await generateNextTicketNumber();
 
     // Tìm người dùng hiện đang phụ trách thiết bị nếu có
     const currentHolder = asset.assignments?.[0]?.userId || null;

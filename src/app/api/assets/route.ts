@@ -331,17 +331,20 @@ export async function POST(request: NextRequest) {
     // Auto-generate asset tag if not provided
     let assetTag = customAssetTag ? normalizeAssetTag(customAssetTag) : undefined;
     if (!assetTag) {
-      const latestAsset = await prisma.asset.findFirst({
+      const recentAssets = await prisma.asset.findMany({
         where: { assetTag: { startsWith: 'IT-AST-' } },
-        orderBy: { assetTag: 'desc' },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
         select: { assetTag: true },
       });
       let nextSeq = 1;
-      if (latestAsset?.assetTag) {
-        const match = latestAsset.assetTag.match(/^IT-AST-(\d+)/);
-        if (match && match[1]) {
-          const parsed = parseInt(match[1], 10);
-          if (!isNaN(parsed)) nextSeq = parsed + 1;
+      for (const a of recentAssets) {
+        if (a.assetTag) {
+          const match = a.assetTag.match(/^IT-AST-(\d+)/);
+          if (match && match[1]) {
+            const parsed = parseInt(match[1], 10);
+            if (!isNaN(parsed) && parsed >= nextSeq) nextSeq = parsed + 1;
+          }
         }
       }
       assetTag = `IT-AST-${String(nextSeq).padStart(4, '0')}`;
