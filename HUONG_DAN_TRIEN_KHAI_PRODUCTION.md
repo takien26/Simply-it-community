@@ -112,12 +112,19 @@ CRON_SECRET="Khoa_Bao_Ve_Tien_Trinh_Cron_9988_Secret_Token!"
 MASTER_KEY="Khoa_Ma_Hoa_Ket_Mat_Khau_32_Ky_Tu_AES256"
 
 # ==========================================
-# 3. TÊN MIỀN & CỔNG ỨNG DỤNG
+# 3. TÊN MIỀN & CỔNG MẠNG KÉP (DUAL-PORT)
 # ==========================================
 NODE_ENV="production"
-PORT=3001
-NEXT_PUBLIC_APP_URL="https://it.company.com"
+PORT=3001                      # Cổng HTTP chính của ứng dụng
+HTTPS_PORT=3443                # Cổng HTTPS bảo mật tích hợp sẵn chứng chỉ SSL tự ký
+NEXT_PUBLIC_APP_URL="https://it.company.com"  # Tên miền truy cập chính thức của công ty
+```
 
+> 💡 **Giải thích về Cơ chế Cổng Mạng Kép (Dual-Port `3001` & `3443`):**
+> - **Cổng HTTP (`PORT=3001`):** Cổng chạy dịch vụ web chính. Nếu bạn dùng Nginx làm Reverse Proxy, Nginx sẽ lắng nghe cổng `80`/`443` bên ngoài và chuyển tiếp (proxy) thẳng vào cổng `3001` này.
+> - **Cổng HTTPS (`HTTPS_PORT=3443`):** Hệ thống tích hợp sẵn một web server HTTPS độc lập chạy trên cổng `3443` với chứng chỉ SSL tự động sinh (`localhost.crt`). Cổng này đặc biệt cần thiết cho **điện thoại di động (iOS Safari / Android Chrome)**: các trình duyệt di động bắt buộc phải có kết nối bảo mật HTTPS mới cho phép mở **Camera quét mã vạch và tem QR kiểm kê (`/scan`, `/assets/audit`)**. Nếu bạn không dùng Nginx mà chạy thẳng IP nội bộ, kỹ thuật viên chỉ cần mở `https://<IP-MÁY-CHỦ>:3443` trên điện thoại là camera hoạt động mượt mà ngay.
+
+```env
 # ==========================================
 # 4. CẤU HÌNH GỬI MAIL THÔNG BÁO (SMTP)
 # ==========================================
