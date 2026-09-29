@@ -490,67 +490,91 @@ export default function KnowledgeBasePage() {
             </div>
           )}
 
-          {/* Quality & Needs Improvement Filter Card (Deflection Rate Monitoring) */}
-          <div className={`rounded-2xl border p-4 shadow-xs space-y-2 transition-all ${
-            filterNeedsImprovement
-              ? 'bg-amber-500/10 border-amber-500/40 text-amber-900 dark:text-amber-200'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-          }`}>
-            <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-              <span className="flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>{isEn ? 'Quality Review' : 'Cần Cập Nhật / Bổ Sung'}</span>
-              </span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                needsImprovementCount > 0
-                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-              }`}>
-                {needsImprovementCount} {isEn ? 'articles' : 'bài'}
-              </span>
-            </div>
-            {/* Deflection Impact Counter */}
-            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-base">🛡️</span>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-800 dark:text-emerald-300">
-                    {isEn ? 'Ticket Deflection' : 'Giảm Tải Ticket IT'}
-                  </p>
-                  <p className="text-xs font-black text-emerald-900 dark:text-emerald-100">
-                    {totalDeflectedTickets} {isEn ? 'tickets deflected' : 'ticket đã tự xử lý'}
-                  </p>
+          {/* Quality & Needs Improvement Filter Card (Deflection Rate Monitoring - CHỈ DÀNH CHO IT/ADMIN) */}
+          {(isITStaff || isAdmin) ? (
+            <div className={`rounded-2xl border p-4 shadow-xs space-y-2 transition-all ${
+              filterNeedsImprovement
+                ? 'bg-amber-500/10 border-amber-500/40 text-amber-900 dark:text-amber-200'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+            }`}>
+              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                <span className="flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>{isEn ? 'Quality Review' : 'Cần Cập Nhật / Bổ Sung'}</span>
+                </span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                  needsImprovementCount > 0
+                    ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                }`}>
+                  {needsImprovementCount} {isEn ? 'articles' : 'bài'}
+                </span>
+              </div>
+              {/* Deflection Impact Counter */}
+              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🛡️</span>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-800 dark:text-emerald-300">
+                      {isEn ? 'Ticket Deflection' : 'Giảm Tải Ticket IT'}
+                    </p>
+                    <p className="text-xs font-black text-emerald-900 dark:text-emerald-100">
+                      {totalDeflectedTickets} {isEn ? 'tickets deflected' : 'ticket đã tự xử lý'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-relaxed">
-              {isEn
-                ? 'Articles with self-service resolution rate < 70% or where users needed more support.'
-                : 'Bài viết có tỷ lệ người dùng tự sửa được < 70% hoặc có lượt phản hồi cần IT hỗ trợ thêm.'}
-            </p>
-            <button
-              type="button"
-              onClick={() => setFilterNeedsImprovement(!filterNeedsImprovement)}
-              className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                filterNeedsImprovement
-                  ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-md'
-                  : 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/80'
-              }`}
-            >
-              {filterNeedsImprovement ? (
-                <>
-                  <X className="w-3.5 h-3.5" />
-                  <span>{isEn ? 'Clear Filter (Show All)' : 'Bỏ Lọc (Hiện tất cả)'}</span>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  <span>{isEn ? `Filter Needs Work (${needsImprovementCount})` : `Lọc Bài Cần Cải Thiện (${needsImprovementCount})`}</span>
-                </>
-              )}
-            </button>
-          </div>
+              <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                {isEn
+                  ? 'Articles with self-service resolution rate < 70% or where users needed more support.'
+                  : 'Bài viết có tỷ lệ người dùng tự sửa được < 70% hoặc có lượt phản hồi cần IT hỗ trợ thêm.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => setFilterNeedsImprovement(!filterNeedsImprovement)}
+                className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  filterNeedsImprovement
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-md'
+                    : 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/80'
+                }`}
+              >
+                {filterNeedsImprovement ? (
+                  <>
+                    <X className="w-3.5 h-3.5" />
+                    <span>{isEn ? 'Clear Filter (Show All)' : 'Bỏ Lọc (Hiện tất cả)'}</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>{isEn ? `Filter Needs Work (${needsImprovementCount})` : `Lọc Bài Cần Cải Thiện (${needsImprovementCount})`}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            /* HỘP TRỢ GIÚP DÀNH RIÊNG CHO NGƯỜI DÙNG / NHÂN VIÊN */
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50/60 dark:from-slate-900 dark:to-slate-800/80 rounded-2xl border border-blue-200/80 dark:border-slate-700 p-4 shadow-xs space-y-2.5">
+              <div className="flex items-center gap-2 text-blue-900 dark:text-blue-300">
+                <span className="text-lg">💡</span>
+                <h3 className="text-xs font-black uppercase tracking-wide">
+                  {isEn ? 'Need Direct IT Help?' : 'Cần IT Trợ Giúp Trực Tiếp?'}
+                </h3>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                {isEn
+                  ? 'If these self-service guides do not resolve your issue, submit a ticket for on-site or remote assistance.'
+                  : 'Nếu các bài viết hướng dẫn trên không giải quyết được vấn đề, hãy gửi yêu cầu hỗ trợ để bộ phận IT đến trợ giúp trực tiếp.'}
+              </p>
+              <Link
+                href="/tickets?create=true"
+                className="w-full py-2.5 px-3 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:shadow-md"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{isEn ? 'Submit IT Request' : 'Gửi Yêu Cầu Hỗ Trợ IT'}</span>
+              </Link>
+            </div>
+          )}
 
           {/* General Categories */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs space-y-1">
@@ -686,7 +710,7 @@ export default function KnowledgeBasePage() {
                             {typeof item.feedbackRatio === 'number' && (
                               <>
                                 <span>•</span>
-                                {item.needsImprovement ? (
+                                {(isITStaff || isAdmin) && item.needsImprovement ? (
                                   <span className="inline-flex items-center gap-1 text-[10.5px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
                                     <AlertTriangle className="w-3 h-3 text-amber-600" />
                                     <span>{item.feedbackRatio}% {isEn ? 'resolved' : 'tự sửa được'} • {isEn ? 'Needs review' : 'Cần bổ sung'}</span>
@@ -699,7 +723,7 @@ export default function KnowledgeBasePage() {
                                 )}
                               </>
                             )}
-                            {typeof item.deflectedTickets === 'number' && item.deflectedTickets > 0 && (
+                            {(isITStaff || isAdmin) && typeof item.deflectedTickets === 'number' && item.deflectedTickets > 0 && (
                               <>
                                 <span>•</span>
                                 <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
@@ -792,11 +816,11 @@ export default function KnowledgeBasePage() {
                   <>
                     <span className="text-slate-300 dark:text-slate-700">•</span>
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                      selectedArticle.needsImprovement
+                      (isITStaff || isAdmin) && selectedArticle.needsImprovement
                         ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
                         : 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
                     }`}>
-                      {selectedArticle.needsImprovement ? (
+                      {(isITStaff || isAdmin) && selectedArticle.needsImprovement ? (
                         <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
                       ) : (
                         <ThumbsUp className="w-3.5 h-3.5 text-emerald-600" />
@@ -805,7 +829,7 @@ export default function KnowledgeBasePage() {
                     </span>
                   </>
                 )}
-                {typeof selectedArticle.deflectedTickets === 'number' && selectedArticle.deflectedTickets > 0 && (
+                {(isITStaff || isAdmin) && typeof selectedArticle.deflectedTickets === 'number' && selectedArticle.deflectedTickets > 0 && (
                   <>
                     <span className="text-slate-300 dark:text-slate-700">•</span>
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800">
@@ -860,7 +884,7 @@ export default function KnowledgeBasePage() {
                     {selectedArticle.summary}
                   </div>
                 )}
-                {selectedArticle.needsImprovement && (
+                {(isITStaff || isAdmin) && selectedArticle.needsImprovement && (
                   <div className="mt-3 p-3.5 bg-amber-50 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 font-medium flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -879,7 +903,7 @@ export default function KnowledgeBasePage() {
                 )}
 
                 {/* User Feedback Reasons & Comments (Visible to IT / Admins) */}
-                {isITStaff && selectedArticle.reasons && selectedArticle.reasons.length > 0 && (
+                {(isITStaff || isAdmin) && selectedArticle.reasons && selectedArticle.reasons.length > 0 && (
                   <div className="mt-3 p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">

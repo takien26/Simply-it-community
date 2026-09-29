@@ -190,10 +190,15 @@ export async function POST(
     // Run auto-routing in background
     routeTicket(ticket.id).catch((e) => console.warn('[QR Scan Route Ticket Error]:', e));
 
-    broadcastRealtimeEvent('ticket_created', {
-      ticketId: ticket.id,
-      ticketNumber: ticket.ticketNumber,
-      title: ticket.title,
+    broadcastRealtimeEvent({
+      type: 'TICKET_CREATED',
+      title: `Sự cố mới từ mã QR: ${ticket.ticketNumber}`,
+      message: `${ticket.title} (Thiết bị: ${asset.assetTag})`,
+      data: {
+        ticketId: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        title: ticket.title,
+      },
     });
 
     dispatchWebhookEvent('ticket.created', {
