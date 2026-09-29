@@ -109,6 +109,39 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const [mainTab, setMainTab] = useState<'details' | 'timeline' | 'health'>('details');
   const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
   const [handoverMode, setHandoverMode] = useState<'HANDOVER' | 'RETURN'>('HANDOVER');
+  const [isCompletingMaintenance, setIsCompletingMaintenance] = useState(false);
+
+  const handleCompleteMaintenanceToAvailable = async () => {
+    if (!selectedDetailAsset || isCompletingMaintenance) return;
+    const confirmMsg = txt(
+      `Xác nhận hoàn tất bảo trì / vệ sinh và chuyển thiết bị [${selectedDetailAsset.assetTag}] về kho SẴN SÀNG (AVAILABLE)?`,
+      `Confirm completion of maintenance/cleaning and return [${selectedDetailAsset.assetTag}] to AVAILABLE stock?`,
+      `端末 [${selectedDetailAsset.assetTag}] の点検・清掃を完了し、在庫（利用可能）に戻しますか？`
+    );
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setIsCompletingMaintenance(true);
+      const res = await fetch(`/api/assets/${selectedDetailAsset.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'AVAILABLE',
+        }),
+      });
+      if (res.ok) {
+        setSelectedDetailAsset((prev: any) => ({ ...prev, status: 'AVAILABLE' }));
+        if (onReload) onReload();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Cập nhật thất bại');
+      }
+    } catch {
+      alert('Lỗi kết nối khi cập nhật trạng thái');
+    } finally {
+      setIsCompletingMaintenance(false);
+    }
+  };
 
   const { language: ctxLang } = useLanguage();
   const activeLang = language || ctxLang || 'vi';
@@ -1886,6 +1919,23 @@ const activeAssignment = selectedDetailAsset.assignments?.find((a: any) => !a.re
                     <Wrench className="w-3.5 h-3.5 text-amber-600" />
                     <span>🛠️ {txt('Sửa Chữa / Nâng Cấp', 'Maintenance / Upgrade', '修理・点検')} ({selectedDetailAsset._count?.maintenanceLogs || 0})</span>
                   </button>
+
+                  {selectedDetailAsset.status === 'MAINTENANCE' && (
+                    <button
+                      type="button"
+                      onClick={handleCompleteMaintenanceToAvailable}
+                      disabled={isCompletingMaintenance}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs border border-emerald-500 animate-in fade-in"
+                      title={txt('Đưa máy về trạng thái sẵn sàng cấp phát cho nhân sự mới', 'Return asset to available stock for new assignment', '新規割当用に利用可能状態へ戻す')}
+                    >
+                      {isCompletingMaintenance ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-100" />
+                      )}
+                      <span>✅ {txt('Hoàn Tất & Nhập Kho Sẵn Sàng', 'Complete & Return to Stock', '点検完了・在庫へ戻す')}</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"

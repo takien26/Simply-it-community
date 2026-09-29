@@ -7,26 +7,35 @@ import path from 'path';
 export async function POST(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const rawCategory = (formData.get('category') as string) || 'doc';
     const cleanCategory = rawCategory.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 20) || 'doc';
 
+    const isGuestTicketPhoto = !currentUser && cleanCategory === 'ticket';
+    if (!currentUser && !isGuestTicketPhoto) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     if (!file) {
       return NextResponse.json({ error: 'Không tìm thấy file tải lên' }, { status: 400 });
     }
 
-    // Validate size (max 25MB)
-    if (file.size > 25 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Kích thước file vượt quá 25MB' }, { status: 400 });
+    // Validate size (max 25MB, or 10MB for guest ticket photo)
+    const maxSize = isGuestTicketPhoto ? 10 * 1024 * 1024 : 25 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return NextResponse.json({ error: `Kích thước file vượt quá ${isGuestTicketPhoto ? '10MB' : '25MB'}` }, { status: 400 });
     }
 
     const rawExt = path.extname(file.name) || '';
     const cleanExt = rawExt.toLowerCase();
+
+    if (isGuestTicketPhoto) {
+      const IMAGE_ONLY = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp']);
+      if (!cleanExt || !IMAGE_ONLY.has(cleanExt)) {
+        return NextResponse.json({ error: 'Chỉ chấp nhận tải lên ảnh chụp sự cố (.jpg, .png, .webp)' }, { status: 400 });
+      }
+    }
 
     // Whitelist các định dạng file an toàn cho hệ thống tài liệu & tài sản IT
     const ALLOWED_EXTENSIONS = new Set([

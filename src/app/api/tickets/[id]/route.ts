@@ -324,6 +324,10 @@ export async function PATCH(
                 creatorName: updated.createdBy.fullName,
                 assigneeName: updated.assignedTo?.fullName || 'Bộ phận kỹ thuật IT',
                 link: `${appUrl}/tickets?id=${updated.id}`,
+                rate5Url: `${appUrl}/api/tickets/${updated.id}/rate?rating=5`,
+                rate4Url: `${appUrl}/api/tickets/${updated.id}/rate?rating=4`,
+                rate3Url: `${appUrl}/api/tickets/${updated.id}/rate?rating=3`,
+                rate1Url: `${appUrl}/api/tickets/${updated.id}/rate?rating=1`,
               },
             });
           } catch (e) {

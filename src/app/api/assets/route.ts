@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const [assets, total, countsByStatus, deprecAssets, categoryCounts] = await Promise.all([
+    const [assets, total, countsByStatus, deprecAssets, categoryCounts, curSetting] = await Promise.all([
       prisma.asset.findMany({
         where,
         include: {
@@ -189,15 +189,46 @@ export async function GET(request: NextRequest) {
         by: ['categoryId'],
         _count: { _all: true },
       }),
+      prisma.systemSetting.findUnique({
+        where: { key: 'currency.list' },
+      }).catch(() => null),
     ]);
 
-    // Financial KPI Metrics (Linear Depreciation)
+    // Financial KPI Metrics (Linear Depreciation with Multi-Currency Normalization to Base VND)
     const now = new Date();
     let totalOriginalPrice = 0;
     let totalDepreciation = 0;
 
+    const exchangeRatesMap: Record<string, number> = {
+      VND: 1,
+      USD: 25400,
+      EUR: 27500,
+      JPY: 165,
+      SGD: 19200,
+      GBP: 32500,
+      AUD: 16400,
+      CNY: 3500,
+    };
+    if (curSetting?.value) {
+      try {
+        const parsed = JSON.parse(curSetting.value);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((c: any) => {
+            if (c?.code && typeof c?.rate === 'number' && c.rate > 0) {
+              exchangeRatesMap[c.code.toUpperCase()] = c.rate;
+            }
+          });
+        }
+      } catch {}
+    }
+
     deprecAssets.forEach((asset) => {
-      const price = Number(asset.purchasePrice) || 0;
+      const rawPrice = Number(asset.purchasePrice) || 0;
+      const cur = (asset.purchaseCurrency || 'VND').toUpperCase();
+      const customRate = Number((asset.specs as any)?.exchangeRate);
+      const rate = customRate > 0 ? customRate : (exchangeRatesMap[cur] || 1);
+      const price = rawPrice * rate;
+
       totalOriginalPrice += price;
       if (price > 0) {
         const catName = (asset.category?.name || '').toLowerCase();

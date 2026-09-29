@@ -5,6 +5,9 @@ import { verifyToken, ALL_COOKIE_NAMES, PRIMARY_COOKIE_NAME } from '@/lib/jwt';
 // Routes that don't require authentication
 const publicRoutes = [
   '/login',
+  '/scan',
+  '/api/scan',
+  '/api/upload',
   '/api/auth/login',
   '/api/auth/sso',
   '/api/license',
@@ -27,6 +30,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
     // Fall through to normal auth check below (requires logged-in user)
+  }
+
+  // 1-Click CSAT rating links from email (e.g. /api/tickets/[id]/rate)
+  if (pathname.startsWith('/api/tickets/') && pathname.endsWith('/rate')) {
+    return NextResponse.next();
   }
 
   // Allow public routes

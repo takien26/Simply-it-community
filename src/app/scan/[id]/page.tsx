@@ -61,7 +61,24 @@ export default function AssetScanPage() {
   const [ticketSuccessMsg, setTicketSuccessMsg] = useState('');
   const [quickResolvingId, setQuickResolvingId] = useState<string | null>(null);
   const [quickResolveNotes, setQuickResolveNotes] = useState('');
+  const [senderName, setSenderName] = useState('');
+  const [senderContact, setSenderContact] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (asset?.assignments?.[0]?.user) {
+      const u = asset.assignments[0].user;
+      setSenderName((prev) => prev || u.fullName || '');
+      setSenderContact((prev) => prev || u.email || '');
+    }
+  }, [asset]);
+
+  useEffect(() => {
+    if (currentUser) {
+      setSenderName((prev) => prev || currentUser.fullName || '');
+      setSenderContact((prev) => prev || currentUser.email || '');
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     // Load Settings
@@ -160,28 +177,40 @@ export default function AssetScanPage() {
     }
   };
 
-  // Quick On-Site Ticket Creation (👑 Enterprise)
+  // Quick On-Site Ticket Creation (👑 Enterprise & Guest Self-Service)
   const handleCreateOnSiteTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTicketTitle.trim() || submittingTicket) return;
+
+    const effectiveName = senderName.trim() || currentUser?.fullName || (asset?.assignments?.[0]?.user?.fullName) || 'Người dùng thiết bị';
+    const effectiveContact = senderContact.trim() || currentUser?.email || (asset?.assignments?.[0]?.user?.email) || 'N/A';
+
+    if (!senderName.trim() && !currentUser) {
+      alert('Vui lòng nhập Họ và tên của bạn để kỹ thuật viên tiện xưng hô và hỗ trợ');
+      return;
+    }
+    if (!senderContact.trim() && !currentUser) {
+      alert('Vui lòng nhập Email hoặc Số điện thoại để IT liên hệ lại khi xử lý');
+      return;
+    }
+
     try {
       setSubmittingTicket(true);
-      const res = await fetch('/api/tickets', {
+      const res = await fetch(`/api/scan/${encodeURIComponent(idOrTag)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          senderName: effectiveName,
+          senderContact: effectiveContact,
           title: newTicketTitle.trim(),
           description: newTicketDesc.trim() || `Sự cố phát hiện tại chỗ cho thiết bị ${asset.name} (${asset.assetTag}).`,
           priority: newTicketPriority,
-          status: 'OPEN',
-          assetId: asset.id,
-          category: 'HARDWARE',
           attachmentUrls: uploadedPhotos.length > 0 ? uploadedPhotos : null,
         }),
       });
       const d = await res.json();
-      if (res.ok) {
-        setTicketSuccessMsg('✅ Đã tạo Ticket xử lý tại chỗ thành công!');
+      if (res.ok && d.success) {
+        setTicketSuccessMsg(`✅ Đã gửi yêu cầu hỗ trợ thành công! Mã Ticket: #${d.data?.ticketNumber || ''}`);
         setIsCreateTicketOpen(false);
         setNewTicketTitle('');
         setNewTicketDesc('');
@@ -192,12 +221,12 @@ export default function AssetScanPage() {
           .then((data) => {
             if (data.success) setAsset(data.data);
           });
-        setTimeout(() => setTicketSuccessMsg(''), 4000);
+        setTimeout(() => setTicketSuccessMsg(''), 6000);
       } else {
-        alert(d.error || 'Tạo ticket thất bại');
+        alert(d.error || 'Gửi yêu cầu hỗ trợ thất bại');
       }
     } catch {
-      alert('Lỗi kết nối khi tạo ticket');
+      alert('Lỗi kết nối khi gửi yêu cầu hỗ trợ');
     } finally {
       setSubmittingTicket(false);
     }
@@ -362,57 +391,58 @@ export default function AssetScanPage() {
             </div>
           )}
 
-          {/* 📱 MOBILE ON-SITE IT OPERATIONS (👑 Enterprise) */}
+          {/* 📱 MOBILE ON-SITE IT OPERATIONS & SELF-SERVICE SUPPORT */}
           <div className="p-4 bg-gradient-to-br from-indigo-50/70 via-slate-50 to-blue-50/50 border border-indigo-200/80 rounded-2xl space-y-3 shadow-2xs">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center space-x-2">
                 <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">
-                  📱
+                  {currentUser ? '📱' : '🚨'}
                 </div>
                 <div>
                   <h3 className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
-                    <span>Thao Tác Kỹ Thuật Viên Tại Chỗ</span>
-                    
+                    <span>{currentUser ? 'Thao Tác Kỹ Thuật Viên Tại Chỗ' : 'Báo Sự Cố & Hỗ Trợ Thiết Bị (Self-Service)'}</span>
                   </h3>
                 </div>
               </div>
 
-              {/* Quick Status Buttons */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {asset.status !== 'MAINTENANCE' && (
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateAssetStatus('MAINTENANCE')}
-                    disabled={updatingAssetStatus}
-                    className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    <Wrench className="w-3 h-3" />
-                    <span>Báo bảo trì</span>
-                  </button>
-                )}
-                {asset.status !== 'AVAILABLE' && (
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateAssetStatus('AVAILABLE')}
-                    disabled={updatingAssetStatus}
-                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    <Check className="w-3 h-3" />
-                    <span>Trả về kho</span>
-                  </button>
-                )}
-                {asset.status !== 'IN_USE' && (
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateAssetStatus('IN_USE')}
-                    disabled={updatingAssetStatus}
-                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    <Laptop className="w-3 h-3" />
-                    <span>Bàn giao dùng</span>
-                  </button>
-                )}
-              </div>
+              {/* Quick Status Buttons (Only for Authenticated Staff) */}
+              {currentUser && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {asset.status !== 'MAINTENANCE' && (
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateAssetStatus('MAINTENANCE')}
+                      disabled={updatingAssetStatus}
+                      className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Wrench className="w-3 h-3" />
+                      <span>Báo bảo trì</span>
+                    </button>
+                  )}
+                  {asset.status !== 'AVAILABLE' && (
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateAssetStatus('AVAILABLE')}
+                      disabled={updatingAssetStatus}
+                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Check className="w-3 h-3" />
+                      <span>Trả về kho</span>
+                    </button>
+                  )}
+                  {asset.status !== 'IN_USE' && (
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateAssetStatus('IN_USE')}
+                      disabled={updatingAssetStatus}
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Laptop className="w-3 h-3" />
+                      <span>Bàn giao dùng</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Quick Ticket Action Bar */}
@@ -423,10 +453,10 @@ export default function AssetScanPage() {
               <button
                 type="button"
                 onClick={() => setIsCreateTicketOpen(!isCreateTicketOpen)}
-                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                {isCreateTicketOpen ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                <span>{isCreateTicketOpen ? 'Đóng form' : 'Báo hỏng tại chỗ'}</span>
+                {isCreateTicketOpen ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                <span>{isCreateTicketOpen ? 'Đóng form' : (currentUser ? 'Báo hỏng tại chỗ' : '🚨 Gửi yêu cầu hỗ trợ máy này')}</span>
               </button>
             </div>
 
@@ -436,9 +466,39 @@ export default function AssetScanPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-indigo-900 flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-indigo-600" />
-                    Tạo Ticket Sự Cố Nhanh
+                    {currentUser ? 'Tạo Ticket Sự Cố Nhanh' : 'Gửi Yêu Cầu Hỗ Trợ Kỹ Thuật IT'}
                   </span>
                   <span className="text-[10px] text-slate-400">Mã máy: {asset.assetTag}</span>
+                </div>
+
+                {/* Contact Information (Required for Guest users, pre-filled for assigned user) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                      Họ và tên người yêu cầu <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={senderName}
+                      onChange={(e) => setSenderName(e.target.value)}
+                      placeholder="VD: Nguyễn Văn A"
+                      required
+                      className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-indigo-500 font-semibold text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                      Email hoặc SĐT liên hệ <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={senderContact}
+                      onChange={(e) => setSenderContact(e.target.value)}
+                      placeholder="VD: a.nguyen@company.com / 0912..."
+                      required
+                      className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-indigo-500 font-semibold text-slate-800"
+                    />
+                  </div>
                 </div>
 
                 {/* Quick Symptom Chips */}
