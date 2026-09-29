@@ -140,6 +140,12 @@ export default function EmployeePortalPage() {
 
   useEffect(() => {
     loadData();
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get('create') === 'true') {
+        setIsTicketModalOpen(true);
+      }
+    }
   }, []);
 
   const handleCopySerial = (serial: string) => {

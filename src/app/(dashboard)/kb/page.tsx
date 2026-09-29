@@ -567,7 +567,7 @@ export default function KnowledgeBasePage() {
                   : 'Nếu các bài viết hướng dẫn trên không giải quyết được vấn đề, hãy gửi yêu cầu hỗ trợ để bộ phận IT đến trợ giúp trực tiếp.'}
               </p>
               <Link
-                href="/tickets?create=true"
+                href="/portal?create=true"
                 className="w-full py-2.5 px-3 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:shadow-md"
               >
                 <Plus className="w-3.5 h-3.5" />

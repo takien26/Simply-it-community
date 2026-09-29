@@ -11,6 +11,7 @@ import { ConvertToKbModal } from '@/components/tickets/ConvertToKbModal';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/lib/i18n/context';
 import { fetchWithSwr, invalidateClientCache, useAutoRefresh, triggerDataRefresh } from '@/lib/client-cache';
 import {
@@ -563,6 +564,7 @@ function getTicketSLA(
 }
 
 export default function TicketsPage() {
+  const router = useRouter();
   const { language, t } = useLanguage();
   const isEn = language === 'en';
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -731,6 +733,32 @@ export default function TicketsPage() {
       dept.includes('công nghệ')
     );
   }, [currentUser]);
+
+  const hasManageAccess = useMemo(() => {
+    if (!currentUser) return true; // optimistic while loading
+    const userPerms = Array.isArray(currentUser.permissions) ? currentUser.permissions : [];
+    return (
+      isITStaffOrAdmin ||
+      userPerms.includes('*') ||
+      userPerms.includes('tickets.update') ||
+      userPerms.includes('tickets.assign')
+    );
+  }, [currentUser, isITStaffOrAdmin]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const userPerms = Array.isArray(currentUser.permissions) ? currentUser.permissions : [];
+    const canManage =
+      isITStaffOrAdmin ||
+      userPerms.includes('*') ||
+      userPerms.includes('tickets.update') ||
+      userPerms.includes('tickets.assign');
+
+    if (!canManage) {
+      const search = typeof window !== 'undefined' ? window.location.search : '';
+      router.replace(`/portal${search}`);
+    }
+  }, [currentUser, isITStaffOrAdmin, router]);
 
   const loadRequesterAssets = async (targetUserId: string) => {
     if (!targetUserId) {
@@ -1408,6 +1436,17 @@ export default function TicketsPage() {
       setMergingSpikeKey(null);
     }
   };
+
+  if (currentUser && !hasManageAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-3">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <p className="text-sm font-medium text-slate-600">
+          {isEn ? 'Redirecting to Employee Portal...' : 'Đang chuyển hướng về Cổng Nhân Viên...'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3 pb-8">

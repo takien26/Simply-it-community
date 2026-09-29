@@ -102,9 +102,10 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Redirect Staff users to /portal when accessing root or dashboard
-  if (payload.roleName === 'Staff' && (pathname === '/' || pathname === '/dashboard')) {
-    return NextResponse.redirect(new URL('/portal', request.url));
+  // Redirect Staff users to /portal when accessing root, dashboard, or tickets console
+  if (payload.roleName === 'Staff' && (pathname === '/' || pathname === '/dashboard' || pathname === '/tickets')) {
+    const search = request.nextUrl.search || '';
+    return NextResponse.redirect(new URL(`/portal${search}`, request.url));
   }
 
   // For backup and restore streams, bypass header rewriting so Next.js does not buffer/truncate request body at 10MB

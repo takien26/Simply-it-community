@@ -2,12 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Laptop,
   QrCode,
   LifeBuoy,
   Settings,
+  BookOpen,
+  ClipboardCheck,
+  UserCheck,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 
@@ -15,14 +19,35 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   const { language, t } = useLanguage();
   const isEn = language === 'en';
+  const [isStaff, setIsStaff] = useState(false);
 
-  const navs = [
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((d) => {
+        if (d?.data?.role?.name === 'Staff') {
+          setIsStaff(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const defaultNavs = [
     { label: t('nav.dashboard', 'Tổng quan'), href: '/dashboard', icon: LayoutDashboard },
     { label: t('nav.assets_mgmt', 'Tài sản'), href: '/assets', icon: Laptop },
     { label: isEn ? 'Scan QR' : 'Quét QR', href: '/scan', icon: QrCode, isSpecial: true },
     { label: t('nav.tickets', 'Ticket IT'), href: '/tickets', icon: LifeBuoy },
     { label: t('nav.settings', 'Cài đặt'), href: '/settings', icon: Settings },
   ];
+
+  const staffNavs = [
+    { label: t('nav.portal', 'Cổng NV'), href: '/portal', icon: UserCheck },
+    { label: t('nav.kb', 'Hướng dẫn'), href: '/kb', icon: BookOpen },
+    { label: isEn ? 'Scan QR' : 'Quét QR', href: '/scan', icon: QrCode, isSpecial: true },
+    { label: t('nav.approvals', 'Phê duyệt'), href: '/approvals', icon: ClipboardCheck },
+  ];
+
+  const navs = isStaff ? staffNavs : defaultNavs;
 
   return (
     <nav aria-label="Mobile Navigation" className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-slate-200/90 px-2 py-1.5 shadow-2xl">
