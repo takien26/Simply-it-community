@@ -199,6 +199,7 @@ export async function POST(
         ticketNumber: ticket.ticketNumber,
         title: ticket.title,
       },
+      targetRole: 'IT_STAFF',
     });
 
     dispatchWebhookEvent('ticket.created', {

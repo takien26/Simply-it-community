@@ -24,6 +24,18 @@ export async function GET(request: NextRequest) {
           if (payload.targetUserId && payload.targetUserId !== currentUser.userId) {
             return;
           }
+
+          // If event has targetRole, enforce role-based access
+          if (payload.targetRole) {
+            const role = (currentUser.roleName || '').toLowerCase();
+            const isAdmin = role.includes('admin');
+            const isITStaff = isAdmin || role.includes('it') || role.includes('technician') || role.includes('manager') || role.includes('support');
+
+            if (payload.targetRole === 'ADMIN' && !isAdmin) return;
+            if (payload.targetRole === 'IT_STAFF' && !isITStaff) return;
+            if (payload.targetRole !== 'ADMIN' && payload.targetRole !== 'IT_STAFF' && role !== payload.targetRole.toLowerCase()) return;
+          }
+
           const sseData = `data: ${JSON.stringify(payload)}\n\n`;
           controller.enqueue(encoder.encode(sseData));
         } catch (err) {

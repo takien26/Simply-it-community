@@ -312,12 +312,13 @@ export async function POST(request: NextRequest) {
         }
       })();
 
-      // Broadcast real-time SSE event to all users/technicians
+      // Broadcast real-time SSE event ONLY to IT technicians & Admins (not ordinary users)
       broadcastRealtimeEvent({
         type: 'TICKET_CREATED',
         title: `🎫 Ticket mới: ${fullTicket?.ticketNumber || ticket.ticketNumber}`,
         message: `${fullTicket?.createdBy?.fullName || 'Người dùng'} vừa gửi yêu cầu: "${ticket.title}"`,
         data: { ticketId: ticket.id, ticketNumber: ticket.ticketNumber },
+        targetRole: 'IT_STAFF',
       });
 
       // Dispatch Webhooks (Telegram, Teams, Slack, etc.)

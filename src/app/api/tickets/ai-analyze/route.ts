@@ -363,8 +363,19 @@ Cấu trúc JSON bắt buộc:
       }
     }
 
-    // Nếu chưa khớp được bằng mã tag, tự khớp theo loại thiết bị người dùng đang giữ
-    if (!matchedAssetId && (analysis.category === 'HARDWARE' || analysis.category === 'SOFTWARE')) {
+    // Nếu chưa khớp được bằng mã tag, chỉ tự khớp máy tính cá nhân nếu sự cố thực sự về máy tính (không phải máy in, scan, v.v.)
+    const rawLower = text.toLowerCase();
+    const isPeripheralOrPrinter =
+      rawLower.includes('máy in') ||
+      rawLower.includes('in không được') ||
+      rawLower.includes('kẹt lệnh in') ||
+      rawLower.includes('kẹt giấy') ||
+      rawLower.includes('printer') ||
+      rawLower.includes('scan') ||
+      rawLower.includes('photocopy') ||
+      (analysis.serviceName && analysis.serviceName.toLowerCase().includes('máy in'));
+
+    if (!matchedAssetId && (analysis.category === 'HARDWARE' || analysis.category === 'SOFTWARE') && !isPeripheralOrPrinter) {
       const pcAsset = userAssets.find((a) => {
         const name = `${a.name || ''} ${a.category?.name || ''} ${a.model || ''}`.toLowerCase();
         return name.includes('laptop') || name.includes('macbook') || name.includes('máy tính') || name.includes('pc') || name.includes('thinkpad');

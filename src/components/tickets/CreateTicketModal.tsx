@@ -291,10 +291,19 @@ export default function CreateTicketModal({
         if (data.data.priority) setPriority(data.data.priority);
         if (data.data.matchedAssetId && !assetId) setAssetId(data.data.matchedAssetId);
 
-        // Auto-retrigger KB search with AI-detected category
-        if (data.data.category) {
-          triggerKbSearch(tVal, dVal, data.data.category);
+        // Check if peripheral / printer issue to avoid force-linking user laptop
+        const isPeripheralOrPrinter = rawText.toLowerCase().includes('máy in') ||
+          rawText.toLowerCase().includes('in không được') ||
+          rawText.toLowerCase().includes('printer') ||
+          (data.data.serviceName && data.data.serviceName.toLowerCase().includes('máy in'));
+
+        if (isPeripheralOrPrinter && isAutoAssigned) {
+          setAssetId('');
+          setIsAutoAssigned(false);
         }
+
+        // Auto-retrigger KB search with enriched context across all public articles
+        triggerKbSearch(tVal, dVal);
       } else if (!isAuto) {
         alert(data.error || (language === 'en' ? 'AI Analysis failed' : 'Phân tích AI không thành công'));
       }
@@ -305,8 +314,8 @@ export default function CreateTicketModal({
     }
   };
 
-  // Unified 3-Tier Hybrid KB Search Trigger
-  const triggerKbSearch = (searchTitle: string, searchDesc: string, currentCategory?: string) => {
+  // Unified 3-Tier Hybrid KB Search Trigger (Searches entire Public KB without artificial category lock)
+  const triggerKbSearch = (searchTitle: string, searchDesc: string) => {
     if (kbDebounceTimerRef.current) clearTimeout(kbDebounceTimerRef.current);
     const tVal = searchTitle.trim();
     const dVal = searchDesc.trim();
@@ -316,7 +325,6 @@ export default function CreateTicketModal({
         const params = new URLSearchParams();
         if (tVal) params.set('search', tVal);
         if (dVal) params.set('description', dVal);
-        if (currentCategory && currentCategory !== 'OTHER') params.set('category', currentCategory);
 
         fetch(`/api/kb?${params.toString()}`)
           .then((r) => r.json())
@@ -336,8 +344,8 @@ export default function CreateTicketModal({
     setTitle(val);
     if (aiDebounceTimerRef.current) clearTimeout(aiDebounceTimerRef.current);
 
-    // Trigger Hybrid KB Search
-    triggerKbSearch(val, description, category);
+    // Trigger Hybrid KB Search across full knowledge base
+    triggerKbSearch(val, description);
 
     if (val.trim().length >= 6) {
       aiDebounceTimerRef.current = setTimeout(() => {
@@ -351,7 +359,7 @@ export default function CreateTicketModal({
     if (aiDebounceTimerRef.current) clearTimeout(aiDebounceTimerRef.current);
 
     // Trigger Hybrid KB Search if description provides extra context
-    triggerKbSearch(title, val, category);
+    triggerKbSearch(title, val);
 
     if (val.trim().length >= 8) {
       aiDebounceTimerRef.current = setTimeout(() => {
@@ -771,9 +779,47 @@ export default function CreateTicketModal({
               placeholder={language === 'en' ? 'e.g. Computer blue screen error, cannot connect to office WiFi...' : 'VD: Máy tính bị lỗi windows, bị màn hình xanh ko sử dụng đc...'}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-900 bg-white text-xs"
             />
-            <p className="text-[10px] text-slate-400 mt-1">
-              🤖 <em>{language === 'en' ? 'AI will automatically detect issue category and priority once you finish typing.' : 'AI sẽ tự động nhận diện loại sự cố ngay khi bạn nhập xong tiêu đề.'}</em>
-            </p>
+            {isAiAnalyzing ? (
+              <div className="flex items-center gap-1.5 text-[10.5px] text-purple-600 font-semibold mt-1.5 animate-pulse">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>{language === 'en' ? 'AI is analyzing issue and predicting urgency...' : 'AI đang phân tích sự cố và đề xuất mức độ...'}</span>
+              </div>
+            ) : aiDiagnostic ? (
+              <div className="mt-2 p-2 px-3 bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border border-purple-200/90 rounded-xl flex items-center justify-between gap-2 flex-wrap text-xs shadow-2xs animate-in fade-in">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                  <span className="font-bold text-purple-950 text-[11px]">
+                    {language === 'en' ? 'AI Recognized:' : 'AI đã nhận diện:'}
+                  </span>
+                  <span className="font-extrabold text-indigo-700 bg-white/90 px-2 py-0.5 rounded-lg border border-purple-200 text-[10.5px]">
+                    {aiDiagnostic.serviceName || 'Dịch vụ IT'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                    aiDiagnostic.priority === 'URGENT'
+                      ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                      : aiDiagnostic.priority === 'HIGH'
+                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                      : aiDiagnostic.priority === 'MEDIUM'
+                      ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                      : 'bg-slate-100 text-slate-800 border border-slate-300'
+                  }`}>
+                    {aiDiagnostic.priority === 'URGENT' ? '🚨 P1 - Khẩn cấp' :
+                     aiDiagnostic.priority === 'HIGH' ? '🟠 P2 - Mức cao' :
+                     aiDiagnostic.priority === 'MEDIUM' ? '🟡 P3 - Trung bình' : '🟢 P4 - Thấp'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    ~{aiDiagnostic.estimatedResolutionHours || 24}h SLA
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-purple-400 shrink-0" />
+                <span>{language === 'en' ? 'AI will automatically detect issue category and priority once you finish typing.' : 'AI sẽ tự động nhận diện loại sự cố ngay khi bạn nhập xong tiêu đề.'}</span>
+              </p>
+            )}
 
             {/* Ticket Deflection: KB Suggestions Box */}
             {deflectedSuccess ? (

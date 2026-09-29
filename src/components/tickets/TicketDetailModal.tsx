@@ -22,6 +22,7 @@ import {
   ChevronDown,
   AlertTriangle,
   Search,
+  CheckCircle2,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 import { QuickLink } from '@/components/common/QuickLink';
@@ -868,16 +869,17 @@ export function TicketDetailModal({
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => setIsConvertToKbOpen(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 transition-colors cursor-pointer"
-                  title={txt('Chuyển thành bài viết Thư viện Hướng dẫn (KB)', 'Convert Ticket to Knowledge Base Article', 'ナレッジベース記事に変換')}
-                >
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
-                  <span className="hidden sm:inline">{txt('Lưu vào KB', 'Save to KB', 'ナレッジ化')}</span>
-                  
-                </button>
+                {isITStaffOrAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setIsConvertToKbOpen(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 transition-colors cursor-pointer"
+                    title={txt('Chuyển thành bài viết Thư viện Hướng dẫn (KB)', 'Convert Ticket to Knowledge Base Article', 'ナレッジベース記事に変換')}
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+                    <span className="hidden sm:inline">{txt('Lưu vào KB', 'Save to KB', 'ナレッジ化')}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setIsDetailModalOpen(false)}
@@ -1043,23 +1045,35 @@ export function TicketDetailModal({
                   </span>
                 </div>
 
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">{(!isVi ? 'Logged Time' : 'Thời gian xử lý')}</span>
-                    
-                  </div>
-                  <div className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span className={selectedTicket.actualSpentMinutes && selectedTicket.actualSpentMinutes > 0 ? 'text-emerald-700' : 'text-slate-700'}>
-                      {formatSpentTime(selectedTicket.actualSpentMinutes, isEn)}
+                {isITStaffOrAdmin ? (
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">{(!isVi ? 'Logged Time' : 'Thời gian xử lý')}</span>
+                    </div>
+                    <div className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className={selectedTicket.actualSpentMinutes && selectedTicket.actualSpentMinutes > 0 ? 'text-emerald-700' : 'text-slate-700'}>
+                        {formatSpentTime(selectedTicket.actualSpentMinutes, isEn)}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 block truncate">
+                      {selectedTicket.actualSpentMinutes && selectedTicket.actualSpentMinutes > 0
+                        ? ((!isVi ? `Total: ${selectedTicket.actualSpentMinutes} mins` : `Tổng: ${selectedTicket.actualSpentMinutes} phút`))
+                        : ((!isVi ? 'Not logged yet' : 'Chưa ghi nhận'))}
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 block truncate">
-                    {selectedTicket.actualSpentMinutes && selectedTicket.actualSpentMinutes > 0
-                      ? ((!isVi ? `Total: ${selectedTicket.actualSpentMinutes} mins` : `Tổng: ${selectedTicket.actualSpentMinutes} phút`))
-                      : ((!isVi ? 'Not logged yet' : 'Chưa ghi nhận'))}
-                  </span>
-                </div>
+                ) : (
+                  <div className="space-y-0.5">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">{(!isVi ? 'Channel' : 'Kênh tiếp nhận')}</span>
+                    <div className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                      <span className="text-blue-600 shrink-0">🌐</span>
+                      <span className="text-slate-700">{(!isVi ? 'Web Portal' : 'Cổng Portal')}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 block truncate">
+                      {(!isVi ? 'Self-service request' : 'Yêu cầu tự phục vụ')}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* SLA & Tiến Độ Thời Gian Bar */}
@@ -1174,47 +1188,78 @@ export function TicketDetailModal({
                     )}
                   </div>
 
-                  {/* 🤖 BẢNG MINH BẠCH PHÂN TUYẾN TỰ ĐỘNG (ROUTING TRANSPARENCY) */}
-                  <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-purple-50/40 to-slate-50 border border-indigo-200/80 space-y-2.5 text-xs">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="p-1.5 rounded-lg bg-indigo-600 text-white">
-                          <BrainCircuit className="w-3.5 h-3.5" />
-                        </span>
-                        <div>
-                          <h5 className="font-bold text-slate-900 text-xs">{(!isVi ? 'Transparent Routing Path' : 'Minh Bạch Phân Tuyến (Routing Path)')}</h5>
-                          <p className="text-[10px] text-slate-500">{(!isVi ? 'Auto-routed based on user context & category' : 'Tự động định tuyến dựa trên ngữ cảnh người dùng & danh mục')}</p>
+                  {/* 🤖 BẢNG MINH BẠCH PHÂN TUYẾN / ĐƠN VỊ TIẾP NHẬN */}
+                  {isITStaffOrAdmin ? (
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-purple-50/40 to-slate-50 border border-indigo-200/80 space-y-2.5 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 rounded-lg bg-indigo-600 text-white">
+                            <BrainCircuit className="w-3.5 h-3.5" />
+                          </span>
+                          <div>
+                            <h5 className="font-bold text-slate-900 text-xs">{(!isVi ? 'Transparent Routing Path' : 'Minh Bạch Phân Tuyến (Routing Path)')}</h5>
+                            <p className="text-[10px] text-slate-500">{(!isVi ? 'Auto-routed based on user context & category' : 'Tự động định tuyến dựa trên ngữ cảnh người dùng & danh mục')}</p>
+                          </div>
                         </div>
+                        <span className={`px-2 py-0.5 rounded-md font-bold text-[9.5px] border ${
+                          selectedTicket.isAutoRouted
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-purple-50 text-purple-700 border-purple-200'
+                        }`}>
+                          {selectedTicket.isAutoRouted ? ((!isVi ? '🤖 Auto-routed' : '🤖 Tự động phân tuyến')) : ((!isVi ? '✍️ Manual assignment' : '✍️ Phân công thủ công'))}
+                        </span>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-md font-bold text-[9.5px] border ${
-                        selectedTicket.isAutoRouted
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-purple-50 text-purple-700 border-purple-200'
-                      }`}>
-                        {selectedTicket.isAutoRouted ? ((!isVi ? '🤖 Auto-routed' : '🤖 Tự động phân tuyến')) : ((!isVi ? '✍️ Manual assignment' : '✍️ Phân công thủ công'))}
-                      </span>
-                    </div>
 
-                    {/* Visual Path */}
-                    <div className="p-2.5 bg-white rounded-xl border border-indigo-100 flex items-center gap-1.5 flex-wrap text-[11px]">
-                      <span className="font-bold text-slate-500">{(!isVi ? 'Path:' : 'Đường dẫn:')}</span>
-                      <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold">{selectedTicket.companyName || selectedTicket.createdBy?.department || ((!isVi ? 'Enterprise' : 'Tập đoàn'))}</span>
-                      <span className="text-slate-400">➔</span>
-                      <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold">{getCategoryLabel(selectedTicket.category, language)}</span>
-                      <span className="text-slate-400">➔</span>
-                      <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold">Team: {selectedTicket.team?.name || ((!isVi ? 'Unassigned' : 'Chưa gán'))}</span>
-                      <span className="text-slate-400">➔</span>
-                      <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold">Queue: {selectedTicket.queue?.name || 'Default Queue'}</span>
-                      <span className="text-slate-400">➔</span>
-                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Assignee: {selectedTicket.assignedTo?.fullName || ((!isVi ? 'Pending pickup' : 'Chờ tiếp nhận'))}</span>
-                    </div>
-
-                    {selectedTicket.routedByRule && (
-                      <div className="text-[11px] text-indigo-900 font-medium">
-                        {(!isVi ? '🎯 Applied Rule:' : '🎯 Rule áp dụng:')} <strong>"{selectedTicket.routedByRule}"</strong>
+                      {/* Visual Path */}
+                      <div className="p-2.5 bg-white rounded-xl border border-indigo-100 flex items-center gap-1.5 flex-wrap text-[11px]">
+                        <span className="font-bold text-slate-500">{(!isVi ? 'Path:' : 'Đường dẫn:')}</span>
+                        <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold">{selectedTicket.companyName || selectedTicket.createdBy?.department || ((!isVi ? 'Enterprise' : 'Tập đoàn'))}</span>
+                        <span className="text-slate-400">➔</span>
+                        <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold">{getCategoryLabel(selectedTicket.category, language)}</span>
+                        <span className="text-slate-400">➔</span>
+                        <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold">Team: {selectedTicket.team?.name || ((!isVi ? 'Unassigned' : 'Chưa gán'))}</span>
+                        <span className="text-slate-400">➔</span>
+                        <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold">Queue: {selectedTicket.queue?.name || 'Default Queue'}</span>
+                        <span className="text-slate-400">➔</span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Assignee: {selectedTicket.assignedTo?.fullName || ((!isVi ? 'Pending pickup' : 'Chờ tiếp nhận'))}</span>
                       </div>
-                    )}
-                  </div>
+
+                      {selectedTicket.routedByRule && (
+                        <div className="text-[11px] text-indigo-900 font-medium">
+                          {(!isVi ? '🎯 Applied Rule:' : '🎯 Rule áp dụng:')} <strong>"{selectedTicket.routedByRule}"</strong>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50/70 via-indigo-50/30 to-slate-50 border border-blue-200/70 space-y-2 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 rounded-lg bg-blue-600 text-white">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          </span>
+                          <div>
+                            <h5 className="font-bold text-slate-900 text-xs">
+                              {(!isVi ? 'Assigned Support Unit' : 'Đơn vị Tiếp Nhận & Xử Lý')}
+                            </h5>
+                            <p className="text-[10px] text-slate-500">
+                              {(!isVi ? 'Your request has been routed to the appropriate IT team' : 'Yêu cầu của bạn đã được tiếp nhận và chuyển đến đội ngũ IT chuyên trách')}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-md font-bold text-[9.5px] bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {selectedTicket.assignedTo?.fullName ? (!isVi ? 'In progress' : 'Đã có KTV tiếp nhận') : (!isVi ? 'Waiting for pickup' : 'Đang chờ phân công')}
+                        </span>
+                      </div>
+                      <div className="p-2.5 bg-white rounded-xl border border-blue-100 flex items-center justify-between gap-2 flex-wrap text-[11px]">
+                        <span className="text-slate-600">
+                          🏢 <strong>{(!isVi ? 'Team:' : 'Đội ngũ phụ trách:')}</strong> {selectedTicket.team?.name || (!isVi ? 'IT Helpdesk Team' : 'Đội ngũ Hỗ trợ Kỹ thuật IT')}
+                        </span>
+                        <span className="text-slate-500 text-[10.5px]">
+                          👨‍💻 {selectedTicket.assignedTo?.fullName ? `${(!isVi ? 'Technician:' : 'KTV:')} ${selectedTicket.assignedTo.fullName}` : (!isVi ? 'Assigning technician...' : 'Đang phân công kỹ thuật viên...')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Right Column (5/12 cols): AI Diagnostic & IT Assistance */}
