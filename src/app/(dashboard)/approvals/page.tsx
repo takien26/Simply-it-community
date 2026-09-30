@@ -33,6 +33,8 @@ import {
   ExternalLink,
   File,
   UploadCloud,
+  Pencil,
+  Ban,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 import { formatNumberWithDots, numberToVietnameseWords } from '@/lib/utils';
@@ -114,6 +116,7 @@ export default function ApprovalsPage() {
 
   // Modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingApproval, setEditingApproval] = useState<ApprovalRequest | null>(null);
   const [selectedApproval, setSelectedApproval] = useState<ApprovalRequest | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
@@ -178,16 +181,42 @@ export default function ApprovalsPage() {
   }, []);
 
   const handleOpenCreate = () => {
-    setIsCreateOpen(true);
+    setEditingApproval(null);
+    setFormTitle('');
+    setFormDesc('');
+    setFormJustification('');
+    setFormCost('');
+    setFormQty('1');
+    setAttachments([]);
     setManagerSearch('');
     setIsManagerDropdownOpen(false);
-    setAttachments([]);
     loadUsers();
     if (currentUser?.managerId) {
       setFormManagerId(currentUser.managerId);
     } else {
       setFormManagerId('');
     }
+    setIsCreateOpen(true);
+  };
+
+  const handleOpenEdit = (approval: ApprovalRequest) => {
+    setEditingApproval(approval);
+    setFormType(approval.type || 'NEW_DEVICE');
+    setFormTitle(approval.title || '');
+    setFormJustification(approval.justification || '');
+    setFormCost(approval.estimatedCost ? String(approval.estimatedCost) : '');
+    setFormQty(String(approval.quantity || 1));
+    setFormManagerId(approval.managerId || '');
+    setManagerSearch('');
+    setIsManagerDropdownOpen(false);
+
+    const { cleanDesc, attachments: atts } = parseAttachments(approval.description);
+    setFormDesc(cleanDesc);
+    setAttachments(atts);
+
+    loadUsers();
+    setIsDetailOpen(false);
+    setIsCreateOpen(true);
   };
 
   // AI Quote Parsing
@@ -365,24 +394,31 @@ export default function ApprovalsPage() {
 
     setCreating(true);
     try {
-      const res = await fetch('/api/approvals', {
-        method: 'POST',
+      const payload = {
+        type: formType,
+        title: formTitle.trim(),
+        description: formDesc.trim() || undefined,
+        justification: formJustification.trim() || undefined,
+        estimatedCost: formCost ? Number(String(formCost).replace(/\D/g, '')) : undefined,
+        quantity: Number(formQty) || 1,
+        managerId: formManagerId || undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      };
+
+      const url = editingApproval ? `/api/approvals/${editingApproval.id}` : '/api/approvals';
+      const method = editingApproval ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: formType,
-          title: formTitle.trim(),
-          description: formDesc.trim() || undefined,
-          justification: formJustification.trim() || undefined,
-          estimatedCost: formCost ? Number(String(formCost).replace(/\D/g, '')) : undefined,
-          quantity: Number(formQty) || 1,
-          managerId: formManagerId || undefined,
-          attachments: attachments.length > 0 ? attachments : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (data.success) {
         setIsCreateOpen(false);
+        const wasEditing = editingApproval;
+        setEditingApproval(null);
         // Reset form
         setFormTitle('');
         setFormDesc('');
@@ -390,14 +426,74 @@ export default function ApprovalsPage() {
         setFormCost('');
         setFormQty('1');
         setAttachments([]);
+
+        if (wasEditing && selectedApproval?.id === wasEditing.id) {
+          setSelectedApproval(data.approval || { ...selectedApproval, ...payload });
+        }
+
         loadApprovals();
       } else {
-        alert(data.error || (language === 'en' ? 'Failed to create request' : 'Tạo yêu cầu thất bại'));
+        alert(data.error || (editingApproval ? (language === 'en' ? 'Failed to update request' : 'Cập nhật đề xuất thất bại') : (language === 'en' ? 'Failed to create request' : 'Tạo yêu cầu thất bại')));
       }
     } catch (e: any) {
       alert(e.message || (language === 'en' ? 'Connection error' : 'Lỗi kết nối'));
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleCancelProposal = async (id: string) => {
+    const confirmMsg = language === 'en'
+      ? 'Are you sure you want to cancel / withdraw this approval proposal?'
+      : 'Bạn có chắc chắn muốn hủy / rút bỏ đề xuất này không? Đề xuất sẽ dừng quy trình xét duyệt.';
+    if (!confirm(confirmMsg)) return;
+
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/approvals/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'CANCELLED' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (selectedApproval?.id === id) {
+          setSelectedApproval((prev) => prev ? { ...prev, status: 'CANCELLED' } : null);
+        }
+        loadApprovals();
+      } else {
+        alert(data.error || (language === 'en' ? 'Failed to cancel proposal' : 'Hủy đề xuất thất bại'));
+      }
+    } catch (e: any) {
+      alert(e.message || (language === 'en' ? 'Connection error' : 'Lỗi kết nối'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeletePermanently = async (id: string) => {
+    const confirmMsg = language === 'en'
+      ? 'Are you sure you want to permanently delete this proposal? This action cannot be undone.'
+      : 'Bạn có chắc chắn muốn xóa vĩnh viễn đề xuất này không? Thao tác này không thể hoàn tác.';
+    if (!confirm(confirmMsg)) return;
+
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/approvals/${id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsDetailOpen(false);
+        setSelectedApproval(null);
+        loadApprovals();
+      } else {
+        alert(data.error || (language === 'en' ? 'Failed to delete proposal' : 'Xóa đề xuất thất bại'));
+      }
+    } catch (e: any) {
+      alert(e.message || (language === 'en' ? 'Connection error' : 'Lỗi kết nối'));
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -603,6 +699,16 @@ export default function ApprovalsPage() {
 
     return false;
   }, [selectedApproval, currentUser, isRequester, isAssignedManager, isAdmin]);
+
+  const canEditOrCancel = useMemo(() => {
+    if (!selectedApproval || !currentUser) return false;
+    const hasNoApprovals = !selectedApproval.managerApprovedAt && !selectedApproval.itApprovedAt;
+    const isPending =
+      selectedApproval.status === 'PENDING_MANAGER' ||
+      selectedApproval.status === 'PENDING_IT' ||
+      selectedApproval.status === 'DRAFT';
+    return (isRequester || isAdmin) && hasNoApprovals && isPending;
+  }, [selectedApproval, currentUser, isRequester, isAdmin]);
 
   // Manager combobox filtering & grouping
   const eligibleManagers = usersList.filter(
@@ -822,7 +928,7 @@ export default function ApprovalsPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                    <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
                       {/* Action pill indicator */}
                       {req.status === 'PENDING_MANAGER' && (
                         <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
@@ -834,6 +940,35 @@ export default function ApprovalsPage() {
                           {t('approvals.need_it_action', 'Cần IT Xác Nhận')}
                         </span>
                       )}
+
+                      {/* Quick Edit/Cancel actions if unapproved */}
+                      {((currentUserId && req.requesterId === currentUserId) || isAdmin) &&
+                        !req.managerApprovedAt &&
+                        !req.itApprovedAt &&
+                        (req.status === 'PENDING_MANAGER' || req.status === 'PENDING_IT' || req.status === 'DRAFT') && (
+                          <div
+                            className="flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(req)}
+                              title={language === 'en' ? 'Edit proposal' : 'Sửa đề xuất'}
+                              className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-colors cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCancelProposal(req.id)}
+                              title={language === 'en' ? 'Cancel proposal' : 'Bỏ / Hủy đề xuất'}
+                              className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 transition-colors cursor-pointer"
+                            >
+                              <Ban className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+
                       <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
                     </div>
                   </div>
@@ -870,12 +1005,14 @@ export default function ApprovalsPage() {
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-                  <Plus className="w-5 h-5" />
+                  {editingApproval ? <Pencil className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-base sm:text-lg text-slate-900">
-                      {t('approvals.modal_create_title', 'Tạo Yêu Cầu Phê Duyệt')}
+                      {editingApproval
+                        ? (language === 'en' ? `Edit Proposal ${editingApproval.code}` : `Chỉnh Sửa Đề Xuất ${editingApproval.code}`)
+                        : t('approvals.modal_create_title', 'Tạo Yêu Cầu Phê Duyệt')}
                     </h3>
                     <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
                       <Sparkles className="w-3 h-3 text-indigo-500" />
@@ -883,7 +1020,9 @@ export default function ApprovalsPage() {
                     </span>
                   </div>
                   <p className="text-xs text-slate-500">
-                    {t('approvals.modal_create_sub', 'Gửi yêu cầu cấp phát thiết bị hoặc phần mềm bản quyền')}
+                    {editingApproval
+                      ? (language === 'en' ? 'Update proposal information before manager / IT approval' : 'Cập nhật lại thông tin đề xuất trước khi Cấp trên hoặc IT phê duyệt')
+                      : t('approvals.modal_create_sub', 'Gửi yêu cầu cấp phát thiết bị hoặc phần mềm bản quyền')}
                   </p>
                 </div>
               </div>
@@ -1430,7 +1569,11 @@ export default function ApprovalsPage() {
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-bold shadow-md shadow-blue-600/20 cursor-pointer flex items-center gap-2 transition-all"
                 >
                   {creating && <Loader2 className="w-4 h-4 animate-spin" />}
-                  <span>{t('approvals.submit_btn', 'Gửi Yêu Cầu Phê Duyệt')}</span>
+                  <span>
+                    {editingApproval
+                      ? (language === 'en' ? 'Save Changes' : 'Lưu Thay Đổi')
+                      : t('approvals.submit_btn', 'Gửi Yêu Cầu Phê Duyệt')}
+                  </span>
                 </button>
               </div>
             </form>
@@ -1454,13 +1597,40 @@ export default function ApprovalsPage() {
                 </div>
                 <h3 className="font-bold text-lg sm:text-xl text-slate-900 mt-1 leading-snug">{selectedApproval.title}</h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsDetailOpen(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {canEditOrCancel && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(selectedApproval)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors cursor-pointer shadow-2xs"
+                      title={language === 'en' ? 'Edit proposal details' : 'Chỉnh sửa thông tin đề xuất'}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>{language === 'en' ? 'Edit' : 'Sửa đề xuất'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCancelProposal(selectedApproval.id)}
+                      disabled={actionLoading}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                      title={language === 'en' ? 'Cancel/withdraw this proposal' : 'Hủy bỏ đề xuất này'}
+                    >
+                      <Ban className="w-3.5 h-3.5" />
+                      <span>{language === 'en' ? 'Cancel' : 'Bỏ đề xuất'}</span>
+                    </button>
+                  </>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsDetailOpen(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Approval Stepper Timeline */}
@@ -1798,24 +1968,83 @@ export default function ApprovalsPage() {
                 </div>
               ) : (
                 /* Information banner for requester or unauthorized user (HỆ THỐNG ẨN KHỐI PHÊ DUYỆT) */
-                <div className="p-4 bg-amber-50/80 border border-amber-200/90 rounded-2xl flex items-start gap-3 text-xs sm:text-sm text-amber-900">
-                  <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="font-bold">
-                      {selectedApproval.status === 'PENDING_MANAGER'
-                        ? (isRequester ? 'Yêu cầu của bạn đang chờ Cấp trên xét duyệt' : 'Yêu cầu đang chờ Cấp trên xét duyệt')
-                        : 'Yêu cầu đang chờ IT Admin thẩm định & phê duyệt'}
+                <div className="p-4 bg-amber-50/80 border border-amber-200/90 rounded-2xl flex flex-col gap-3 text-xs sm:text-sm text-amber-900">
+                  <div className="flex items-start gap-3">
+                    <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="font-bold">
+                        {selectedApproval.status === 'PENDING_MANAGER'
+                          ? (isRequester ? 'Yêu cầu của bạn đang chờ Cấp trên xét duyệt' : 'Yêu cầu đang chờ Cấp trên xét duyệt')
+                          : 'Yêu cầu đang chờ IT Admin thẩm định & phê duyệt'}
+                      </p>
+                      <p className="text-amber-800/90 text-xs">
+                        {selectedApproval.status === 'PENDING_MANAGER'
+                          ? (selectedApproval.manager
+                              ? `Đang chờ phản hồi từ: ${selectedApproval.manager.fullName} (${selectedApproval.manager.email}). Bạn sẽ nhận được thông báo ngay khi có kết quả.`
+                              : 'Đang chờ Cấp quản lý phê duyệt.')
+                          : 'Cấp trên đã duyệt. Bộ phận Quản trị IT đang tiến hành kiểm tra kho và phân bổ thiết bị.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {canEditOrCancel && (
+                    <div className="pt-2.5 border-t border-amber-200/70 flex items-center justify-between flex-wrap gap-2">
+                      <span className="text-xs text-amber-900 font-medium">
+                        💡 {language === 'en'
+                          ? 'This proposal has not been approved yet. You can edit or withdraw it:'
+                          : 'Đề xuất chưa có ai duyệt. Bạn có thể sửa đổi nội dung hoặc rút bỏ đề xuất nếu không còn nhu cầu:'}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(selectedApproval)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 rounded-xl transition-colors cursor-pointer shadow-2xs"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>{language === 'en' ? 'Edit Proposal' : 'Sửa nội dung đề xuất'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelProposal(selectedApproval.id)}
+                          disabled={actionLoading}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-700 bg-white hover:bg-rose-50 border border-rose-200 rounded-xl transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                        >
+                          <Ban className="w-3.5 h-3.5" />
+                          <span>{language === 'en' ? 'Withdraw Proposal' : 'Bỏ / Hủy đề xuất này'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            )}
+
+            {/* Proposal Cancelled Banner */}
+            {selectedApproval.status === 'CANCELLED' && (
+              <div className="p-4 bg-slate-100 border border-slate-200 rounded-2xl flex items-center justify-between flex-wrap gap-3 text-xs sm:text-sm text-slate-600">
+                <div className="flex items-center gap-2.5">
+                  <XCircle className="w-5 h-5 text-slate-400 shrink-0" />
+                  <div>
+                    <p className="font-bold text-slate-800">
+                      {language === 'en' ? 'Proposal Cancelled' : 'Đề xuất đã bị hủy / rút bỏ'}
                     </p>
-                    <p className="text-amber-800/90 text-xs">
-                      {selectedApproval.status === 'PENDING_MANAGER'
-                        ? (selectedApproval.manager
-                            ? `Đang chờ phản hồi từ: ${selectedApproval.manager.fullName} (${selectedApproval.manager.email}). Bạn sẽ nhận được thông báo ngay khi có kết quả.`
-                            : 'Đang chờ Cấp quản lý phê duyệt.')
-                        : 'Cấp trên đã duyệt. Bộ phận Quản trị IT đang tiến hành kiểm tra kho và phân bổ thiết bị.'}
+                    <p className="text-xs text-slate-500">
+                      {language === 'en' ? 'The approval workflow has terminated for this request.' : 'Quy trình xét duyệt cho yêu cầu này đã dừng lại.'}
                     </p>
                   </div>
                 </div>
-              )
+                {(isRequester || isAdmin) && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePermanently(selectedApproval.id)}
+                    disabled={actionLoading}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-700 bg-white hover:bg-rose-50 border border-rose-200 rounded-xl transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{language === 'en' ? 'Delete Permanently' : 'Xóa vĩnh viễn'}</span>
+                  </button>
+                )}
+              </div>
             )}
 
             {/* IT Admin Mark as Delivered button */}
