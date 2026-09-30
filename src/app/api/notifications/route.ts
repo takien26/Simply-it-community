@@ -200,34 +200,50 @@ export async function GET(req: NextRequest) {
           createdAt: t.createdAt,
         });
       } else if (isCreatedByMe) {
-        notifications.push({
-          id: `ticket-${t.id}`,
-          ticketId: t.id,
-          ticketNumber: t.ticketNumber,
-          type: 'TICKET',
-          severity: 'INFO',
-          title: isEn ? `Your request: #${t.ticketNumber}` : `Yêu cầu của bạn: #${t.ticketNumber}`,
-          message: isEn ? `"${t.title}" - Status: ${t.status === 'OPEN' ? 'Open' : t.status === 'IN_PROGRESS' ? 'In Progress' : 'Pending Response'}` : `"${t.title}" - Trạng thái: ${t.status === 'OPEN' ? 'Mới mở' : t.status === 'IN_PROGRESS' ? 'Đang xử lý' : 'Chờ phản hồi'}`,
-          detail: isEn ? `IT Assignee: ${t.assignedTo?.fullName || 'Pending assignment'}` : `IT phụ trách: ${t.assignedTo?.fullName || 'Đang chờ phân công'}`,
-          link: `/tickets?search=${encodeURIComponent(t.ticketNumber)}&id=${t.id}`,
-          createdAt: t.createdAt,
-        });
+        // Chỉ thông báo cho người tạo khi ticket THỰC SỰ CÓ CẬP NHẬT từ bộ phận IT:
+        // - Đã có IT tiếp nhận / gán KTV phụ trách (assignedToId != null)
+        // - Hoặc trạng thái chuyển sang IN_PROGRESS (Đang xử lý) hoặc WAITING (Chờ người dùng phản hồi)
+        // Nếu ticket chỉ vừa mới mở (OPEN) và chưa có ai tiếp nhận/phụ trách, KHÔNG tạo thông báo phiền người tạo.
+        const hasUpdate = Boolean(t.assignedToId || t.status === 'IN_PROGRESS' || t.status === 'WAITING');
+        if (hasUpdate) {
+          notifications.push({
+            id: `ticket-${t.id}`,
+            ticketId: t.id,
+            ticketNumber: t.ticketNumber,
+            type: 'TICKET',
+            severity: t.status === 'WAITING' ? 'WARNING' : 'INFO',
+            title: isEn
+              ? (t.status === 'WAITING' ? `Waiting for your reply: #${t.ticketNumber}` : `Update on your request: #${t.ticketNumber}`)
+              : (t.status === 'WAITING' ? `Chờ bạn phản hồi: #${t.ticketNumber}` : `Cập nhật yêu cầu: #${t.ticketNumber}`),
+            message: isEn
+              ? `"${t.title}" - Status: ${t.status === 'IN_PROGRESS' ? 'In Progress' : t.status === 'WAITING' ? 'Pending Response' : 'IT Assigned'}`
+              : `"${t.title}" - Trạng thái: ${t.status === 'IN_PROGRESS' ? 'Đang xử lý' : t.status === 'WAITING' ? 'Chờ phản hồi' : 'Đã có IT tiếp nhận'}`,
+            detail: isEn
+              ? `IT Assignee: ${t.assignedTo?.fullName || 'Assigned'}`
+              : `IT phụ trách: ${t.assignedTo?.fullName || 'Đã phân công KTV'}`,
+            link: `/tickets?search=${encodeURIComponent(t.ticketNumber)}&id=${t.id}`,
+            createdAt: t.createdAt,
+          });
+        }
       } else if (isManagementRole) {
-        notifications.push({
-          id: `ticket-${t.id}`,
-          ticketId: t.id,
-          ticketNumber: t.ticketNumber,
-          type: 'TICKET',
-          severity: t.priority === 'URGENT' ? 'CRITICAL' : t.priority === 'HIGH' ? 'WARNING' : 'INFO',
-          title: isUnassigned
-            ? (isEn ? `New unassigned ticket: #${t.ticketNumber}` : `Ticket mới chờ nhận: #${t.ticketNumber}`)
-            : `Ticket #${t.ticketNumber} (${t.assignedTo?.fullName || 'IT'})`,
-          message: isEn ? `"${t.title}" from ${t.createdBy.fullName} (${t.createdBy.department || 'Employee'}).` : `"${t.title}" từ ${t.createdBy.fullName} (${t.createdBy.department || 'Nhân viên'}).`,
-          detail: isEn ? `Status: ${t.status === 'OPEN' ? 'Open' : t.status === 'IN_PROGRESS' ? 'In Progress' : 'Pending Response'}` : `Trạng thái: ${t.status === 'OPEN' ? 'Mới mở' : t.status === 'IN_PROGRESS' ? 'Đang xử lý' : 'Chờ phản hồi'}`,
-          link: `/tickets?search=${encodeURIComponent(t.ticketNumber)}&id=${t.id}`,
-          createdAt: t.createdAt,
-          isUnassigned,
-        });
+        // Với IT Admin / Agent: Chỉ thông báo ticket mới chờ nhận khi do người khác gửi (không phải tự mình tạo)
+        if (!isCreatedByMe || isAssignedToMe) {
+          notifications.push({
+            id: `ticket-${t.id}`,
+            ticketId: t.id,
+            ticketNumber: t.ticketNumber,
+            type: 'TICKET',
+            severity: t.priority === 'URGENT' ? 'CRITICAL' : t.priority === 'HIGH' ? 'WARNING' : 'INFO',
+            title: isUnassigned
+              ? (isEn ? `New unassigned ticket: #${t.ticketNumber}` : `Ticket mới chờ nhận: #${t.ticketNumber}`)
+              : `Ticket #${t.ticketNumber} (${t.assignedTo?.fullName || 'IT'})`,
+            message: isEn ? `"${t.title}" from ${t.createdBy.fullName} (${t.createdBy.department || 'Employee'}).` : `"${t.title}" từ ${t.createdBy.fullName} (${t.createdBy.department || 'Nhân viên'}).`,
+            detail: isEn ? `Status: ${t.status === 'OPEN' ? 'Open' : t.status === 'IN_PROGRESS' ? 'In Progress' : 'Pending Response'}` : `Trạng thái: ${t.status === 'OPEN' ? 'Mới mở' : t.status === 'IN_PROGRESS' ? 'Đang xử lý' : 'Chờ phản hồi'}`,
+            link: `/tickets?search=${encodeURIComponent(t.ticketNumber)}&id=${t.id}`,
+            createdAt: t.createdAt,
+            isUnassigned,
+          });
+        }
       }
     });
 
@@ -335,6 +351,45 @@ export async function GET(req: NextRequest) {
       }
     });
 
+    // 5b. Recent public IT comments on user's tickets
+    const recentITComments = await prisma.ticketComment.findMany({
+      where: {
+        isInternal: false,
+        userId: { not: user.userId },
+        ticket: {
+          createdById: user.userId,
+        },
+        createdAt: { gte: thirtyDaysAgo },
+      },
+      include: {
+        ticket: {
+          select: { id: true, ticketNumber: true, title: true },
+        },
+        user: {
+          select: { fullName: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    recentITComments.forEach((c) => {
+      notifications.push({
+        id: `ticket-comment-${c.id}`,
+        ticketId: c.ticket.id,
+        ticketNumber: c.ticket.ticketNumber,
+        type: 'TICKET',
+        severity: 'INFO',
+        title: isEn ? `💬 IT Reply: #${c.ticket.ticketNumber}` : `💬 IT Phản hồi: #${c.ticket.ticketNumber}`,
+        message: isEn
+          ? `${c.user.fullName} replied on "${c.ticket.title}".`
+          : `${c.user.fullName} đã phản hồi cho ticket "${c.ticket.title}".`,
+        detail: c.content.slice(0, 100) + (c.content.length > 100 ? '...' : ''),
+        link: `/tickets?search=${encodeURIComponent(c.ticket.ticketNumber)}&id=${c.ticket.id}`,
+        createdAt: c.createdAt,
+      });
+    });
+
     // 6. Proactive Alerts: SLA Breach Risks, Spare Parts Low Stock, Zombie Licenses
     let proactiveCount = 0;
 
@@ -430,10 +485,11 @@ export async function GET(req: NextRequest) {
     // Sort descending by date
     notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    const ticketsCount = pendingTickets.length;
-    const licensesCount = expiringLicenses.length;
-    const servicesCount = expiringServices.length;
-    const warrantiesCount = expiringWarranties.length;
+    // Calculate category counts strictly based on the generated notifications
+    const ticketsCount = notifications.filter((n) => n.type === 'TICKET').length;
+    const licensesCount = notifications.filter((n) => n.type === 'LICENSE').length;
+    const servicesCount = notifications.filter((n) => n.type === 'SERVICE').length;
+    const warrantiesCount = notifications.filter((n) => n.type === 'WARRANTY').length;
     const unassignedCount = pendingTickets.filter((t) => !t.assignedToId).length;
     const myTicketsCount = pendingTickets.filter((t) => t.assignedToId === user.userId).length;
 

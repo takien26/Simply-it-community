@@ -22,6 +22,10 @@ import {
   Copy,
   Zap,
   Download,
+  Headphones,
+  Phone,
+  Mail,
+  Clock,
 } from 'lucide-react';
 
 interface GeneralSettingsTabProps {
@@ -1029,6 +1033,66 @@ export function GeneralSettingsTab({
               onChange={(e) => handleChange('ai.auto_save_threshold', e.target.value)}
               className="w-full p-2.5 border border-slate-300 rounded-xl text-sm outline-none font-mono"
             />
+          </div>
+        </div>
+      </div>
+
+      {/* DIRECT IT SUPPORT CONTACTS FOR USER PORTAL */}
+      <div id="portal-support-contacts" className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex items-center space-x-2 text-slate-900 font-bold text-base pb-3 border-b border-slate-100">
+          <Headphones className="w-5 h-5 text-emerald-600" />
+          <span>{isEn ? 'Direct IT Support Contacts (User Portal)' : 'Thông Tin Kênh Hỗ Trợ IT Trực Tiếp (Cổng Portal)'}</span>
+        </div>
+        <p className="text-xs text-slate-500">
+          {isEn
+            ? 'Contact details displayed to employees on the Portal page (Hotline/Extension, Email, and Working Hours).'
+            : 'Thông tin liên hệ kỹ thuật IT hiển thị trực tiếp cho nhân viên tại Cổng dịch vụ Portal (Hotline/Số nội bộ, Email hỗ trợ, Khung giờ tiếp nhận).'}
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+              <Phone className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{isEn ? 'Hotline / Extension' : 'Hotline / Số máy nhánh (Ext)'}</span>
+            </label>
+            <input
+              type="text"
+              placeholder={isEn ? 'e.g. Ext: 101 / 102 or 0901234567' : 'VD: Ext: 101 / 102 hoặc 0901234567'}
+              value={getSettingValue('portal.support_hotline')}
+              onChange={(e) => handleChange('portal.support_hotline', e.target.value)}
+              className="w-full p-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-slate-800"
+            />
+            <span className="text-[11px] text-slate-400 mt-1 block">{isEn ? 'Default: Ext: 101 / 102' : 'Mặc định: Ext: 101 / 102'}</span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 text-blue-600" />
+              <span>{isEn ? 'Support Email' : 'Email tiếp nhận hỗ trợ'}</span>
+            </label>
+            <input
+              type="email"
+              placeholder="it-support@company.internal"
+              value={getSettingValue('portal.support_email')}
+              onChange={(e) => handleChange('portal.support_email', e.target.value)}
+              className="w-full p-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
+            />
+            <span className="text-[11px] text-slate-400 mt-1 block">{isEn ? 'Default: it-support@company.internal' : 'Mặc định: it-support@company.internal'}</span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-amber-600" />
+              <span>{isEn ? 'Working Hours' : 'Khung giờ tiếp nhận'}</span>
+            </label>
+            <input
+              type="text"
+              placeholder={isEn ? '08:00 - 17:30 (Mon - Sat)' : '08:00 - 17:30 (T2 - T7)'}
+              value={getSettingValue('portal.support_hours')}
+              onChange={(e) => handleChange('portal.support_hours', e.target.value)}
+              className="w-full p-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 font-medium text-slate-800"
+            />
+            <span className="text-[11px] text-slate-400 mt-1 block">{isEn ? 'Default: 08:00 - 17:30 (T2 - T7)' : 'Mặc định: 08:00 - 17:30 (T2 - T7)'}</span>
           </div>
         </div>
       </div>

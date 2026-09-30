@@ -64,6 +64,11 @@ export default function EmployeePortalPage() {
     assets: any[];
     licenses: any[];
     tickets: any[];
+    supportContacts?: {
+      hotline: string;
+      email: string;
+      hours: string;
+    };
     stats: {
       totalAssets: number;
       totalLicenses: number;
@@ -1078,13 +1083,28 @@ export default function EmployeePortalPage() {
 
           {/* Card 2: IT Desk Direct Contact & Quick Help Shortcuts (Fills space cleanly!) */}
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 space-y-3.5">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-              <div className="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center">
-                <Phone className="w-3.5 h-3.5" />
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center">
+                  <Phone className="w-3.5 h-3.5" />
+                </div>
+                <h3 className="text-xs font-bold text-slate-900">
+                  {isEn ? 'IT Support Contacts' : 'Kênh Hỗ Trợ IT Trực Tiếp'}
+                </h3>
               </div>
-              <h3 className="text-xs font-bold text-slate-900">
-                {isEn ? 'IT Support Contacts' : 'Kênh Hỗ Trợ IT Trực Tiếp'}
-              </h3>
+              {data?.user?.role?.name &&
+                (data.user.role.name.toLowerCase().includes('admin') ||
+                  data.user.role.name === 'Asset Manager' ||
+                  data.user.role.name === 'Super Admin') && (
+                  <Link
+                    href="/settings?tab=general#portal-support-contacts"
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 cursor-pointer"
+                    title={isEn ? 'Edit contact details in Settings' : 'Chỉnh sửa thông tin liên hệ trong Cài đặt hệ thống'}
+                  >
+                    <span>{isEn ? 'Edit' : 'Sửa'}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </Link>
+                )}
             </div>
 
             <div className="grid grid-cols-1 gap-2 text-xs">
@@ -1093,7 +1113,9 @@ export default function EmployeePortalPage() {
                   <Phone className="w-3.5 h-3.5 text-emerald-600" />
                   <span className="text-slate-600 font-medium">{isEn ? 'IT Hotline:' : 'Hotline nội bộ:'}</span>
                 </div>
-                <span className="font-mono font-bold text-slate-900">Ext: 101 / 102</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {data?.supportContacts?.hotline || 'Ext: 101 / 102'}
+                </span>
               </div>
 
               <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
@@ -1101,7 +1123,9 @@ export default function EmployeePortalPage() {
                   <Mail className="w-3.5 h-3.5 text-blue-600" />
                   <span className="text-slate-600 font-medium">{isEn ? 'Email:' : 'Email hỗ trợ:'}</span>
                 </div>
-                <span className="font-mono font-medium text-slate-800 text-[11px]">it-support@company.internal</span>
+                <span className="font-mono font-medium text-slate-800 text-[11px]">
+                  {data?.supportContacts?.email || 'it-support@company.internal'}
+                </span>
               </div>
 
               <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
@@ -1109,7 +1133,9 @@ export default function EmployeePortalPage() {
                   <Clock className="w-3.5 h-3.5 text-purple-600" />
                   <span className="text-slate-600 font-medium">{isEn ? 'Support Hours:' : 'Giờ làm việc:'}</span>
                 </div>
-                <span className="font-medium text-slate-800 text-[11px]">08:00 - 17:30 (T2 - T7)</span>
+                <span className="font-medium text-slate-800 text-[11px]">
+                  {data?.supportContacts?.hours || '08:00 - 17:30 (T2 - T7)'}
+                </span>
               </div>
             </div>
 

@@ -117,12 +117,25 @@ export async function GET(request: NextRequest) {
       (t) => t.status === 'RESOLVED' || t.status === 'CLOSED'
     ).length;
 
+    // Fetch IT Support Contacts from SystemSetting
+    const supportSettings = await prisma.systemSetting.findMany({
+      where: {
+        key: { in: ['portal.support_hotline', 'portal.support_email', 'portal.support_hours'] },
+      },
+    });
+    const supportContacts = {
+      hotline: supportSettings.find((s) => s.key === 'portal.support_hotline')?.value || 'Ext: 101 / 102',
+      email: supportSettings.find((s) => s.key === 'portal.support_email')?.value || 'it-support@company.internal',
+      hours: supportSettings.find((s) => s.key === 'portal.support_hours')?.value || '08:00 - 17:30 (T2 - T7)',
+    };
+
     return NextResponse.json({
       success: true,
       user: userProfile,
       assets: assetAssignments,
       licenses: licenseAssignments,
       tickets,
+      supportContacts,
       stats: {
         totalAssets: assetAssignments.length,
         totalLicenses: licenseAssignments.length,
