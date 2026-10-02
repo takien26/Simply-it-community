@@ -22,6 +22,10 @@ import {
   Laptop,
   Zap,
   ArrowRightLeft,
+  UploadCloud,
+  Server,
+  Monitor,
+  FileText,
 } from 'lucide-react';
 import { ReconciliationReport, CloudAssignedUser } from '@/lib/license-connectors/types';
 import { formatPrice } from './types';
@@ -32,15 +36,17 @@ export interface LicenseIntegrationModalProps {
   isOpen: boolean;
   onClose: () => void;
   isEn?: boolean;
+  onSuccess?: () => void;
 }
 
 export function LicenseIntegrationModal({
   isOpen,
   onClose,
   isEn = false,
+  onSuccess,
 }: LicenseIntegrationModalProps) {
   const { t, language, isEn: ctxIsEn, isJa } = useLanguage();
-  const [activeProvider, setActiveProvider] = useState<'m365' | 'google' | 'adobe'>('m365');
+  const [activeProvider, setActiveProvider] = useState<'m365' | 'm365_csv' | 'google' | 'adobe'>('m365');
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
@@ -52,6 +58,18 @@ export function LicenseIntegrationModal({
   const [autoAssignResult, setAutoAssignResult] = useState<any | null>(null);
   const [importingSkus, setImportingSkus] = useState(false);
   const [importSkuResult, setImportSkuResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // CSV Import States (dành cho toàn bộ 45 sản phẩm từ M365 Admin Center: Windows GGWA, Office LTSC, Windows Server...)
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [parsingCsv, setParsingCsv] = useState(false);
+  const [parsedCsvItems, setParsedCsvItems] = useState<any[]>([]);
+  const [parsedCsvSummary, setParsedCsvSummary] = useState<{ perpetualCount: number; subscriptionCount: number; totalSeats: number } | null>(null);
+  const [csvParseError, setCsvParseError] = useState<string | null>(null);
+  const [importingCsv, setImportingCsv] = useState(false);
+  const [csvImportResult, setCsvImportResult] = useState<{ success: boolean; message: string; stats?: any } | null>(null);
+  const [csvFilterType, setCsvFilterType] = useState<'ALL' | 'PERPETUAL' | 'SUBSCRIPTION'>('ALL');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const csvFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Form states
   const [m365Config, setM365Config] = useState({
@@ -214,6 +232,7 @@ export function LicenseIntegrationModal({
         setImportSkuResult({ success: true, message: data.message });
         // Tự động đồng bộ lại bảng đối soát thời gian thực
         handleSyncAndReconcile();
+        onSuccess?.();
       } else {
         setImportSkuResult({ success: false, message: data.error || 'Lỗi khi nhập gói bản quyền.' });
       }
@@ -221,6 +240,61 @@ export function LicenseIntegrationModal({
       setImportSkuResult({ success: false, message: err?.message || 'Không thể kết nối máy chủ.' });
     } finally {
       setImportingSkus(false);
+    }
+  };
+
+  // 3c. Xử lý đọc và phân tích file CSV từ Microsoft 365 Admin Center
+  const handleProcessCsvFile = async (file: File) => {
+    setCsvFile(file);
+    setParsingCsv(true);
+    setCsvParseError(null);
+    setCsvImportResult(null);
+    setParsedCsvItems([]);
+    setParsedCsvSummary(null);
+
+    try {
+      const text = await file.text();
+      const res = await fetch('/api/licenses/integrations/m365/import-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'PARSE', csvText: text }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setParsedCsvItems(data.items || []);
+        setParsedCsvSummary(data.summary || null);
+      } else {
+        setCsvParseError(data.error || 'Không thể đọc file CSV. Vui lòng kiểm tra định dạng.');
+      }
+    } catch (err: any) {
+      setCsvParseError(err?.message || 'Lỗi khi đọc file CSV');
+    } finally {
+      setParsingCsv(false);
+    }
+  };
+
+  // 3d. Nạp toàn bộ danh mục sản phẩm từ CSV vào hệ thống ITAM
+  const handleImportCsvToItam = async () => {
+    if (parsedCsvItems.length === 0) return;
+    try {
+      setImportingCsv(true);
+      setCsvImportResult(null);
+      const res = await fetch('/api/licenses/integrations/m365/import-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'IMPORT', items: parsedCsvItems }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCsvImportResult({ success: true, message: data.message, stats: data.stats });
+        onSuccess?.();
+      } else {
+        setCsvImportResult({ success: false, message: data.error || 'Lỗi khi nhập bản quyền vào hệ thống.' });
+      }
+    } catch (err: any) {
+      setCsvImportResult({ success: false, message: err?.message || 'Lỗi kết nối máy chủ.' });
+    } finally {
+      setImportingCsv(false);
     }
   };
 
@@ -346,14 +420,14 @@ export function LicenseIntegrationModal({
         </div>
 
         {/* Provider Tabs */}
-        <div className="px-6 pt-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 bg-slate-50/30 dark:bg-slate-800/20 shrink-0">
+        <div className="px-6 pt-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 bg-slate-50/30 dark:bg-slate-800/20 shrink-0 overflow-x-auto">
           <button
             type="button"
             onClick={() => {
               setActiveProvider('m365');
               setTestResult(null);
             }}
-            className={`px-4 py-2.5 rounded-t-2xl text-xs font-black transition-all flex items-center gap-2 border-b-2 cursor-pointer ${
+            className={`px-4 py-2.5 rounded-t-2xl text-xs font-black transition-all flex items-center gap-2 border-b-2 cursor-pointer shrink-0 ${
               activeProvider === 'm365'
                 ? 'border-blue-600 text-blue-600 bg-white dark:bg-slate-900 shadow-2xs'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -366,10 +440,29 @@ export function LicenseIntegrationModal({
           <button
             type="button"
             onClick={() => {
+              setActiveProvider('m365_csv');
+              setTestResult(null);
+            }}
+            className={`px-4 py-2.5 rounded-t-2xl text-xs font-black transition-all flex items-center gap-2 border-b-2 cursor-pointer shrink-0 ${
+              activeProvider === 'm365_csv'
+                ? 'border-emerald-600 text-emerald-600 bg-white dark:bg-slate-900 shadow-2xs'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <span className="text-sm">📄</span>
+            <span>Nhập CSV M365 (Windows, Server, LTSC)</span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-extrabold uppercase">
+              Khuyên dùng
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
               setActiveProvider('google');
               setTestResult(null);
             }}
-            className={`px-4 py-2.5 rounded-t-2xl text-xs font-black transition-all flex items-center gap-2 border-b-2 cursor-pointer ${
+            className={`px-4 py-2.5 rounded-t-2xl text-xs font-black transition-all flex items-center gap-2 border-b-2 cursor-pointer shrink-0 ${
               activeProvider === 'google'
                 ? 'border-blue-600 text-blue-600 bg-white dark:bg-slate-900 shadow-2xs'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -385,7 +478,7 @@ export function LicenseIntegrationModal({
               setActiveProvider('adobe');
               setTestResult(null);
             }}
-            className={`px-4 py-2.5 rounded-t-2xl text-xs font-black transition-all flex items-center gap-2 border-b-2 cursor-pointer ${
+            className={`px-4 py-2.5 rounded-t-2xl text-xs font-black transition-all flex items-center gap-2 border-b-2 cursor-pointer shrink-0 ${
               activeProvider === 'adobe'
                 ? 'border-blue-600 text-blue-600 bg-white dark:bg-slate-900 shadow-2xs'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -400,13 +493,37 @@ export function LicenseIntegrationModal({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Form Cấu Hình Provider */}
           {activeProvider === 'm365' && (
-            <div className="bg-slate-50/70 dark:bg-slate-800/40 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Plug className="w-3.5 h-3.5 text-blue-600" />
-                    <span>{t('licenses.hub.m365_title', 'Cấu hình kết nối Microsoft Graph API:')}</span>
-                  </h4>
+            <div className="space-y-4">
+              {/* Alert: Perpetual software notice */}
+              <div className="p-3.5 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-bold text-blue-900 dark:text-blue-200">
+                      Bạn muốn nạp các giấy phép Windows GGWA, Office LTSC, Windows Server?
+                    </p>
+                    <p className="text-[11px] text-blue-700 dark:text-blue-300 mt-0.5">
+                      Microsoft Graph API chỉ quản lý bản quyền SaaS gán theo người dùng (M365, Copilot, Power BI...). Các giấy phép phần mềm vĩnh viễn (On-premises / CSP) thuộc mục "Sản phẩm của bạn" không có API từ Microsoft. Bạn hãy chuyển sang tab Nhập CSV để nạp đầy đủ toàn bộ 45 sản phẩm từ file CSV xuất từ Admin Center.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveProvider('m365_csv')}
+                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-xs transition-transform active:scale-95 flex items-center gap-1 self-start sm:self-center"
+                >
+                  <span>Nhập CSV M365</span>
+                  <span>➔</span>
+                </button>
+              </div>
+
+              <div className="bg-slate-50/70 dark:bg-slate-800/40 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Plug className="w-3.5 h-3.5 text-blue-600" />
+                      <span>{t('licenses.hub.m365_title', 'Cấu hình kết nối Microsoft Graph API:')}</span>
+                    </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5">
                     {t('licenses.hub.m365_desc', 'Tạo App Registration trong Microsoft Entra ID (Azure AD) với quyền Directory.Read.All và Organization.Read.All')}
                   </p>
@@ -514,6 +631,302 @@ export function LicenseIntegrationModal({
                   <span>{syncing ? t('licenses.hub.btn_syncing', 'Đang Kéo Dữ Liệu & Đối Soát...') : t('licenses.hub.btn_sync', '⚡ Đồng Bộ & Đối Soát Ngay')}</span>
                 </button>
               </div>
+            </div>
+          </div>
+          )}
+
+          {/* TAB NHẬP FILE CSV M365 ADMIN CENTER */}
+          {activeProvider === 'm365_csv' && (
+            <div className="space-y-5">
+              {/* Instructions Banner */}
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 p-5 rounded-3xl border border-emerald-200 dark:border-emerald-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
+                      <FileSpreadsheet className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-emerald-950 dark:text-emerald-100 flex items-center gap-2">
+                        <span>Nhập Đầy Đủ 45 Sản Phẩm Từ Microsoft 365 Admin Center (CSV)</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 font-extrabold uppercase">
+                          Khuyên dùng
+                        </span>
+                      </h4>
+                      <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
+                        Giải pháp tối ưu nạp toàn diện các giấy phép phần mềm vĩnh viễn (Windows GGWA, Office LTSC, Windows Server, CALs) và thuê bao đám mây
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 text-xs">
+                  <div className="p-3 bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/80 flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-black text-[11px] shrink-0 mt-0.5">1</span>
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">Truy cập Trang Quản Trị</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Vào Microsoft 365 admin center ➔ Thanh toán ➔ Sản phẩm của bạn</p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/80 flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-black text-[11px] shrink-0 mt-0.5">2</span>
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">Bấm Xuất sang CSV</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Nhấp nút "Xuất sang CSV" ở góc trên bảng danh sách để tải file về máy</p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/80 flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-black text-[11px] shrink-0 mt-0.5">3</span>
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">Tải File Lên Hệ Thống</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Kéo thả file CSV tải về vào ô bên dưới, hệ thống sẽ tự bóc tách số lượng</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upload Dropzone */}
+              {parsedCsvItems.length === 0 && (
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                  onDragLeave={() => setIsDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleProcessCsvFile(file);
+                  }}
+                  onClick={() => csvFileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-3xl p-8 text-center cursor-pointer transition-all ${
+                    isDragOver
+                      ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 scale-[1.01]'
+                      : 'border-slate-300 dark:border-slate-700 hover:border-emerald-500 bg-slate-50/50 dark:bg-slate-800/20'
+                  }`}
+                >
+                  <input
+                    ref={csvFileInputRef}
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleProcessCsvFile(file);
+                    }}
+                  />
+                  <div className="flex flex-col items-center justify-center gap-3">
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
+                      {parsingCsv ? <RefreshCw className="w-7 h-7 animate-spin" /> : <UploadCloud className="w-7 h-7" />}
+                    </div>
+                    <div>
+                      <p className="font-extrabold text-sm text-slate-800 dark:text-slate-100">
+                        {parsingCsv ? 'Đang phân tích dữ liệu file CSV...' : 'Kéo thả file CSV vào đây hoặc bấm để chọn tệp'}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Hỗ trợ định dạng CSV xuất trực tiếp từ Microsoft 365 Admin Center (Bảng "Sản phẩm của bạn")
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Banner */}
+              {csvParseError && (
+                <div className="p-4 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 rounded-2xl text-xs font-bold flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>{csvParseError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setCsvParseError(null); csvFileInputRef.current?.click(); }}
+                    className="text-rose-700 dark:text-rose-300 hover:underline cursor-pointer"
+                  >
+                    Thử lại
+                  </button>
+                </div>
+              )}
+
+              {/* Parsed Items Preview & Import Actions */}
+              {parsedCsvItems.length > 0 && (
+                <div className="space-y-4 animate-in fade-in duration-150">
+                  {/* Summary Bar */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Tổng Sản Phẩm</p>
+                      <h4 className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                        {parsedCsvItems.length} <span className="text-xs font-normal text-slate-400">mục</span>
+                      </h4>
+                    </div>
+
+                    <div className="p-3 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+                      <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">Bản Quyền Vĩnh Viễn</p>
+                      <h4 className="text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">
+                        {parsedCsvSummary?.perpetualCount || 0} <span className="text-xs font-normal">gói</span>
+                      </h4>
+                      <p className="text-[10px] text-emerald-600 mt-0.5">Windows GGWA, Server, Office LTSC</p>
+                    </div>
+
+                    <div className="p-3 bg-blue-50/70 dark:bg-blue-950/40 rounded-2xl border border-blue-200 dark:border-blue-800 shadow-2xs">
+                      <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase">Thuê Bao Đám Mây</p>
+                      <h4 className="text-lg font-black text-blue-700 dark:text-blue-300 mt-0.5">
+                        {parsedCsvSummary?.subscriptionCount || 0} <span className="text-xs font-normal">gói</span>
+                      </h4>
+                      <p className="text-[10px] text-blue-600 mt-0.5">M365, Copilot, Power BI...</p>
+                    </div>
+
+                    <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-2xl border border-indigo-200 dark:border-indigo-800 shadow-2xs">
+                      <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase">Tổng Số Giấy Phép (Seats)</p>
+                      <h4 className="text-lg font-black text-indigo-700 dark:text-indigo-300 mt-0.5">
+                        {parsedCsvSummary?.totalSeats || 0} <span className="text-xs font-normal">license</span>
+                      </h4>
+                    </div>
+                  </div>
+
+                  {/* Actions Header Bar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-100 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setCsvFilterType('ALL')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          csvFilterType === 'ALL' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                        }`}
+                      >
+                        Tất cả ({parsedCsvItems.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCsvFilterType('PERPETUAL')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          csvFilterType === 'PERPETUAL' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600'
+                        }`}
+                      >
+                        🛡️ Vĩnh viễn ({parsedCsvSummary?.perpetualCount || 0})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCsvFilterType('SUBSCRIPTION')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          csvFilterType === 'SUBSCRIPTION' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-blue-600'
+                        }`}
+                      >
+                        ☁️ Thuê bao ({parsedCsvSummary?.subscriptionCount || 0})
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setParsedCsvItems([]);
+                          setParsedCsvSummary(null);
+                          setCsvFile(null);
+                        }}
+                        className="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
+                      >
+                        Chọn file khác
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleImportCsvToItam}
+                        disabled={importingCsv}
+                        className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/25 flex items-center gap-2 cursor-pointer disabled:opacity-50 transition-all hover:scale-102 active:scale-98"
+                      >
+                        <Layers className={`w-3.5 h-3.5 ${importingCsv ? 'animate-spin' : ''}`} />
+                        <span>{importingCsv ? 'Đang nạp vào ITAM...' : `📥 Nạp Toàn Bộ ${parsedCsvItems.length} Sản Phẩm Vào ITAM`}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Import Success / Error Banner */}
+                  {csvImportResult && (
+                    <div className={`p-4 rounded-2xl text-xs space-y-1 animate-in fade-in border ${
+                      csvImportResult.success
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-100'
+                        : 'bg-rose-50 border-rose-300 text-rose-950 dark:bg-rose-950/60 dark:text-rose-100'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold flex items-center gap-1.5">
+                          {csvImportResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-rose-600" />}
+                          <span>{csvImportResult.message}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCsvImportResult(null)}
+                          className="text-slate-500 hover:text-slate-700 text-[11px] font-bold cursor-pointer"
+                        >
+                          ✕ Đóng
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Preview Table */}
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden max-h-96 overflow-y-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 text-[10px] font-black uppercase sticky top-0 border-b border-slate-100 dark:border-slate-800">
+                        <tr>
+                          <th className="py-2.5 px-4">Tên Sản Phẩm Microsoft</th>
+                          <th className="py-2.5 px-3">Phân Loại</th>
+                          <th className="py-2.5 px-3">Danh Mục ITAM</th>
+                          <th className="py-2.5 px-3 text-center">Số Lượng Đã Mua</th>
+                          <th className="py-2.5 px-4 text-center">Trạng Thái</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                        {parsedCsvItems
+                          .filter((item) => {
+                            if (csvFilterType === 'PERPETUAL') return item.licenseType === 'PERPETUAL';
+                            if (csvFilterType === 'SUBSCRIPTION') return item.licenseType === 'SUBSCRIPTION';
+                            return true;
+                          })
+                          .map((item, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                              <td className="py-2.5 px-4">
+                                <div className="flex items-center gap-2">
+                                  {item.licenseType === 'PERPETUAL' ? (
+                                    item.productName.toLowerCase().includes('server') ? (
+                                      <Server className="w-4 h-4 text-purple-600 shrink-0" />
+                                    ) : (
+                                      <Monitor className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    )
+                                  ) : (
+                                    <Cloud className="w-4 h-4 text-blue-600 shrink-0" />
+                                  )}
+                                  <span className="font-bold text-slate-900 dark:text-white">{item.productName}</span>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                {item.licenseType === 'PERPETUAL' ? (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
+                                    🛡️ Vĩnh viễn (Perpetual)
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300">
+                                    ☁️ Thuê bao (Subscription)
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 text-[11px]">
+                                {item.category}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-extrabold text-slate-900 dark:text-white">
+                                {item.totalSeats} <span className="text-[10px] font-normal text-slate-400">seats</span>
+                              </td>
+                              <td className="py-2.5 px-4 text-center">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                  {item.rawStatus || 'Đang hoạt động'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

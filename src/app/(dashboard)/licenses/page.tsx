@@ -3951,6 +3951,7 @@ export default function LicensesPage() {
       <LicenseIntegrationModal
         isOpen={isIntegrationModalOpen}
         onClose={() => setIsIntegrationModalOpen(false)}
+        onSuccess={() => loadData(true)}
         isEn={language === 'en'}
       />
 

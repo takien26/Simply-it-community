@@ -35,6 +35,20 @@ export const M365_SKU_CATALOG: Record<string, { name: string; estMonthlyPriceVnd
   M365_COPILOT: { name: 'Microsoft 365 Copilot', estMonthlyPriceVnd: 750000 },
   EMSPREMIUM: { name: 'Enterprise Mobility + Security E5', estMonthlyPriceVnd: 380000 },
   POWERAPPS_DEV: { name: 'Microsoft Power Apps for Developer', estMonthlyPriceVnd: 0 },
+  MICROSOFT_365_BUSINESS_STANDARD_NO_TEAMS: { name: 'Microsoft 365 Business Standard (không kèm Teams)', estMonthlyPriceVnd: 260000 },
+  TEAMS_ESSENTIALS_AAD: { name: 'Microsoft Teams Essentials', estMonthlyPriceVnd: 95000 },
+  WINDOWS_STORE: { name: 'Windows Store for Business', estMonthlyPriceVnd: 0 },
+  SHAREPOINTSTORAGE: { name: 'Office 365 Extra File Storage', estMonthlyPriceVnd: 45000 },
+  Microsoft_Teams_Rooms_Basic: { name: 'Microsoft Teams Rooms Basic', estMonthlyPriceVnd: 0 },
+  Microsoft_Teams_Rooms_Pro: { name: 'Microsoft Teams Rooms Pro', estMonthlyPriceVnd: 950000 },
+  Microsoft_365_Copilot: { name: 'Microsoft 365 Copilot', estMonthlyPriceVnd: 750000 },
+  CCIBOTS_PRIVPREV_VIRAL: { name: 'Power Virtual Agents Trial', estMonthlyPriceVnd: 0 },
+  POWERAPPS_VIRAL: { name: 'Microsoft Power Apps Plan 2 Trial', estMonthlyPriceVnd: 0 },
+  Power_Pages_vTrial_for_Makers: { name: 'Power Pages Maker Trial', estMonthlyPriceVnd: 0 },
+  Dynamics_365_Sales_Premium_Viral_Trial: { name: 'Dynamics 365 Sales Premium Trial', estMonthlyPriceVnd: 0 },
+  Dynamics_365_Intelligent_Order_Management_vTrial: { name: 'Dynamics 365 Intelligent Order Management Trial', estMonthlyPriceVnd: 0 },
+  'Teams_Premium_(for_Departments)': { name: 'Microsoft Teams Premium (Department)', estMonthlyPriceVnd: 175000 },
+  PROJECT_PLAN3_DEPT: { name: 'Project Plan 3 (Department)', estMonthlyPriceVnd: 720000 },
 
   // Mã GUID SKU thực tế (từ Microsoft Entra ID)
   'f245ecc8-75af-4f8e-b61f-27d8114de5f3': { name: 'Microsoft 365 Business Standard', estMonthlyPriceVnd: 285000 },
@@ -59,6 +73,18 @@ export const M365_SKU_CATALOG: Record<string, { name: string; estMonthlyPriceVnd
   '3f9f06f5-3c31-472c-985f-62d9c10ec167': { name: 'Power Pages Maker Trial', estMonthlyPriceVnd: 0 },
   '6ec92958-3cc1-49db-95bd-bc6b3798df71': { name: 'Dynamics 365 Sales Premium Trial', estMonthlyPriceVnd: 0 },
   'c9a0aa67-747d-4dbf-a9ae-844575460a44': { name: 'Microsoft 365 Additional Service', estMonthlyPriceVnd: 100000 },
+  '6470687e-a428-4b7a-bef2-8a291ad947c9': { name: 'Windows Store for Business', estMonthlyPriceVnd: 0 },
+  '99049c9c-6011-4908-bf17-15f496e6519d': { name: 'Office 365 Extra File Storage', estMonthlyPriceVnd: 45000 },
+  '52ea0e27-ae73-4983-a08f-13561ebdb823': { name: 'Microsoft Teams Premium (Department)', estMonthlyPriceVnd: 175000 },
+
+  // Nhận diện thân thiện bản quyền vĩnh viễn (On-premises / CSP Software)
+  'Windows GGWA - Windows 10 Professional - Legalization GetGenuine': { name: 'Windows 10 Pro GGWA (Get Genuine)', estMonthlyPriceVnd: 0 },
+  'Windows GGWA - Windows 11 Pro - Legalization Get Genuine': { name: 'Windows 11 Pro GGWA (Get Genuine)', estMonthlyPriceVnd: 0 },
+  'Office LTSC Standard 2021': { name: 'Office LTSC Standard 2021', estMonthlyPriceVnd: 0 },
+  'Office LTSC Standard 2024': { name: 'Office LTSC Standard 2024', estMonthlyPriceVnd: 0 },
+  'Windows Server 2022 Standard - 16 Core License Pack': { name: 'Windows Server 2022 Standard (16 Core)', estMonthlyPriceVnd: 0 },
+  'Windows Server 2025 Standard - 16 Core License Pack': { name: 'Windows Server 2025 Standard (16 Core)', estMonthlyPriceVnd: 0 },
+  'Windows Server 2022 - 1 User CAL': { name: 'Windows Server 2022 - 1 User CAL', estMonthlyPriceVnd: 0 },
 };
 
 const M365_SKU_NAMES = M365_SKU_CATALOG;
@@ -207,6 +233,36 @@ export async function syncAndReconcileM365(config: M365Config): Promise<Reconcil
       // 1b. Lấy danh sách các đợt mua (Subscriptions) qua /directory/subscriptions
       try {
         subscriptions = await fetchM365Subscriptions(token);
+        if (subscriptions.length > 0) {
+          const skuMap = new Map<string, CloudSubscriptionSku>();
+          skus.forEach((s) => skuMap.set(s.skuId, s));
+
+          subscriptions.forEach((sub) => {
+            const existing = skuMap.get(sub.skuId);
+            if (existing) {
+              if (!existing.expiryDate && sub.nextLifecycleDateTime) {
+                existing.expiryDate = sub.nextLifecycleDateTime;
+              }
+            } else if (sub.status === 'Enabled' || !sub.status) {
+              const partNo = sub.skuPartNumber || sub.skuId;
+              const mapped = M365_SKU_CATALOG[partNo] || M365_SKU_CATALOG[sub.skuId] || { name: partNo || sub.skuId, estMonthlyPriceVnd: 250000 };
+              const total = Number(sub.totalLicenses) || 0;
+              const newSku: CloudSubscriptionSku = {
+                skuId: sub.skuId,
+                skuPartNumber: partNo,
+                displayName: mapped.name,
+                totalPrepaid: total,
+                consumed: 0,
+                available: total,
+                expiryDate: sub.nextLifecycleDateTime || undefined,
+                unitPriceEstimate: mapped.estMonthlyPriceVnd,
+                currency: 'VND',
+              };
+              skuMap.set(sub.skuId, newSku);
+              skus.push(newSku);
+            }
+          });
+        }
       } catch (e) {
         console.warn('Lỗi gọi /directory/subscriptions:', e);
       }
