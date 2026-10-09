@@ -52,11 +52,8 @@ import {
   FolderCheck,
   Loader2,
   ExternalLink,
-  QrCode,
-  Copy,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import QRCode from 'qrcode';
 
 // ==================== INTERFACES & TYPES ====================
 export type AuditStatus = 'PENDING' | 'MATCHED' | 'MISMATCH_LOCATION_USER' | 'DAMAGED_OR_LOST';
@@ -160,13 +157,6 @@ export default function AssetsAuditPage() {
   ]);
   const [loadingMasterData, setLoadingMasterData] = useState(true);
 
-  // Server IP & Settings integration for mobile camera scanning on port 3443
-  const [serverUrlSetting, setServerUrlSetting] = useState('');
-  const [mobileHost, setMobileHost] = useState('');
-  const [generatedMobileUrl, setGeneratedMobileUrl] = useState('');
-  const [isSavingServerSetting, setIsSavingServerSetting] = useState(false);
-  const [savedSettingToast, setSavedSettingToast] = useState(false);
-
   // Campaigns list from API
   const [campaigns, setCampaigns] = useState<AuditSession[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
@@ -180,9 +170,6 @@ export default function AssetsAuditPage() {
   const [isNewSessionModalOpen, setIsNewSessionModalOpen] = useState(false);
   const [isFinalizeModalOpen, setIsFinalizeModalOpen] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [shareQrDataUrl, setShareQrDataUrl] = useState('');
-  const [copiedShareLink, setCopiedShareLink] = useState(false);
 
   // Photo Lightbox Modal
   const [lightboxPhotoUrl, setLightboxPhotoUrl] = useState<string | null>(null);
@@ -226,7 +213,6 @@ export default function AssetsAuditPage() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (lightboxPhotoUrl) setLightboxPhotoUrl(null);
-        else if (isShareModalOpen) setIsShareModalOpen(false);
         else if (isFinalizeModalOpen) setIsFinalizeModalOpen(false);
         else if (isNewSessionModalOpen) setIsNewSessionModalOpen(false);
         else if (userDropdownOpen) setUserDropdownOpen(false);
@@ -235,7 +221,7 @@ export default function AssetsAuditPage() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lightboxPhotoUrl, isShareModalOpen, isFinalizeModalOpen, isNewSessionModalOpen, userDropdownOpen, locationDropdownOpen]);
+  }, [lightboxPhotoUrl, isFinalizeModalOpen, isNewSessionModalOpen, userDropdownOpen, locationDropdownOpen]);
 
   // Table Filter & Search
   const [tableFilterTab, setTableFilterTab] = useState<'ALL' | 'MATCHED' | 'MISMATCH' | 'PENDING'>('ALL');
@@ -249,55 +235,7 @@ export default function AssetsAuditPage() {
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const locationDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Helper to extract hostname from any URL string
-  const extractHostname = (urlStr: string) => {
-    if (!urlStr || !urlStr.trim()) return '';
-    try {
-      let clean = urlStr.trim();
-      if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-        clean = 'http://' + clean;
-      }
-      const parsed = new URL(clean);
-      return parsed.hostname || '';
-    } catch {
-      return urlStr.trim().replace(/^https?:\/\//, '').split(':')[0].split('/')[0] || '';
-    }
-  };
 
-  // Helper to build full mobile audit URL (HTTPS & Port 3443)
-  const resolveMobileUrl = (sessionId: string, targetHost?: string) => {
-    let host = targetHost !== undefined ? targetHost.trim() : (mobileHost.trim() || '');
-
-    // 1. If not explicitly specified, try to parse from serverUrlSetting
-    if (!host && serverUrlSetting.trim()) {
-      host = extractHostname(serverUrlSetting);
-    }
-
-    // 2. If host is still empty or localhost, fallback to current window location hostname if on LAN
-    if ((!host || host === 'localhost' || host === '127.0.0.1') && typeof window !== 'undefined' && window.location.hostname) {
-      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        host = window.location.hostname;
-      }
-    }
-
-    // 3. Fallback to window.location.hostname or localhost
-    if (!host) {
-      host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    }
-
-    // Default port is fixed to 3443 with HTTPS as requested
-    return `https://${host}:3443/assets/audit?session=${sessionId}`;
-  };
-
-  // Helper to generate QR data URL
-  const generateAndSetQr = async (url: string) => {
-    try {
-      const qrData = await QRCode.toDataURL(url, { width: 300, margin: 2 });
-      setShareQrDataUrl(qrData);
-    } catch (e) {
-      console.error('Failed to generate QR code for mobile share:', e);
-    }
-  };
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -334,17 +272,16 @@ export default function AssetsAuditPage() {
     return () => window.removeEventListener('paste', handleWindowPaste);
   }, [activeAuditingItem]);
 
-  // ==================== LOAD MASTER DATA & SETTINGS ====================
+  // ==================== LOAD MASTER DATA ====================
   const loadMasterData = async () => {
     setLoadingMasterData(true);
     try {
-      const [assetsRes, locationsRes, categoriesRes, usersRes, companiesRes, settingsRes] = await Promise.all([
+      const [assetsRes, locationsRes, categoriesRes, usersRes, companiesRes] = await Promise.all([
         fetch('/api/assets?pageSize=500').then((r) => r.json()).catch(() => ({ assets: [] })),
         fetch('/api/locations').then((r) => r.json()).catch(() => ({ data: [] })),
         fetch('/api/categories').then((r) => r.json()).catch(() => ({ data: [] })),
         fetch('/api/users').then((r) => r.json()).catch(() => ({ data: [] })),
         fetch('/api/companies').then((r) => r.json()).catch(() => ({ data: [] })),
-        fetch('/api/settings').then((r) => r.json()).catch(() => ({ data: [] })),
       ]);
 
       if (assetsRes.success || assetsRes.assets) {
@@ -361,16 +298,6 @@ export default function AssetsAuditPage() {
       }
       if (companiesRes.success && Array.isArray(companiesRes.data) && companiesRes.data.length > 0) {
         setCompanies(companiesRes.data);
-      }
-      if (settingsRes.success && Array.isArray(settingsRes.data)) {
-        const sUrl = settingsRes.data.find((s: any) => s.key === 'app.server_url')?.value;
-        if (sUrl && typeof sUrl === 'string') {
-          setServerUrlSetting(sUrl);
-          const parsedHost = extractHostname(sUrl);
-          if (parsedHost) {
-            setMobileHost(parsedHost);
-          }
-        }
       }
     } catch (error) {
       console.error('Failed to load audit master data:', error);
@@ -543,14 +470,7 @@ export default function AssetsAuditPage() {
       setIsNewSessionModalOpen(false);
       setViewMode('WORKSPACE');
 
-      // Generate Share QR pointing to HTTPS:3443
-      try {
-        const shareUrl = resolveMobileUrl(newCampaign.id);
-        setGeneratedMobileUrl(shareUrl);
-        await generateAndSetQr(shareUrl);
-      } catch (e) {
-        console.error('Failed to generate QR code for mobile share:', e);
-      }
+
     } catch (error: any) {
       console.error('Create campaign error:', error);
       alert(error.message || 'Không thể tạo đợt kiểm kê. Vui lòng thử lại.');
@@ -865,41 +785,7 @@ export default function AssetsAuditPage() {
     URL.revokeObjectURL(url);
   };
 
-  // ==================== OPEN MOBILE SHARE MODAL ====================
-  const openShareModal = async (hostOverride?: string) => {
-    if (!currentSession) return;
-    const initialHost = hostOverride !== undefined
-      ? hostOverride
-      : (mobileHost || extractHostname(serverUrlSetting) || (typeof window !== 'undefined' ? window.location.hostname : 'localhost'));
-    setMobileHost(initialHost);
-    const url = resolveMobileUrl(currentSession.id, initialHost);
-    setGeneratedMobileUrl(url);
-    await generateAndSetQr(url);
-    setIsShareModalOpen(true);
-  };
 
-  // Helper to save chosen IP back into app.server_url in Settings
-  const handleSaveHostToSettings = async () => {
-    if (!mobileHost.trim()) return;
-    setIsSavingServerSetting(true);
-    try {
-      const newServerUrl = `http://${mobileHost.trim()}:3000`;
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'app.server_url', value: newServerUrl }),
-      });
-      if (res.ok) {
-        setServerUrlSetting(newServerUrl);
-        setSavedSettingToast(true);
-        setTimeout(() => setSavedSettingToast(false), 3000);
-      }
-    } catch (e) {
-      console.error('Save server_url error:', e);
-    } finally {
-      setIsSavingServerSetting(false);
-    }
-  };
 
   // Filtered items in reconciliation table
   const displayItems = useMemo(() => {
@@ -1039,15 +925,6 @@ export default function AssetsAuditPage() {
 
           {viewMode === 'WORKSPACE' && currentSession && (
             <>
-              <button
-                type="button"
-                onClick={() => openShareModal()}
-                className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold border border-indigo-200 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-                title="Mở link kiểm kê trên điện thoại qua cổng HTTPS 3443 để sử dụng Camera"
-              >
-                <QrCode className="w-4 h-4 text-indigo-600" />
-                <span>{isEn ? '📱 Mobile Scanner (Port 3443)' : '📱 Mở Trên Di Động (Port 3443)'}</span>
-              </button>
               <button
                 type="button"
                 onClick={handleExportReport}
@@ -2581,147 +2458,7 @@ export default function AssetsAuditPage() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* ==================== MODAL: SHARE ON MOBILE VIA QR ===================== */}
-      {/* ========================================================================= */}
-      {isShareModalOpen && currentSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 text-center space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2 text-slate-900 font-extrabold text-sm">
-                <QrCode className="w-4 h-4 text-indigo-600" />
-                <span>Mở Chiến Dịch Trên Điện Thoại</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsShareModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            {/* HTTPS 3443 Camera Badge */}
-            <div className="p-3 bg-indigo-50 rounded-2xl border border-indigo-100 text-left space-y-1">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                <span className="text-[11px] font-bold text-indigo-900 font-mono">
-                  🔒 Cổng HTTPS 3443 (Tự động kích hoạt Camera điện thoại)
-                </span>
-              </div>
-              <p className="text-[10.5px] text-slate-600 leading-relaxed">
-                Trình duyệt trên điện thoại (Safari/Chrome) bắt buộc kết nối bảo mật <strong>HTTPS:3443</strong> để mở Camera quét mã QR và chụp ảnh hiện trạng thiết bị.
-              </p>
-            </div>
-
-            {/* Server IP / Host Configuration */}
-            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-left space-y-2">
-              <div className="flex items-center justify-between text-[11px]">
-                <label className="font-bold text-slate-700 flex items-center gap-1">
-                  <span>🌐 Địa chỉ IP Server:</span>
-                  {serverUrlSetting && (
-                    <span className="text-slate-400 font-normal truncate max-w-[130px]" title={serverUrlSetting}>
-                      (Gốc: {serverUrlSetting})
-                    </span>
-                  )}
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-                    setMobileHost(currentHost);
-                    const newUrl = resolveMobileUrl(currentSession.id, currentHost);
-                    setGeneratedMobileUrl(newUrl);
-                    generateAndSetQr(newUrl);
-                  }}
-                  className="text-indigo-600 hover:text-indigo-700 font-bold underline text-[10.5px] cursor-pointer"
-                >
-                  Lấy IP máy hiện tại
-                </button>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  placeholder="VD: 192.168.1.50 hoặc simply-it.company.local"
-                  value={mobileHost}
-                  onChange={(e) => {
-                    const newHost = e.target.value;
-                    setMobileHost(newHost);
-                    const newUrl = resolveMobileUrl(currentSession.id, newHost);
-                    setGeneratedMobileUrl(newUrl);
-                    generateAndSetQr(newUrl);
-                  }}
-                  className="flex-1 p-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-900 outline-none focus:border-indigo-500 shadow-2xs"
-                />
-              </div>
-              <p className="text-[10px] text-slate-500">
-                💡 Nếu quét QR từ iPhone/Android, đảm bảo điện thoại kết nối chung mạng Wi-Fi và nhập đúng IP LAN của máy tính.
-              </p>
-            </div>
-
-            {/* QR Code Container */}
-            <div className="space-y-1">
-              <p className="text-xs text-slate-600 font-medium">
-                Dùng Camera điện thoại hoặc Zalo quét mã QR bên dưới:
-              </p>
-              {shareQrDataUrl ? (
-                <div className="p-3 bg-white rounded-2xl inline-block shadow-md mx-auto border-2 border-indigo-100">
-                  <img src={shareQrDataUrl} alt="Mobile Audit QR" className="w-56 h-56 mx-auto object-contain" />
-                </div>
-              ) : (
-                <div className="w-56 h-56 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto text-slate-400 text-xs">
-                  Đang tạo mã QR...
-                </div>
-              )}
-            </div>
-
-            {/* Generated Link URL Display */}
-            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-left">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">
-                Đường dẫn trực tiếp (HTTPS :3443):
-              </span>
-              <p className="text-[11px] font-mono text-emerald-700 break-all select-all font-semibold">
-                {generatedMobileUrl || resolveMobileUrl(currentSession.id)}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const urlToCopy = generatedMobileUrl || resolveMobileUrl(currentSession.id);
-                    navigator.clipboard.writeText(urlToCopy);
-                    setCopiedShareLink(true);
-                    setTimeout(() => setCopiedShareLink(false), 2500);
-                  }}
-                  className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all active:scale-95"
-                >
-                  {copiedShareLink ? <Check className="w-4 h-4 text-emerald-200" /> : <Tag className="w-4 h-4" />}
-                  <span>{copiedShareLink ? '✅ Đã sao chép link!' : 'Sao chép Link kiểm kê'}</span>
-                </button>
-
-                <a
-                  href={generatedMobileUrl || resolveMobileUrl(currentSession.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-200 shadow-xs"
-                  title="Mở thử trong tab mới để kiểm tra kết nối HTTPS"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Mở tab mới</span>
-                </a>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsShareModalOpen(false)}
-                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 rounded-xl text-xs font-bold cursor-pointer transition-colors"
-              >{isEn ? 'Close' : 'Đóng'}</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* ==================== MODAL: FINALIZE CONFIRMATION ====================== */}
