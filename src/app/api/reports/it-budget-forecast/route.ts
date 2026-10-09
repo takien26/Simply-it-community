@@ -153,10 +153,11 @@ export async function GET(req: NextRequest) {
     const lowStockParts: any[] = [];
 
     for (const part of spareParts) {
-      if (part.quantity <= part.minStock) {
-        const targetStock = Math.max(part.minStock * 2, part.quantity + 5);
-        const shortage = targetStock - part.quantity;
-        const unitPrice = Number(part.unitPrice) || 250000;
+      const minStock = part.minStock ?? 0;
+      const quantity = part.quantity ?? 0;
+      if (quantity < minStock) {
+        const shortage = minStock - quantity;
+        const unitPrice = Math.max(0, Number(part.unitPrice) || 0);
         const restockCost = shortage * unitPrice;
 
         totalSparePartsCost += restockCost;
@@ -164,8 +165,8 @@ export async function GET(req: NextRequest) {
           id: part.id,
           name: part.name,
           sku: part.sku,
-          quantity: part.quantity,
-          minStock: part.minStock,
+          quantity,
+          minStock,
           shortage,
           unitPrice,
           restockCost,
@@ -180,12 +181,14 @@ export async function GET(req: NextRequest) {
       services: number;
       licenses: number;
       hardware: number;
+      spareParts: number;
       total: number;
     }> = [];
 
     const monthNames = ['Thg 1', 'Thg 2', 'Thg 3', 'Thg 4', 'Thg 5', 'Thg 6', 'Thg 7', 'Thg 8', 'Thg 9', 'Thg 10', 'Thg 11', 'Thg 12'];
     const monthlyBaseServices = Math.round(serviceAnnualTotal / 12);
     const monthlyBaseHardware = Math.round(totalHardwareCapEx / 12);
+    const monthlyBaseSpareParts = Math.round(totalSparePartsCost / 12);
 
     for (let i = 0; i < 12; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
@@ -212,7 +215,7 @@ export async function GET(req: NextRequest) {
         .reduce((sum, s) => sum + (s.cost || 0), 0);
 
       const servicesTotal = monthlyBaseServices + serviceSpikes;
-      const total = servicesTotal + licCostThisMonth + monthlyBaseHardware;
+      const total = servicesTotal + licCostThisMonth + monthlyBaseHardware + monthlyBaseSpareParts;
 
       monthlyForecast.push({
         monthKey,
@@ -220,6 +223,7 @@ export async function GET(req: NextRequest) {
         services: servicesTotal,
         licenses: licCostThisMonth,
         hardware: monthlyBaseHardware,
+        spareParts: monthlyBaseSpareParts,
         total,
       });
     }

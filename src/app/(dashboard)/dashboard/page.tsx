@@ -1317,9 +1317,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* 4 Key Budget Stat Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="p-3.5 rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 text-white space-y-1 shadow-xs">
+          {/* 5 Key Budget Stat Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="p-3.5 rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 text-white space-y-1 shadow-xs col-span-2 sm:col-span-1">
               <span className="text-[10.5px] font-bold text-slate-300 uppercase tracking-wider block">
                 {isEn ? 'Total 12M Budget' : 'Tổng Dự Toán 12 Tháng'}
               </span>
@@ -1366,6 +1366,18 @@ export default function DashboardPage() {
                 {forecastData.summary?.replacementCandidateCount || 0} {isEn ? 'devices with Health < 40' : 'thiết bị điểm sức khỏe < 40'}
               </span>
             </div>
+
+            <div className="p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 space-y-1">
+              <span className="text-[10.5px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider block">
+                {isEn ? 'Spare Parts Restock' : 'Bổ Sung Linh Kiện'}
+              </span>
+              <strong className="text-lg font-black text-amber-900 dark:text-amber-100 block truncate">
+                {formatVND(forecastData.summary?.totalSparePartsCost || 0)}
+              </strong>
+              <span className="text-[10px] text-amber-700 dark:text-amber-400 block">
+                {forecastData.summary?.lowStockPartCount || 0} {isEn ? 'parts low on stock' : 'mặt hàng dưới định mức'}
+              </span>
+            </div>
           </div>
 
           {/* Conditional Display: Cashflow Chart or Replacement Candidates Table */}
@@ -1386,7 +1398,8 @@ export default function DashboardPage() {
                   <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
                   <Bar dataKey="services" name={isEn ? 'Services & Telecom' : 'Dịch Vụ & Cloud'} fill="#06B6D4" stackId="a" />
                   <Bar dataKey="licenses" name={isEn ? 'License Renewals' : 'Gia Hạn Bản Quyền'} fill="#8B5CF6" stackId="a" />
-                  <Bar dataKey="hardware" name={isEn ? 'Hardware CapEx Allocation' : 'Phân Bổ Thay Thế Máy'} fill="#F43F5E" stackId="a" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="hardware" name={isEn ? 'Hardware CapEx Allocation' : 'Phân Bổ Thay Thế Máy'} fill="#F43F5E" stackId="a" />
+                  <Bar dataKey="spareParts" name={isEn ? 'Spare Parts Restock' : 'Bổ Sung Linh Kiện'} fill="#F59E0B" stackId="a" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
