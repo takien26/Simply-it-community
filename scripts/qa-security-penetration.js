@@ -100,27 +100,36 @@ async function runSecurityTests() {
   // --- BƯỚC 1: CHUẨN BỊ TÀI KHOẢN ---
   console.log('📌 [Setup] Đăng nhập Admin & Khởi tạo User nhân viên (Staff)...');
   
-  // Đảm bảo mật khẩu admin@company.com đúng
-  const adminUser = await prisma.user.findFirst({
-    where: { role: { name: { in: ['Super Admin', 'Admin'] } } },
-    include: { role: true },
-  });
-  if (!adminUser) {
-    throw new Error('Không tìm thấy tài khoản Quản trị viên trong Database');
+  // Tạo hoặc dùng tài khoản Quản trị viên phục vụ QA (không can thiệp hoặc ghi đè mật khẩu của tài khoản thật)
+  let adminRole = (await prisma.role.findFirst({ where: { name: 'Super Admin' } })) ||
+                  (await prisma.role.findFirst({ where: { name: 'Admin' } }));
+  if (!adminRole) {
+    throw new Error('Không tìm thấy vai trò Quản trị viên trong Database');
   }
-  const adminHashed = bcrypt.hashSync('Admin@123', 10);
-  await prisma.user.update({
-    where: { id: adminUser.id },
-    data: { passwordHash: adminHashed, isActive: true },
+
+  const qaAdminEmail = 'qa_security_admin@company.test';
+  const qaAdminPassword = process.env.TEST_PASSWORD || 'Admin@123';
+  const qaAdminHashed = bcrypt.hashSync(qaAdminPassword, 10);
+  const adminUser = await prisma.user.upsert({
+    where: { email: qaAdminEmail },
+    update: { passwordHash: qaAdminHashed, isActive: true, roleId: adminRole.id },
+    create: {
+      email: qaAdminEmail,
+      fullName: 'QA Security Admin',
+      roleId: adminRole.id,
+      passwordHash: qaAdminHashed,
+      isActive: true,
+    },
+    include: { role: true },
   });
 
   const adminLogin = await request('/api/auth/login', {
     method: 'POST',
-    body: { email: adminUser.email, password: 'Admin@123' },
+    body: { email: adminUser.email, password: qaAdminPassword },
     token: false,
   });
   adminToken = extractToken(adminLogin);
-  assert(adminLogin.status === 200 && Boolean(adminToken), 'SETUP-01', `Đăng nhập Quản trị viên (${adminUser.email}) lấy Session Token`);
+  assert(adminLogin.status === 200 && Boolean(adminToken), 'SETUP-01', `Đăng nhập Quản trị viên QA (${adminUser.email}) lấy Session Token`);
 
   // Tìm hoặc tạo Staff user
   let staffRole = await prisma.role.findFirst({ where: { name: 'Staff' } }) ||
