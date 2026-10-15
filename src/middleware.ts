@@ -17,6 +17,7 @@ const publicRoutes = [
   '/api/scripts',
   '/secret',
   '/api/passwords/share',
+  '/api/enterprise',
 ];
 
 const CRON_SECRET = process.env.CRON_SECRET || 'simply-internal-cron';
