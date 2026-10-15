@@ -1,7 +1,7 @@
 'use client';
 
-import { useState , useEffect} from 'react';
-import { X, Check, ShieldCheck, Sparkles, Shield, Building2, Phone, Mail, Send, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Check, ShieldCheck, Sparkles, Shield, Building2, Phone, Mail, Send, CheckCircle2, Copy, ExternalLink, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 
 interface EnterpriseUpgradeModalProps {
@@ -36,12 +36,72 @@ export function EnterpriseUpgradeModal({ isOpen, onClose, featureRequested }: En
       : ''
   );
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [mailtoUrl, setMailtoUrl] = useState('');
+  const [gmailUrl, setGmailUrl] = useState('');
+  const [copyText, setCopyText] = useState('');
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const triggerOpenOutlook = (customMailto?: string) => {
+    const url = customMailto || mailtoUrl;
+    if (!url) return;
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_self';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      window.location.href = url;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setLoading(true);
+
+    const subject = `[SIMPLY IT] Đăng ký tư vấn bản Enterprise - ${company || fullName || 'Khách hàng'}`;
+    const emailBody = `Kính gửi tác giả Tạ Trung Kiên (SIMPLY IT),
+
+Tôi quan tâm và muốn đăng ký tư vấn / nhận báo giá gói SIMPLY IT Enterprise. Dưới đây là thông tin liên hệ của tôi:
+
+• Họ và tên: ${fullName || 'N/A'}
+• Email công việc: ${email || 'N/A'}
+• Số điện thoại / Zalo: ${phone || 'N/A'}
+• Tên Doanh nghiệp: ${company || 'N/A'}
+• Nhu cầu cụ thể:
+${message || 'Quan tâm tư vấn tính năng bản Enterprise'}
+
+Thời gian gửi: ${new Date().toLocaleString('vi-VN')}
+--------------------------------------------------
+Gửi từ hệ thống SIMPLY IT Management Portal`;
+
+    const generatedMailto = `mailto:takien26@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+    const generatedGmail = `https://mail.google.com/mail/?view=cm&fs=1&to=takien26@gmail.com&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+
+    setMailtoUrl(generatedMailto);
+    setGmailUrl(generatedGmail);
+    setCopyText(`Tiêu đề: ${subject}\n\n${emailBody}`);
+
+    // 1. Tự động mở Outlook / Email Client ngay lập tức
+    triggerOpenOutlook(generatedMailto);
+
+    // 2. Ghi nhận log lead vào backend (nếu có cấu hình SMTP thì backend cũng gửi thêm 1 bản)
+    try {
+      await fetch('/api/enterprise/consultation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, email, phone, company, message }),
+      });
+    } catch (err) {
+      console.warn('[Enterprise Consultation] API error:', err);
+    } finally {
+      setLoading(false);
+      setSubmitted(true);
+    }
   };
 
   return (
@@ -175,23 +235,79 @@ export function EnterpriseUpgradeModal({ isOpen, onClose, featureRequested }: En
           {/* Contact Form or Success State */}
           <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
             {submitted ? (
-              <div className="py-6 text-center space-y-3">
-                <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
-                <h4 className="text-base font-bold text-slate-900 dark:text-white">
-                  {isEn ? 'Thank you! Your request has been received.' : 'Cảm ơn bạn! Yêu cầu tư vấn đã được ghi nhận.'}
-                </h4>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  {isEn
-                    ? 'Our solution consultant will contact you shortly to schedule an Enterprise demo and share pricing.'
-                    : 'Đội ngũ tư vấn giải pháp sẽ liên hệ lại với bạn trong vòng 24 giờ làm việc để tư vấn và cung cấp giấy phép Enterprise.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="mt-2 px-6 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold cursor-pointer"
-                >
-                  {isEn ? 'Close Window' : 'Đóng cửa sổ'}
-                </button>
+              <div className="py-6 px-4 text-center space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                <div className="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 mx-auto flex items-center justify-center shadow-md">
+                  <Mail className="w-7 h-7" />
+                </div>
+
+                <div className="space-y-1">
+                  <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                    {isEn ? 'Outlook / Email Client Triggered!' : 'Đã Kích Hoạt Mở Outlook / Ứng Dụng Mail!'}
+                  </h4>
+                  <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
+                    {isEn
+                      ? 'A pre-filled email to takien26@gmail.com has been prepared in your default mail app. Simply click "Send" in Outlook to complete.'
+                      : 'Hệ thống đã tự động tạo sẵn email gửi tới tác giả (takien26@gmail.com) trên ứng dụng Outlook của bạn. Bạn chỉ cần nhấn nút "Gửi (Send)" trong Outlook.'}
+                  </p>
+                </div>
+
+                {/* Quick actions box if Outlook did not open or user uses Gmail Web */}
+                <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-lg mx-auto space-y-3 shadow-xs text-left">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block text-center">
+                    {isEn ? 'Send Options & Fallbacks' : 'Các Lựa Chọn Gửi Thư Nhanh'}
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => triggerOpenOutlook()}
+                      className="px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                    >
+                      <Mail className="w-4 h-4" />
+                      <span>{isEn ? 'Open Outlook Again' : 'Mở lại Outlook'}</span>
+                    </button>
+
+                    <a
+                      href={gmailUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm text-center"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>{isEn ? 'Send via Web Gmail' : 'Gửi qua Web Gmail'}</span>
+                    </a>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(copyText);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 3000);
+                    }}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  >
+                    {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-400" />}
+                    <span>{copied ? (isEn ? 'Copied to Clipboard!' : 'Đã sao chép nội dung thư!') : (isEn ? 'Copy email text to paste in Zalo / Chat' : 'Sao chép nội dung thư để gửi Zalo / Chat')}</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setSubmitted(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  >
+                    {isEn ? '← Edit Info' : '← Sửa lại thông tin'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-5 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 transition-colors cursor-pointer"
+                  >
+                    {isEn ? 'Done / Close' : 'Hoàn tất & Đóng'}
+                  </button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -290,10 +406,20 @@ export function EnterpriseUpgradeModal({ isOpen, onClose, featureRequested }: En
 
                   <button
                     type="submit"
-                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={loading}
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
                   >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>{isEn ? 'Submit Enterprise Request' : 'Gửi Yêu Cầu Tư Vấn Enterprise'}</span>
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>{isEn ? 'Processing...' : 'Đang xử lý...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>{isEn ? 'Submit Enterprise Request' : 'Gửi Yêu Cầu Tư Vấn Enterprise'}</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
