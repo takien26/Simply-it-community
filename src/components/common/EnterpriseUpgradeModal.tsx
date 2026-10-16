@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Check, ShieldCheck, Sparkles, Mail, Copy, ExternalLink, UserCheck } from 'lucide-react';
+import { X, Check, ShieldCheck, Sparkles, Mail, Copy, ExternalLink } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
 
 const CONTACT_EMAIL = 'takien26@gmail.com';
@@ -30,18 +30,15 @@ export function EnterpriseUpgradeModal({ isOpen, onClose, featureRequested }: En
 
   if (!isOpen) return null;
 
-  const subject = `[SIMPLY IT] Đăng ký tư vấn & Báo giá bản Enterprise${featureRequested ? ` - ${featureRequested}` : ''}`;
-  const body = `Kính gửi tác giả Tạ Trung Kiên (SIMPLY IT),
+  const subject = `[SIMPLY IT] Tư vấn bản Enterprise${featureRequested ? ` - ${featureRequested}` : ''}`;
+  const body = `Hi SIMPLY IT,
 
-Tôi quan tâm và muốn nhận tư vấn / báo giá bản quyền gói SIMPLY IT Enterprise${featureRequested ? ` (Tính năng quan tâm: ${featureRequested})` : ''}.
+Mình đang quan tâm đến gói SIMPLY IT Enterprise${featureRequested ? ` (${featureRequested})` : ''} và muốn trao đổi thêm về nhu cầu triển khai:
 
-Thông tin liên hệ của tôi:
-- Họ và tên: 
-- Số điện thoại / Zalo: 
-- Tên Doanh nghiệp: 
-- Quy mô / Nhu cầu cụ thể: 
+- Nhu cầu cụ thể: 
+- Thông tin liên hệ (SĐT / Zalo): 
 
-Trân trọng!`;
+Cảm ơn!`;
 
   const mailtoUrl = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${CONTACT_EMAIL}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -183,26 +180,16 @@ Trân trọng!`;
 
           {/* Direct Contact Action Box (No form) */}
           <div className="p-6 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-br from-indigo-50/70 via-white to-blue-50/50 dark:from-slate-800/80 dark:via-slate-900 dark:to-indigo-950/30 space-y-5 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
-              <div className="space-y-1">
-                <h4 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-indigo-600" />
-                  <span>{isEn ? 'Direct Contact for Enterprise Licensing & Demo' : 'Liên Hệ Trực Tiếp Để Nhận Báo Giá & Cấp Phép Enterprise'}</span>
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {isEn
-                    ? 'Click any email method below to automatically open a pre-filled message to the author.'
-                    : 'Chọn phương thức bên dưới để mở trực tiếp trình gửi thư (Outlook, Gmail...) với nội dung đã được soạn sẵn.'}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0">
-                <UserCheck className="w-4 h-4 text-indigo-600 shrink-0" />
-                <div className="text-xs">
-                  <span className="text-slate-400 block text-[10px] leading-none">{isEn ? 'Author & Developer' : 'Tác giả & Phát triển'}</span>
-                  <strong className="text-slate-900 dark:text-white font-bold">Tạ Trung Kiên</strong>
-                </div>
-              </div>
+            <div className="pb-4 border-b border-slate-200/80 dark:border-slate-800 space-y-1">
+              <h4 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <Mail className="w-4 h-4 text-indigo-600" />
+                <span>{isEn ? 'Direct Contact for Enterprise Consultation' : 'Gửi Nhu Cầu Tư Vấn & Triển Khai Bản Enterprise'}</span>
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {isEn
+                  ? 'Click any email method below to quickly send your requirements.'
+                  : 'Chọn phương thức bên dưới để mở nhanh trình gửi thư (Outlook, Gmail...) và gửi nhu cầu của bạn.'}
+              </p>
             </div>
 
             {/* 3 Direct Email Launch Buttons */}
