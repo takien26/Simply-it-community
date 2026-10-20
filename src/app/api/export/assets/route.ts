@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Style Title Header
-    sheet.mergeCells('A1:O1');
+    sheet.mergeCells('A1:Q1');
     const titleCell = sheet.getCell('A1');
     titleCell.value = 'DANH SÁCH TÀI SẢN & THIẾT BỊ CÔNG NGHỆ THÔNG TIN';
     titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     sheet.getRow(1).height = 35;
 
     // Subtitle
-    sheet.mergeCells('A2:O2');
+    sheet.mergeCells('A2:Q2');
     const subCell = sheet.getCell('A2');
     const filterInfo = companyName ? ` | Bộ lọc Công ty: ${companyName}` : '';
     subCell.value = `Thời gian xuất: ${new Date().toLocaleString('vi-VN')} | Tổng số lượng: ${assets.length} thiết bị${filterInfo}`;
@@ -103,10 +103,12 @@ export async function GET(request: NextRequest) {
       'Tên Thiết Bị & Model',
       'Danh Mục',
       'Số Serial',
+      'Địa Chỉ MAC',
       'Trạng Thái',
       'Tình Trạng',
       'Công Ty Quản Lý',
       'Người Đang Giữ / Sử Dụng',
+      'Tài Khoản Đăng Nhập',
       'Phòng Ban Người Dùng',
       'Vị Trí / Kho Lưu Trữ',
       'Nguyên Giá Mua (VND)',
@@ -153,6 +155,31 @@ export async function GET(request: NextRequest) {
       const holderName = assignedUser ? assignedUser.fullName : 'Sẵn sàng trong kho';
       const holderDept = assignedUser?.department || (assignedUser ? 'Nhân sự' : 'Kho IT');
 
+      let specsObj: any = {};
+      if (asset.specs) {
+        if (typeof asset.specs === 'string') {
+          try { specsObj = JSON.parse(asset.specs); } catch {}
+        } else if (typeof asset.specs === 'object') {
+          specsObj = asset.specs;
+        }
+      }
+
+      const macAddress = (
+        specsObj.macAddress ||
+        specsObj.mac ||
+        (Array.isArray(specsObj.network) ? specsObj.network[0]?.mac : null) ||
+        '—'
+      );
+
+      const loginUser = (
+        specsObj.loggedUser ||
+        specsObj.lastUser ||
+        specsObj.username ||
+        specsObj.loggedOnUser ||
+        assignedUser?.email ||
+        '—'
+      );
+
       const specsText = formatAssetSpecsForExport(asset.specs);
       const nameAndModel = formatDeviceNameAndModel(asset.name, asset.brand, asset.model);
 
@@ -169,10 +196,12 @@ export async function GET(request: NextRequest) {
         nameAndModel,
         asset.category?.name || 'Chưa phân loại',
         asset.serialNumber || '—',
+        macAddress,
         statusMap[asset.status] || asset.status,
         conditionMap[asset.condition] || asset.condition,
         asset.companyName || '—',
         holderName,
+        loginUser,
         holderDept,
         asset.location?.name || 'Kho IT',
         asset.purchasePrice ? Number(asset.purchasePrice) : 0,
@@ -189,9 +218,11 @@ export async function GET(request: NextRequest) {
       row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
-      row.getCell(12).numFmt = '#,##0 "₫"';
-      row.getCell(13).alignment = { vertical: 'middle', horizontal: 'center' };
-      row.getCell(15).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      row.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(11).alignment = { vertical: 'middle', horizontal: 'left' };
+      row.getCell(14).numFmt = '#,##0 "₫"';
+      row.getCell(15).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(17).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
 
       // Alternate row background
       if (index % 2 === 1) {
@@ -211,10 +242,12 @@ export async function GET(request: NextRequest) {
       { width: 36 }, // Tên & Model
       { width: 18 }, // Danh mục
       { width: 18 }, // Serial
+      { width: 20 }, // MAC
       { width: 20 }, // Trạng thái
       { width: 18 }, // Tình trạng
       { width: 25 }, // Công ty quản lý
       { width: 24 }, // Người đang giữ
+      { width: 24 }, // Tài khoản đăng nhập
       { width: 22 }, // Phòng ban người dùng
       { width: 20 }, // Vị trí
       { width: 18 }, // Giá mua
