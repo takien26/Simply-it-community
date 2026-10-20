@@ -595,6 +595,7 @@ export default function AssetsPage() {
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [activeDropdownAssetId, setActiveDropdownAssetId] = useState<string | null>(null);
   const [copiedScript, setCopiedScript] = useState(false);
+  const [scriptShellType, setScriptShellType] = useState<'powershell' | 'cmd'>('powershell');
   const [copiedToken, setCopiedToken] = useState(false);
 
   // Right-Click Context Menu State
@@ -3446,18 +3447,42 @@ export default function AssetsPage() {
               {(() => {
                 const cleanServerUrl = (agentServerUrl || 'http://localhost:3000').replace(/\/+$/, '');
                 const fetchBase = typeof window !== 'undefined' ? window.location.origin : cleanServerUrl;
-                const oneLiner = `powershell -ExecutionPolicy Bypass -Command "iex (irm '${fetchBase}/api/scripts/agent?serverUrl=${encodeURIComponent(cleanServerUrl)}')"` ;
+                const psOneLiner = `iex (irm '${fetchBase}/api/scripts/agent?serverUrl=${encodeURIComponent(cleanServerUrl)}')`;
+                const cmdOneLiner = `powershell -ExecutionPolicy Bypass -Command "iex (irm '${fetchBase}/api/scripts/agent?serverUrl=${encodeURIComponent(cleanServerUrl)}')"` ;
+                const activeCommand = scriptShellType === 'powershell' ? psOneLiner : cmdOneLiner;
+
                 return (
-                  <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wide flex items-center gap-1.5">
-                        <Zap className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Lệnh chạy 1-dòng tự động (One-Liner PowerShell):</span>
-                      </span>
+                  <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                        <button
+                          type="button"
+                          onClick={() => setScriptShellType('powershell')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                            scriptShellType === 'powershell'
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          Dán vào PowerShell (Khuyên dùng)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setScriptShellType('cmd')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                            scriptShellType === 'cmd'
+                              ? 'bg-slate-700 text-white shadow-xs'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          Dán vào CMD / Win+R
+                        </button>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(oneLiner);
+                          navigator.clipboard.writeText(activeCommand);
                           setCopiedScript(true);
                           setTimeout(() => setCopiedScript(false), 2500);
                         }}
@@ -3467,9 +3492,18 @@ export default function AssetsPage() {
                         <span>{copiedScript ? 'Đã sao chép!' : 'Sao chép'}</span>
                       </button>
                     </div>
+
                     <code className="block p-2.5 bg-slate-900 rounded-xl font-mono text-[11px] text-emerald-300 break-all select-all leading-relaxed">
-                      {oneLiner}
+                      {activeCommand}
                     </code>
+
+                    <p className="text-[11px] text-slate-400 leading-normal">
+                      {scriptShellType === 'powershell' ? (
+                        <span>💡 <strong>Khi đã mở sẵn PowerShell (PS C:\...):</strong> Chỉ cần dán lệnh trên và ấn Enter. Không cần thêm <code>powershell.exe</code> tránh lỗi xung đột tiến trình con.</span>
+                      ) : (
+                        <span>💡 <strong>Khi mở Command Prompt (cmd.exe) hoặc Win+R:</strong> Dán lệnh trên để tự động gọi PowerShell với quyền Bypass.</span>
+                      )}
+                    </p>
                   </div>
                 );
               })()}
@@ -3501,7 +3535,7 @@ export default function AssetsPage() {
                           Đã nhúng sẵn Endpoint: <code className="text-indigo-700 dark:text-indigo-300 font-bold">{cleanServerUrl}/api/auto-scan/collect</code>
                         </p>
                         <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-semibold">
-                          ⚠️ Không double-click! Mở PowerShell và chạy: <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">powershell -ExecutionPolicy Bypass -File get_system_info.ps1</code>
+                          ⚠️ Không double-click! Trong PowerShell chạy: <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">.\get_system_info.ps1</code> (hoặc trong CMD: <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">powershell -ExecutionPolicy Bypass -File get_system_info.ps1</code>)
                         </p>
                       </div>
 

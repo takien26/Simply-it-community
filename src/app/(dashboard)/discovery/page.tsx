@@ -458,7 +458,7 @@ export default function DiscoveryPage() {
   // Copy powershell command
   const copyPowerShellCmd = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001';
-    const cmd = `powershell -ExecutionPolicy Bypass -Command "iex (irm '${origin}/api/scripts/agent')"`;
+    const cmd = `iex (irm '${origin}/api/scripts/agent')`;
     navigator.clipboard.writeText(cmd);
     showToast('📋 Đã sao chép lệnh PowerShell vào Clipboard!');
   };
@@ -1124,10 +1124,10 @@ export default function DiscoveryPage() {
           </div>
 
           <div className="space-y-2">
-            <h3 className="font-bold text-slate-800 text-xs">Cách 1: Chạy trực tiếp 1 dòng lệnh PowerShell trên máy tính người dùng</h3>
+            <h3 className="font-bold text-slate-800 text-xs">Cách 1: Chạy trực tiếp 1 dòng lệnh trong cửa sổ PowerShell</h3>
             <div className="p-3 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-2xl flex items-center justify-between gap-2 overflow-x-auto">
               <code>
-                powershell -ExecutionPolicy Bypass -Command &quot;iex (irm &apos;{typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'}/api/scripts/agent&apos;)&quot;
+                iex (irm &apos;{typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'}/api/scripts/agent&apos;)
               </code>
               <button
                 type="button"
@@ -1137,6 +1137,9 @@ export default function DiscoveryPage() {
                 Copy
               </button>
             </div>
+            <p className="text-[11px] text-slate-500 italic">
+              💡 Lưu ý: Khi mở sẵn cửa sổ PowerShell (dấu nhắc <code>PS C:\...</code>), dán trực tiếp lệnh trên. Nếu chạy từ CMD đen hoặc hộp thoại Win+R, dùng cú pháp: <code>powershell -ExecutionPolicy Bypass -Command &quot;iex (irm ...)&quot;</code>
+            </p>
           </div>
 
           <div className="space-y-2 pt-3 border-t border-slate-100">
