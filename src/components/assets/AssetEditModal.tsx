@@ -1298,6 +1298,7 @@ export const AssetEditModal: React.FC<AssetEditModalProps> = ({
                 const specs = (editFormData.specs || {}) as Record<string, any>;
                 const osLic = specs.osLicense;
                 const officeLic = specs.officeLicense;
+                const avInfo = specs.antivirus;
                 const crack = specs.crackDetection;
                 const licMatches = Array.isArray(specs.licenseMatches) ? specs.licenseMatches : [];
                 const installedSw = Array.isArray(specs.installedSoftware) ? specs.installedSoftware : [];
@@ -1433,8 +1434,8 @@ export const AssetEditModal: React.FC<AssetEditModalProps> = ({
                         </div>
                       )}
 
-                      {/* Grid 2 Card OS & Office License */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      {/* Grid 3 Card OS, Office & Antivirus License */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                         {/* Windows OS License */}
                         <div className="p-3 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 space-y-2">
                           <div className="flex items-center justify-between">
@@ -1513,6 +1514,53 @@ export const AssetEditModal: React.FC<AssetEditModalProps> = ({
                               <span>{txt('Đưa Office Này Vào Kho License', 'Import Office into License Pool', 'このOfficeをライセンス台帳に登録')}</span>
                             </button>
                           )}
+                        </div>
+
+                        {/* Antivirus & Security Card */}
+                        <div className="p-3 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              {txt('Bảo Mật / Diệt Virus', 'Antivirus & Security', 'ウイルス対策・セキュリティ')}
+                            </span>
+                            {avInfo?.installed ? (
+                              avInfo.isActive ? (
+                                <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
+                                  🟢 {txt('Đang bảo vệ', 'Active', '有効')}
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
+                                  ⚠️ {txt('Chưa bật', 'Disabled', '無効')}
+                                </span>
+                              )
+                            ) : (
+                              <span className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold">
+                                {txt('Chưa phát hiện', 'Not detected', '未検出')}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11.5px] text-slate-800 dark:text-slate-200 font-semibold truncate" title={avInfo?.primaryName}>
+                            {avInfo?.primaryName || txt('Chưa phát hiện phần mềm bảo mật', 'No security software detected', 'セキュリティソフト未検出')}
+                          </div>
+                          <div className="text-[10.5px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                            <span>
+                              {txt('Định nghĩa:', 'Definitions:', '定義:')}{' '}
+                              <strong className={avInfo?.isUpToDate ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                                {avInfo?.isUpToDate ? txt('Mới nhất', 'Up to date', '最新') : (avInfo?.installed ? txt('Cần cập nhật', 'Outdated', '更新要') : '—')}
+                              </strong>
+                            </span>
+                            {avInfo?.products?.[0]?.source && (
+                              <span className="font-mono text-[9.5px] text-slate-400">{avInfo.products[0].source}</span>
+                            )}
+                          </div>
+                          <div className={`w-full py-1.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1 border ${
+                            avInfo?.isActive
+                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                              : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                          }`}>
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span>{avInfo?.isActive ? txt('Bảo vệ thời gian thực (Real-time)', 'Real-time Protection Active', 'リアルタイム保護有効') : txt('Chưa kích hoạt bảo vệ', 'Protection Inactive', '保護未起動')}</span>
+                          </div>
                         </div>
                       </div>
 

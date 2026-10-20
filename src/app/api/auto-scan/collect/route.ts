@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
       osLicense,
       officeLicense,
       crackDetection,
+      antivirus,
     } = body;
 
     if (!serialNumber && !hostname) {
@@ -145,6 +146,7 @@ export async function POST(request: NextRequest) {
         osLicense: osLicense || currentSpecs.osLicense || null,
         officeLicense: officeLicense || currentSpecs.officeLicense || null,
         crackDetection: crackDetection || currentSpecs.crackDetection || null,
+        antivirus: antivirus || specs?.antivirus || currentSpecs.antivirus || null,
         licenseMatches: reconciliation.licenseMatches,
         unmanagedCommercialApps: reconciliation.unmanagedCommercialApps,
         lastScannedAt: scannedAt || new Date().toISOString(),
@@ -324,6 +326,7 @@ export async function POST(request: NextRequest) {
       osLicense: osLicense || null,
       officeLicense: officeLicense || null,
       crackDetection: crackDetection || null,
+      antivirus: antivirus || specs?.antivirus || null,
       licenseMatches: reconciliation.licenseMatches,
       unmanagedCommercialApps: reconciliation.unmanagedCommercialApps,
       lastScannedAt: scannedAt || new Date().toISOString(),

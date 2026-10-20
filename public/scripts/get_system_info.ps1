@@ -420,6 +420,104 @@ function Get-CrackDetectionSafe {
     }
 }
 
+function Get-AntivirusSafe {
+    $avList = @()
+
+    # 1. WMI root\SecurityCenter2 (Desktop Windows 10/11)
+    try {
+        $wmiAv = @(Get-CimInstance -Namespace "root\SecurityCenter2" -ClassName AntiVirusProduct -ErrorAction Stop)
+        foreach ($item in $wmiAv) {
+            $name = [string]$item.displayName
+            if ([string]::IsNullOrWhiteSpace($name)) { continue }
+
+            $pState = [uint32]$item.productState
+            $activeBit = $pState -band 0xF000
+            $sigBit    = $pState -band 0x00F0
+
+            $isActive   = ($activeBit -eq 0x1000)
+            $isUpToDate = ($sigBit -eq 0x0000)
+
+            $stateText = switch ($activeBit) {
+                0x1000 { "Active" }
+                0x2000 { "Snoozed" }
+                0x3000 { "Expired" }
+                default { "Disabled" }
+            }
+
+            $avList += @{
+                name       = $name
+                isActive   = $isActive
+                isUpToDate = $isUpToDate
+                state      = $stateText
+                source     = "SecurityCenter2"
+            }
+        }
+    } catch {
+        Log "SecurityCenter2 AntiVirusProduct query skipped/failed: $($_.Exception.Message)"
+    }
+
+    # 2. Windows Defender (Get-MpComputerStatus - Windows Server hoac fallback)
+    if ($avList.Count -eq 0) {
+        try {
+            $defender = Get-MpComputerStatus -ErrorAction Stop
+            if ($defender -and ($defender.AntivirusEnabled -or $defender.RealTimeProtectionEnabled)) {
+                $avList += @{
+                    name       = "Windows Defender"
+                    isActive   = [bool]($defender.AntivirusEnabled -and $defender.RealTimeProtectionEnabled)
+                    isUpToDate = [bool]($defender.AntivirusSignatureAge -le 7)
+                    state      = if ($defender.RealTimeProtectionEnabled) { "Active" } else { "Disabled" }
+                    version    = [string]$defender.AntivirusSignatureVersion
+                    source     = "DefenderAPI"
+                }
+            }
+        } catch {
+            Log "DefenderAPI query skipped/failed: $($_.Exception.Message)"
+        }
+    }
+
+    # 3. Kiem tra cac dich vu diet virus pho bien (Kaspersky, ESET, Symantec, CrowdStrike, Sophos, Trend Micro, BKAV, McAfee)
+    if ($avList.Count -eq 0) {
+        $commonAvServices = @{
+            "WinDefend"       = "Windows Defender"
+            "klvflt"          = "Kaspersky Anti-Virus"
+            "AVP"             = "Kaspersky Total Security"
+            "ekrn"            = "ESET NOD32 Antivirus"
+            "ccSvcHst"        = "Symantec / Norton Security"
+            "CSFalconService" = "CrowdStrike Falcon"
+            "Sophos Endpoint" = "Sophos Endpoint Protection"
+            "McAfeeFramework" = "McAfee Endpoint Security"
+            "BkavService"     = "BKAV Pro"
+        }
+        foreach ($svcName in $commonAvServices.Keys) {
+            try {
+                $svc = Get-Service -Name $svcName -ErrorAction SilentlyContinue
+                if ($svc) {
+                    $avList += @{
+                        name       = $commonAvServices[$svcName]
+                        isActive   = ($svc.Status -eq 'Running')
+                        isUpToDate = $true
+                        state      = if ($svc.Status -eq 'Running') { "Active" } else { "Disabled" }
+                        source     = "ServiceCheck"
+                    }
+                    break
+                }
+            } catch {}
+        }
+    }
+
+    $pName = if ($avList.Count -gt 0) { [string]$avList[0].name } else { "Chưa phát hiện" }
+    $act = if ($avList.Count -gt 0) { [bool]$avList[0].isActive } else { $false }
+    $up = if ($avList.Count -gt 0) { [bool]$avList[0].isUpToDate } else { $false }
+
+    return @{
+        installed   = ($avList.Count -gt 0)
+        products    = $avList
+        primaryName = $pName
+        isActive    = $act
+        isUpToDate  = $up
+    }
+}
+
 # ==============================================================================
 # IT HEALTH MONITORING COLLECTORS (Lightweight, 1-3 seconds, isolated try/catch)
 # ==============================================================================
@@ -1113,20 +1211,28 @@ try {
     Log "Software count=$($InstalledApps.Count)"
 
     # --------------------------------------------------------------------------
-    # 3. License + Audit
+    # 3. License + Audit + Security
     # --------------------------------------------------------------------------
-    Write-Host "[3/4] Dang kiem tra ban quyen Windows, Office & dau hieu be khoa..." -ForegroundColor Green
+    Write-Host "[3/4] Dang kiem tra ban quyen Windows, Office & phan mem bao mat..." -ForegroundColor Green
 
     $licenseStart   = Get-Date
     $WindowsLicense = Invoke-CollectorSafe -Name "License.Windows" -DefaultValue @{ name=""; status="Unknown"; channel="Unknown"; partialKey=""; isKms=$false; isKmsCrack=$false; isGenuine=$false } -Collector { Get-WindowsLicenseSafe }
     $OfficeLicense  = Invoke-CollectorSafe -Name "License.Office" -DefaultValue @{ name="Microsoft Office"; status="NotDetected"; channel=""; partialKey=""; isKms=$false } -Collector { Get-OfficeLicenseSafe }
     $CrackDetection = Invoke-CollectorSafe -Name "Audit.CrackDetection" -DefaultValue @{ hasSuspect=$false; warnings=@() } -Collector { Get-CrackDetectionSafe }
+    $AntivirusInfo  = Invoke-CollectorSafe -Name "Security.Antivirus" -DefaultValue @{ installed=$false; products=@(); primaryName="Chưa phát hiện"; isActive=$false; isUpToDate=$false } -Collector { Get-AntivirusSafe }
     Log "License/audit collection time: $([math]::Round(((Get-Date)-$licenseStart).TotalSeconds,2)) sec"
 
     if ($WindowsLicense.isKmsCrack) {
         $kmsTarget = if ($WindowsLicense.kmsHost) { $WindowsLicense.kmsHost } else { "127.0.0.1" }
         $CrackDetection.warnings += "Ban quyen Windows kich hoat qua may chu KMS gia lap ($kmsTarget)"
         $CrackDetection.hasSuspect = $true
+    }
+
+    if ($AntivirusInfo.installed) {
+        $avStatusText = if ($AntivirusInfo.isActive) { "Dang bao ve" } else { "Chua bat" }
+        Write-Host "-> Bao mat / Diet virus: $($AntivirusInfo.primaryName) ($avStatusText)" -ForegroundColor Cyan
+    } else {
+        Write-Host "-> Bao mat / Diet virus: Chua phat hien" -ForegroundColor Yellow
     }
 
     # --------------------------------------------------------------------------
@@ -1151,11 +1257,13 @@ try {
             ipAddress    = $ipAddress
             macAddress   = $macAddress
             loggedUser   = $loggedUser
+            antivirus    = $AntivirusInfo
         }
         installedSoftware = $InstalledApps
         osLicense         = $WindowsLicense
         officeLicense     = $OfficeLicense
         crackDetection    = $CrackDetection
+        antivirus         = $AntivirusInfo
         scannedAt         = (Get-Date).ToString("o")
     }
 

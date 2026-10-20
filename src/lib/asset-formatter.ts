@@ -61,6 +61,13 @@ export function formatAssetSpecsForExport(rawSpecs: any): string {
     parts.push(`MAC: ${mac.trim()}`);
   }
 
+  // 8. Phần mềm bảo mật / Diệt virus
+  const av = specs.antivirus;
+  if (av && typeof av === 'object' && av.installed && av.primaryName) {
+    const avStatus = av.isActive ? 'Active' : 'Disabled';
+    parts.push(`Bảo mật: ${av.primaryName} (${avStatus})`);
+  }
+
   // Nếu không phát hiện trường chuẩn nào ở trên, chỉ trích xuất các thuộc tính đơn giản (primitive),
   // tuyệt đối bỏ qua mảng phần mềm, license object hay metadata quét
   if (parts.length === 0) {
@@ -79,6 +86,7 @@ export function formatAssetSpecsForExport(rawSpecs: any): string {
       'deviceType',
       'hasBattery',
       'loggedUser',
+      'antivirus',
     ];
 
     const fallbackList = Object.entries(specs)
