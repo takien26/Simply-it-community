@@ -242,10 +242,35 @@ export default function UsersPage() {
   });
 
   const [selectedAssetId, setSelectedAssetId] = useState('');
+  const [assetSearchQuery, setAssetSearchQuery] = useState('');
   const [assignAssetNotes, setAssignAssetNotes] = useState('');
 
   const [selectedLicenseId, setSelectedLicenseId] = useState('');
+  const [licenseSearchQuery, setLicenseSearchQuery] = useState('');
   const [assignLicenseNotes, setAssignLicenseNotes] = useState('');
+
+  const filteredAvailableAssets = useMemo(() => {
+    if (!assetSearchQuery.trim()) return availableAssets;
+    const q = assetSearchQuery.toLowerCase();
+    return availableAssets.filter((a) =>
+      (a.assetTag && a.assetTag.toLowerCase().includes(q)) ||
+      (a.name && a.name.toLowerCase().includes(q)) ||
+      (a.brand && a.brand.toLowerCase().includes(q)) ||
+      (a.model && a.model.toLowerCase().includes(q)) ||
+      (a.serialNumber && a.serialNumber.toLowerCase().includes(q))
+    );
+  }, [availableAssets, assetSearchQuery]);
+
+  const filteredAvailableLicenses = useMemo(() => {
+    if (!licenseSearchQuery.trim()) return availableLicenses;
+    const q = licenseSearchQuery.toLowerCase();
+    return availableLicenses.filter((l) =>
+      (l.name && l.name.toLowerCase().includes(q)) ||
+      (l.licenseKey && l.licenseKey.toLowerCase().includes(q)) ||
+      (l.vendor?.name && l.vendor.name.toLowerCase().includes(q)) ||
+      (l.companyName && l.companyName.toLowerCase().includes(q))
+    );
+  }, [availableLicenses, licenseSearchQuery]);
 
   // Onboard & Offboard States
   const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
@@ -366,8 +391,8 @@ export default function UsersPage() {
       const [usersRes, rolesRes, assetsRes, licRes, compRes, locRes, ouRes] = await Promise.all([
         fetch(`/api/users?search=${encodeURIComponent(search)}`).then((r) => r.json()),
         fetch('/api/roles').then((r) => r.json()),
-        fetch('/api/assets?status=AVAILABLE').then((r) => r.json()),
-        fetch('/api/licenses?status=ACTIVE').then((r) => r.json()),
+        fetch('/api/assets?status=AVAILABLE&pageSize=1000').then((r) => r.json()),
+        fetch('/api/licenses?status=ACTIVE&pageSize=1000').then((r) => r.json()),
         fetch('/api/companies').then((r) => r.json()).catch(() => ({ data: [] })),
         fetch('/api/locations').then((r) => r.json()).catch(() => ({ data: [] })),
         fetch('/api/companies/ou').then((r) => r.json()).catch(() => ({ data: [] })),
@@ -804,25 +829,46 @@ export default function UsersPage() {
   const handleRevokeAsset = async (assetId: string) => {
     if (!confirm('Bạn có chắc chắn muốn thu hồi thiết bị này về kho?')) return;
     try {
-      const res = await fetch(`/api/assets/${assetId}/assignments`, {
-        method: 'PUT',
+      const res = await fetch(`/api/assets/${assetId}/return`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: 'Thu hồi từ trang Quản lý Nhân sự' }),
       });
-      if (res.ok) loadData();
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        loadData();
+      } else {
+        alert(data.error || 'Thu hồi thiết bị thất bại');
+      }
     } catch {
-      alert('Thu hồi thất bại');
+      alert('Thu hồi thiết bị thất bại');
     }
   };
 
-  const handleRevokeLicense = async (licenseId: string, userId: string) => {
+  const handleRevokeLicense = async (
+    licenseId: string,
+    target?: string | { userId?: string; assignmentId?: string }
+  ) => {
     if (!confirm('Bạn có chắc chắn muốn thu hồi license này?')) return;
     try {
+      const body: Record<string, string> = {};
+      if (typeof target === 'string') {
+        body.userId = target;
+      } else if (target) {
+        if (target.assignmentId) body.assignmentId = target.assignmentId;
+        if (target.userId) body.userId = target.userId;
+      }
       const res = await fetch(`/api/licenses/${licenseId}/revoke`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify(body),
       });
-      if (res.ok) loadData();
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        loadData();
+      } else {
+        alert(data.error || 'Thu hồi license thất bại');
+      }
     } catch {
       alert('Thu hồi license thất bại');
     }
@@ -831,16 +877,20 @@ export default function UsersPage() {
   const handleOpenAssignAsset = (user: any) => {
     setSelectedUser(user);
     setSelectedAssetId(availableAssets[0]?.id || '');
+    setAssetSearchQuery('');
     setAssignAssetNotes('');
     setIsAssignAssetModalOpen(true);
   };
 
   const handleSaveAssignAsset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUser || !selectedAssetId) return;
+    if (!selectedUser || !selectedAssetId) {
+      alert('Vui lòng chọn một thiết bị cần bàn giao');
+      return;
+    }
 
     try {
-      const res = await fetch(`/api/assets/${selectedAssetId}/assignments`, {
+      const res = await fetch(`/api/assets/${selectedAssetId}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -849,27 +899,32 @@ export default function UsersPage() {
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setIsAssignAssetModalOpen(false);
         loadData();
       } else {
-        alert('Gán thiết bị thất bại');
+        alert(data.error || 'Gán thiết bị thất bại');
       }
     } catch {
-      alert('Lỗi kết nối');
+      alert('Lỗi kết nối máy chủ');
     }
   };
 
   const handleOpenAssignLicense = (user: any) => {
     setSelectedUser(user);
     setSelectedLicenseId(availableLicenses[0]?.id || '');
+    setLicenseSearchQuery('');
     setAssignLicenseNotes('');
     setIsAssignLicenseModalOpen(true);
   };
 
   const handleSaveAssignLicense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUser || !selectedLicenseId) return;
+    if (!selectedUser || !selectedLicenseId) {
+      alert('Vui lòng chọn một license cần cấp phát');
+      return;
+    }
 
     try {
       const res = await fetch(`/api/licenses/${selectedLicenseId}/assign`, {
@@ -881,14 +936,15 @@ export default function UsersPage() {
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setIsAssignLicenseModalOpen(false);
         loadData();
       } else {
-        alert('Gán license thất bại');
+        alert(data.error || 'Gán license thất bại');
       }
     } catch {
-      alert('Lỗi kết nối');
+      alert('Lỗi kết nối máy chủ');
     }
   };
 
@@ -910,6 +966,31 @@ export default function UsersPage() {
 
   // Smart Tree Filtering
   const filteredUsers = users.filter((u) => {
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      const matchBasic =
+        (u.fullName && u.fullName.toLowerCase().includes(q)) ||
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.phone && u.phone.toLowerCase().includes(q)) ||
+        (u.position && u.position.toLowerCase().includes(q)) ||
+        (u.department && u.department.toLowerCase().includes(q)) ||
+        (u.companyName && u.companyName.toLowerCase().includes(q));
+
+      const matchAsset = u.assetAssignments?.some((aa: any) =>
+        (aa.asset?.assetTag && aa.asset.assetTag.toLowerCase().includes(q)) ||
+        (aa.asset?.name && aa.asset.name.toLowerCase().includes(q)) ||
+        (aa.asset?.brand && aa.asset.brand.toLowerCase().includes(q)) ||
+        (aa.asset?.model && aa.asset.model.toLowerCase().includes(q)) ||
+        (aa.asset?.serialNumber && aa.asset.serialNumber.toLowerCase().includes(q))
+      );
+
+      const matchLicense = u.licenseAssignments?.some((la: any) =>
+        (la.license?.name && la.license.name.toLowerCase().includes(q)) ||
+        (la.license?.licenseKey && la.license.licenseKey.toLowerCase().includes(q))
+      );
+
+      if (!matchBasic && !matchAsset && !matchLicense) return false;
+    }
     // If RESIGNED tab is active, only show resigned users
     if (selectedFilter === 'RESIGNED') {
       if (u.isActive !== false) return false;
@@ -1210,7 +1291,7 @@ export default function UsersPage() {
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
               <input
                 type="text"
-                placeholder={language === 'en' ? 'Search by name, title, email, phone, company...' : 'Tìm theo tên nhân viên, chức danh, email, SĐT, công ty...'}
+                placeholder={language === 'en' ? 'Search by name, email, device tag, serial, license...' : 'Tìm theo tên nhân viên, email, mã thiết bị, serial, license...'}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white dark:focus:bg-slate-800 transition-all font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
@@ -1511,7 +1592,7 @@ export default function UsersPage() {
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleRevokeLicense(la.license.id, u.id);
+                                      handleRevokeLicense(la.license.id, { userId: u.id, assignmentId: la.id });
                                     }}
                                     title={isEn ? 'Revoke license' : 'Thu hồi bản quyền'}
                                     className="text-slate-400 hover:text-rose-600 opacity-60 group-hover/chip:opacity-100 transition-opacity p-0.5"
@@ -2589,63 +2670,144 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Modal: Gán Thiết Bị Cho Nhân Viên */}
+      {/* Modal: Gán Thiết Bị Cho Nhân Viên (Có ô tìm kiếm nhanh) */}
       {isAssignAssetModalOpen && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-2 border-b">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="font-bold text-base text-slate-900 flex items-center gap-1.5">
-                  <Laptop className="w-4 h-4 text-blue-600" />
-                  <span>Cấp Phát Thiết Bị Cho Nhân Sự</span>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-950/60 text-blue-600">
+                    <Laptop className="w-4 h-4" />
+                  </span>
+                  <span>{isEn ? 'Assign Device to Employee' : 'Cấp Phát Thiết Bị Cho Nhân Sự'}</span>
                 </h3>
-                <p className="text-xs text-slate-400">
-                  Nhân viên: <strong className="text-slate-800">{selectedUser.fullName}</strong>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isEn ? 'Employee:' : 'Nhân viên:'} <strong className="text-slate-800 dark:text-slate-200">{selectedUser.fullName}</strong> {selectedUser.email ? `(${selectedUser.email})` : ''}
                 </p>
               </div>
-              <button onClick={() => setIsAssignAssetModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setIsAssignAssetModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveAssignAsset} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Chọn thiết bị trong kho (Sẵn sàng cấp):</label>
-                <select
-                  value={selectedAssetId}
-                  onChange={(e) => setSelectedAssetId(e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold text-blue-900 bg-blue-50/40 outline-none"
-                >
-                  {availableAssets.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      [{a.assetTag}] {a.name} {a.serialNumber ? `(SN: ${a.serialNumber})` : ''}
-                    </option>
-                  ))}
-                </select>
+            <form onSubmit={handleSaveAssignAsset} className="space-y-4 text-xs">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    {isEn ? 'Select Available Asset:' : 'Chọn thiết bị trong kho (Sẵn sàng cấp):'}
+                  </label>
+                  <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full">
+                    {filteredAvailableAssets.length} / {availableAssets.length} {isEn ? 'available' : 'sẵn sàng'}
+                  </span>
+                </div>
+
+                {/* Ô tìm kiếm thiết bị nhanh */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder={isEn ? 'Quick search by tag, name, model, serial...' : 'Tìm kiếm nhanh mã máy, tên thiết bị, serial...'}
+                    value={assetSearchQuery}
+                    onChange={(e) => setAssetSearchQuery(e.target.value)}
+                    className="w-full pl-8 pr-8 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                    autoFocus
+                  />
+                  {assetSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setAssetSearchQuery('')}
+                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Danh sách thiết bị cuộn có thể click chọn */}
+                <div className="max-h-52 overflow-y-auto space-y-1.5 rounded-xl border border-slate-200 dark:border-slate-700 p-1.5 bg-slate-50/50 dark:bg-slate-800/40">
+                  {filteredAvailableAssets.length === 0 ? (
+                    <div className="py-6 text-center text-slate-400 italic text-xs">
+                      {availableAssets.length === 0
+                        ? (isEn ? 'No available assets in warehouse' : 'Kho hiện không có thiết bị sẵn sàng cấp (status AVAILABLE)')
+                        : (isEn ? 'No devices matching your search' : 'Không tìm thấy thiết bị nào khớp với từ khóa tìm kiếm')}
+                    </div>
+                  ) : (
+                    filteredAvailableAssets.map((a) => {
+                      const isSelected = selectedAssetId === a.id;
+                      return (
+                        <div
+                          key={a.id}
+                          onClick={() => setSelectedAssetId(a.id)}
+                          className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex items-center justify-between gap-2 ${
+                            isSelected
+                              ? 'bg-blue-50/90 dark:bg-blue-950/60 border-blue-500 text-blue-900 dark:text-blue-200 font-semibold shadow-xs'
+                              : 'bg-white dark:bg-slate-800 border-slate-200/80 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          <div className="min-w-0 flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="selectedAsset"
+                              checked={isSelected}
+                              onChange={() => setSelectedAssetId(a.id)}
+                              className="text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-[10.5px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded font-bold">
+                                  {a.assetTag}
+                                </span>
+                                <span className="truncate text-xs font-semibold">{a.name}</span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                {a.brand || ''} {a.model ? `· ${a.model}` : ''} {a.serialNumber ? `· SN: ${a.serialNumber}` : ''}
+                              </div>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 shrink-0 bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.5 rounded">
+                              Đã chọn
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Ghi chú biên bản bàn giao:</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {isEn ? 'Handover Notes:' : 'Ghi chú biên bản bàn giao:'}
+                </label>
                 <textarea
                   rows={2}
-                  placeholder="VD: Cấp máy mới nguyên seal, chuột và sạc kèm theo..."
+                  placeholder={isEn ? 'e.g. Delivered new laptop with charger and mouse...' : 'VD: Cấp máy mới nguyên seal, chuột và sạc kèm theo...'}
                   value={assignAssetNotes}
                   onChange={(e) => setAssignAssetNotes(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded-xl outline-none"
+                  className="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-xl outline-none bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsAssignAssetModalOpen(false)}
-                  className="px-4 py-2 border rounded-xl font-semibold text-slate-700"
-                >{isEn ? 'Cancel' : 'Hủy'}</button>
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  {isEn ? 'Cancel' : 'Hủy'}
+                </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md cursor-pointer"
+                  disabled={!selectedAssetId}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-md cursor-pointer transition-colors"
                 >
-                  Xác Nhận Bàn Giao
+                  {isEn ? 'Confirm Handover' : 'Xác Nhận Bàn Giao'}
                 </button>
               </div>
             </form>
@@ -2988,7 +3150,7 @@ export default function UsersPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              handleRevokeLicense(la.license.id, la.id);
+                              handleRevokeLicense(la.license.id, { assignmentId: la.id, userId: viewingUserDetail.id });
                               setViewingUserDetail((prev: any) => ({
                                 ...prev,
                                 licenseAssignments: prev.licenseAssignments.filter((x: any) => x.id !== la.id)
@@ -3020,63 +3182,156 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Modal: Gán License Bản Quyền Cho Nhân Viên */}
+      {/* Modal: Gán License Bản Quyền Cho Nhân Viên (Có ô tìm kiếm nhanh) */}
       {isAssignLicenseModalOpen && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-2 border-b">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="font-bold text-base text-slate-900 flex items-center gap-1.5">
-                  <Key className="w-4 h-4 text-purple-600" />
-                  <span>Cấp License Bản Quyền Cho Nhân Sự</span>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-600">
+                    <Key className="w-4 h-4" />
+                  </span>
+                  <span>{isEn ? 'Assign License to Employee' : 'Cấp License Bản Quyền Cho Nhân Sự'}</span>
                 </h3>
-                <p className="text-xs text-slate-400">
-                  Nhân viên: <strong className="text-slate-800">{selectedUser.fullName}</strong>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isEn ? 'Employee:' : 'Nhân viên:'} <strong className="text-slate-800 dark:text-slate-200">{selectedUser.fullName}</strong> {selectedUser.email ? `(${selectedUser.email})` : ''}
                 </p>
               </div>
-              <button onClick={() => setIsAssignLicenseModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setIsAssignLicenseModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveAssignLicense} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Chọn phần mềm / License còn chỗ (Seats):</label>
-                <select
-                  value={selectedLicenseId}
-                  onChange={(e) => setSelectedLicenseId(e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold text-purple-900 bg-purple-50/40 outline-none"
-                >
-                  {availableLicenses.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name} ({l.usedSeats || 0}/{l.totalSeats} seats)
-                    </option>
-                  ))}
-                </select>
+            <form onSubmit={handleSaveAssignLicense} className="space-y-4 text-xs">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    {isEn ? 'Select Software / License:' : 'Chọn phần mềm / License còn chỗ (Seats):'}
+                  </label>
+                  <span className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full">
+                    {filteredAvailableLicenses.length} / {availableLicenses.length} {isEn ? 'licenses' : 'bản quyền'}
+                  </span>
+                </div>
+
+                {/* Ô tìm kiếm license nhanh */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-purple-400 absolute left-3 top-2.5 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder={isEn ? 'Quick search by license name, key, vendor...' : 'Tìm kiếm nhanh tên license, key, nhà cung cấp...'}
+                    value={licenseSearchQuery}
+                    onChange={(e) => setLicenseSearchQuery(e.target.value)}
+                    className="w-full pl-8 pr-8 py-2 bg-purple-50/20 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                    autoFocus
+                  />
+                  {licenseSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setLicenseSearchQuery('')}
+                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Danh sách license cuộn có thể click chọn */}
+                <div className="max-h-52 overflow-y-auto space-y-1.5 rounded-xl border border-slate-200 dark:border-slate-700 p-1.5 bg-slate-50/50 dark:bg-slate-800/40">
+                  {filteredAvailableLicenses.length === 0 ? (
+                    <div className="py-6 text-center text-slate-400 italic text-xs">
+                      {availableLicenses.length === 0
+                        ? (isEn ? 'No active licenses found' : 'Không tìm thấy license nào đang hoạt động')
+                        : (isEn ? 'No licenses matching your search' : 'Không tìm thấy license nào khớp với từ khóa tìm kiếm')}
+                    </div>
+                  ) : (
+                    filteredAvailableLicenses.map((l) => {
+                      const isSelected = selectedLicenseId === l.id;
+                      const remainingSeats = Math.max(0, (l.totalSeats || 0) - (l.usedSeats || 0));
+                      return (
+                        <div
+                          key={l.id}
+                          onClick={() => setSelectedLicenseId(l.id)}
+                          className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex items-center justify-between gap-2 ${
+                            isSelected
+                              ? 'bg-purple-50/90 dark:bg-purple-950/60 border-purple-500 text-purple-900 dark:text-purple-200 font-semibold shadow-xs'
+                              : 'bg-white dark:bg-slate-800 border-slate-200/80 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          <div className="min-w-0 flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name="selectedLicense"
+                              checked={isSelected}
+                              onChange={() => setSelectedLicenseId(l.id)}
+                              className="text-purple-600 focus:ring-purple-500 cursor-pointer"
+                            />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                                  {l.name}
+                                </span>
+                                <span className="text-[10px] px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase font-medium">
+                                  {l.licenseType || 'PERPETUAL'}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                {l.vendor?.name ? `${l.vendor.name} · ` : ''}
+                                {l.licenseKey ? `Key: ${l.licenseKey.slice(0, 15)}... · ` : ''}
+                                Đã dùng: {l.usedSeats || 0}/{l.totalSeats} seats
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end shrink-0">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              remainingSeats > 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                            }`}>
+                              Còn {remainingSeats} seats
+                            </span>
+                            {isSelected && (
+                              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 mt-0.5">
+                                Đã chọn
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Ghi chú cấp phát:</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {isEn ? 'Allocation Notes:' : 'Ghi chú cấp phát:'}
+                </label>
                 <textarea
                   rows={2}
-                  placeholder="VD: Cấp tài khoản Office 365 E3 theo đề xuất..."
+                  placeholder={isEn ? 'e.g. Assigned Office 365 E3 per request...' : 'VD: Cấp tài khoản Office 365 E3 theo đề xuất...'}
                   value={assignLicenseNotes}
                   onChange={(e) => setAssignLicenseNotes(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded-xl outline-none"
+                  className="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-xl outline-none bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-purple-500"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsAssignLicenseModalOpen(false)}
-                  className="px-4 py-2 border rounded-xl font-semibold text-slate-700"
-                >{isEn ? 'Cancel' : 'Hủy'}</button>
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  {isEn ? 'Cancel' : 'Hủy'}
+                </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-md cursor-pointer"
+                  disabled={!selectedLicenseId}
+                  className="px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-md cursor-pointer transition-colors"
                 >
-                  Xác Nhận Cấp License
+                  {isEn ? 'Confirm Assignment' : 'Xác Nhận Cấp License'}
                 </button>
               </div>
             </form>

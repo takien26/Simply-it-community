@@ -34,6 +34,38 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { fullName: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+        { position: { contains: search, mode: 'insensitive' } },
+        { department: { contains: search, mode: 'insensitive' } },
+        {
+          assetAssignments: {
+            some: {
+              returnedAt: null,
+              asset: {
+                OR: [
+                  { assetTag: { contains: search, mode: 'insensitive' } },
+                  { name: { contains: search, mode: 'insensitive' } },
+                  { serialNumber: { contains: search, mode: 'insensitive' } },
+                  { brand: { contains: search, mode: 'insensitive' } },
+                  { model: { contains: search, mode: 'insensitive' } },
+                ],
+              },
+            },
+          },
+        },
+        {
+          licenseAssignments: {
+            some: {
+              revokedAt: null,
+              license: {
+                OR: [
+                  { name: { contains: search, mode: 'insensitive' } },
+                  { licenseKey: { contains: search, mode: 'insensitive' } },
+                ],
+              },
+            },
+          },
+        },
       ];
     }
     if (department && department !== 'ALL') {
